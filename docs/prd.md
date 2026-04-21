@@ -13,7 +13,10 @@
 **Utility Styling:** `class-variance-authority`, `clsx`, `tailwind-merge`, `@tailwindcss/forms`, `@tailwindcss/typography`
 **State / Data:** TanStack Svelte Query, TanStack Svelte DB, TanStack Svelte Form, TanStack Svelte Table, TanStack Svelte Virtual
 **i18n:** Paraglide JS (`@inlang/paraglide-js`)
-**Testing:** Vitest (+ `@vitest/ui`)
+**Content Pipeline:** GitHub Flavored Markdown via `micromark` + GFM extensions, sanitized with DOMPurify
+**Storage / Media:** Cloudflare R2 + Cloudflare Images
+**Analytics:** Cloudflare Web Analytics (public) + Firebase Analytics (app/admin)
+**Testing:** Vitest (+ `@vitest/ui`) for unit/integration, Playwright for E2E
 **Tooling:** Vite 8, oxlint, oxfmt, svelte-check, wrangler
 **Local DB tooling:** `drizzle-kit` + `wrangler d1 execute` (local + remote)
 
@@ -136,8 +139,8 @@ SvelteKit lets us mix strategies per route group via route-level exports (`prere
 ### `/blog/*` — **ISR-style regeneration**
 
 * Prerender at build time for known slugs, with on-demand revalidation on publish/update
-* Cloudflare cache headers (`Cache-Control`, `CDN-Cache-Control`) + cache tags where supported
-* `/blog` index and `/blog/[slug]` both revalidate on admin publish/update actions via a server-side invalidation hook
+* Cloudflare **Cache API with cache tags**: tag blog responses on render (`blog:index`, `blog:slug:<slug>`, `blog:tag:<tag>`), and purge relevant tags on admin publish / update / unpublish
+* Standard cache headers (`Cache-Control`, `CDN-Cache-Control`) for edge caching
 * No private / user-specific data rendered in blog responses
 
 ### `/app/*` — **CSR only**
@@ -237,13 +240,14 @@ Privileged operator; manages blog and users; accesses `/admin/*`.
 
 ### Requirements
 * Posts persisted in D1 via Drizzle.
-* Per-post fields: title, slug, excerpt, body, cover image (optional), author ref, publish state, timestamps, SEO fields.
+* Per-post fields: title, slug, excerpt, body, cover image, author ref, publish state, timestamps, SEO fields, `deleted_at`.
+* Content format: **GitHub Flavored Markdown** stored raw in `content_body`; rendered via `micromark` (with GFM extensions) and sanitized with **DOMPurify** before serving. Styled with `@tailwindcss/typography`.
+* Image upload via **Cloudflare R2 + Images**: admin editor uploads cover images and in-body images to R2, served through Cloudflare Images for transforms.
 * `/blog` index with pagination (cursor or offset).
 * `/blog/[slug]` detail page.
 * Optional tag / category taxonomy.
 * Admin editing UI under `/admin/blog`.
-* ISR-style regeneration: on publish / update / unpublish, the admin endpoint invalidates the relevant blog routes (index, slug, tag pages) using a cache-tag / manual purge helper.
-* Markdown or rich content rendering pipeline (decided during implementation; `@tailwindcss/typography` provides the prose styling).
+* ISR-style regeneration: on publish / update / unpublish, the admin endpoint purges the matching cache tags (`blog:index`, `blog:slug:<slug>`, `blog:tag:<tag>`).
 
 ### Acceptance Criteria
 * Draft posts are not publicly reachable by slug.
@@ -257,6 +261,7 @@ Privileged operator; manages blog and users; accesses `/admin/*`.
 * CSR-only shell using shadcn-svelte layout primitives.
 * Auth-guarded layout (`+layout.server.ts` redirect + `+layout.ts` checks).
 * Dashboard, profile, settings pages.
+* **Items module** — a generic, user-scoped resource (list / create / edit / delete) that establishes the canonical TanStack Query + TanStack Form + TanStack Table patterns for all future domain modules. Schema and UX are intentionally simple (name, description, status, timestamps, `deleted_at`).
 * Protected data fetching via TanStack Svelte Query against `/app/api/*` or `+server.ts` endpoints.
 * Forms via TanStack Svelte Form with shared validators.
 * Tables via TanStack Svelte Table, virtualized with TanStack Svelte Virtual for large sets.
@@ -276,9 +281,9 @@ Privileged operator; manages blog and users; accesses `/admin/*`.
 * User list with search / filter / sort / pagination (TanStack Table).
 * User detail view.
 * Blog list with draft/published indicators.
-* Blog create / edit form (TanStack Form).
-* Publish / unpublish actions that trigger regeneration.
-* Optional soft-delete / archive flow.
+* Blog create / edit form (TanStack Form) with R2-backed image upload.
+* Publish / unpublish actions that trigger cache-tag purge.
+* Soft-delete flow (sets `deleted_at`); archived/deleted posts hidden from public and default admin lists, restorable via explicit action.
 * Destructive actions use confirmation dialogs.
 
 ### Acceptance Criteria
@@ -306,7 +311,10 @@ Privileged operator; manages blog and users; accesses `/admin/*`.
 * Tables / virtualization: **TanStack Svelte Table** + **TanStack Svelte Virtual**.
 * Optional local-first data: **TanStack Svelte DB**.
 * i18n: **Paraglide JS**.
-* Testing: **Vitest** (+ `@vitest/ui`).
+* Content pipeline: **micromark (GFM) + DOMPurify**.
+* Storage: **Cloudflare R2 + Cloudflare Images**.
+* Analytics: **Cloudflare Web Analytics** (public) + **Firebase Analytics** (app/admin).
+* Testing: **Vitest** (+ `@vitest/ui`), **Playwright** for E2E.
 * Lint / format: **oxlint**, **oxfmt**.
 
 ## 8.2 Database Requirements (D1 + Drizzle)
@@ -431,6 +439,7 @@ Exact group names are conventions; the important thing is that `(public)` and `(
 * role: `user` | `admin`
 * status: `active` | `suspended`
 * created_at, updated_at, last_login_at
+* deleted_at (nullable — soft delete)
 
 ## 10.2 Sessions / Auth Tables
 Generated by Better Auth (`bun auth:schema`) into `src/lib/server/db/auth.schema.ts`. Do not edit by hand.
@@ -440,14 +449,15 @@ Generated by Better Auth (`bun auth:schema`) into `src/lib/server/db/auth.schema
 * title
 * slug (unique)
 * excerpt
-* content_body (markdown or sanitized HTML — decide in impl)
-* cover_image_url (nullable)
+* content_body (GitHub Flavored Markdown, raw)
+* cover_image_url (nullable — R2 / Cloudflare Images URL)
 * seo_title (nullable)
 * seo_description (nullable)
 * status: `draft` | `published` | `archived`
 * author_id → users.id
 * published_at (nullable)
 * created_at, updated_at
+* deleted_at (nullable — soft delete)
 
 ## 10.4 Blog Tags
 * id, name, slug (unique)
@@ -455,7 +465,16 @@ Generated by Better Auth (`bun auth:schema`) into `src/lib/server/db/auth.schema
 ## 10.5 Blog Post Tags (join)
 * post_id, tag_id (PK composite)
 
-## 10.6 Audit Log (recommended)
+## 10.6 Items (App Module)
+* id
+* user_id → users.id (owner scope)
+* name
+* description (nullable)
+* status: `active` | `archived`
+* created_at, updated_at
+* deleted_at (nullable — soft delete)
+
+## 10.7 Audit Log (recommended)
 * id
 * actor_user_id
 * action_type
@@ -566,7 +585,7 @@ Generated by Better Auth (`bun auth:schema`) into `src/lib/server/db/auth.schema
 * Never log secrets or session tokens.
 
 ## 15.2 Monitoring
-* Track failed requests, auth failures, and publish failures via Cloudflare analytics / logs.
+* Track failed requests, auth failures, and publish failures via Cloudflare Workers logs + **Cloudflare Web Analytics** (public surfaces) and **Firebase Analytics** (app event tracking).
 * Surface a simple health-check endpoint.
 
 ## 15.3 Backups
@@ -575,15 +594,19 @@ Generated by Better Auth (`bun auth:schema`) into `src/lib/server/db/auth.schema
 
 ---
 
-# 16. Analytics Requirements (Optional but Recommended)
+# 16. Analytics Requirements
 
-## 16.1 Public
+Two-stack analytics: **Cloudflare Web Analytics** for privacy-friendly, zero-JS public page metrics, and **Firebase Analytics** for authenticated app / admin event tracking.
+
+## 16.1 Public (Cloudflare Web Analytics)
 * Page views, CTA clicks, blog post views, referral sources (where legal).
+* No cookies, no client-side analytics JS beyond the Cloudflare beacon.
 
-## 16.2 App
+## 16.2 App (Firebase Analytics)
 * Sign-up completion, login success/failure, feature usage events.
+* Gated behind user consent where required.
 
-## 16.3 Admin
+## 16.3 Admin (Firebase Analytics)
 * Posts created / published, user growth, key moderation actions.
 
 ---
@@ -623,17 +646,20 @@ MVP is complete when:
 * SEO metadata helper + JSON-LD support.
 
 ## Phase 2 — Blog
-* Blog Drizzle schema + migrations.
+* Blog Drizzle schema + migrations (including `deleted_at`).
+* Markdown rendering pipeline: `micromark` + GFM + DOMPurify.
+* R2 + Cloudflare Images integration for image upload.
 * Admin blog CRUD `+server.ts` endpoints.
 * Public `/blog` + `/blog/[slug]` routes.
-* Draft / publish workflow.
-* Regeneration / cache invalidation hook.
+* Draft / publish / soft-delete workflow.
+* Cache-tag regeneration hook (`blog:index`, `blog:slug:<slug>`, `blog:tag:<tag>`).
 
 ## Phase 3 — Auth + User App
-* Register / login / logout via Better Auth.
+* Register / login / logout via Better Auth (email/password only for v1).
 * Session restoration on cold loads.
 * Protected `/app/*` shell with CSR + TanStack Query hydration.
 * User settings + profile screens.
+* **Items module** (list / create / edit / soft-delete) establishing the canonical TanStack patterns.
 * First dashboard views.
 
 ## Phase 4 — Admin Panel
@@ -644,7 +670,7 @@ MVP is complete when:
 * Audit-friendly logging.
 
 ## Phase 5 — Hardening
-* E2E tests (suite TBD — Playwright is a likely pick).
+* E2E tests with **Playwright**.
 * Security review.
 * Performance + bundle size review.
 * Accessibility pass.
@@ -693,17 +719,19 @@ MVP is complete when:
 * [ ] Responsive QA
 
 ## 19.4 Blog
-* [ ] Blog schema + migration
+* [ ] Blog schema + migration (including `deleted_at`)
 * [ ] Tag / category schema (if included)
+* [ ] Markdown rendering pipeline (`micromark` + GFM + DOMPurify)
+* [ ] R2 + Cloudflare Images upload integration
 * [ ] `/blog` index route
 * [ ] `/blog/[slug]` detail route
 * [ ] Slug uniqueness validation
 * [ ] Draft save
 * [ ] Publish
 * [ ] Update
-* [ ] Unpublish / archive
+* [ ] Unpublish / soft-delete
 * [ ] SEO fields support
-* [ ] Regeneration / cache invalidation on publish and update
+* [ ] Cache-tag purge on publish / update / unpublish
 * [ ] Public cache strategy documented
 
 ## 19.5 App
@@ -711,6 +739,7 @@ MVP is complete when:
 * [ ] Dashboard
 * [ ] Profile
 * [ ] Settings
+* [ ] Items module (schema + endpoints + list/create/edit/soft-delete UI)
 * [ ] Protected data fetching via TanStack Query
 * [ ] Forms via TanStack Form + shared validators
 * [ ] Loading / error / empty states
@@ -729,11 +758,13 @@ MVP is complete when:
 * [ ] Audit log hooks
 
 ## 19.7 Quality
-* [ ] Unit tests for utilities and validators
-* [ ] Integration tests for auth and blog endpoints
-* [ ] E2E tests for critical flows
+* [ ] Unit tests for utilities and validators (Vitest)
+* [ ] Integration tests for auth, blog, and items endpoints (Vitest)
+* [ ] E2E tests for critical flows (Playwright)
 * [ ] Accessibility checks on forms/nav
 * [ ] Performance / bundle review for public pages
+* [ ] Cloudflare Web Analytics beacon wired on public surfaces
+* [ ] Firebase Analytics initialized on authenticated surfaces
 * [ ] Deployment checklist
 * [ ] Backup + migration docs
 
@@ -759,7 +790,7 @@ MVP is complete when:
 * Admin-only authorization
 * Drizzle queries and migrations
 
-### End-to-End (Playwright recommended)
+### End-to-End (Playwright)
 * Visitor browses public site
 * Visitor reads blog post
 * User registration / login
@@ -858,10 +889,11 @@ MVP is complete when:
 
 # 23. Future Enhancements
 
-* Rich text / markdown editor improvements
+* Rich text / markdown editor improvements (WYSIWYG, slash menu, etc.)
 * Scheduled publishing
-* Image upload + media library (Cloudflare R2 + Images)
+* Media library UI over R2 (v1 is upload-only in the editor)
 * Full-text search across blog content (D1 FTS or external)
+* Social authentication providers
 * Multi-role permissions beyond `user` / `admin`
 * Team / organization support
 * Billing / subscriptions
@@ -869,21 +901,24 @@ MVP is complete when:
 * Feature flags
 * API tokens / webhooks
 * Impersonation for admins (audit-logged)
-* Soft deletion for users + posts
 
 ---
 
-# 24. Open Questions
+# 24. Resolved Decisions
 
-* What are the core domain modules inside `/app/*` beyond dashboard / profile / settings?
-* Blog content format: markdown, MDX-like, rich text JSON, or sanitized HTML?
-* Is image upload required in v1, or can we start with external URLs?
-* Do we need social auth in addition to email/password?
-* Should admins be able to impersonate users (with audit)?
-* Do we want soft deletion for users + posts?
-* What analytics stack will we standardize on?
-* Exact regeneration strategy: cache tag purge, manual invalidation, or a combination?
-* E2E test runner: Playwright (recommended) vs. alternatives?
+All open questions resolved for v1 MVP:
+
+| Question | Decision |
+|----------|----------|
+| Core domain modules inside `/app/*` | **Generic resource module**: Start with a single "Items" module to establish TanStack Query/Form/Table patterns before building domain-specific features. |
+| Blog content format | **GitHub Flavored Markdown**: Simple, well-supported, works perfectly with `@tailwindcss/typography`. Render with `micromark` + DOMPurify for sanitization. |
+| Blog image handling | **Basic image upload**: Implement minimal Cloudflare R2 + Images integration for v1. |
+| Social authentication | **Email/password only**: Defer social providers to post-MVP. |
+| Admin user impersonation | **Defer to post-MVP**: Not required for initial launch. |
+| Soft deletion | **Soft delete for all**: Implement `deleted_at` timestamps for users and blog posts. |
+| Analytics stack | **Cloudflare Web Analytics + Firebase**: Zero-JS privacy-friendly analytics for public surfaces, with Firebase for app event tracking. |
+| Blog regeneration strategy | **Cloudflare Cache API with tags**: Tag blog routes on render, purge relevant tags when posts are published/updated. |
+| E2E test runner | **Playwright**: Official SvelteKit default with excellent Workers support.
 
 ---
 
