@@ -18,11 +18,5 @@
     "newlinesBetween": true,
     "order": "asc"
   },
-  "ignorePatterns": [
-    "node_modules/",
-    ".svelte-kit/",
-    "build/",
-    "dist/",
-    ".wrangler/"
-  ]
+  "ignorePatterns": ["node_modules/", ".svelte-kit/", "build/", "dist/", ".wrangler/"]
 }

@@ -8,6 +8,13 @@
       "when": 1776807209534,
       "tag": "0000_youthful_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776812191467,
+      "tag": "0001_robust_zuras",
+      "breakpoints": true
     }
   ]
 }
