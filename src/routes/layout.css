@@ -33,6 +33,38 @@
   --sidebar-border: hsl(220 13% 91%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
 
+  /* Brand */
+  --brand: #e8b86d;
+  --brand-hover: #d4a55f;
+  --brand-foreground: #050505;
+
+  /* Surfaces */
+  --surface-base: #ffffff;
+  --surface: #f5f5f5;
+  --surface-elevated: #e8e8e8;
+  --surface-inset: #d4d4d4;
+
+  /* Text */
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #737373;
+  --text-subtle: #a3a3a3;
+  --text-faint: #d4d4d4;
+
+  /* Terminal */
+  --terminal-red: #ff5f57;
+  --terminal-yellow: #febc2e;
+  --terminal-green: #28c840;
+
+  /* Gradients / glows */
+  --glow-brand: rgba(232, 184, 109, 0.06);
+  --glow-brand-strong: rgba(232, 184, 109, 0.12);
+  --glow-brand-hover: rgba(232, 184, 109, 0.08);
+  --glow-brand-highlight: rgba(232, 184, 109, 0.1);
+  --glow-white: rgba(255, 255, 255, 0.06);
+  --shadow-brand: rgba(232, 184, 109, 0.06);
+  --shadow-brand-outer: rgba(232, 184, 109, 0.08);
+
   --radius: 0.5rem;
 }
 
@@ -64,6 +96,38 @@
   --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
   --sidebar-border: hsl(240 3.7% 15.9%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
+
+  /* Brand */
+  --brand: #e8b86d;
+  --brand-hover: #d4a55f;
+  --brand-foreground: #050505;
+
+  /* Surfaces */
+  --surface-base: #050505;
+  --surface: #0c0c0c;
+  --surface-deep: #080808;
+  --surface-elevated: #141414;
+
+  /* Text */
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-subtle: #525252;
+  --text-faint: #404040;
+
+  /* Terminal */
+  --terminal-red: #ff5f57;
+  --terminal-yellow: #febc2e;
+  --terminal-green: #28c840;
+
+  /* Gradients / glows */
+  --glow-brand: rgba(232, 184, 109, 0.06);
+  --glow-brand-strong: rgba(232, 184, 109, 0.12);
+  --glow-brand-hover: rgba(232, 184, 109, 0.08);
+  --glow-brand-highlight: rgba(232, 184, 109, 0.1);
+  --glow-white: rgba(255, 255, 255, 0.06);
+  --shadow-brand: rgba(232, 184, 109, 0.06);
+  --shadow-brand-outer: rgba(232, 184, 109, 0.08);
 }
 
 @theme inline {
@@ -99,6 +163,29 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+
+  /* Surfaces */
+  --color-surface-base: var(--surface-base);
+  --color-surface: var(--surface);
+  --color-surface-deep: var(--surface-deep);
+  --color-surface-elevated: var(--surface-elevated);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-faint: var(--text-faint);
+
+  /* Terminal */
+  --color-terminal-red: var(--terminal-red);
+  --color-terminal-yellow: var(--terminal-yellow);
+  --color-terminal-green: var(--terminal-green);
 }
 
 @layer base {

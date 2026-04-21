@@ -7,6 +7,9 @@ const config = {
 		runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 	},
 	kit: {
+		experimental: {
+			handleRenderingErrors: true
+		},
 		adapter: adapter(),
 		typescript: {
 			config: (config) => ({
