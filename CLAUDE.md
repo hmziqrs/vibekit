@@ -64,8 +64,21 @@ Server-side auth guard pattern: check `event.locals.user` in `+page.server.ts` l
 ### i18n
 Paraglide JS with compiled output in `src/lib/paraglide/` (auto-generated, do not edit). Source messages in `messages/en.json` and `messages/ur.json`. Supports English and Urdu. Locale is URL-based; HTML lang/dir attributes are set via template replacement in hooks.
 
-### Styling
-Tailwind CSS v4 with shadcn-svelte theme tokens defined as CSS custom properties in `src/routes/+layout.css`. Dark mode by default (`class="dark"` on `<html>`). Use `cn()` from `$lib/utils` for conditional class merging.
+### Color System
+All colors use CSS custom properties in `src/routes/layout.css`. Never use hardcoded hex values (`text-[#e8b86d]`, `bg-[#0c0c0c]`) or Tailwind named color classes (`bg-blue-600`, `text-white`) — always use the semantic tokens.
+
+**Token naming** (Tailwind class = `text-{name}`, `bg-{name}`, `border-{name}`, etc.):
+- **Brand**: `brand`, `brand-hover`, `brand-foreground` — accent color and its hover/text-on-accent
+- **Surfaces**: `surface-base` (page bg), `surface` (cards), `surface-deep` (sections), `surface-elevated` (inset elements like terminal URL bar)
+- **Text hierarchy** (primary → faint): `text-primary`, `text-secondary`, `text-muted`, `text-subtle`, `text-faint`
+- **Terminal**: `terminal-red`, `terminal-yellow`, `terminal-green` — traffic light dots
+- **shadcn tokens**: `background`, `foreground`, `muted`, `muted-foreground`, `border`, `input`, `primary`, `primary-foreground`, `destructive`, `destructive-foreground`, `ring` — for UI components
+
+**Gradient/glow CSS variables** (used in `style` attributes): `--glow-brand`, `--glow-brand-strong`, `--glow-brand-hover`, `--glow-brand-highlight`, `--glow-white`, `--shadow-brand`, `--shadow-brand-outer`.
+
+Light/dark mode values are set in `:root` and `.dark` blocks respectively. Dark mode is default (`class="dark"` on `<html>`).
+
+Use `cn()` from `$lib/utils` for conditional class merging.
 
 ### Code Style
 - oxlint with typescript/unicorn/import/vitest plugins
