@@ -41,7 +41,11 @@ describe('registerSchema', () => {
   })
 
   it('rejects short password', () => {
-    const result = registerSchema.safeParse({ ...validInput, password: 'short', confirmPassword: 'short' })
+    const result = registerSchema.safeParse({
+      ...validInput,
+      password: 'short',
+      confirmPassword: 'short',
+    })
     expect(result.success).toBe(false)
   })
 

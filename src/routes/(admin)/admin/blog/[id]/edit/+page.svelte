@@ -1,0 +1,120 @@
+<script lang="ts">
+	let { data } = $props()
+
+	let title = $state(data.post.title)
+	let slug = $state(data.post.slug)
+	let excerpt = $state(data.post.excerpt ?? '')
+	let contentBody = $state(data.post.contentBody ?? '')
+	let saving = $state(false)
+	let error = $state('')
+
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault()
+		saving = true
+		error = ''
+
+		try {
+			const res = await fetch(`/api/blog/${data.post.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ title, slug, excerpt, contentBody }),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				error = data.error ?? 'Failed to update'
+				return
+			}
+			error = ''
+		} catch {
+			error = 'Network error'
+		} finally {
+			saving = false
+		}
+	}
+
+	async function publish() {
+		saving = true
+		await fetch(`/api/blog/${data.post.id}/publish`, { method: 'POST' })
+		window.location.reload()
+	}
+
+	async function unpublish() {
+		saving = true
+		await fetch(`/api/blog/${data.post.id}/unpublish`, { method: 'POST' })
+		window.location.reload()
+	}
+
+	async function archive() {
+		if (!confirm('Archive this post?')) return
+		await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
+		window.location.href = '/admin/blog'
+	}
+</script>
+
+<div class="flex items-center justify-between">
+	<div class="flex items-center gap-3">
+		<h1 class="text-2xl font-bold text-text-primary">Edit Post</h1>
+		<span class="rounded-full px-2.5 py-0.5 text-[11px] font-medium
+			{data.post.status === 'published' ? 'bg-green-500/10 text-green-400' : data.post.status === 'draft' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}">
+			{data.post.status}
+		</span>
+	</div>
+	<a href="/admin/blog" class="text-[13px] text-text-muted hover:text-text-primary">Back to list</a>
+</div>
+
+<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl">
+	{#if error}
+		<p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{error}</p>
+	{/if}
+
+	<div>
+		<label for="title" class="mb-2 block text-sm font-medium text-text-secondary">Title</label>
+		<input id="title" bind:value={title} required
+			class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+	</div>
+
+	<div>
+		<label for="slug" class="mb-2 block text-sm font-medium text-text-secondary">Slug</label>
+		<input id="slug" bind:value={slug} required
+			class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+	</div>
+
+	<div>
+		<label for="excerpt" class="mb-2 block text-sm font-medium text-text-secondary">Excerpt</label>
+		<input id="excerpt" bind:value={excerpt}
+			class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+	</div>
+
+	<div>
+		<label for="content" class="mb-2 block text-sm font-medium text-text-secondary">Content (Markdown)</label>
+		<textarea id="content" bind:value={contentBody} rows="15"
+			class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"></textarea>
+	</div>
+
+	<div class="flex gap-3">
+		<button type="submit" disabled={saving}
+			class="rounded-lg bg-brand px-5 py-2.5 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover disabled:opacity-50">
+			{saving ? 'Saving...' : 'Save Changes'}
+		</button>
+
+		{#if data.post.status === 'draft' || data.post.status === 'archived'}
+			<button type="button" onclick={publish} disabled={saving}
+				class="rounded-lg bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-50">
+				Publish
+			</button>
+		{/if}
+
+		{#if data.post.status === 'published'}
+			<button type="button" onclick={unpublish} disabled={saving}
+				class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary">
+				Unpublish
+			</button>
+		{/if}
+
+		<button type="button" onclick={archive}
+			class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary">
+			Archive
+		</button>
+	</div>
+</form>

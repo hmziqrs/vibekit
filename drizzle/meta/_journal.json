@@ -22,6 +22,13 @@
       "when": 1776812750048,
       "tag": "0002_freezing_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1776813371349,
+      "tag": "0003_military_thing",
+      "breakpoints": true
     }
   ]
 }
