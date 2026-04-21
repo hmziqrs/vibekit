@@ -854,14 +854,14 @@ MVP is complete when:
 
 ## 19.3 Public Site
 
-- [ ] Home
-- [ ] Features
-- [ ] Pricing
-- [ ] About
-- [ ] Contact
-- [ ] Legal pages
-- [ ] Shared SEO helper
-- [ ] CTA placement review
+- [x] Home
+- [x] Features
+- [x] Pricing
+- [x] About
+- [x] Contact
+- [x] Legal pages
+- [x] Shared SEO helper
+- [x] CTA placement review
 - [ ] Responsive QA
 
 ## 19.4 Blog
