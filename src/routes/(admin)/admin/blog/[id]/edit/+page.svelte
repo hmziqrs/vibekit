@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { data } = $props()
+	let { data } = $props<{ data: { post: { id: string; title: string; slug: string; excerpt: string | null; contentBody: string | null; status: string } } }>()
 
 	let title = $state(data.post.title)
 	let slug = $state(data.post.slug)
@@ -21,8 +21,8 @@
 			})
 
 			if (!res.ok) {
-				const data = await res.json()
-				error = data.error ?? 'Failed to update'
+				const err = (await res.json()) as { error?: string }
+				error = err.error ?? 'Failed to update'
 				return
 			}
 			error = ''

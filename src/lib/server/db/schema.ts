@@ -89,4 +89,25 @@ export const blogPostSlugHistory = sqliteTable(
   })
 )
 
+export const item = sqliteTable('item', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  status: text('status', { enum: ['active', 'archived'] })
+    .default('active')
+    .notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
+})
+
 export * from './auth.schema'

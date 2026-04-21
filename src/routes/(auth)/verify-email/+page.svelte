@@ -1,5 +1,172 @@
+<script lang="ts">
+  import { page } from '$app/stores'
+  import { authClient } from '$lib/auth-client'
+  import { Button } from '$lib/components/ui/button'
+  import { Input } from '$lib/components/ui/input'
+  import { Label } from '$lib/components/ui/label'
+  import * as Card from '$lib/components/ui/card'
+
+  let error = $state('')
+  let message = $state('')
+  let loading = $state(false)
+  let verifying = $state(false)
+  let verified = $state(false)
+  let failed = $state(false)
+
+  let token = $derived($page.url.searchParams.get('token') ?? '')
+  let emailParam = $derived($page.url.searchParams.get('email') ?? '')
+
+  let email = $state('')
+  let resendLoading = $state(false)
+
+  $effect(() => {
+    email = emailParam
+  })
+
+  $effect(() => {
+    if (token) {
+      verifyEmail(token)
+    }
+  })
+
+  async function verifyEmail(t: string) {
+    verifying = true
+    error = ''
+    try {
+      const res = await authClient.verifyEmail({ query: { token: t } })
+      if (res.error) {
+        failed = true
+        error = 'Verification failed. The link may have expired.'
+      } else {
+        verified = true
+        message = 'Email verified! You can now log in.'
+      }
+    } catch {
+      failed = true
+      error = 'Verification failed. The link may have expired.'
+    } finally {
+      verifying = false
+    }
+  }
+
+  async function handleResend(e: SubmitEvent) {
+    e.preventDefault()
+    error = ''
+
+    if (!email) {
+      error = 'Please enter your email address'
+      return
+    }
+
+    resendLoading = true
+    try {
+      const res = await authClient.sendVerificationEmail({
+        email,
+        callbackURL: '/verify-email',
+      })
+      if (res.error) {
+        error = res.error.message ?? 'Failed to send verification email.'
+      } else {
+        message = 'Verification email sent! Check your inbox.'
+      }
+    } catch {
+      error = 'Something went wrong. Please try again.'
+    } finally {
+      resendLoading = false
+    }
+  }
+</script>
+
 <div class="w-full max-w-sm">
-	<h1 class="mb-2 text-2xl font-bold text-text-primary">Verify email</h1>
-	<p class="mb-8 text-text-muted">Check your inbox for a verification link</p>
-	<p class="text-text-subtle">Coming soon.</p>
+  <Card.Root>
+    <Card.Header>
+      <Card.Title class="text-text-primary">Verify email</Card.Title>
+      <Card.Description class="text-text-muted">Check your inbox for a verification link</Card.Description>
+    </Card.Header>
+
+    <Card.Content>
+      {#if verifying}
+        <div class="flex justify-center py-4">
+          <p class="text-sm text-text-muted">Verifying...</p>
+        </div>
+      {:else if verified}
+        <div class="space-y-4">
+          <p class="text-sm text-green-400">{message}</p>
+          <a
+            href="/login"
+            class="block text-center text-sm text-text-primary hover:underline"
+          >
+            Go to login
+          </a>
+        </div>
+      {:else if failed}
+        <div class="space-y-4">
+          <p class="text-sm text-red-400">{error}</p>
+
+          {#if message}
+            <p class="text-sm text-green-400">{message}</p>
+          {/if}
+
+          <form onsubmit={handleResend} class="space-y-3">
+            <div class="space-y-2">
+              <Label for="resend-email">Email address</Label>
+              <Input
+                id="resend-email"
+                type="email"
+                placeholder="you@example.com"
+                bind:value={email}
+                disabled={resendLoading}
+                autocomplete="email"
+              />
+            </div>
+
+            <Button type="submit" class="w-full" disabled={resendLoading}>
+              {resendLoading ? 'Loading...' : 'Resend verification email'}
+            </Button>
+          </form>
+        </div>
+      {:else}
+        <div class="space-y-4">
+          {#if message}
+            <p class="text-sm text-green-400">{message}</p>
+          {/if}
+
+          <p class="text-sm text-text-secondary">
+            We've sent a verification link to your email address. Click the link to verify your
+            account.
+          </p>
+
+          {#if error}
+            <p class="text-sm text-red-400">{error}</p>
+          {/if}
+
+          <form onsubmit={handleResend} class="space-y-3">
+            <div class="space-y-2">
+              <Label for="resend-email">Email address</Label>
+              <Input
+                id="resend-email"
+                type="email"
+                placeholder="you@example.com"
+                bind:value={email}
+                disabled={resendLoading}
+                autocomplete="email"
+              />
+            </div>
+
+            <Button type="submit" class="w-full" variant="outline" disabled={resendLoading}>
+              {resendLoading ? 'Loading...' : 'Resend verification email'}
+            </Button>
+          </form>
+        </div>
+      {/if}
+    </Card.Content>
+
+    {#if !verified}
+      <Card.Footer class="justify-center">
+        <a href="/login" class="text-sm text-text-muted hover:text-text-primary transition-colors">
+          Back to login
+        </a>
+      </Card.Footer>
+    {/if}
+  </Card.Root>
 </div>

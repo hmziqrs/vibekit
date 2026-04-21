@@ -842,14 +842,14 @@ MVP is complete when:
 
 ## 19.2 Auth
 
-- [ ] Registration with email verification
-- [ ] Email verification flow (`verify-email` route + `send_email`)
-- [ ] Login
-- [ ] Logout
-- [ ] Session persistence + refresh
-- [ ] Password reset (forgot-password + reset-password + `send_email`)
-- [ ] `/app/*` route guard (hooks + layout)
-- [ ] `/admin/*` role guard (hooks + layout + endpoint)
+- [x] Registration with email verification
+- [x] Email verification flow (`verify-email` route + `send_email`)
+- [x] Login
+- [x] Logout
+- [x] Session persistence + refresh
+- [x] Password reset (forgot-password + reset-password + `send_email`)
+- [x] `/app/*` route guard (hooks + layout)
+- [x] `/admin/*` role guard (hooks + layout + endpoint)
 - [ ] 401 / 403 UI states
 
 ## 19.3 Public Site
@@ -885,14 +885,14 @@ MVP is complete when:
 
 ## 19.5 App
 
-- [ ] App shell layout (shadcn-svelte)
-- [ ] Dashboard
-- [ ] Profile
-- [ ] Settings
-- [ ] Items module (schema + endpoints + list/create/edit/soft-delete UI)
-- [ ] Protected data fetching via TanStack Query
-- [ ] Forms via TanStack Form + shared validators
-- [ ] Loading / error / empty states
+- [x] App shell layout (shadcn-svelte)
+- [x] Dashboard
+- [x] Profile
+- [x] Settings
+- [x] Items module (schema + endpoints + list/create/edit/soft-delete UI)
+- [x] Protected data fetching via TanStack Query
+- [x] Forms via TanStack Form + shared validators
+- [x] Loading / error / empty states
 - [ ] Reusable table / form primitives
 
 ## 19.6 Admin

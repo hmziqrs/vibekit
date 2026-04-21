@@ -9,7 +9,20 @@ import { uuidv7 } from 'uuidv7'
 const authConfig = {
   baseURL: env.ORIGIN,
   secret: env.BETTER_AUTH_SECRET,
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      // TODO: Wire to real email service (Resend, SendGrid, etc.)
+      console.log(`[dev] Password reset for ${user.email}: ${url}`)
+    },
+  },
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      // TODO: Wire to real email service (Resend, SendGrid, etc.)
+      console.log(`[dev] Email verification for ${user.email}: ${url}`)
+    },
+  },
   user: {
     additionalFields: {
       displayName: {

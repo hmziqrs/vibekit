@@ -1,30 +1,169 @@
 <script lang="ts">
-	let { children } = $props()
+  import { QueryClientProvider } from '@tanstack/svelte-query'
+  import { createQueryClient } from '$lib/query-client'
+  import { useSession, signOut } from '$lib/auth-client'
+  import { page } from '$app/stores'
+  import { cn } from '$lib/utils'
+
+  let { children } = $props()
+  const queryClient = createQueryClient()
+  const session = useSession()
+  let mobileMenuOpen = $state(false)
+
+  const navItems = [
+    { href: '/app/dashboard', label: 'Dashboard' },
+    { href: '/app/items', label: 'Items' },
+    { href: '/app/profile', label: 'Profile' },
+    { href: '/app/settings', label: 'Settings' },
+  ]
+
+  function handleSignOut() {
+    signOut()
+    window.location.href = '/'
+  }
+
+  function isActive(href: string) {
+    return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/')
+  }
+
+  function closeMobileMenu() {
+    mobileMenuOpen = false
+  }
 </script>
 
-<div class="flex min-h-screen bg-surface-base">
-	<aside class="hidden w-64 shrink-0 border-r border-white/[0.06] bg-surface md:block">
-		<div class="p-6">
-			<a href="/" class="flex items-center gap-2.5">
-				<div class="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-brand-foreground">
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-				</div>
-				<span class="text-[15px] font-semibold tracking-tight text-text-primary">Vibekit</span>
-			</a>
-		</div>
-		<nav class="space-y-1 px-3">
-			<a href="/app/dashboard" class="block rounded-lg px-3 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary">Dashboard</a>
-			<a href="/app/profile" class="block rounded-lg px-3 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary">Profile</a>
-			<a href="/app/settings" class="block rounded-lg px-3 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary">Settings</a>
-		</nav>
-	</aside>
+<QueryClientProvider client={queryClient}>
+  <div class="flex min-h-screen bg-surface-base">
+    <!-- Mobile overlay -->
+    {#if mobileMenuOpen}
+      <div
+        class="fixed inset-0 z-40 bg-black/50 md:hidden"
+        role="presentation"
+        onclick={closeMobileMenu}
+        onkeydown={(e) => e.key === 'Escape' && closeMobileMenu()}
+      ></div>
+    {/if}
 
-	<div class="flex-1">
-		<header class="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
-			<span class="text-[14px] font-medium text-text-secondary">App</span>
-		</header>
-		<main class="p-6">
-			{@render children()}
-		</main>
-	</div>
-</div>
+    <!-- Sidebar -->
+    <aside
+      class={cn(
+        'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white/[0.06] bg-surface transition-transform duration-200 md:relative md:translate-x-0',
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      )}
+    >
+      <!-- Logo -->
+      <div class="flex h-14 items-center justify-between px-6">
+        <a href="/" class="flex items-center gap-2.5">
+          <div
+            class="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-brand-foreground"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <span class="text-[15px] font-semibold tracking-tight text-text-primary">Vibekit</span>
+        </a>
+        <button
+          class="rounded-lg p-1 text-text-muted hover:bg-white/[0.04] hover:text-text-primary md:hidden"
+          onclick={closeMobileMenu}
+          aria-label="Close menu"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 space-y-1 px-3 pt-2">
+        {#each navItems as item (item.href)}
+          <a
+            href={item.href}
+            onclick={closeMobileMenu}
+            class={cn(
+              'block rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+              isActive(item.href)
+                ? 'bg-white/[0.06] text-text-primary'
+                : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary'
+            )}
+          >
+            {item.label}
+          </a>
+        {/each}
+      </nav>
+
+      <!-- User section -->
+      <div class="border-t border-white/[0.06] p-4">
+        {#if $session.data?.user}
+          <div class="mb-3 flex items-center gap-3">
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-medium text-text-secondary"
+            >
+              {$session.data.user.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-[13px] font-medium text-text-primary">
+                {$session.data.user.name}
+              </p>
+              <p class="truncate text-[11px] text-text-subtle">{$session.data.user.email}</p>
+            </div>
+          </div>
+        {/if}
+        <button
+          onclick={handleSignOut}
+          class="w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+        >
+          Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
+        <button
+          class="rounded-lg p-1 text-text-muted hover:bg-white/[0.04] hover:text-text-primary md:hidden"
+          onclick={() => (mobileMenuOpen = true)}
+          aria-label="Open menu"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <span class="text-[14px] font-medium text-text-secondary">App</span>
+      </header>
+      <main class="flex-1 p-6">
+        {@render children()}
+      </main>
+    </div>
+  </div>
+</QueryClientProvider>

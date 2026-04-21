@@ -26,13 +26,13 @@
 			})
 
 			if (!res.ok) {
-				const data = await res.json()
+				const data = (await res.json()) as { error?: string }
 				error = data.error ?? 'Failed to create post'
 				return
 			}
 
-			const { id } = await res.json()
-			window.location.href = `/admin/blog/${id}/edit`
+			const data = (await res.json()) as { id: string }
+			window.location.href = `/admin/blog/${data.id}/edit`
 		} catch {
 			error = 'Network error'
 		} finally {
