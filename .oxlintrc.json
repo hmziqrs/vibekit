@@ -1,0 +1,52 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "import", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "off",
+    "style": "warn",
+    "perf": "warn",
+    "restriction": "off"
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2025": true
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    ".svelte-kit/",
+    "build/",
+    "dist/",
+    ".wrangler/"
+  ],
+  "rules": {
+    "eqeqeq": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "import/no-cycle": "warn",
+    "import/no-unresolved": "off",
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unused-vars": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts", "**/*.test.js", "**/*.spec.js"],
+      "plugins": ["vitest"],
+      "rules": {
+        "vitest/no-focused-tests": "error",
+        "vitest/no-identical-title": "error",
+        "vitest/prefer-to-be": "error"
+      }
+    },
+    {
+      "files": ["**/*.svelte"],
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    }
+  ]
+}
