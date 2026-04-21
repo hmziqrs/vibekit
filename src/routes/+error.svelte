@@ -17,30 +17,30 @@
 </svelte:head>
 
 <div class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
-	<div class="pointer-events-none absolute inset-0 opacity-30" style="background: radial-gradient(ellipse at center, rgba(232,184,109,0.06) 0%, transparent 60%);"></div>
+	<div class="pointer-events-none absolute inset-0 opacity-30" style="background: radial-gradient(ellipse at center, var(--glow-brand) 0%, transparent 60%);"></div>
 
 	<div class="relative text-center">
 		<div class="mb-8 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03]">
 			{#if status === 400}
-				<CircleAlert class="h-10 w-10 text-[#e8b86d]" />
+				<CircleAlert class="h-10 w-10 text-brand" />
 			{:else if status === 401}
-				<Lock class="h-10 w-10 text-[#e8b86d]" />
+				<Lock class="h-10 w-10 text-brand" />
 			{:else if status === 403}
-				<ShieldAlert class="h-10 w-10 text-[#e8b86d]" />
+				<ShieldAlert class="h-10 w-10 text-brand" />
 			{:else if status === 404}
-				<FileX class="h-10 w-10 text-[#e8b86d]" />
+				<FileX class="h-10 w-10 text-brand" />
 			{:else if status === 500}
-				<Server class="h-10 w-10 text-[#e8b86d]" />
+				<Server class="h-10 w-10 text-brand" />
 			{:else}
-				<TriangleAlert class="h-10 w-10 text-[#e8b86d]" />
+				<TriangleAlert class="h-10 w-10 text-brand" />
 			{/if}
 		</div>
 
 		<div class="mb-4">
-			<span class="text-[13px] font-medium uppercase tracking-wider text-[#e8b86d]">Error {status}</span>
+			<span class="text-[13px] font-medium uppercase tracking-wider text-brand">Error {status}</span>
 		</div>
 
-		<h1 class="mb-4 text-[clamp(2rem,5vw,3rem)] font-semibold tracking-tight text-[#f5f5f5]">
+		<h1 class="mb-4 text-[clamp(2rem,5vw,3rem)] font-semibold tracking-tight text-text-primary">
 			{#if status === 400}Bad Request
 			{:else if status === 401}Unauthorized
 			{:else if status === 403}Forbidden
@@ -49,7 +49,7 @@
 			{:else}Something Went Wrong{/if}
 		</h1>
 
-		<p class="mx-auto mb-10 max-w-md text-[15px] leading-relaxed text-[#737373]">
+		<p class="mx-auto mb-10 max-w-md text-[15px] leading-relaxed text-text-muted">
 			{#if status === 400}The server could not understand your request. Please check the URL and try again.
 			{:else if status === 401}You need to sign in to access this page. Please log in or try again.
 			{:else if status === 403}You don't have permission to access this resource. Contact the administrator if you believe this is an error.
@@ -61,13 +61,13 @@
 		<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
 			<a
 				href="/"
-				class="rounded-xl bg-[#e8b86d] px-7 py-3 text-[14px] font-semibold text-[#050505] transition-all hover:bg-[#d4a55f]"
+				class="rounded-xl bg-brand px-7 py-3 text-[14px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover"
 			>
 				Go back home
 			</a>
 			<button
 				onclick={() => history.back()}
-				class="rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3 text-[14px] font-medium text-[#a3a3a3] transition-all hover:border-white/[0.2] hover:text-[#f5f5f5]"
+				class="rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3 text-[14px] font-medium text-text-secondary transition-all hover:border-white/[0.2] hover:text-text-primary"
 			>
 				Go back
 			</button>
