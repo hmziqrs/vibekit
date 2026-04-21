@@ -4,11 +4,17 @@ import { sveltekitCookies } from "better-auth/svelte-kit";
 import { env } from "$env/dynamic/private";
 import { getRequestEvent } from "$app/server";
 import { getDb } from "$lib/server/db";
+import { uuidv7 } from "uuidv7";
 
 const authConfig = ({
 	baseURL: env.ORIGIN,
 	secret: env.BETTER_AUTH_SECRET,
 	emailAndPassword: { enabled: true },
+	advanced: {
+		database: {
+			generateId: () => uuidv7()
+		}
+	},
 	plugins: [
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]
