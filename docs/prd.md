@@ -482,7 +482,7 @@ Exact group names are conventions; the important thing is that `(public)` is pre
 
 # 10. Data Model (Initial, D1 / Drizzle)
 
-**ID format**: all primary keys are **UUID v4** (text, 36 chars), generated in code via `crypto.randomUUID()` and stored as `text`. Better Auth's core `user.id` is also UUID.
+**ID format**: all primary keys are **UUID v7** (text, 36 chars), generated via the `uuidv7` package and stored as `text`. UUID v7 is time-ordered (lexicographically sortable), which gives better SQLite B-tree performance than random v4. Better Auth's `user.id` and all app tables use the same generator.
 
 ## 10.1 Users
 
@@ -1036,7 +1036,7 @@ All open questions resolved for v1 MVP:
 | Error tracking | **Cloudflare Workers Logs + Logpush to R2** (free tier); Tail Worker aggregates error-level events. |
 | Audit log | **Required in MVP**: schema + writes on every admin mutation + minimal read UI. |
 | Responsive posture | **Split by surface**: mobile-first for `(public)` + `(blog)`, desktop-first for `(admin)`, fluid for `(app)`. |
-| ID format | **UUID v4** (text, generated via `crypto.randomUUID()`). |
+| ID format | **UUID v7** (text, generated via `uuidv7` package). Time-ordered for better SQLite index performance. |
 | E2E test runner | **Playwright**: Official SvelteKit default with excellent Workers support. |
 
 ---
