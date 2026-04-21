@@ -10,6 +10,12 @@ export default defineConfig({
 		sveltekit(),
 		paraglideVitePlugin({ project: './project.inlang', outdir: './src/lib/paraglide' })
 	],
+	optimizeDeps: {
+		exclude: ['better-auth', '@better-auth/core', '@better-auth/svelte']
+	},
+	ssr: {
+		external: ['better-auth', '@better-auth/core']
+	},
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
 		exclude: ['node_modules', '.svelte-kit', 'build'],
