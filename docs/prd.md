@@ -1059,10 +1059,17 @@ Keep server-only code under `src/lib/server/**` and never import it from client 
 The project is done for v1 when:
 
 * Route groups are implemented per the rendering strategy.
-* Auth and authorization flows are complete and server-enforced.
-* Blog publishing + public rendering + regeneration work end-to-end.
+* Auth flows complete and server-enforced: registration, email verification, login, logout, password reset.
+* Blog publishing + public rendering + cache-tag regeneration work end-to-end.
+* Blog archive, soft-delete, restore, and 30-day hard-delete Cron implemented.
+* Slug history + 301 redirects implemented for published posts.
 * `/app/*` and `/admin/*` are protected and functional.
+* Items module demonstrates canonical TanStack patterns.
+* Audit log written on every admin mutation.
+* Rate limiting active on auth, contact, and admin mutation endpoints.
 * D1 schema and migrations are stable (local + remote).
+* Secrets catalogued and documented per §8.8.
 * Test suite covers critical workflows.
+* Consent banner live; Firebase Analytics gated behind it.
 * Setup, migration, and deployment documentation is complete.
 * No critical security or data integrity issues remain open.
