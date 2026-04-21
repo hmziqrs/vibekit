@@ -13,6 +13,15 @@ const config = {
 				...config,
 				include: [...config.include, '../drizzle.config.ts']
 			})
+		},
+		prerender: {
+			handleHttpError: ({ path, referrer, message }) => {
+				// Ignore missing linked pages during prerender while building out the site
+				if (referrer === '/' && message.startsWith('404')) {
+					return;
+				}
+				throw new Error(message);
+			}
 		}
 	}
 };

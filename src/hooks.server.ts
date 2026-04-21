@@ -15,9 +15,25 @@ const handleParaglide: Handle = ({ event, resolve }) => paraglideMiddleware(even
 });
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
-	if (!event.platform?.env?.DB) throw new Error('D1 binding "DB" not found - are you running with wrangler?');
+	// Skip DB access during prerender and build phase
+	if (building) {
+		return resolve(event);
+	}
 
-	event.locals.auth = createAuth(event.platform.env.DB);
+	// The Cloudflare adapter wraps env in a Proxy that throws when accessing
+	// bindings in prerenderable routes (even during dev). Wrap in try-catch.
+	let db: D1Database | undefined;
+	try {
+		db = event.platform?.env?.DB;
+	} catch {
+		db = undefined;
+	}
+
+	if (!db) {
+		return resolve(event);
+	}
+
+	event.locals.auth = createAuth(db);
 
 	const { auth } = event.locals;
 	const session = await auth.api.getSession({ headers: event.request.headers });
