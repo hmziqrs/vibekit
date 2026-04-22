@@ -65,7 +65,7 @@
           </a>
         </div>
       {:else}
-        <form onsubmit={handleSubmit} class="space-y-4">
+        <form onsubmit={handleSubmit} class="space-y-4" novalidate>
           {#if serverError}
             <p class="text-sm text-red-400">{serverError}</p>
           {/if}
@@ -79,9 +79,11 @@
               bind:value={email}
               disabled={loading}
               autocomplete="email"
+              aria-invalid={errors.email ? 'true' : 'false'}
+              aria-describedby={errors.email ? 'email-error' : undefined}
             />
             {#if errors.email}
-              <p class="text-[12px] text-red-400">{errors.email}</p>
+              <p id="email-error" class="text-[12px] text-red-400">{errors.email}</p>
             {/if}
           </div>
 

@@ -47,4 +47,31 @@ test.describe('auth pages', () => {
     ).toBeVisible()
     await expect(page.getByText('Check your inbox for a verification link')).toBeVisible()
   })
+
+  test('login shows inline validation errors on empty submit', async ({ page }) => {
+    await page.goto('/login')
+    await page.waitForLoadState('networkidle')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.locator('#email-error')).toBeVisible()
+    await expect(page.locator('#email-error')).toHaveText('Please enter a valid email address')
+    await expect(page.locator('#password-error')).toBeVisible()
+    await expect(page.locator('#password-error')).toHaveText('Password is required')
+  })
+
+  test('register shows inline validation errors on empty submit', async ({ page }) => {
+    await page.goto('/register')
+    await page.waitForLoadState('networkidle')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page.locator('#name-error')).toHaveText('Name is required')
+    await expect(page.locator('#email-error')).toHaveText('Please enter a valid email address')
+    await expect(page.locator('#password-error')).toHaveText('Password must be at least 8 characters')
+    await expect(page.locator('#confirmPassword-error')).toHaveText('Please confirm your password')
+  })
+
+  test('forgot password shows inline validation error on empty submit', async ({ page }) => {
+    await page.goto('/forgot-password')
+    await page.waitForLoadState('networkidle')
+    await page.getByRole('button', { name: 'Send reset link' }).click()
+    await expect(page.locator('#email-error')).toHaveText('Please enter a valid email address')
+  })
 })

@@ -120,7 +120,7 @@
             <p class="text-sm text-green-400">{message}</p>
           {/if}
 
-          <form onsubmit={handleResend} class="space-y-3">
+          <form onsubmit={handleResend} class="space-y-3" novalidate>
             <div class="space-y-2">
               <Label for="resend-email">Email address</Label>
               <Input
@@ -130,9 +130,11 @@
                 bind:value={email}
                 disabled={resendLoading}
                 autocomplete="email"
+                aria-invalid={errors.email ? 'true' : 'false'}
+                aria-describedby={errors.email ? 'resend-email-error' : undefined}
               />
               {#if errors.email}
-                <p class="text-[12px] text-red-400">{errors.email}</p>
+                <p id="resend-email-error" class="text-[12px] text-red-400">{errors.email}</p>
               {/if}
             </div>
 
@@ -156,7 +158,7 @@
             <p class="text-sm text-red-400">{serverError}</p>
           {/if}
 
-          <form onsubmit={handleResend} class="space-y-3">
+          <form onsubmit={handleResend} class="space-y-3" novalidate>
             <div class="space-y-2">
               <Label for="resend-email">Email address</Label>
               <Input
@@ -166,9 +168,11 @@
                 bind:value={email}
                 disabled={resendLoading}
                 autocomplete="email"
+                aria-invalid={errors.email ? 'true' : 'false'}
+                aria-describedby={errors.email ? 'resend-email-error' : undefined}
               />
               {#if errors.email}
-                <p class="text-[12px] text-red-400">{errors.email}</p>
+                <p id="resend-email-error" class="text-[12px] text-red-400">{errors.email}</p>
               {/if}
             </div>
 

@@ -74,7 +74,7 @@
           </a>
         </div>
       {:else}
-        <form onsubmit={handleSubmit} class="space-y-4">
+        <form onsubmit={handleSubmit} class="space-y-4" novalidate>
           {#if serverError}
             <p class="text-sm text-red-400">{serverError}</p>
           {/if}
@@ -88,9 +88,11 @@
               bind:value={password}
               disabled={loading}
               autocomplete="new-password"
+              aria-invalid={errors.password ? 'true' : 'false'}
+              aria-describedby={errors.password ? 'password-error' : undefined}
             />
             {#if errors.password}
-              <p class="text-[12px] text-red-400">{errors.password}</p>
+              <p id="password-error" class="text-[12px] text-red-400">{errors.password}</p>
             {/if}
           </div>
 
@@ -103,9 +105,11 @@
               bind:value={confirmPassword}
               disabled={loading}
               autocomplete="new-password"
+              aria-invalid={errors.confirmPassword ? 'true' : 'false'}
+              aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
             />
             {#if errors.confirmPassword}
-              <p class="text-[12px] text-red-400">{errors.confirmPassword}</p>
+              <p id="confirmPassword-error" class="text-[12px] text-red-400">{errors.confirmPassword}</p>
             {/if}
           </div>
 

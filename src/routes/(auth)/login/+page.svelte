@@ -52,7 +52,7 @@
     </Card.Header>
 
     <Card.Content>
-      <form onsubmit={handleSubmit} class="space-y-4">
+      <form onsubmit={handleSubmit} class="space-y-4" novalidate>
         {#if serverError}
           <p class="text-sm text-red-400">{serverError}</p>
         {/if}
@@ -66,9 +66,11 @@
             bind:value={email}
             disabled={loading}
             autocomplete="email"
+            aria-invalid={errors.email ? 'true' : 'false'}
+            aria-describedby={errors.email ? 'email-error' : undefined}
           />
           {#if errors.email}
-            <p class="text-[12px] text-red-400">{errors.email}</p>
+            <p id="email-error" class="text-[12px] text-red-400">{errors.email}</p>
           {/if}
         </div>
 
@@ -81,9 +83,11 @@
             bind:value={password}
             disabled={loading}
             autocomplete="current-password"
+            aria-invalid={errors.password ? 'true' : 'false'}
+            aria-describedby={errors.password ? 'password-error' : undefined}
           />
           {#if errors.password}
-            <p class="text-[12px] text-red-400">{errors.password}</p>
+            <p id="password-error" class="text-[12px] text-red-400">{errors.password}</p>
           {/if}
         </div>
 

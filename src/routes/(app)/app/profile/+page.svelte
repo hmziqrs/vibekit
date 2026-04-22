@@ -117,7 +117,7 @@
       </div>
 
       {#if isEditing}
-        <form onsubmit={handleUpdateName} class="space-y-4">
+        <form onsubmit={handleUpdateName} class="space-y-4" novalidate>
           <div>
             <label for="name" class="mb-1.5 block text-[13px] font-medium text-text-secondary"
               >Name</label
@@ -127,11 +127,13 @@
               type="text"
               bind:value={name}
               maxlength={100}
+              aria-invalid={errors.name ? 'true' : 'false'}
+              aria-describedby={errors.name ? 'name-error' : undefined}
               class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
               placeholder="Enter your name"
             />
             {#if errors.name}
-              <p class="mt-1 text-[12px] text-destructive">{errors.name}</p>
+              <p id="name-error" class="mt-1 text-[12px] text-destructive">{errors.name}</p>
             {/if}
           </div>
 

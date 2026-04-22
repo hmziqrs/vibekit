@@ -74,7 +74,7 @@
   <a href="/admin/blog" class="text-[13px] text-text-muted hover:text-text-primary">Back to list</a>
 </div>
 
-<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl">
+<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl" novalidate>
   {#if serverError}
     <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
   {/if}
@@ -85,10 +85,12 @@
       id="title"
       bind:value={title}
       oninput={generateSlug}
+      aria-invalid={errors.title ? 'true' : 'false'}
+      aria-describedby={errors.title ? 'title-error' : undefined}
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
     {#if errors.title}
-      <p class="mt-1 text-[12px] text-red-400">{errors.title}</p>
+      <p id="title-error" class="mt-1 text-[12px] text-red-400">{errors.title}</p>
     {/if}
   </div>
 
@@ -97,10 +99,12 @@
     <input
       id="slug"
       bind:value={slug}
+      aria-invalid={errors.slug ? 'true' : 'false'}
+      aria-describedby={errors.slug ? 'slug-error' : undefined}
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
     {#if errors.slug}
-      <p class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
+      <p id="slug-error" class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
     {/if}
   </div>
 
@@ -109,10 +113,12 @@
     <input
       id="excerpt"
       bind:value={excerpt}
+      aria-invalid={errors.excerpt ? 'true' : 'false'}
+      aria-describedby={errors.excerpt ? 'excerpt-error' : undefined}
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
     {#if errors.excerpt}
-      <p class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
+      <p id="excerpt-error" class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
     {/if}
   </div>
 
@@ -122,7 +128,7 @@
     onRemove={() => (coverImageUrl = '')}
   />
   {#if errors.coverImageUrl}
-    <p class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
+    <p id="cover-image-error" class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
   {/if}
 
   <div>
@@ -131,10 +137,12 @@
       id="content"
       bind:value={contentBody}
       rows="15"
+      aria-invalid={errors.contentBody ? 'true' : 'false'}
+      aria-describedby={errors.contentBody ? 'content-error' : undefined}
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     ></textarea>
     {#if errors.contentBody}
-      <p class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
+      <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
     {/if}
   </div>
 

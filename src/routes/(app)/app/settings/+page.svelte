@@ -88,7 +88,7 @@
       Update your password. You will be logged out of other sessions.
     </p>
 
-    <form onsubmit={handleChangePassword} class="mt-4 space-y-4">
+    <form onsubmit={handleChangePassword} class="mt-4 space-y-4" novalidate>
       <div>
         <label
           for="current-password"
@@ -100,11 +100,13 @@
           id="current-password"
           type="password"
           bind:value={currentPassword}
+          aria-invalid={errors.currentPassword ? 'true' : 'false'}
+          aria-describedby={errors.currentPassword ? 'current-password-error' : undefined}
           class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Enter current password"
         />
         {#if errors.currentPassword}
-          <p class="mt-1 text-[12px] text-destructive">{errors.currentPassword}</p>
+          <p id="current-password-error" class="mt-1 text-[12px] text-destructive">{errors.currentPassword}</p>
         {/if}
       </div>
 
@@ -119,11 +121,13 @@
           id="new-password"
           type="password"
           bind:value={newPassword}
+          aria-invalid={errors.newPassword ? 'true' : 'false'}
+          aria-describedby={errors.newPassword ? 'new-password-error' : undefined}
           class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Enter new password"
         />
         {#if errors.newPassword}
-          <p class="mt-1 text-[12px] text-destructive">{errors.newPassword}</p>
+          <p id="new-password-error" class="mt-1 text-[12px] text-destructive">{errors.newPassword}</p>
         {/if}
       </div>
 
@@ -138,11 +142,13 @@
           id="confirm-password"
           type="password"
           bind:value={confirmPassword}
+          aria-invalid={errors.confirmPassword ? 'true' : 'false'}
+          aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
           class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Confirm new password"
         />
         {#if errors.confirmPassword}
-          <p class="mt-1 text-[12px] text-destructive">{errors.confirmPassword}</p>
+          <p id="confirm-password-error" class="mt-1 text-[12px] text-destructive">{errors.confirmPassword}</p>
         {/if}
       </div>
 

@@ -62,7 +62,7 @@
       <p class="text-text-muted">Thank you for reaching out. We'll respond within 24 hours.</p>
     </div>
   {:else}
-    <form method="POST" use:enhance={handleEnhance} class="space-y-6">
+    <form method="POST" use:enhance={handleEnhance} class="space-y-6" novalidate>
       <div>
         <label for="name" class="mb-2 block text-sm font-medium text-text-secondary">Name</label>
         <input
@@ -70,11 +70,13 @@
           id="name"
           name="name"
           value={values.name ?? ''}
+          aria-invalid={errors.name ? 'true' : 'false'}
+          aria-describedby={errors.name ? 'name-error' : undefined}
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Your name"
         />
         {#if errors.name}
-          <p class="mt-1 text-[12px] text-destructive">{errors.name}</p>
+          <p id="name-error" class="mt-1 text-[12px] text-destructive">{errors.name}</p>
         {/if}
       </div>
 
@@ -85,11 +87,13 @@
           id="email"
           name="email"
           value={values.email ?? ''}
+          aria-invalid={errors.email ? 'true' : 'false'}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="you@example.com"
         />
         {#if errors.email}
-          <p class="mt-1 text-[12px] text-destructive">{errors.email}</p>
+          <p id="email-error" class="mt-1 text-[12px] text-destructive">{errors.email}</p>
         {/if}
       </div>
 
@@ -100,11 +104,13 @@
           id="subject"
           name="subject"
           value={values.subject ?? ''}
+          aria-invalid={errors.subject ? 'true' : 'false'}
+          aria-describedby={errors.subject ? 'subject-error' : undefined}
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="How can we help?"
         />
         {#if errors.subject}
-          <p class="mt-1 text-[12px] text-destructive">{errors.subject}</p>
+          <p id="subject-error" class="mt-1 text-[12px] text-destructive">{errors.subject}</p>
         {/if}
       </div>
 
@@ -114,11 +120,13 @@
           id="message"
           name="message"
           rows="5"
+          aria-invalid={errors.message ? 'true' : 'false'}
+          aria-describedby={errors.message ? 'message-error' : undefined}
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Tell us more..."
         >{values.message ?? ''}</textarea>
         {#if errors.message}
-          <p class="mt-1 text-[12px] text-destructive">{errors.message}</p>
+          <p id="message-error" class="mt-1 text-[12px] text-destructive">{errors.message}</p>
         {/if}
       </div>
 
