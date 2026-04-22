@@ -18,6 +18,8 @@
     "db:migrate:local": "for f in $(ls drizzle/*.sql | sort); do wrangler d1 execute vibekit-db --local --file=$f; done",
     "db:studio": "drizzle-kit studio",
     "db:studio:local": "drizzle-kit studio --config=drizzle.config.local.ts",
+    "db:seed": "bun scripts/seed-blog.ts seed",
+    "db:seed:clean": "bun scripts/seed-blog.ts clean",
     "auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

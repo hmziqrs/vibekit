@@ -1,0 +1,16 @@
+DELETE FROM blog_post_tag WHERE post_id IN (SELECT id FROM blog_post WHERE slug = 'getting-started-with-sveltekit-2');
+DELETE FROM blog_post WHERE slug = 'getting-started-with-sveltekit-2';
+DELETE FROM blog_post_tag WHERE post_id IN (SELECT id FROM blog_post WHERE slug = 'building-saas-on-cloudflare-workers');
+DELETE FROM blog_post WHERE slug = 'building-saas-on-cloudflare-workers';
+DELETE FROM blog_post_tag WHERE post_id IN (SELECT id FROM blog_post WHERE slug = 'authentication-best-practices-sveltekit');
+DELETE FROM blog_post WHERE slug = 'authentication-best-practices-sveltekit';
+DELETE FROM blog_post_tag WHERE post_id IN (SELECT id FROM blog_post WHERE slug = 'drizzle-orm-d1-type-safe-queries');
+DELETE FROM blog_post WHERE slug = 'drizzle-orm-d1-type-safe-queries';
+DELETE FROM blog_post_tag WHERE post_id IN (SELECT id FROM blog_post WHERE slug = 'future-of-edge-computing-web-developers');
+DELETE FROM blog_post WHERE slug = 'future-of-edge-computing-web-developers';
+DELETE FROM blog_tag WHERE slug = 'sveltekit';
+DELETE FROM blog_tag WHERE slug = 'cloudflare';
+DELETE FROM blog_tag WHERE slug = 'authentication';
+DELETE FROM blog_tag WHERE slug = 'drizzle-orm';
+DELETE FROM blog_tag WHERE slug = 'edge-computing';
+DELETE FROM user WHERE email = 'seed@vibekit.local';

@@ -38,7 +38,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="mx-4 w-full max-w-md rounded-xl border border-white/[0.06] bg-surface p-6"
-      onclick|stopPropagation
+      onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-lg font-semibold text-text-primary">{title}</h3>
       <p class="mt-2 text-[14px] text-text-muted">{message}</p>

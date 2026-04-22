@@ -13,7 +13,9 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <SkipLink />
-{@render children()}
+<main id="main">
+	{@render children()}
+</main>
 <ConsentBanner />
 
 <div style="display:none">
