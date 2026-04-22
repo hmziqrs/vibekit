@@ -1,11 +1,7 @@
 <script lang="ts">
   import { initAnalyticsIfConsented } from '$lib/analytics.svelte'
 
-  let visible = $state(false)
-
-  $effect(() => {
-    visible = !localStorage.getItem('consent')
-  })
+  let visible = $state(typeof localStorage !== 'undefined' && !localStorage.getItem('consent'))
 
   function accept() {
     localStorage.setItem('consent', 'accepted')

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { cn } from '$lib/utils'
 
   interface AuditRow {
@@ -14,7 +14,7 @@
   }
 
   let { data } = $props()
-  let selectedAction = $state($page.url.searchParams.get('action') ?? '')
+  let selectedAction = $state(page.url.searchParams.get('action') ?? '')
 
   function handleFilter(action: string) {
     selectedAction = action
@@ -24,7 +24,7 @@
   }
 
   function goToPage(p: number) {
-    const params = new URLSearchParams($page.url.searchParams)
+    const params = new URLSearchParams(page.url.searchParams)
     params.set('page', String(p))
     goto(`/admin/audit?${params}`, { keepFocus: true, noScroll: true })
   }

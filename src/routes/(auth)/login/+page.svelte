@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { signIn } from '$lib/auth-client'
   import { loginSchema } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
@@ -34,7 +34,7 @@
         serverError = res.error.message ?? 'Invalid email or password'
         return
       }
-      const next = $page.url.searchParams.get('next') ?? '/app'
+      const next = page.url.searchParams.get('next') ?? '/app'
       goto(next, { replaceState: true })
     } catch {
       serverError = 'Something went wrong. Please try again.'

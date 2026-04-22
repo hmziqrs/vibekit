@@ -16,8 +16,9 @@
     trash: 'bg-red-500/10 text-red-400',
   }
 
-  const colors = { ...defaultColors, ...colorMap }
-  const colorClass = $derived(colors[status] ?? 'bg-white/[0.06] text-text-muted')
+  const colorClass = $derived(
+    colorMap?.[status] ?? defaultColors[status] ?? 'bg-white/[0.06] text-text-muted',
+  )
 </script>
 
 <span

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import FormField from '$lib/components/form-field.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
@@ -16,7 +16,7 @@
     updatedAt: string
   }
 
-  let itemId = $derived($page.params.id ?? '')
+  let itemId = $derived(page.params.id ?? '')
   const queryClient = useQueryClient()
 
   const itemQuery = createQuery(() => ({

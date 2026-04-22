@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { authClient } from '$lib/auth-client'
   import { resetPasswordSchema } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
@@ -15,7 +15,7 @@
   let loading = $state(false)
   let done = $state(false)
 
-  let token = $derived($page.url.searchParams.get('token') ?? '')
+  let token = $derived(page.url.searchParams.get('token') ?? '')
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()

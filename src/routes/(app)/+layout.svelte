@@ -1,19 +1,17 @@
 <script lang="ts">
-  import { QueryClientProvider } from '@tanstack/svelte-query'
-  import { createQueryClient } from '$lib/query-client'
   import { useSession, signOut } from '$lib/auth-client'
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { initAnalyticsIfConsented } from '$lib/analytics.svelte'
+  import { onMount } from 'svelte'
 
   let { children } = $props()
-  const queryClient = createQueryClient()
   const session = useSession()
   let mobileMenuOpen = $state(false)
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
-  $effect(() => {
+  onMount(() => {
     initAnalyticsIfConsented(firebaseConfig)
   })
 
@@ -30,7 +28,7 @@
   }
 
   function isActive(href: string) {
-    return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/')
+    return page.url.pathname === href || page.url.pathname.startsWith(href + '/')
   }
 
   function closeMobileMenu() {
@@ -38,7 +36,6 @@
   }
 </script>
 
-<QueryClientProvider client={queryClient}>
   <div class="flex min-h-screen bg-surface-base">
     <!-- Mobile overlay -->
     {#if mobileMenuOpen}
@@ -173,4 +170,3 @@
       </main>
     </div>
   </div>
-</QueryClientProvider>

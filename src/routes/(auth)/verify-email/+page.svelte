@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { authClient } from '$lib/auth-client'
   import { Button } from '$lib/components/ui/button'
   import { Input } from '$lib/components/ui/input'
@@ -20,8 +20,8 @@
   let verified = $state(false)
   let failed = $state(false)
 
-  let token = $page.url.searchParams.get('token') ?? ''
-  let email = $state($page.url.searchParams.get('email') ?? '')
+  let token = page.url.searchParams.get('token') ?? ''
+  let email = $state(page.url.searchParams.get('email') ?? '')
   let resendLoading = $state(false)
 
   // Trigger verification once on mount if token is present.
