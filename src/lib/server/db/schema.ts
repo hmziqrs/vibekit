@@ -110,4 +110,20 @@ export const item = sqliteTable('item', {
   deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
 })
 
+export const auditLog = sqliteTable('audit_log', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  action: text('action').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  metadata: text('metadata'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+})
+
 export * from './auth.schema'

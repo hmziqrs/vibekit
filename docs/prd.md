@@ -897,17 +897,17 @@ MVP is complete when:
 
 ## 19.6 Admin
 
-- [ ] Admin shell layout
-- [ ] Admin dashboard
-- [ ] User list (table + virtual)
-- [ ] User detail view
-- [ ] Blog list (with draft / published / archived / trash indicators)
-- [ ] Blog create/edit form
-- [ ] Publish / unpublish / archive / soft-delete / restore actions
-- [ ] Search / filter / pagination
-- [ ] Destructive action confirmations
-- [ ] Audit log writes on every admin mutation
-- [ ] Audit log read UI (minimal table view)
+- [x] Admin shell layout
+- [x] Admin dashboard
+- [x] User list (table + virtual)
+- [x] User detail view
+- [x] Blog list (with draft / published / archived / trash indicators)
+- [x] Blog create/edit form
+- [x] Publish / unpublish / archive / soft-delete / restore actions
+- [x] Search / filter / pagination
+- [x] Destructive action confirmations
+- [x] Audit log writes on every admin mutation
+- [x] Audit log read UI (minimal table view)
 - [ ] Rate limiting on admin mutation endpoints
 
 ## 19.7 Quality
