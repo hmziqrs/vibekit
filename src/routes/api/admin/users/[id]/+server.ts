@@ -5,6 +5,7 @@ import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
 import { eq, and, isNull, sql } from 'drizzle-orm'
 import { writeAuditLog } from '$lib/server/audit'
+import { rateLimit } from '$lib/server/rate-limit'
 
 const updateSchema = z.object({
   role: z.enum(['user', 'admin']).optional(),
@@ -15,6 +16,11 @@ const updateSchema = z.object({
 export const PATCH: RequestHandler = async ({ params, request, locals, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Unauthorized' }, { status: locals.user ? 403 : 401 })
+  }
+
+  const { allowed } = rateLimit(`users-mutate:${locals.user.id}`)
+  if (!allowed) {
+    return json({ error: 'Too many requests' }, { status: 429 })
   }
 
   const targetId = params.id
@@ -99,6 +105,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
 export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Unauthorized' }, { status: locals.user ? 403 : 401 })
+  }
+
+  const { allowed } = rateLimit(`users-mutate:${locals.user.id}`)
+  if (!allowed) {
+    return json({ error: 'Too many requests' }, { status: 429 })
   }
 
   const targetId = params.id

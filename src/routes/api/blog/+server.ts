@@ -1,6 +1,7 @@
 import { purgeBlogCache } from '$lib/server/cache'
 import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
+import { rateLimit } from '$lib/server/rate-limit'
 import { uuid } from '$lib/server/uuid'
 import { createPostSchema } from '$lib/validators/blog'
 import { json } from '@sveltejs/kit'
@@ -51,6 +52,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const { allowed } = rateLimit(`blog-mutate:${locals.user.id}`)
+  if (!allowed) {
+    return json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const body = await request.json()
   const parsed = createPostSchema.safeParse(body)
   if (!parsed.success) {

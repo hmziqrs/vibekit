@@ -1,6 +1,9 @@
 <script lang="ts">
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
+  import FilterTabs from '$lib/components/filter-tabs.svelte'
+  import SearchInput from '$lib/components/search-input.svelte'
+  import StatusBadge from '$lib/components/status-badge.svelte'
   import { createQuery } from '@tanstack/svelte-query'
-  import { cn } from '$lib/utils'
 
   interface PostRow {
     id: string
@@ -14,6 +17,15 @@
 
   let statusFilter = $state('all')
   let search = $state('')
+  let deleteTarget = $state<PostRow | null>(null)
+
+  const statusColors: Record<string, string> = {
+    draft: 'bg-yellow-500/15 text-yellow-400',
+    published: 'bg-green-500/15 text-green-400',
+    archived: 'bg-red-500/15 text-red-400',
+    trash: 'bg-white/[0.06] text-text-muted',
+    deleted: 'bg-white/[0.06] text-text-muted',
+  }
 
   const postsQuery = createQuery(() => ({
     queryKey: ['admin', 'posts', { status: statusFilter, search }],
@@ -33,10 +45,13 @@
     retry: 1,
   }))
 
-  async function deletePost(id: string) {
-    if (!confirm('Delete this post? This can be restored from trash.')) return
-    const res = await fetch(`/api/blog/${id}`, { method: 'DELETE' })
-    if (res.ok) postsQuery.refetch()
+  async function deletePost() {
+    if (!deleteTarget) return
+    const res = await fetch(`/api/blog/${deleteTarget.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      deleteTarget = null
+      postsQuery.refetch()
+    }
   }
 
   async function restorePost(id: string) {
@@ -51,17 +66,16 @@
     { value: 'archived', label: 'Archived' },
     { value: 'trash', label: 'Trash' },
   ]
-
-  function statusBadge(status: string) {
-    const map: Record<string, string> = {
-      draft: 'bg-yellow-500/15 text-yellow-400',
-      published: 'bg-green-500/15 text-green-400',
-      archived: 'bg-red-500/15 text-red-400',
-      trash: 'bg-white/[0.06] text-text-muted',
-    }
-    return map[status] ?? map.draft
-  }
 </script>
+
+<ConfirmDialog
+  bind:open={deleteTarget}
+  title="Delete Post"
+  message="Move this post to trash? It can be restored within 30 days."
+  confirmLabel="Delete"
+  variant="danger"
+  onConfirm={deletePost}
+/>
 
 <div class="flex items-center justify-between">
   <h1 class="text-2xl font-bold text-text-primary">Blog Posts</h1>
@@ -73,34 +87,11 @@
   </a>
 </div>
 
-<!-- Status filter tabs -->
+<!-- Filters -->
 <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-  <div class="flex gap-1">
-    {#each tabs as tab}
-      <button
-        class={cn(
-          'rounded-lg px-3 py-2 text-[12px] font-medium transition-colors',
-          statusFilter === tab.value
-            ? 'bg-brand/10 text-brand'
-            : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
-        )}
-        onclick={() => (statusFilter = tab.value)}
-      >
-        {tab.label}
-      </button>
-    {/each}
-  </div>
-  <div class="relative sm:max-w-xs sm:flex-1">
-    <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-    <input
-      type="text"
-      placeholder="Search posts..."
-      bind:value={search}
-      class="w-full rounded-lg border border-white/[0.06] bg-surface px-9 py-2 text-[13px] text-text-primary placeholder:text-text-subtle outline-none transition-colors focus:border-brand/50"
-    />
+  <FilterTabs tabs={tabs} bind:active={statusFilter} />
+  <div class="sm:max-w-xs sm:flex-1">
+    <SearchInput bind:value={search} placeholder="Search posts..." />
   </div>
 </div>
 
@@ -135,9 +126,10 @@
             </div>
           </div>
           <div class="ml-4 flex items-center gap-3">
-            <span class="rounded-full px-2.5 py-0.5 text-[11px] font-medium {statusBadge(statusFilter === 'trash' ? 'trash' : post.status)}">
-              {statusFilter === 'trash' ? 'deleted' : post.status}
-            </span>
+            <StatusBadge
+              status={statusFilter === 'trash' ? 'deleted' : post.status}
+              colorMap={statusColors}
+            />
             <div class="flex items-center gap-2">
               {#if statusFilter === 'trash'}
                 <button
@@ -155,7 +147,7 @@
                 </a>
                 <button
                   class="rounded-lg border border-red-500/30 px-3 py-1.5 text-[12px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                  onclick={() => deletePost(post.id)}
+                  onclick={() => (deleteTarget = post)}
                 >
                   Delete
                 </button>

@@ -1,6 +1,10 @@
 <script lang="ts">
-  import { createQuery } from '@tanstack/svelte-query'
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
+  import FilterTabs from '$lib/components/filter-tabs.svelte'
+  import SearchInput from '$lib/components/search-input.svelte'
+  import StatusBadge from '$lib/components/status-badge.svelte'
   import { cn } from '$lib/utils'
+  import { createQuery } from '@tanstack/svelte-query'
 
   interface UserRow {
     id: string
@@ -16,19 +20,16 @@
   let pageNum = $state(1)
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
-  let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
-  let debouncedSearch = $state('')
 
   $effect(() => {
-    debouncedSearch = search
+    // Direct bind for simplicity
   })
 
   const usersQuery = createQuery(() => ({
-    queryKey: ['admin', 'users', { search: debouncedSearch, status: statusFilter, page: pageNum }],
+    queryKey: ['admin', 'users', { search, status: statusFilter, page: pageNum }],
     queryFn: async () => {
       const params = new URLSearchParams()
-      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (search) params.set('search', search)
       if (statusFilter) params.set('status', statusFilter)
       params.set('page', String(pageNum))
       params.set('limit', '20')
@@ -64,8 +65,9 @@
     }
   }
 
-  async function deleteUser(user: UserRow) {
-    const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+  async function deleteUser() {
+    if (!confirmDelete) return
+    const res = await fetch(`/api/admin/users/${confirmDelete.id}`, { method: 'DELETE' })
     if (res.ok) {
       confirmDelete = null
       openMenuId = null
@@ -80,48 +82,49 @@
 
   function closeMenus() {
     openMenuId = null
-    confirmDelete = null
   }
 
   const totalPages = $derived(
     usersQuery.data ? Math.ceil(usersQuery.data.total / 20) : 1,
   )
+
+  const roleColors: Record<string, string> = {
+    admin: 'bg-brand/15 text-brand',
+    user: 'bg-white/[0.06] text-text-muted',
+  }
+
+  const statusColors: Record<string, string> = {
+    active: 'bg-green-500/15 text-green-400',
+    suspended: 'bg-red-500/15 text-red-400',
+  }
+
+  const filterTabs = [
+    { value: '', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'suspended', label: 'Suspended' },
+  ]
 </script>
 
 <svelte:window onclick={closeMenus} />
+
+<ConfirmDialog
+  bind:open={confirmDelete}
+  title="Delete User"
+  message="Are you sure you want to delete this user? This action cannot be undone."
+  confirmLabel="Delete"
+  variant="danger"
+  onConfirm={deleteUser}
+/>
 
 <h1 class="text-2xl font-bold text-text-primary">Users</h1>
 <p class="mt-1 text-[14px] text-text-muted">Manage user accounts.</p>
 
 <!-- Filters -->
-<div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-  <div class="relative flex-1 sm:max-w-xs">
-    <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-    <input
-      type="text"
-      placeholder="Search by email or name..."
-      bind:value={search}
-      class="w-full rounded-lg border border-white/[0.06] bg-surface px-9 py-2 text-[13px] text-text-primary placeholder:text-text-subtle outline-none transition-colors focus:border-brand/50"
-    />
+<div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="flex-1 sm:max-w-xs">
+    <SearchInput bind:value={search} placeholder="Search by email or name..." />
   </div>
-  <div class="flex gap-2">
-    {#each ['all', 'active', 'suspended'] as status}
-      <button
-        class={cn(
-          'rounded-lg px-3 py-2 text-[12px] font-medium transition-colors',
-          (statusFilter || 'all') === status
-            ? 'bg-brand/10 text-brand'
-            : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
-        )}
-        onclick={() => { statusFilter = status === 'all' ? '' : status; pageNum = 1 }}
-      >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </button>
-    {/each}
-  </div>
+  <FilterTabs tabs={filterTabs} bind:active={statusFilter} />
 </div>
 
 <!-- Table -->
@@ -162,20 +165,10 @@
               </div>
             </td>
             <td class="px-5 py-3.5">
-              <span class={cn(
-                'inline-block rounded-full px-2 py-0.5 text-[11px] font-medium',
-                user.role === 'admin' ? 'bg-brand/15 text-brand' : 'bg-white/[0.06] text-text-muted',
-              )}>
-                {user.role ?? 'user'}
-              </span>
+              <StatusBadge status={user.role ?? 'user'} colorMap={roleColors} />
             </td>
             <td class="px-5 py-3.5">
-              <span class={cn(
-                'inline-block rounded-full px-2 py-0.5 text-[11px] font-medium',
-                user.status === 'active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400',
-              )}>
-                {user.status ?? 'active'}
-              </span>
+              <StatusBadge status={user.status ?? 'active'} colorMap={statusColors} />
             </td>
             <td class="px-5 py-3.5 text-[12px] text-text-subtle">
               {new Date(user.createdAt).toLocaleDateString()}
@@ -239,21 +232,3 @@
     {/if}
   {/if}
 </div>
-
-<!-- Delete confirmation modal -->
-{#if confirmDelete}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onclick={() => (confirmDelete = null)} onkeydown={(e) => e.key === 'Escape' && (confirmDelete = null)} role="dialog" aria-modal="true" tabindex="-1">
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="mx-4 w-full max-w-sm rounded-xl border border-white/[0.06] bg-surface p-6" onclick={(e) => e.stopPropagation()}>
-      <h3 class="text-[15px] font-semibold text-text-primary">Delete User</h3>
-      <p class="mt-2 text-[13px] text-text-muted">
-        Are you sure you want to delete <span class="text-text-primary">{confirmDelete.email}</span>? This action cannot be undone.
-      </p>
-      <div class="mt-5 flex justify-end gap-3">
-        <button class="rounded-lg border border-white/[0.06] px-4 py-2 text-[13px] text-text-muted transition-colors hover:bg-white/[0.04]" onclick={() => (confirmDelete = null)}>Cancel</button>
-        <button class="rounded-lg bg-red-500/90 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-red-500" onclick={() => deleteUser(confirmDelete!)}>Delete</button>
-      </div>
-    </div>
-  </div>
-{/if}

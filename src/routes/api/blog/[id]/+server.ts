@@ -1,6 +1,7 @@
 import { purgeBlogCache } from '$lib/server/cache'
 import { getDb } from '$lib/server/db'
 import { blogPost, blogPostSlugHistory } from '$lib/server/db/schema'
+import { rateLimit } from '$lib/server/rate-limit'
 import { uuid } from '$lib/server/uuid'
 import { updatePostSchema } from '$lib/validators/blog'
 import { json } from '@sveltejs/kit'
@@ -27,6 +28,12 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const { allowed } = rateLimit(`blog-mutate:${locals.user.id}`)
+  if (!allowed) {
+    return json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const body = await request.json()
   const parsed = updatePostSchema.safeParse(body)
   if (!parsed.success) {
@@ -74,6 +81,12 @@ export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const { allowed } = rateLimit(`blog-mutate:${locals.user.id}`)
+  if (!allowed) {
+    return json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const db = getDb(platform!.env.DB)
   const existing = await findPost(db, params.id)
   if (!existing) return json({ error: 'Not found' }, { status: 404 })

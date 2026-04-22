@@ -1,8 +1,11 @@
 <script lang="ts">
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query'
-  import { updateItemSchema } from '$lib/validators/item'
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
+  import FormField from '$lib/components/form-field.svelte'
+  import StatusBadge from '$lib/components/status-badge.svelte'
+  import { updateItemSchema } from '$lib/validators/item'
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
   interface ItemData {
     id: string
@@ -53,7 +56,7 @@
     })
     if (!result.success) {
       errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message])
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
       )
       return
     }
@@ -114,61 +117,36 @@
           </div>
         {/if}
 
-        <!-- Name -->
-        <div>
-          <label for="edit-name" class="mb-1.5 block text-[13px] font-medium text-text-secondary">
-            Name <span class="text-destructive">*</span>
-          </label>
-          <input
-            id="edit-name"
-            type="text"
-            bind:value={name}
-            maxlength={100}
-            class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand {errors.name ? 'border-destructive' : ''}"
-            placeholder="Item name"
-          />
-          {#if errors.name}
-            <p class="mt-1 text-[12px] text-destructive">{errors.name}</p>
-          {/if}
-        </div>
+        <FormField
+          id="edit-name"
+          label="Name"
+          bind:value={name}
+          error={errors.name}
+          required={true}
+          maxlength={100}
+          placeholder="Item name"
+        />
 
-        <!-- Description -->
-        <div>
-          <label
-            for="edit-description"
-            class="mb-1.5 block text-[13px] font-medium text-text-secondary"
-          >
-            Description
-          </label>
-          <textarea
-            id="edit-description"
-            bind:value={description}
-            rows={4}
-            maxlength={2000}
-            class="w-full resize-none rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand {errors.description ? 'border-destructive' : ''}"
-            placeholder="Optional description"
-          ></textarea>
-          {#if errors.description}
-            <p class="mt-1 text-[12px] text-destructive">{errors.description}</p>
-          {/if}
-        </div>
+        <FormField
+          id="edit-description"
+          label="Description"
+          type="textarea"
+          bind:value={description}
+          error={errors.description}
+          rows={4}
+          maxlength={2000}
+          placeholder="Optional description"
+        />
 
-        <!-- Status info -->
         {#if itemQuery.data}
           <div class="rounded-lg border border-white/[0.06] bg-surface-elevated p-3">
             <p class="text-[11px] uppercase tracking-wider text-text-subtle">Status</p>
-            <span
-              class="mt-1 inline-block rounded-full px-2 py-0.5 text-[12px] font-medium {itemQuery.data.status ===
-              'active'
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-amber-500/10 text-amber-400'}"
-            >
-              {itemQuery.data.status}
-            </span>
+            <div class="mt-1">
+              <StatusBadge status={itemQuery.data.status} />
+            </div>
           </div>
         {/if}
 
-        <!-- Actions -->
         <div class="flex gap-2 pt-2">
           <button
             type="submit"

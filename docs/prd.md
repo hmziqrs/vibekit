@@ -850,7 +850,7 @@ MVP is complete when:
 - [x] Password reset (forgot-password + reset-password + `send_email`)
 - [x] `/app/*` route guard (hooks + layout)
 - [x] `/admin/*` role guard (hooks + layout + endpoint)
-- [ ] 401 / 403 UI states
+- [x] 401 / 403 UI states
 
 ## 19.3 Public Site
 
@@ -893,7 +893,7 @@ MVP is complete when:
 - [x] Protected data fetching via TanStack Query
 - [x] Forms via TanStack Form + shared validators
 - [x] Loading / error / empty states
-- [ ] Reusable table / form primitives
+- [x] Reusable table / form primitives
 
 ## 19.6 Admin
 
@@ -908,7 +908,7 @@ MVP is complete when:
 - [x] Destructive action confirmations
 - [x] Audit log writes on every admin mutation
 - [x] Audit log read UI (minimal table view)
-- [ ] Rate limiting on admin mutation endpoints
+- [x] Rate limiting on admin mutation endpoints
 
 ## 19.7 Quality
 

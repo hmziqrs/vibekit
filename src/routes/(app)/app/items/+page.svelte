@@ -1,4 +1,8 @@
 <script lang="ts">
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
+  import FilterTabs from '$lib/components/filter-tabs.svelte'
+  import SearchInput from '$lib/components/search-input.svelte'
+  import StatusBadge from '$lib/components/status-badge.svelte'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
   interface ItemData {
@@ -12,7 +16,7 @@
 
   let statusFilter = $state<string>('active')
   let search = $state('')
-  let deleteConfirmId = $state<string | null>(null)
+  let deleteTarget = $state<ItemData | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -49,10 +53,11 @@
     }
   }
 
-  async function deleteItem(id: string) {
-    const res = await fetch(`/api/items/${id}`, { method: 'DELETE' })
+  async function deleteItem() {
+    if (!deleteTarget) return
+    const res = await fetch(`/api/items/${deleteTarget.id}`, { method: 'DELETE' })
     if (res.ok) {
-      deleteConfirmId = null
+      deleteTarget = null
       await queryClient.invalidateQueries({ queryKey: ['items'] })
     }
   }
@@ -63,6 +68,15 @@
     { value: 'archived', label: 'Archived' },
   ]
 </script>
+
+<ConfirmDialog
+  bind:open={deleteTarget}
+  title="Delete Item"
+  message="Are you sure you want to delete this item? This action can be undone within 30 days."
+  confirmLabel="Delete"
+  variant="danger"
+  onConfirm={deleteItem}
+/>
 
 <div class="mx-auto max-w-5xl">
   <!-- Header -->
@@ -91,40 +105,9 @@
 
   <!-- Filters -->
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div class="flex gap-1 rounded-lg border border-white/[0.06] bg-surface p-1">
-      {#each filterTabs as tab (tab.value)}
-        <button
-          onclick={() => (statusFilter = tab.value)}
-          class="rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors {statusFilter ===
-          tab.value
-            ? 'bg-white/[0.06] text-text-primary'
-            : 'text-text-muted hover:text-text-primary'}"
-        >
-          {tab.label}
-        </button>
-      {/each}
-    </div>
-    <div class="relative">
-      <svg
-        class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <input
-        type="text"
-        bind:value={search}
-        placeholder="Search items..."
-        class="w-full rounded-lg border border-white/[0.06] bg-surface pl-9 pr-3 py-2 text-[13px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:w-64"
-      />
+    <FilterTabs tabs={filterTabs} bind:active={statusFilter} />
+    <div class="sm:w-64">
+      <SearchInput bind:value={search} placeholder="Search items..." />
     </div>
   </div>
 
@@ -181,13 +164,7 @@
             </a>
 
             <div class="ml-4 flex items-center gap-2">
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-medium {item.status === 'active'
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'bg-amber-500/10 text-amber-400'}"
-              >
-                {item.status}
-              </span>
+              <StatusBadge status={item.status} />
 
               <button
                 onclick={() => toggleArchive(item.id, item.status)}
@@ -238,7 +215,7 @@
               </a>
 
               <button
-                onclick={() => (deleteConfirmId = deleteConfirmId === item.id ? null : item.id)}
+                onclick={() => (deleteTarget = item)}
                 class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-destructive/10 hover:text-destructive"
                 title="Delete"
               >
@@ -258,24 +235,6 @@
                   ></path>
                 </svg>
               </button>
-
-              {#if deleteConfirmId === item.id}
-                <div class="ml-2 flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-surface-elevated px-3 py-1.5">
-                  <span class="text-[11px] text-text-muted">Delete?</span>
-                  <button
-                    onclick={() => deleteItem(item.id)}
-                    class="text-[11px] font-medium text-destructive hover:underline"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onclick={() => (deleteConfirmId = null)}
-                    class="text-[11px] font-medium text-text-muted hover:underline"
-                  >
-                    No
-                  </button>
-                </div>
-              {/if}
             </div>
           </div>
         {/each}

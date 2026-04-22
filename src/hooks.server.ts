@@ -3,7 +3,7 @@ import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
 import type { Handle } from '@sveltejs/kit'
-import { sequence } from '@sveltejs/kit/hooks'
+import { error, sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
 const handleParaglide: Handle = ({ event, resolve }) =>
@@ -86,7 +86,7 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
       })
     }
     if (user.role !== 'admin') {
-      return new Response(null, { status: 403 })
+      throw error(403, { message: 'Admin access required' })
     }
   }
 

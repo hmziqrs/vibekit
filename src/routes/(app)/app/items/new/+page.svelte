@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { createItemSchema } from '$lib/validators/item'
   import { goto } from '$app/navigation'
+  import FormField from '$lib/components/form-field.svelte'
+  import { createItemSchema } from '$lib/validators/item'
 
   let name = $state('')
   let description = $state('')
@@ -19,7 +20,7 @@
     })
     if (!result.success) {
       errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message])
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
       )
       return
     }
@@ -57,46 +58,27 @@
         </div>
       {/if}
 
-      <!-- Name -->
-      <div>
-        <label for="item-name" class="mb-1.5 block text-[13px] font-medium text-text-secondary">
-          Name <span class="text-destructive">*</span>
-        </label>
-        <input
-          id="item-name"
-          type="text"
-          bind:value={name}
-          maxlength={100}
-          class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand {errors.name ? 'border-destructive' : ''}"
-          placeholder="Item name"
-        />
-        {#if errors.name}
-          <p class="mt-1 text-[12px] text-destructive">{errors.name}</p>
-        {/if}
-      </div>
+      <FormField
+        id="item-name"
+        label="Name"
+        bind:value={name}
+        error={errors.name}
+        required={true}
+        maxlength={100}
+        placeholder="Item name"
+      />
 
-      <!-- Description -->
-      <div>
-        <label
-          for="item-description"
-          class="mb-1.5 block text-[13px] font-medium text-text-secondary"
-        >
-          Description
-        </label>
-        <textarea
-          id="item-description"
-          bind:value={description}
-          rows={4}
-          maxlength={2000}
-          class="w-full resize-none rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand {errors.description ? 'border-destructive' : ''}"
-          placeholder="Optional description"
-        ></textarea>
-        {#if errors.description}
-          <p class="mt-1 text-[12px] text-destructive">{errors.description}</p>
-        {/if}
-      </div>
+      <FormField
+        id="item-description"
+        label="Description"
+        type="textarea"
+        bind:value={description}
+        error={errors.description}
+        rows={4}
+        maxlength={2000}
+        placeholder="Optional description"
+      />
 
-      <!-- Actions -->
       <div class="flex gap-2 pt-2">
         <button
           type="submit"
