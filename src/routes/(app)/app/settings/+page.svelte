@@ -1,5 +1,20 @@
 <script lang="ts">
   import { authClient } from '$lib/auth-client'
+  import { z } from 'zod/v4'
+
+  const changePasswordSchema = z
+    .object({
+      currentPassword: z.string().min(1, 'Current password is required'),
+      newPassword: z
+        .string()
+        .min(8, 'Password must be at least 8 characters')
+        .max(128, 'Password must be at most 128 characters'),
+      confirmPassword: z.string().min(1, 'Please confirm your new password'),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: 'Passwords do not match',
+      path: ['confirmPassword'],
+    })
 
   let currentPassword = $state('')
   let newPassword = $state('')
@@ -7,21 +22,26 @@
   let passwordLoading = $state(false)
   let passwordSuccess = $state('')
   let passwordError = $state('')
+  let errors = $state<Record<string, string>>({})
 
   let showDeleteConfirm = $state(false)
   let deleteConfirmText = $state('')
 
   async function handleChangePassword(e: SubmitEvent) {
     e.preventDefault()
+    errors = {}
     passwordError = ''
     passwordSuccess = ''
 
-    if (newPassword !== confirmPassword) {
-      passwordError = 'Passwords do not match'
-      return
-    }
-    if (newPassword.length < 8) {
-      passwordError = 'Password must be at least 8 characters'
+    const result = changePasswordSchema.safeParse({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    })
+    if (!result.success) {
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
       return
     }
 
@@ -80,10 +100,12 @@
           id="current-password"
           type="password"
           bind:value={currentPassword}
-          required
           class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Enter current password"
         />
+        {#if errors.currentPassword}
+          <p class="mt-1 text-[12px] text-destructive">{errors.currentPassword}</p>
+        {/if}
       </div>
 
       <div>
@@ -97,11 +119,12 @@
           id="new-password"
           type="password"
           bind:value={newPassword}
-          required
-          minlength={8}
           class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Enter new password"
         />
+        {#if errors.newPassword}
+          <p class="mt-1 text-[12px] text-destructive">{errors.newPassword}</p>
+        {/if}
       </div>
 
       <div>
@@ -115,11 +138,12 @@
           id="confirm-password"
           type="password"
           bind:value={confirmPassword}
-          required
-          minlength={8}
           class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           placeholder="Confirm new password"
         />
+        {#if errors.confirmPassword}
+          <p class="mt-1 text-[12px] text-destructive">{errors.confirmPassword}</p>
+        {/if}
       </div>
 
       {#if passwordSuccess}

@@ -6,7 +6,14 @@
   import { Label } from '$lib/components/ui/label'
   import * as Card from '$lib/components/ui/card'
 
-  let error = $state('')
+  import { z } from 'zod/v4'
+
+  const resendSchema = z.object({
+    email: z.email('Please enter a valid email address'),
+  })
+
+  let errors = $state<Record<string, string>>({})
+  let serverError = $state('')
   let message = $state('')
   let loading = $state(false)
   let verifying = $state(false)
@@ -31,19 +38,19 @@
 
   async function verifyEmail(t: string) {
     verifying = true
-    error = ''
+    serverError = ''
     try {
       const res = await authClient.verifyEmail({ query: { token: t } })
       if (res.error) {
         failed = true
-        error = 'Verification failed. The link may have expired.'
+        serverError = 'Verification failed. The link may have expired.'
       } else {
         verified = true
         message = 'Email verified! You can now log in.'
       }
     } catch {
       failed = true
-      error = 'Verification failed. The link may have expired.'
+      serverError = 'Verification failed. The link may have expired.'
     } finally {
       verifying = false
     }
@@ -51,10 +58,14 @@
 
   async function handleResend(e: SubmitEvent) {
     e.preventDefault()
-    error = ''
+    errors = {}
+    serverError = ''
 
-    if (!email) {
-      error = 'Please enter your email address'
+    const result = resendSchema.safeParse({ email })
+    if (!result.success) {
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
       return
     }
 
@@ -65,12 +76,12 @@
         callbackURL: '/verify-email',
       })
       if (res.error) {
-        error = res.error.message ?? 'Failed to send verification email.'
+        serverError = res.error.message ?? 'Failed to send verification email.'
       } else {
         message = 'Verification email sent! Check your inbox.'
       }
     } catch {
-      error = 'Something went wrong. Please try again.'
+      serverError = 'Something went wrong. Please try again.'
     } finally {
       resendLoading = false
     }
@@ -101,7 +112,9 @@
         </div>
       {:else if failed}
         <div class="space-y-4">
-          <p class="text-sm text-red-400">{error}</p>
+          {#if serverError}
+            <p class="text-sm text-red-400">{serverError}</p>
+          {/if}
 
           {#if message}
             <p class="text-sm text-green-400">{message}</p>
@@ -118,6 +131,9 @@
                 disabled={resendLoading}
                 autocomplete="email"
               />
+              {#if errors.email}
+                <p class="text-[12px] text-red-400">{errors.email}</p>
+              {/if}
             </div>
 
             <Button type="submit" class="w-full" disabled={resendLoading}>
@@ -136,8 +152,8 @@
             account.
           </p>
 
-          {#if error}
-            <p class="text-sm text-red-400">{error}</p>
+          {#if serverError}
+            <p class="text-sm text-red-400">{serverError}</p>
           {/if}
 
           <form onsubmit={handleResend} class="space-y-3">
@@ -151,6 +167,9 @@
                 disabled={resendLoading}
                 autocomplete="email"
               />
+              {#if errors.email}
+                <p class="text-[12px] text-red-400">{errors.email}</p>
+              {/if}
             </div>
 
             <Button type="submit" class="w-full" variant="outline" disabled={resendLoading}>

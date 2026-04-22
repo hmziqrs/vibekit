@@ -7,19 +7,22 @@
   import * as Card from '$lib/components/ui/card'
 
   let email = $state('')
-  let error = $state('')
+  let errors = $state<Record<string, string>>({})
+  let serverError = $state('')
   let message = $state('')
   let loading = $state(false)
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
-    error = ''
+    errors = {}
+    serverError = ''
     message = ''
 
     const result = forgotPasswordSchema.safeParse({ email })
     if (!result.success) {
-      const issue = result.error.issues[0]
-      error = issue?.message ?? 'Invalid input'
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
       return
     }
 
@@ -31,12 +34,12 @@
         redirectTo: `${origin}/reset-password`,
       })
       if (res.error) {
-        error = res.error.message ?? 'Failed to send reset link.'
+        serverError = res.error.message ?? 'Failed to send reset link.'
         return
       }
       message = 'Check your email for a reset link'
     } catch {
-      error = 'Something went wrong. Please try again.'
+      serverError = 'Something went wrong. Please try again.'
     } finally {
       loading = false
     }
@@ -63,8 +66,8 @@
         </div>
       {:else}
         <form onsubmit={handleSubmit} class="space-y-4">
-          {#if error}
-            <p class="text-sm text-red-400">{error}</p>
+          {#if serverError}
+            <p class="text-sm text-red-400">{serverError}</p>
           {/if}
 
           <div class="space-y-2">
@@ -77,6 +80,9 @@
               disabled={loading}
               autocomplete="email"
             />
+            {#if errors.email}
+              <p class="text-[12px] text-red-400">{errors.email}</p>
+            {/if}
           </div>
 
           <Button type="submit" class="w-full" disabled={loading}>

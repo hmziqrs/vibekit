@@ -1,5 +1,6 @@
 <script lang="ts">
   import ImageUpload from '$lib/components/image-upload.svelte'
+  import { createPostSchema } from '$lib/validators/blog'
 
   let title = $state('')
   let slug = $state('')
@@ -7,7 +8,8 @@
   let contentBody = $state('')
   let coverImageUrl = $state('')
   let saving = $state(false)
-  let error = $state('')
+  let errors = $state<Record<string, string>>({})
+  let serverError = $state('')
 
   function generateSlug() {
     slug = title
@@ -18,9 +20,25 @@
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
-    saving = true
-    error = ''
+    errors = {}
+    serverError = ''
 
+    const result = createPostSchema.safeParse({
+      title,
+      slug,
+      excerpt: excerpt || undefined,
+      contentBody: contentBody || undefined,
+      coverImageUrl: coverImageUrl || undefined,
+      status: 'draft',
+    })
+    if (!result.success) {
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
+      return
+    }
+
+    saving = true
     try {
       const res = await fetch('/api/blog', {
         method: 'POST',
@@ -37,15 +55,15 @@
 
       if (!res.ok) {
         const data = (await res.json()) as { error?: string }
-        error = data.error ?? 'Failed to create post'
+        serverError = data.error ?? 'Failed to create post'
+        saving = false
         return
       }
 
       const data = (await res.json()) as { id: string }
       window.location.href = `/admin/blog/${data.id}/edit`
     } catch {
-      error = 'Network error'
-    } finally {
+      serverError = 'Network error'
       saving = false
     }
   }
@@ -57,8 +75,8 @@
 </div>
 
 <form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl">
-  {#if error}
-    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{error}</p>
+  {#if serverError}
+    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
   {/if}
 
   <div>
@@ -67,9 +85,11 @@
       id="title"
       bind:value={title}
       oninput={generateSlug}
-      required
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
+    {#if errors.title}
+      <p class="mt-1 text-[12px] text-red-400">{errors.title}</p>
+    {/if}
   </div>
 
   <div>
@@ -77,9 +97,11 @@
     <input
       id="slug"
       bind:value={slug}
-      required
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
+    {#if errors.slug}
+      <p class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
+    {/if}
   </div>
 
   <div>
@@ -89,6 +111,9 @@
       bind:value={excerpt}
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
+    {#if errors.excerpt}
+      <p class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
+    {/if}
   </div>
 
   <ImageUpload
@@ -96,6 +121,9 @@
     onUpload={(url) => (coverImageUrl = url)}
     onRemove={() => (coverImageUrl = '')}
   />
+  {#if errors.coverImageUrl}
+    <p class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
+  {/if}
 
   <div>
     <label for="content" class="mb-2 block text-sm font-medium text-text-secondary">Content (Markdown)</label>
@@ -105,6 +133,9 @@
       rows="15"
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     ></textarea>
+    {#if errors.contentBody}
+      <p class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
+    {/if}
   </div>
 
   <div class="flex gap-3">

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ImageUpload from '$lib/components/image-upload.svelte'
+  import { updatePostSchema } from '$lib/validators/blog'
 
   let {
     data,
@@ -23,13 +24,29 @@
   let contentBody = $state(data.post.contentBody ?? '')
   let coverImageUrl = $state(data.post.coverImageUrl ?? '')
   let saving = $state(false)
-  let error = $state('')
+  let errors = $state<Record<string, string>>({})
+  let serverError = $state('')
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
-    saving = true
-    error = ''
+    errors = {}
+    serverError = ''
 
+    const result = updatePostSchema.safeParse({
+      title,
+      slug,
+      excerpt: excerpt || null,
+      contentBody: contentBody || null,
+      coverImageUrl: coverImageUrl || null,
+    })
+    if (!result.success) {
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
+      return
+    }
+
+    saving = true
     try {
       const res = await fetch(`/api/blog/${data.post.id}`, {
         method: 'PATCH',
@@ -45,13 +62,12 @@
 
       if (!res.ok) {
         const err = (await res.json()) as { error?: string }
-        error = err.error ?? 'Failed to update'
+        serverError = err.error ?? 'Failed to update'
+        saving = false
         return
       }
-      error = ''
     } catch {
-      error = 'Network error'
-    } finally {
+      serverError = 'Network error'
       saving = false
     }
   }
@@ -92,8 +108,8 @@
 </div>
 
 <form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl">
-  {#if error}
-    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{error}</p>
+  {#if serverError}
+    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
   {/if}
 
   <div>
@@ -101,9 +117,11 @@
     <input
       id="title"
       bind:value={title}
-      required
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
+    {#if errors.title}
+      <p class="mt-1 text-[12px] text-red-400">{errors.title}</p>
+    {/if}
   </div>
 
   <div>
@@ -111,9 +129,11 @@
     <input
       id="slug"
       bind:value={slug}
-      required
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
+    {#if errors.slug}
+      <p class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
+    {/if}
   </div>
 
   <div>
@@ -123,6 +143,9 @@
       bind:value={excerpt}
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
+    {#if errors.excerpt}
+      <p class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
+    {/if}
   </div>
 
   <ImageUpload
@@ -130,6 +153,9 @@
     onUpload={(url) => (coverImageUrl = url)}
     onRemove={() => (coverImageUrl = '')}
   />
+  {#if errors.coverImageUrl}
+    <p class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
+  {/if}
 
   <div>
     <label for="content" class="mb-2 block text-sm font-medium text-text-secondary">Content (Markdown)</label>
@@ -139,6 +165,9 @@
       rows="15"
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     ></textarea>
+    {#if errors.contentBody}
+      <p class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
+    {/if}
   </div>
 
   <div class="flex gap-3">

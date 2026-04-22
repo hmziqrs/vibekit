@@ -1,5 +1,10 @@
 <script lang="ts">
   import { useSession, authClient } from '$lib/auth-client'
+  import { z } from 'zod/v4'
+
+  const nameSchema = z.object({
+    name: z.string().min(1, 'Name is required').max(100, 'Name must be at most 100 characters').trim(),
+  })
 
   const session = useSession()
 
@@ -8,6 +13,7 @@
   let loading = $state(false)
   let successMessage = $state('')
   let errorMessage = $state('')
+  let errors = $state<Record<string, string>>({})
 
   $effect(() => {
     const user = $session.data?.user
@@ -18,12 +24,19 @@
 
   async function handleUpdateName(e: SubmitEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    errors = {}
+    errorMessage = ''
+    successMessage = ''
+
+    const result = nameSchema.safeParse({ name })
+    if (!result.success) {
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
+      return
+    }
 
     loading = true
-    successMessage = ''
-    errorMessage = ''
-
     try {
       const result = await authClient.updateUser({ name: name.trim() })
       if (result.error) {
@@ -117,6 +130,9 @@
               class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
               placeholder="Enter your name"
             />
+            {#if errors.name}
+              <p class="mt-1 text-[12px] text-destructive">{errors.name}</p>
+            {/if}
           </div>
 
           {#if successMessage}

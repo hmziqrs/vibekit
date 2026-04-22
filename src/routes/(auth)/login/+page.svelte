@@ -10,17 +10,20 @@
 
   let email = $state('')
   let password = $state('')
-  let error = $state('')
+  let errors = $state<Record<string, string>>({})
+  let serverError = $state('')
   let loading = $state(false)
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
-    error = ''
+    errors = {}
+    serverError = ''
 
     const result = loginSchema.safeParse({ email, password })
     if (!result.success) {
-      const issue = result.error.issues[0]
-      error = issue?.message ?? 'Invalid input'
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
       return
     }
 
@@ -28,13 +31,13 @@
     try {
       const res = await signIn.email({ email, password })
       if (res.error) {
-        error = res.error.message ?? 'Invalid email or password'
+        serverError = res.error.message ?? 'Invalid email or password'
         return
       }
       const next = $page.url.searchParams.get('next') ?? '/app'
       goto(next, { replaceState: true })
     } catch {
-      error = 'Something went wrong. Please try again.'
+      serverError = 'Something went wrong. Please try again.'
     } finally {
       loading = false
     }
@@ -50,8 +53,8 @@
 
     <Card.Content>
       <form onsubmit={handleSubmit} class="space-y-4">
-        {#if error}
-          <p class="text-sm text-red-400">{error}</p>
+        {#if serverError}
+          <p class="text-sm text-red-400">{serverError}</p>
         {/if}
 
         <div class="space-y-2">
@@ -64,6 +67,9 @@
             disabled={loading}
             autocomplete="email"
           />
+          {#if errors.email}
+            <p class="text-[12px] text-red-400">{errors.email}</p>
+          {/if}
         </div>
 
         <div class="space-y-2">
@@ -76,6 +82,9 @@
             disabled={loading}
             autocomplete="current-password"
           />
+          {#if errors.password}
+            <p class="text-[12px] text-red-400">{errors.password}</p>
+          {/if}
         </div>
 
         <div class="flex justify-end">

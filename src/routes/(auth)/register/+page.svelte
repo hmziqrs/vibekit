@@ -11,17 +11,20 @@
   let email = $state('')
   let password = $state('')
   let confirmPassword = $state('')
-  let error = $state('')
+  let errors = $state<Record<string, string>>({})
+  let serverError = $state('')
   let loading = $state(false)
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
-    error = ''
+    errors = {}
+    serverError = ''
 
     const result = registerSchema.safeParse({ name, email, password, confirmPassword })
     if (!result.success) {
-      const issue = result.error.issues[0]
-      error = issue?.message ?? 'Invalid input'
+      errors = Object.fromEntries(
+        result.error.issues.map((i) => [i.path[0] as string, i.message]),
+      )
       return
     }
 
@@ -29,12 +32,12 @@
     try {
       const res = await signUp.email({ name, email, password })
       if (res.error) {
-        error = res.error.message ?? 'Registration failed. Please try again.'
+        serverError = res.error.message ?? 'Registration failed. Please try again.'
         return
       }
       goto(`/verify-email?email=${encodeURIComponent(email)}`, { replaceState: true })
     } catch {
-      error = 'Something went wrong. Please try again.'
+      serverError = 'Something went wrong. Please try again.'
     } finally {
       loading = false
     }
@@ -50,8 +53,8 @@
 
     <Card.Content>
       <form onsubmit={handleSubmit} class="space-y-4">
-        {#if error}
-          <p class="text-sm text-red-400">{error}</p>
+        {#if serverError}
+          <p class="text-sm text-red-400">{serverError}</p>
         {/if}
 
         <div class="space-y-2">
@@ -64,6 +67,9 @@
             disabled={loading}
             autocomplete="name"
           />
+          {#if errors.name}
+            <p class="text-[12px] text-red-400">{errors.name}</p>
+          {/if}
         </div>
 
         <div class="space-y-2">
@@ -76,6 +82,9 @@
             disabled={loading}
             autocomplete="email"
           />
+          {#if errors.email}
+            <p class="text-[12px] text-red-400">{errors.email}</p>
+          {/if}
         </div>
 
         <div class="space-y-2">
@@ -88,6 +97,9 @@
             disabled={loading}
             autocomplete="new-password"
           />
+          {#if errors.password}
+            <p class="text-[12px] text-red-400">{errors.password}</p>
+          {/if}
         </div>
 
         <div class="space-y-2">
@@ -100,6 +112,9 @@
             disabled={loading}
             autocomplete="new-password"
           />
+          {#if errors.confirmPassword}
+            <p class="text-[12px] text-red-400">{errors.confirmPassword}</p>
+          {/if}
         </div>
 
         <Button type="submit" class="w-full" disabled={loading}>
