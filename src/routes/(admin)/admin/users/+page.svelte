@@ -21,10 +21,6 @@
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
 
-  $effect(() => {
-    // Direct bind for simplicity
-  })
-
   const usersQuery = createQuery(() => ({
     queryKey: ['admin', 'users', { search, status: statusFilter, page: pageNum }],
     queryFn: async () => {

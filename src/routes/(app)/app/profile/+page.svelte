@@ -15,12 +15,13 @@
   let errorMessage = $state('')
   let errors = $state<Record<string, string>>({})
 
-  $effect(() => {
-    const user = $session.data?.user
-    if (user && !isEditing) {
-      name = user.name || ''
-    }
-  })
+  function startEditing() {
+    name = $session.data?.user?.name || ''
+    errors = {}
+    errorMessage = ''
+    successMessage = ''
+    isEditing = true
+  }
 
   async function handleUpdateName(e: SubmitEvent) {
     e.preventDefault()
@@ -108,7 +109,7 @@
         </div>
         {#if !isEditing}
           <button
-            onclick={() => (isEditing = true)}
+            onclick={startEditing}
             class="rounded-lg px-3 py-1.5 text-[13px] font-medium text-brand transition-colors hover:bg-white/[0.04]"
           >
             Edit

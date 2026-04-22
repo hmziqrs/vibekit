@@ -16,7 +16,7 @@
     updatedAt: string
   }
 
-  let itemId = $derived($page.params.id)
+  let itemId = $derived($page.params.id ?? '')
   const queryClient = useQueryClient()
 
   const itemQuery = createQuery(() => ({
@@ -34,14 +34,17 @@
   let errors = $state<Record<string, string>>({})
   let loading = $state(false)
   let serverError = $state('')
-  let initialized = $state(false)
+  let lastItemId = $state('')
 
+  // Sync form state from query data when item changes.
+  // This effect is the standard pattern for initializing editable
+  // local state from external async data (TanStack Query).
   $effect(() => {
     const item = itemQuery.data
-    if (item && !initialized) {
+    if (item && itemId !== lastItemId) {
       name = item.name
       description = item.description || ''
-      initialized = true
+      lastItemId = itemId
     }
   })
 

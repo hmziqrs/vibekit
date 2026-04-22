@@ -20,21 +20,15 @@
   let verified = $state(false)
   let failed = $state(false)
 
-  let token = $derived($page.url.searchParams.get('token') ?? '')
-  let emailParam = $derived($page.url.searchParams.get('email') ?? '')
-
-  let email = $state('')
+  let token = $page.url.searchParams.get('token') ?? ''
+  let email = $state($page.url.searchParams.get('email') ?? '')
   let resendLoading = $state(false)
 
-  $effect(() => {
-    email = emailParam
-  })
-
-  $effect(() => {
-    if (token) {
-      verifyEmail(token)
-    }
-  })
+  // Trigger verification once on mount if token is present.
+  // This component remounts when URL params change.
+  if (token) {
+    verifyEmail(token)
+  }
 
   async function verifyEmail(t: string) {
     verifying = true
