@@ -2,8 +2,9 @@ import { building } from '$app/environment'
 import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
+import { error } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
-import { error, sequence } from '@sveltejs/kit/hooks'
+import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
 const handleParaglide: Handle = ({ event, resolve }) =>

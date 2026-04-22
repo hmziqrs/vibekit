@@ -3,11 +3,5 @@
 </script>
 
 {#if token}
-  <svelte:head>
-    <script
-      defer
-      src="https://static.cloudflareinsights.com/beacon.min.js"
-      data-cf-beacon={JSON.stringify({ token })}
-    ></script>
-  </svelte:head>
+  {@html `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"${token}"}'></script>`}
 {/if}
