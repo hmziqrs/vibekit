@@ -1006,32 +1006,32 @@ MVP is complete when:
 
 ## Public Site
 
-- [ ] All public pages render correctly
-- [ ] Nav and footer links work
-- [ ] SEO metadata present in prerendered HTML
-- [ ] Contact form validates input
+- [x] All public pages render correctly
+- [x] Nav and footer links work
+- [x] SEO metadata present in prerendered HTML
+- [x] Contact form validates input
 
 ## Blog
 
-- [ ] Index lists only published posts
-- [ ] Detail resolves by slug
-- [ ] Drafts hidden
-- [ ] Updates propagate via regeneration
+- [x] Index lists only published posts
+- [x] Detail resolves by slug
+- [x] Drafts hidden
+- [x] Updates propagate via regeneration
 
 ## App
 
-- [ ] Unauthenticated access denied
-- [ ] Authenticated access granted
-- [ ] User data loads correctly
-- [ ] Forms validate and save
+- [x] Unauthenticated access denied
+- [x] Authenticated access granted
+- [x] User data loads correctly
+- [x] Forms validate and save
 
 ## Admin
 
-- [ ] Non-admin access denied
-- [ ] Admin access granted
-- [ ] Blog CRUD works
-- [ ] User listing works
-- [ ] Publish / unpublish works
+- [x] Non-admin access denied
+- [x] Admin access granted
+- [x] Blog CRUD works
+- [x] User listing works
+- [x] Publish / unpublish works
 
 ---
 
