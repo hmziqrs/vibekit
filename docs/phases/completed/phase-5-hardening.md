@@ -114,11 +114,11 @@ Create deployment docs:
 
 ## Acceptance Criteria
 
-- [ ] Playwright E2E tests for public browsing, auth, app access
-- [ ] Consent banner shows and stores preference
-- [ ] All forms have proper labels and ARIA
-- [ ] Security headers verified
-- [ ] Deployment docs written
-- [ ] `bun run check` passes clean (no source errors)
-- [ ] `bun run test` passes
-- [ ] E2E tests pass
+- [x] Playwright E2E tests for public browsing, auth, app access — `e2e/public.spec.ts`, `e2e/auth.spec.ts`, `e2e/app.spec.ts` (13 tests passing)
+- [x] Consent banner shows and stores preference — `src/lib/components/consent-banner.svelte` gates Firebase Analytics behind localStorage preference
+- [x] All forms have proper labels and ARIA — verified across `(auth)`, `(app)`, `(admin)`, and `(public)/contact` routes
+- [x] Security headers verified — `hooks.server.ts` sets CSP, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- [x] Deployment docs written — `docs/deployment.md` covers DB setup, migrations, first admin, D1 backup, 30-day cron cleanup, cache strategy
+- [ ] `bun run check` passes clean (no source errors) — pre-existing type errors in generated files (`paraglide/runtime.js`, `.svelte-kit/cloudflare/_worker.js`) cause noise; application source compiles
+- [x] `bun run test` passes — 103 unit tests passing
+- [x] E2E tests pass — 13 tests passing

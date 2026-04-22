@@ -3,7 +3,7 @@
   "name": "vibekit",
   "compatibility_date": "2026-04-21",
   "compatibility_flags": ["nodejs_als"],
-  "main": ".svelte-kit/cloudflare/_worker.js",
+  "main": "worker.ts",
   "assets": {
     "binding": "ASSETS",
     "directory": ".svelte-kit/cloudflare",
@@ -21,11 +21,23 @@
       "bucket_name": "vibekit-blog-media",
     },
   ],
+  "send_email": [
+    {
+      "name": "SEND_EMAIL"
+    }
+  ],
   "vars": {
     "ORIGIN": "http://localhost:5173",
     "BETTER_AUTH_URL": "http://localhost:5173",
     "PUBLIC_CF_WEB_ANALYTICS_TOKEN": "",
     "PUBLIC_FIREBASE_CONFIG": "",
+    "CONTACT_NOTIFICATION_EMAIL": "",
+    "CRON_SECRET": ""
+  },
+  "triggers": {
+    "crons": [
+      "0 3 * * *"
+    ]
   },
   "workers_dev": true,
   "preview_urls": true,

@@ -1,10 +1,8 @@
 <script lang="ts">
   import CfBeacon from '$lib/components/cf-beacon.svelte'
 
-  let { children } = $props()
-
-  const cfToken = import.meta.env.PUBLIC_CF_WEB_ANALYTICS_TOKEN as string | undefined
+  let { children, data } = $props()
 </script>
 
-<CfBeacon token={cfToken} />
+<CfBeacon token={data.cfToken} />
 {@render children()}

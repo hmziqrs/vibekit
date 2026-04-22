@@ -36,6 +36,21 @@ export const actions: Actions = {
       message: parsed.data.message,
     })
 
+    const sendEmail = platform?.env?.SEND_EMAIL
+    const notifyEmail = platform?.env?.CONTACT_NOTIFICATION_EMAIL
+    if (sendEmail && notifyEmail) {
+      try {
+        await sendEmail.send({
+          from: { email: 'noreply@vibekit.com', name: 'Vibekit Contact Form' },
+          to: [{ email: notifyEmail }],
+          subject: `Contact form: ${parsed.data.subject}`,
+          text: `Name: ${parsed.data.name}\nEmail: ${parsed.data.email}\nSubject: ${parsed.data.subject}\n\nMessage:\n${parsed.data.message}`,
+        })
+      } catch (err) {
+        console.error('Failed to send contact notification email:', err)
+      }
+    }
+
     return { success: true }
   },
 }
