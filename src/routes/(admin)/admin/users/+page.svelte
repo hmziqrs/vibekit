@@ -20,6 +20,7 @@
   let pageNum = $state(1)
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
+  let showDeleteDialog = $state(false)
 
   const usersQuery = createQuery(() => ({
     queryKey: ['admin', 'users', { search, status: statusFilter, page: pageNum }],
@@ -66,6 +67,7 @@
     const res = await fetch(`/api/admin/users/${confirmDelete.id}`, { method: 'DELETE' })
     if (res.ok) {
       confirmDelete = null
+      showDeleteDialog = false
       openMenuId = null
       usersQuery.refetch()
     }
@@ -104,7 +106,7 @@
 <svelte:window onclick={closeMenus} />
 
 <ConfirmDialog
-  bind:open={confirmDelete}
+  bind:open={showDeleteDialog}
   title="Delete User"
   message="Are you sure you want to delete this user? This action cannot be undone."
   confirmLabel="Delete"
@@ -192,7 +194,7 @@
                     {:else}
                       <button class="w-full px-4 py-2 text-left text-[12px] text-green-400 hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Activate</button>
                     {/if}
-                    <button class="w-full px-4 py-2 text-left text-[12px] text-red-400 hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user }}>Delete</button>
+                    <button class="w-full px-4 py-2 text-left text-[12px] text-red-400 hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user; showDeleteDialog = true }}>Delete</button>
                   </div>
                 {/if}
               </div>

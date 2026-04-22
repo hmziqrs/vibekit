@@ -18,6 +18,7 @@
   let statusFilter = $state('all')
   let search = $state('')
   let deleteTarget = $state<PostRow | null>(null)
+  let showConfirmDialog = $state(false)
 
   const statusColors: Record<string, string> = {
     draft: 'bg-yellow-500/15 text-yellow-400',
@@ -50,6 +51,7 @@
     const res = await fetch(`/api/blog/${deleteTarget.id}`, { method: 'DELETE' })
     if (res.ok) {
       deleteTarget = null
+      showConfirmDialog = false
       postsQuery.refetch()
     }
   }
@@ -69,7 +71,7 @@
 </script>
 
 <ConfirmDialog
-  bind:open={deleteTarget}
+  bind:open={showConfirmDialog}
   title="Delete Post"
   message="Move this post to trash? It can be restored within 30 days."
   confirmLabel="Delete"
@@ -147,7 +149,7 @@
                 </a>
                 <button
                   class="rounded-lg border border-red-500/30 px-3 py-1.5 text-[12px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                  onclick={() => (deleteTarget = post)}
+                  onclick={() => { deleteTarget = post; showConfirmDialog = true }}
                 >
                   Delete
                 </button>
