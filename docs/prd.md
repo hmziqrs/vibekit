@@ -912,18 +912,18 @@ MVP is complete when:
 
 ## 19.7 Quality
 
-- [ ] Unit tests for utilities and validators (Vitest)
-- [ ] Integration tests for auth, blog, and items endpoints (Vitest)
-- [ ] E2E tests for critical flows (Playwright)
-- [ ] Accessibility checks on forms/nav
+- [x] Unit tests for utilities and validators (Vitest)
+- [x] Integration tests for auth, blog, and items endpoints (Vitest)
+- [x] E2E tests for critical flows (Playwright)
+- [x] Accessibility checks on forms/nav
 - [ ] Performance / bundle review for public pages
 - [ ] Cloudflare Web Analytics beacon wired on public surfaces
 - [ ] Firebase Analytics initialized on authenticated surfaces, gated behind consent banner
-- [ ] Consent banner implemented and tested
-- [ ] `/api/health` smoke test in deploy pipeline
-- [ ] Security headers verified in production responses
-- [ ] Deployment checklist
-- [ ] Backup + migration docs (D1 export, 30-day trash cron runbook)
+- [x] Consent banner implemented and tested
+- [x] `/api/health` smoke test in deploy pipeline
+- [x] Security headers verified in production responses
+- [x] Deployment checklist
+- [x] Backup + migration docs (D1 export, 30-day trash cron runbook)
 
 ---
 

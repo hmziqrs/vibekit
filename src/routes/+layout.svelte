@@ -5,12 +5,16 @@
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import ConsentBanner from '$lib/components/consent-banner.svelte';
+	import SkipLink from '$lib/components/skip-link.svelte';
 
 	let { children } = $props();
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<SkipLink />
 {@render children()}
+<ConsentBanner />
 
 <div style="display:none">
 	{#each locales as locale (locale)}
