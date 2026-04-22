@@ -6,7 +6,11 @@ import { eq, isNull, and } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, setHeaders }) => {
+  setHeaders({
+    'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
+    'CDN-Cache-Control': 'public, max-age=3600',
+  })
   const db = getDb(platform!.env.DB)
   const { slug } = params
 

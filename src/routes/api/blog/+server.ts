@@ -1,3 +1,4 @@
+import { purgeBlogCache } from '$lib/server/cache'
 import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
 import { uuid } from '$lib/server/uuid'
@@ -80,5 +81,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     authorId: locals.user.id,
     publishedAt: status === 'published' ? new Date() : null,
   })
+
+  if (status === 'published') {
+    await purgeBlogCache(platform, slug)
+  }
+
   return json({ id }, { status: 201 })
 }

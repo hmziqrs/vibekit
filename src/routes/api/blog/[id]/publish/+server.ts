@@ -1,3 +1,4 @@
+import { purgeBlogCache } from '$lib/server/cache'
 import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
 import { json } from '@sveltejs/kit'
@@ -12,7 +13,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
 
   const db = getDb(platform!.env.DB)
   const existing = await db
-    .select({ id: blogPost.id })
+    .select({ id: blogPost.id, slug: blogPost.slug })
     .from(blogPost)
     .where(eq(blogPost.id, params.id))
     .get()
@@ -24,6 +25,8 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     .update(blogPost)
     .set({ status: 'published', publishedAt: new Date(), updatedAt: new Date() })
     .where(eq(blogPost.id, params.id))
+
+  await purgeBlogCache(platform, existing.slug)
 
   return json({ success: true })
 }

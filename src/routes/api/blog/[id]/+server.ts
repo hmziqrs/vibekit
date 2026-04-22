@@ -1,3 +1,4 @@
+import { purgeBlogCache } from '$lib/server/cache'
 import { getDb } from '$lib/server/db'
 import { blogPost, blogPostSlugHistory } from '$lib/server/db/schema'
 import { uuid } from '$lib/server/uuid'
@@ -61,6 +62,11 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (data.status === 'published' && !existing.publishedAt) updates.publishedAt = new Date()
 
   await db.update(blogPost).set(updates).where(eq(blogPost.id, params.id))
+
+  if (existing.status === 'published' || updates.status === 'published') {
+    await purgeBlogCache(platform, (updates.slug as string) ?? existing.slug)
+  }
+
   return json({ success: true })
 }
 
@@ -69,11 +75,15 @@ export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
   const db = getDb(platform!.env.DB)
-  if (!(await postExists(db, params.id))) return json({ error: 'Not found' }, { status: 404 })
+  const existing = await findPost(db, params.id)
+  if (!existing) return json({ error: 'Not found' }, { status: 404 })
 
   await db
     .update(blogPost)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(eq(blogPost.id, params.id))
+
+  await purgeBlogCache(platform, existing.slug)
+
   return json({ success: true })
 }

@@ -869,7 +869,7 @@ MVP is complete when:
 - [x] Blog schema + migration (including `deleted_at`, `blog_post_slug_history`)
 - [x] Tag / category schema (if included)
 - [x] Markdown rendering pipeline (`micromark` + GFM + DOMPurify)
-- [ ] R2 + Cloudflare Images upload integration
+- [x] R2 + Cloudflare Images upload integration
 - [x] `/blog` index route
 - [x] `/blog/[slug]` detail route + slug-history 301 fallback
 - [x] Slug uniqueness validation
@@ -878,10 +878,10 @@ MVP is complete when:
 - [x] Update
 - [x] Archive (`status = 'archived'`)
 - [x] Soft-delete (sets `deleted_at`) + restore
-- [ ] 30-day hard-delete Cron for trashed posts
+- [x] 30-day hard-delete Cron for trashed posts
 - [x] SEO fields support
-- [ ] Cache-tag purge on publish / update / archive / delete
-- [ ] Public cache strategy documented
+- [x] Cache-tag purge on publish / update / archive / delete
+- [x] Public cache strategy documented
 
 ## 19.5 App
 
