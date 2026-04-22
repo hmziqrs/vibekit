@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { initAnalyticsIfConsented } from '$lib/analytics.svelte'
+
   let visible = $state(false)
 
   $effect(() => {
@@ -8,6 +10,11 @@
   function accept() {
     localStorage.setItem('consent', 'accepted')
     visible = false
+    initAnalyticsIfConsented(
+      typeof import.meta !== 'undefined'
+        ? (import.meta.env as Record<string, string>)?.PUBLIC_FIREBASE_CONFIG
+        : undefined,
+    )
   }
 
   function decline() {

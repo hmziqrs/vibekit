@@ -4,11 +4,18 @@
   import { useSession, signOut } from '$lib/auth-client'
   import { page } from '$app/stores'
   import { cn } from '$lib/utils'
+  import { initAnalyticsIfConsented } from '$lib/analytics.svelte'
 
   let { children } = $props()
   const queryClient = createQueryClient()
   const session = useSession()
   let mobileOpen = $state(false)
+
+  const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
+
+  $effect(() => {
+    initAnalyticsIfConsented(firebaseConfig)
+  })
 
   const navItems = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },

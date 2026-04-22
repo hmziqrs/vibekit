@@ -36,6 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.1",
+    "firebase": "^12.12.1",
     "micromark": "^4.0.2",
     "micromark-extension-gfm": "^3.0.0",
     "tailwind-merge": "^3.5.0",

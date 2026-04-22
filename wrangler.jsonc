@@ -24,6 +24,8 @@
   "vars": {
     "ORIGIN": "http://localhost:5173",
     "BETTER_AUTH_URL": "http://localhost:5173",
+    "PUBLIC_CF_WEB_ANALYTICS_TOKEN": "",
+    "PUBLIC_FIREBASE_CONFIG": "",
   },
   "workers_dev": true,
   "preview_urls": true,

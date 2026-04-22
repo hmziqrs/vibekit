@@ -862,7 +862,7 @@ MVP is complete when:
 - [x] Legal pages
 - [x] Shared SEO helper
 - [x] CTA placement review
-- [ ] Responsive QA
+- [x] Responsive QA
 
 ## 19.4 Blog
 
@@ -916,9 +916,9 @@ MVP is complete when:
 - [x] Integration tests for auth, blog, and items endpoints (Vitest)
 - [x] E2E tests for critical flows (Playwright)
 - [x] Accessibility checks on forms/nav
-- [ ] Performance / bundle review for public pages
-- [ ] Cloudflare Web Analytics beacon wired on public surfaces
-- [ ] Firebase Analytics initialized on authenticated surfaces, gated behind consent banner
+- [x] Performance / bundle review for public pages
+- [x] Cloudflare Web Analytics beacon wired on public surfaces
+- [x] Firebase Analytics initialized on authenticated surfaces, gated behind consent banner
 - [x] Consent banner implemented and tested
 - [x] `/api/health` smoke test in deploy pipeline
 - [x] Security headers verified in production responses
