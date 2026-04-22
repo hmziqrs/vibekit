@@ -371,8 +371,8 @@ function generateSql(): string[] {
   for (const post of POSTS) {
     const id = uuid()
     postIds[post.slug] = id
-    const body = esc(post.contentBody.replace(/\n/g, ' '))
-    const excerpt = esc((post.excerpt || '').replace(/\n/g, ' '))
+    const body = esc(post.contentBody)
+    const excerpt = esc(post.excerpt || '')
     const title = esc(post.title)
     const seoTitle = post.seoTitle ? `'${esc(post.seoTitle)}'` : 'NULL'
     const seoDesc = post.seoDescription ? `'${esc(post.seoDescription)}'` : 'NULL'
