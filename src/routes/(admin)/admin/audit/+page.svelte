@@ -89,7 +89,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-white/[0.04]">
-        {#each data.logs as log}
+        {#each data.logs as log (log.id)}
           <tr class="transition-colors hover:bg-white/[0.02]">
             <td class="px-5 py-3.5">
               <span class={cn(

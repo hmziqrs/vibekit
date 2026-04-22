@@ -116,7 +116,7 @@
     </div>
   {:else}
     <div class="space-y-3">
-      {#each postsQuery.data.posts as post}
+      {#each postsQuery.data.posts as post (post.id)}
         <div class="flex items-center justify-between rounded-xl border border-white/[0.06] bg-surface px-5 py-4 transition-colors hover:bg-white/[0.02]">
           <div class="min-w-0 flex-1">
             <h3 class="truncate text-[15px] font-medium text-text-primary">{post.title}</h3>

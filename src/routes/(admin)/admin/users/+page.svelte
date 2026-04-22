@@ -152,7 +152,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-white/[0.04]">
-        {#each usersQuery.data.users as user}
+        {#each usersQuery.data.users as user (user.id)}
           <tr class="transition-colors hover:bg-white/[0.02]">
             <td class="px-5 py-3.5">
               <div>

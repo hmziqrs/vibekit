@@ -26,7 +26,7 @@
 			<p class="text-text-muted">No posts yet. Check back soon!</p>
 		{:else}
 			<div class="space-y-8">
-				{#each data.posts as post}
+				{#each data.posts as post (post.id)}
 					<a href="/blog/{post.slug}" class="group block">
 						<article class="rounded-xl border border-white/[0.06] bg-surface p-6 transition-all hover:border-white/[0.12]">
 							{#if post.coverImageUrl}

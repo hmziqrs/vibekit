@@ -92,7 +92,7 @@
       </div>
 
       <nav class="mt-4 space-y-1 px-3">
-        {#each navItems as item}
+        {#each navItems as item (item.href)}
           <a
             href={item.href}
             class={cn(
