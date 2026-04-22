@@ -14,10 +14,9 @@
   }
 
   let { data } = $props()
-  let selectedAction = $state(page.url.searchParams.get('action') ?? '')
+  let selectedAction = $derived(page.url.searchParams.get('action') ?? '')
 
   function handleFilter(action: string) {
-    selectedAction = action
     const params = new URLSearchParams()
     if (action) params.set('action', action)
     goto(`/admin/audit?${params}`, { keepFocus: true, noScroll: true })

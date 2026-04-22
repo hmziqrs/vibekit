@@ -2,8 +2,7 @@
   import { useSession, signOut } from '$lib/auth-client'
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
-  import { initAnalyticsIfConsented } from '$lib/analytics.svelte'
-  import { onMount } from 'svelte'
+  import { useAnalytics } from '$lib/use-analytics.svelte'
 
   let { children } = $props()
   const session = useSession()
@@ -11,9 +10,7 @@
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
-  onMount(() => {
-    initAnalyticsIfConsented(firebaseConfig)
-  })
+  useAnalytics(firebaseConfig)
 
   const navItems = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },

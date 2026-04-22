@@ -2,13 +2,13 @@ import { initFirebase, trackEvent } from './firebase'
 
 let initialized = false
 
-export function initAnalyticsIfConsented(configJson?: string) {
+export async function initAnalyticsIfConsented(configJson?: string) {
   if (initialized) return
 
   const consent = typeof localStorage !== 'undefined' ? localStorage.getItem('consent') : null
 
   if (consent === 'accepted' && configJson) {
-    initialized = initFirebase(configJson)
+    initialized = await initFirebase(configJson)
   }
 }
 

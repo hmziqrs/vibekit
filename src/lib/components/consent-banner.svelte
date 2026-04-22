@@ -1,12 +1,18 @@
 <script lang="ts">
-  import { initAnalyticsIfConsented } from '$lib/analytics.svelte'
+  import { useAnalytics } from '$lib/use-analytics.svelte'
 
-  let visible = $state(typeof localStorage !== 'undefined' && !localStorage.getItem('consent'))
+  let visible = $state(false)
+
+  $effect.pre(() => {
+    if (typeof localStorage !== 'undefined') {
+      visible = !localStorage.getItem('consent')
+    }
+  })
 
   function accept() {
     localStorage.setItem('consent', 'accepted')
     visible = false
-    initAnalyticsIfConsented(
+    useAnalytics(
       typeof import.meta !== 'undefined'
         ? (import.meta.env as Record<string, string>)?.PUBLIC_FIREBASE_CONFIG
         : undefined,

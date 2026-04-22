@@ -5,10 +5,10 @@
 
 	let { data } = $props()
 
-	const meta = seo({
+	const meta = $derived(seo({
 		title: data.post.title,
 		description: data.post.seoDescription ?? data.post.excerpt ?? '',
-	})
+	}))
 </script>
 
 <svelte:head>
