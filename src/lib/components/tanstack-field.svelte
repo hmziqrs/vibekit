@@ -33,7 +33,6 @@
     value={field.state.value}
     oninput={(e) => field.handleChange(e.currentTarget.value)}
     onblur={field.handleBlur}
-    disabled={field.form.state.isSubmitting}
     aria-invalid={hasError ? 'true' : 'false'}
     aria-describedby={hasError ? `${String(field.name)}-error` : undefined}
   />
