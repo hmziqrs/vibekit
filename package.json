@@ -27,7 +27,9 @@
     "format:check": "oxfmt . --check",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:rendering": "bun scripts/verify-build-rendering.ts",
+    "test:e2e:rendering": "playwright test e2e/spec-testing/"
   },
   "dependencies": {
     "@tanstack/svelte-db": "^0.1.82",

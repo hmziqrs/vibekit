@@ -2,46 +2,32 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { signIn } from '$lib/auth-client'
-  import { loginSchema } from '$lib/validators/auth'
+  import { loginSchema, type LoginInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
-  import { Input } from '$lib/components/ui/input'
-  import { Label } from '$lib/components/ui/label'
   import * as Card from '$lib/components/ui/card'
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
 
-  let email = $state('')
-  let password = $state('')
-  let errors = $state<Record<string, string>>({})
-  let serverError = $state('')
-  let loading = $state(false)
-
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    serverError = ''
-
-    const result = loginSchema.safeParse({ email, password })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    loading = true
-    try {
-      const res = await signIn.email({ email, password })
+  const form = createForm(() => ({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    validators: {
+      onChange: loginSchema,
+    },
+    onSubmitAsync: async ({ value }: { value: LoginInput }) => {
+      const res = await signIn.email(value)
       if (res.error) {
-        serverError = res.error.message ?? 'Invalid email or password'
-        return
+        return {
+          form: res.error.message ?? 'Invalid email or password',
+        }
       }
       const next = page.url.searchParams.get('next') ?? '/app'
       goto(next, { replaceState: true })
-    } catch {
-      serverError = 'Something went wrong. Please try again.'
-    } finally {
-      loading = false
-    }
-  }
+      return null
+    },
+  }))
 </script>
 
 <div class="w-full max-w-sm">
@@ -52,44 +38,45 @@
     </Card.Header>
 
     <Card.Content>
-      <form onsubmit={handleSubmit} class="space-y-4" novalidate>
-        {#if serverError}
-          <p class="text-sm text-red-400">{serverError}</p>
-        {/if}
+      <form
+        onsubmit={(e) => {
+          e.preventDefault()
+          form.handleSubmit()
+        }}
+        class="space-y-4"
+        novalidate
+      >
+        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+          {#snippet children(errorMessage)}
+            {#if errorMessage}
+              <p class="text-sm text-red-400">{errorMessage}</p>
+            {/if}
+          {/snippet}
+        </form.Subscribe>
 
-        <div class="space-y-2">
-          <Label for="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            bind:value={email}
-            disabled={loading}
-            autocomplete="email"
-            aria-invalid={errors.email ? 'true' : 'false'}
-            aria-describedby={errors.email ? 'email-error' : undefined}
-          />
-          {#if errors.email}
-            <p id="email-error" class="text-[12px] text-red-400">{errors.email}</p>
-          {/if}
-        </div>
+        <form.Field name="email">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
+          {/snippet}
+        </form.Field>
 
-        <div class="space-y-2">
-          <Label for="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Enter your password"
-            bind:value={password}
-            disabled={loading}
-            autocomplete="current-password"
-            aria-invalid={errors.password ? 'true' : 'false'}
-            aria-describedby={errors.password ? 'password-error' : undefined}
-          />
-          {#if errors.password}
-            <p id="password-error" class="text-[12px] text-red-400">{errors.password}</p>
-          {/if}
-        </div>
+        <form.Field name="password">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+            />
+          {/snippet}
+        </form.Field>
 
         <div class="flex justify-end">
           <a
@@ -100,9 +87,13 @@
           </a>
         </div>
 
-        <Button type="submit" class="w-full" disabled={loading}>
-          {loading ? 'Loading...' : 'Sign in'}
-        </Button>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {#snippet children(isSubmitting)}
+            <Button type="submit" class="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Loading...' : 'Sign in'}
+            </Button>
+          {/snippet}
+        </form.Subscribe>
       </form>
     </Card.Content>
 
