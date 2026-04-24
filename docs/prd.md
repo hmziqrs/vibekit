@@ -15,7 +15,7 @@
 **i18n:** Paraglide JS (`@inlang/paraglide-js`)
 **Content Pipeline:** GitHub Flavored Markdown via `micromark` + GFM extensions, sanitized with DOMPurify
 **Storage / Media:** Cloudflare R2 + Cloudflare Images
-**Analytics:** Cloudflare Web Analytics (public) + Firebase Analytics (app/admin)
+**Analytics:** Cloudflare Web Analytics (public + admin) + Firebase Analytics (app only — events + crash/error tracking)
 **Email:** Cloudflare Workers `send_email` binding (Email Routing)
 **Rate Limiting:** Cloudflare Rate Limiting rules (dashboard-configured)
 **Error Tracking:** Cloudflare Workers Logs + Logpush to R2 (free tier)
@@ -347,7 +347,7 @@ Privileged operator; manages blog and users; accesses `/admin/*`.
 - i18n: **Paraglide JS**.
 - Content pipeline: **micromark (GFM) + DOMPurify**.
 - Storage: **Cloudflare R2 + Cloudflare Images**.
-- Analytics: **Cloudflare Web Analytics** (public) + **Firebase Analytics** (app/admin).
+- Analytics: **Cloudflare Web Analytics** (public + admin) + **Firebase Analytics** (app only — events + crash/error tracking).
 - Email: **Cloudflare Workers `send_email` binding** via Email Routing.
 - Rate limiting: **Cloudflare Rate Limiting rules** (dashboard-configured).
 - Error tracking: **Cloudflare Workers Logs + Logpush** to R2 (free tier).
@@ -699,7 +699,7 @@ Populated whenever a published post's slug changes. `/blog/[slug]` resolves hist
 ## 15.2 Monitoring
 
 - **Cloudflare Workers Logs** is the primary log stream; **Logpush** exports to R2 for retention.
-- **Cloudflare Web Analytics** covers public-surface metrics; **Firebase Analytics** covers authenticated event tracking (gated behind consent — see §16.4).
+- **Cloudflare Web Analytics** covers public-surface and admin-surface metrics. **Firebase Analytics** covers consumer app (`/app/*`) event tracking only, gated behind consent (see §16.4).
 - `/api/health` returns `{ ok, db, time }` — used by uptime checks and deploy smoke tests.
 
 ## 15.3 Backups
@@ -711,7 +711,7 @@ Populated whenever a published post's slug changes. `/blog/[slug]` resolves hist
 
 # 16. Analytics Requirements
 
-Two-stack analytics: **Cloudflare Web Analytics** for privacy-friendly, zero-JS public page metrics, and **Firebase Analytics** for authenticated app / admin event tracking.
+Two-stack analytics: **Cloudflare Web Analytics** for privacy-friendly, beacon-only metrics on public pages and the admin panel, and **Firebase Analytics** for consumer app (`/app/*`) event tracking only. The admin panel does not use Firebase — admin actions are tracked through the audit log (§10.7) and Workers Logs.
 
 ## 16.1 Public (Cloudflare Web Analytics)
 
@@ -720,16 +720,24 @@ Two-stack analytics: **Cloudflare Web Analytics** for privacy-friendly, zero-JS 
 
 ## 16.2 App (Firebase Analytics)
 
-- Sign-up completion, login success/failure, feature usage events.
-- Gated behind user consent where required.
+**Event tracking:**
+- Sign-up completion, login success/failure, email verification completion, feature usage events.
+- Gated behind user consent (see §16.4).
 
-## 16.3 Admin (Firebase Analytics)
+**Crash / error tracking:**
+- Firebase Crashlytics is mobile-only and not available for web. The web equivalent is capturing unhandled errors as custom Firebase Analytics events.
+- A global error handler in the `(app)` shell captures `window.onerror` and `unhandledrejection` events and logs them via `logEvent('app_error', { message, stack_hint, route })`.
+- Critical API failures (5xx responses from `+server.ts` endpoints) are also logged via `logEvent('api_failure', { endpoint, status })`.
+- These events are only fired after the user has given consent; before consent, errors are silently dropped on the client (server-side errors still appear in Workers Logs regardless).
+- **Not applicable to `/admin/*`** — admin errors are captured by Workers Logs and the Tail Worker.
 
-- Posts created / published, user growth, key moderation actions.
+## 16.3 Admin
+
+No Firebase Analytics on `/admin/*`. Admin behaviour is tracked through the **audit log** (§10.7) and **Cloudflare Workers Logs**. Cloudflare Web Analytics beacon fires passively (same beacon as public surfaces — no extra configuration required).
 
 ## 16.4 Consent
 
-A minimal in-house consent banner (shadcn `Dialog`) appears on first visit when region heuristics suggest EU jurisdiction. **Firebase Analytics is not initialized until the user accepts.** Cloudflare Web Analytics remains active regardless (cookieless, no consent required). Consent state persists in `localStorage`; users can revisit consent from a footer link.
+A minimal in-house consent banner (shadcn `Dialog`) appears for `/app/*` users when region heuristics suggest EU jurisdiction. **Firebase Analytics is not initialized until the user accepts.** Cloudflare Web Analytics remains active on all surfaces regardless (cookieless, no consent required). Consent state persists in `localStorage`; users can revisit consent from a settings link. The consent banner is **not shown on `/admin/*`** — Firebase is not loaded there at all.
 
 ---
 
@@ -749,7 +757,7 @@ MVP is complete when:
 - Audit log written on every admin mutation.
 - Rate limiting active on auth + contact + admin mutation endpoints.
 - Paraglide wired with at least one locale; all app-shell + auth copy routed through it.
-- Cloudflare Web Analytics beacon live on public surfaces; Firebase Analytics gated behind consent banner on authenticated surfaces.
+- Cloudflare Web Analytics beacon live on public and admin surfaces; Firebase Analytics initialized on `/app/*` only, gated behind consent banner.
 - `/api/health` endpoint deployed and returns a valid response.
 - Core tests pass (Vitest).
 - Setup, migration, and deployment docs exist (local dev, `wrangler`, D1 migrations).
@@ -918,7 +926,9 @@ MVP is complete when:
 - [x] Accessibility checks on forms/nav
 - [x] Performance / bundle review for public pages
 - [x] Cloudflare Web Analytics beacon wired on public surfaces
-- [x] Firebase Analytics initialized on authenticated surfaces, gated behind consent banner
+- [x] Firebase Analytics initialized on `/app/*` only, gated behind consent banner (not loaded on `/admin/*`)
+- [x] Global error handler in `(app)` shell logs `window.onerror` + `unhandledrejection` as Firebase `app_error` events
+- [x] Critical API failures (5xx) logged as Firebase `api_failure` events
 - [x] Consent banner implemented and tested
 - [x] `/api/health` smoke test in deploy pipeline
 - [x] Security headers verified in production responses
@@ -1101,8 +1111,8 @@ All open questions resolved for v1 MVP:
 | Public / auth form posture          | **Form actions + shared Zod**: progressive enhancement on `(public)` + `(auth)`; TanStack Form inside `(app)` + `(admin)`. Validation runs on both sides.   |
 | Blog status vs soft delete          | **Both, distinct**: `status = 'archived'` = public-hidden, admin-editable. `deleted_at IS NOT NULL` = trash, 30-day retention, cron hard-deletes.           |
 | Slug redirects                      | **Slug history table**: previous slugs stored in `blog_post_slug_history`, resolved with 301 on miss.                                                       |
-| Analytics stack                     | **Cloudflare Web Analytics + Firebase**: privacy-friendly beacon for public; Firebase gated behind consent banner for app/admin.                            |
-| Consent banner                      | **Minimal in-house** (shadcn `Dialog`): blocks Firebase until accepted; CF Web Analytics is cookieless so runs regardless.                                  |
+| Analytics stack                     | **Cloudflare Web Analytics** (public + admin) + **Firebase Analytics** (app only — event tracking + crash/error via custom `logEvent`). Admin tracked via audit log + Workers Logs only. |
+| Consent banner                      | **Minimal in-house** (shadcn `Dialog`) on `/app/*` only: blocks Firebase until accepted. Not shown on `/admin/*` — Firebase not loaded there at all.       |
 | Blog regeneration strategy          | **Cloudflare Cache API with tags**: tag blog routes on render, purge relevant tags when posts are published/updated/archived.                               |
 | Email provider                      | **Cloudflare Workers `send_email` binding** via Email Routing.                                                                                              |
 | Rate limiting                       | **Cloudflare Rate Limiting rules** (dashboard-configured) on auth, contact, and admin mutation endpoints.                                                   |

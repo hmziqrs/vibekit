@@ -1,6 +1,10 @@
 import { initFirebase, trackEvent } from './firebase'
 
-let initialized = false
+let initialized = $state(false)
+
+export function isAnalyticsInitialized() {
+  return initialized
+}
 
 export async function initAnalyticsIfConsented(configJson?: string) {
   if (initialized) return

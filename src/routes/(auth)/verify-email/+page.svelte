@@ -19,14 +19,16 @@
   let verifying = $state(false)
   let verified = $state(false)
   let failed = $state(false)
+  let verifyAttempted = $state(false)
 
   let token = $derived(page.url.searchParams.get('token') ?? '')
   let email = $state(page.url.searchParams.get('email') ?? '')
   let resendLoading = $state(false)
 
-  // Trigger verification client-side when token changes.
-  $effect.pre(() => {
-    if (token) {
+  // Trigger verification client-side once when token is present.
+  $effect(() => {
+    if (token && !verifyAttempted && !verified && !failed) {
+      verifyAttempted = true
       verifyEmail(token)
     }
   })

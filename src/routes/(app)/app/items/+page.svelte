@@ -4,19 +4,12 @@
   import SearchInput from '$lib/components/search-input.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
-
-  interface ItemData {
-    id: string
-    name: string
-    description: string | null
-    status: string
-    createdAt: string
-    updatedAt: string
-  }
+  import type { ItemData } from '$lib/types'
 
   let statusFilter = $state<string>('active')
   let search = $state('')
   let deleteTarget = $state<ItemData | null>(null)
+  let deleteDialogOpen = $state(false)
 
   const queryClient = useQueryClient()
 
@@ -58,6 +51,7 @@
     const res = await fetch(`/api/items/${deleteTarget.id}`, { method: 'DELETE' })
     if (res.ok) {
       deleteTarget = null
+      deleteDialogOpen = false
       await queryClient.invalidateQueries({ queryKey: ['items'] })
     }
   }
@@ -70,7 +64,7 @@
 </script>
 
 <ConfirmDialog
-  bind:open={deleteTarget}
+  bind:open={deleteDialogOpen}
   title="Delete Item"
   message="Are you sure you want to delete this item? This action can be undone within 30 days."
   confirmLabel="Delete"
@@ -215,7 +209,10 @@
               </a>
 
               <button
-                onclick={() => (deleteTarget = item)}
+                onclick={() => {
+                  deleteTarget = item
+                  deleteDialogOpen = true
+                }}
                 class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-destructive/10 hover:text-destructive"
                 title="Delete"
               >

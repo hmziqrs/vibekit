@@ -6,15 +6,7 @@
   import StatusBadge from '$lib/components/status-badge.svelte'
   import { updateItemSchema } from '$lib/validators/item'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
-
-  interface ItemData {
-    id: string
-    name: string
-    description: string | null
-    status: string
-    createdAt: string
-    updatedAt: string
-  }
+  import type { ItemData } from '$lib/types'
 
   let itemId = $derived(page.params.id ?? '')
   const queryClient = useQueryClient()

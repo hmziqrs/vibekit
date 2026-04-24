@@ -1,15 +1,7 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query'
   import { useSession } from '$lib/auth-client'
-
-  interface ItemData {
-    id: string
-    name: string
-    description: string | null
-    status: string
-    createdAt: string
-    updatedAt: string
-  }
+  import type { ItemData } from '$lib/types'
 
   const session = useSession()
 

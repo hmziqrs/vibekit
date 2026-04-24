@@ -10,7 +10,9 @@
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
-  useAnalytics(firebaseConfig)
+  $effect(() => {
+    useAnalytics(firebaseConfig)
+  })
 
   const navItems = [
     { href: '/app/dashboard', label: 'Dashboard' },
