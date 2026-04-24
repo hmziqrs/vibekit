@@ -46,6 +46,14 @@
         class="space-y-4"
         novalidate
       >
+        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+          {#snippet children(errorMessage)}
+            {#if errorMessage}
+              <p class="text-sm text-red-400">{errorMessage}</p>
+            {/if}
+          {/snippet}
+        </form.Subscribe>
+
         <form.Field name="email">
           {#snippet children(field)}
             <TanstackField
