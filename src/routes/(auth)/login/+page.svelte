@@ -14,18 +14,26 @@
       password: '',
     },
     validators: {
-      onChange: loginSchema,
+      onSubmit: loginSchema,
     },
-    onSubmitAsync: async ({ value }: { value: LoginInput }) => {
-      const res = await signIn.email(value)
-      if (res.error) {
+    onSubmit: async ({ value }: { value: LoginInput }) => {
+      console.log("submit")
+      try {
+        console.log('value', value)
+        const res = await signIn.email(value)
+        if (res?.error) {
+          return {
+            form: res.error.message ?? 'Invalid email or password',
+          }
+        }
+        const next = page.url.searchParams.get('next') ?? '/app'
+        goto(next, { replaceState: true })
+        return null
+      } catch (err) {
         return {
-          form: res.error.message ?? 'Invalid email or password',
+          form: err instanceof Error ? err.message : 'Invalid email or password',
         }
       }
-      const next = page.url.searchParams.get('next') ?? '/app'
-      goto(next, { replaceState: true })
-      return null
     },
   }))
 </script>
@@ -39,10 +47,7 @@
 
     <Card.Content>
       <form
-        onsubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit()
-        }}
+        onsubmit={form.handleSubmit}
         class="space-y-4"
         novalidate
       >
