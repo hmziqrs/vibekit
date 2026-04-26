@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import ImageUpload from '$lib/components/image-upload.svelte'
   import { updatePostSchema } from '$lib/validators/blog'
 
@@ -75,19 +76,21 @@
   async function publish() {
     saving = true
     await fetch(`/api/blog/${data.post.id}/publish`, { method: 'POST' })
-    window.location.reload()
+    saving = false
+    goto(`/admin/blog/${data.post.id}/edit`, { replaceState: true })
   }
 
   async function unpublish() {
     saving = true
     await fetch(`/api/blog/${data.post.id}/unpublish`, { method: 'POST' })
-    window.location.reload()
+    saving = false
+    goto(`/admin/blog/${data.post.id}/edit`, { replaceState: true })
   }
 
   async function archive() {
     if (!confirm('Archive this post?')) return
     await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
-    window.location.href = '/admin/blog'
+    goto('/admin/blog')
   }
 </script>
 

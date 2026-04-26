@@ -1,11 +1,22 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { authClient } from '$lib/auth-client'
+  import { goto } from '$app/navigation'
+  import { authClient, useSession } from '$lib/auth-client'
   import { resetPasswordSchema, type ResetPasswordInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
   import TanstackField from '$lib/components/tanstack-field.svelte'
+
+  const session = useSession()
+
+  // Redirect authenticated users away from reset-password
+  $effect(() => {
+    const user = $session.data?.user ?? page.data.user
+    if (user) {
+      goto('/app', { replaceState: true })
+    }
+  })
 
   let message = $state('')
   let done = $state(false)

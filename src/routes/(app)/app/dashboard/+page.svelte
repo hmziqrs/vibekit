@@ -1,9 +1,12 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query'
   import { useSession } from '$lib/auth-client'
+  import { page } from '$app/state'
   import type { ItemData } from '$lib/types'
 
   const session = useSession()
+  // Use server-rendered user name to prevent "Welcome back, User" flash
+  const userName = $derived($session.data?.user?.name ?? page.data.user?.name ?? 'User')
 
   const itemsQuery = createQuery(() => ({
     queryKey: ['items', 'recent'],
@@ -28,7 +31,7 @@
   <!-- Welcome -->
   <div class="mb-8">
     <h1 class="text-2xl font-semibold text-text-primary">
-      Welcome back, {$session.data?.user?.name || 'User'}
+      Welcome back, {userName}
     </h1>
     <p class="mt-1 text-[14px] text-text-muted">Here is what is happening with your items.</p>
   </div>

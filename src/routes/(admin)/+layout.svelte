@@ -1,12 +1,19 @@
 <script lang="ts">
   import { useSession, signOut } from '$lib/auth-client'
   import { page } from '$app/state'
+  import { goto } from '$app/navigation'
+  import { browser } from '$app/environment'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
   let { children } = $props()
   const session = useSession()
   let mobileOpen = $state(false)
+  let signingOut = $state(false)
+
+  // Server-rendered user prevents auth flash; useSession takes over after hydration
+  const user = $derived($session.data?.user ?? page.data.user ?? null)
+  const isInitializing = $derived(browser && $session.isPending && !page.data.user)
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
@@ -23,9 +30,11 @@
     return page.url.pathname === href || page.url.pathname.startsWith(href + '/')
   }
 
-  function handleSignOut() {
-    signOut()
-    window.location.href = '/'
+  async function handleSignOut() {
+    signingOut = true
+    await signOut()
+    signingOut = false
+    goto('/')
   }
 
   function closeMobile() {
@@ -133,29 +142,38 @@
 
       <!-- Sidebar footer: user info + logout -->
       <div class="absolute bottom-0 left-0 right-0 border-t border-white/[0.06] p-4">
-        {#if $session.data?.user}
+        {#if isInitializing}
+          <div class="flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-white/[0.06]"></div>
+            <div class="min-w-0 flex-1 space-y-2">
+              <div class="h-3 w-20 animate-pulse rounded bg-white/[0.06]"></div>
+              <div class="h-2 w-10 animate-pulse rounded bg-white/[0.06]"></div>
+            </div>
+          </div>
+        {:else if user}
           <div class="flex items-center gap-3">
             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/20 text-[12px] font-semibold text-brand">
-              {$session.data.user.name?.charAt(0)?.toUpperCase() ?? '?'}
+              {user.name?.charAt(0)?.toUpperCase() ?? '?'}
             </div>
             <div class="min-w-0 flex-1">
               <p class="truncate text-[13px] font-medium text-text-primary">
-                {$session.data.user.name || $session.data.user.email}
+                {user.name || user.email}
               </p>
               <span
                 class={cn(
                   'inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                  ($session.data.user as Record<string, unknown>)?.role === 'admin'
+                  (user as Record<string, unknown>)?.role === 'admin'
                     ? 'bg-brand/20 text-brand'
                     : 'bg-white/[0.06] text-text-muted',
                 )}
               >
-                {($session.data.user as Record<string, unknown>)?.role ?? 'user'}
+                {(user as Record<string, unknown>)?.role ?? 'user'}
               </span>
             </div>
             <button
-              class="rounded-md p-1.5 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+              class="rounded-md p-1.5 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
               onclick={handleSignOut}
+              disabled={signingOut}
               title="Sign out"
               aria-label="Sign out"
             >
@@ -167,7 +185,7 @@
             </button>
           </div>
         {:else}
-          <p class="text-[13px] text-text-muted">Loading...</p>
+          <p class="text-[13px] text-text-muted">Not signed in</p>
         {/if}
       </div>
     </aside>

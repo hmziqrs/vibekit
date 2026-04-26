@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import ImageUpload from '$lib/components/image-upload.svelte'
   import { createPostSchema } from '$lib/validators/blog'
 
@@ -61,7 +62,7 @@
       }
 
       const data = (await res.json()) as { id: string }
-      window.location.href = `/admin/blog/${data.id}/edit`
+      goto(`/admin/blog/${data.id}/edit`)
     } catch {
       serverError = 'Network error'
       saving = false

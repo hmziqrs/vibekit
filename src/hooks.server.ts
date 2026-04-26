@@ -79,8 +79,16 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 }
 
 const handleRouteGuards: Handle = async ({ event, resolve }) => {
-  const { pathname } = event.url
+  const pathname = event.url.pathname
   const user = event.locals.user
+
+  // Redirect authenticated users away from auth pages
+  if (user && (pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname.startsWith('/reset-password'))) {
+    return new Response('Redirect', {
+      status: 302,
+      headers: { location: '/app' },
+    })
+  }
 
   // Admin routes require auth + admin role
   if (pathname.startsWith('/admin')) {
