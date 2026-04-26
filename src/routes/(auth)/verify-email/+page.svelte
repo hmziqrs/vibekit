@@ -2,28 +2,25 @@
   import { page } from '$app/state'
   import { authClient } from '$lib/auth-client'
   import { Button } from '$lib/components/ui/button'
-  import { Input } from '$lib/components/ui/input'
-  import { Label } from '$lib/components/ui/label'
   import * as Card from '$lib/components/ui/card'
-
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
   import { z } from 'zod/v4'
 
   const resendSchema = z.object({
     email: z.email('Please enter a valid email address'),
   })
 
-  let errors = $state<Record<string, string>>({})
-  let serverError = $state('')
+  type ResendInput = z.infer<typeof resendSchema>
+
   let message = $state('')
-  let loading = $state(false)
   let verifying = $state(false)
   let verified = $state(false)
   let failed = $state(false)
   let verifyAttempted = $state(false)
 
   let token = $derived(page.url.searchParams.get('token') ?? '')
-  let email = $state(page.url.searchParams.get('email') ?? '')
-  let resendLoading = $state(false)
+  let initialEmail = $derived(page.url.searchParams.get('email') ?? '')
 
   // Trigger verification client-side once when token is present.
   $effect(() => {
@@ -35,54 +32,48 @@
 
   async function verifyEmail(t: string) {
     verifying = true
-    serverError = ''
     try {
       const res = await authClient.verifyEmail({ query: { token: t } })
       if (res.error) {
         failed = true
-        serverError = 'Verification failed. The link may have expired.'
       } else {
         verified = true
         message = 'Email verified! You can now log in.'
       }
     } catch {
       failed = true
-      serverError = 'Verification failed. The link may have expired.'
     } finally {
       verifying = false
     }
   }
 
-  async function handleResend(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    serverError = ''
-
-    const result = resendSchema.safeParse({ email })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    resendLoading = true
-    try {
-      const res = await authClient.sendVerificationEmail({
-        email,
-        callbackURL: '/verify-email',
-      })
-      if (res.error) {
-        serverError = res.error.message ?? 'Failed to send verification email.'
-      } else {
+  const form = createForm(() => ({
+    defaultValues: {
+      email: initialEmail,
+    },
+    validators: {
+      onSubmit: resendSchema,
+    },
+    onSubmit: async ({ value }: { value: ResendInput }) => {
+      try {
+        const res = await authClient.sendVerificationEmail({
+          email: value.email,
+          callbackURL: '/verify-email',
+        })
+        if (res?.error) {
+          return {
+            form: res.error.message ?? 'Failed to send verification email.',
+          }
+        }
         message = 'Verification email sent! Check your inbox.'
+        return null
+      } catch (err) {
+        return {
+          form: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        }
       }
-    } catch {
-      serverError = 'Something went wrong. Please try again.'
-    } finally {
-      resendLoading = false
-    }
-  }
+    },
+  }))
 </script>
 
 <div class="w-full max-w-sm">
@@ -109,35 +100,42 @@
         </div>
       {:else if failed}
         <div class="space-y-4">
-          {#if serverError}
-            <p class="text-sm text-red-400">{serverError}</p>
-          {/if}
-
           {#if message}
             <p class="text-sm text-green-400">{message}</p>
           {/if}
 
-          <form onsubmit={handleResend} class="space-y-3" novalidate>
-            <div class="space-y-2">
-              <Label for="resend-email">Email address</Label>
-              <Input
-                id="resend-email"
-                type="email"
-                placeholder="you@example.com"
-                bind:value={email}
-                disabled={resendLoading}
-                autocomplete="email"
-                aria-invalid={errors.email ? 'true' : 'false'}
-                aria-describedby={errors.email ? 'resend-email-error' : undefined}
-              />
-              {#if errors.email}
-                <p id="resend-email-error" class="text-[12px] text-red-400">{errors.email}</p>
-              {/if}
-            </div>
+          <form
+            onsubmit={form.handleSubmit}
+            class="space-y-3"
+            novalidate
+          >
+            <form.Field name="email">
+              {#snippet children(field)}
+                <TanstackField
+                  {field}
+                  label="Email address"
+                  type="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                />
+              {/snippet}
+            </form.Field>
 
-            <Button type="submit" class="w-full" disabled={resendLoading}>
-              {resendLoading ? 'Loading...' : 'Resend verification email'}
-            </Button>
+            <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+              {#snippet children(errorMessage)}
+                {#if errorMessage}
+                  <p class="text-sm text-red-400">{errorMessage}</p>
+                {/if}
+              {/snippet}
+            </form.Subscribe>
+
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {#snippet children(isSubmitting)}
+                <Button type="submit" class="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? 'Loading...' : 'Resend verification email'}
+                </Button>
+              {/snippet}
+            </form.Subscribe>
           </form>
         </div>
       {:else}
@@ -151,31 +149,38 @@
             account.
           </p>
 
-          {#if serverError}
-            <p class="text-sm text-red-400">{serverError}</p>
-          {/if}
+          <form
+            onsubmit={form.handleSubmit}
+            class="space-y-3"
+            novalidate
+          >
+            <form.Field name="email">
+              {#snippet children(field)}
+                <TanstackField
+                  {field}
+                  label="Email address"
+                  type="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                />
+              {/snippet}
+            </form.Field>
 
-          <form onsubmit={handleResend} class="space-y-3" novalidate>
-            <div class="space-y-2">
-              <Label for="resend-email">Email address</Label>
-              <Input
-                id="resend-email"
-                type="email"
-                placeholder="you@example.com"
-                bind:value={email}
-                disabled={resendLoading}
-                autocomplete="email"
-                aria-invalid={errors.email ? 'true' : 'false'}
-                aria-describedby={errors.email ? 'resend-email-error' : undefined}
-              />
-              {#if errors.email}
-                <p id="resend-email-error" class="text-[12px] text-red-400">{errors.email}</p>
-              {/if}
-            </div>
+            <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+              {#snippet children(errorMessage)}
+                {#if errorMessage}
+                  <p class="text-sm text-red-400">{errorMessage}</p>
+                {/if}
+              {/snippet}
+            </form.Subscribe>
 
-            <Button type="submit" class="w-full" variant="outline" disabled={resendLoading}>
-              {resendLoading ? 'Loading...' : 'Resend verification email'}
-            </Button>
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {#snippet children(isSubmitting)}
+                <Button type="submit" class="w-full" variant="outline" disabled={isSubmitting}>
+                  {isSubmitting ? 'Loading...' : 'Resend verification email'}
+                </Button>
+              {/snippet}
+            </form.Subscribe>
           </form>
         </div>
       {/if}

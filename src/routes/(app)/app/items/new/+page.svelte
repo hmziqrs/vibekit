@@ -1,49 +1,49 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import FormField from '$lib/components/form-field.svelte'
-  import { createItemSchema } from '$lib/validators/item'
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
+  import { z } from 'zod/v4'
 
-  let name = $state('')
-  let description = $state('')
-  let errors = $state<Record<string, string>>({})
-  let loading = $state(false)
-  let serverError = $state('')
+  const formSchema = z.object({
+    name: z.string().min(1, 'Name is required').max(100).trim(),
+    description: z.string().max(500),
+  })
+  type FormInput = z.infer<typeof formSchema>
 
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    serverError = ''
-
-    const result = createItemSchema.safeParse({
-      name,
-      description: description.trim() || undefined,
-    })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    loading = true
-    try {
-      const res = await fetch('/api/items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.data),
-      })
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string }
-        serverError = body.error || 'Failed to create item'
-        loading = false
-        return
+  const form = createForm(() => ({
+    defaultValues: {
+      name: '',
+      description: '',
+    },
+    validators: {
+      onSubmit: formSchema,
+    },
+    onSubmit: async ({ value }: { value: FormInput }) => {
+      try {
+        const payload = {
+          name: value.name,
+          description: value.description.trim() || undefined,
+        }
+        const res = await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string }
+          return {
+            form: body.error || 'Failed to create item',
+          }
+        }
+        goto('/app/items')
+        return null
+      } catch (err) {
+        return {
+          form: err instanceof Error ? err.message : 'Something went wrong',
+        }
       }
-      goto('/app/items')
-    } catch {
-      serverError = 'Something went wrong'
-      loading = false
-    }
-  }
+    },
+  }))
 </script>
 
 <div class="mx-auto max-w-2xl">
@@ -51,49 +51,58 @@
   <p class="mt-1 text-[14px] text-text-muted">Add a new item to your collection.</p>
 
   <div class="mt-6 rounded-xl border border-white/[0.06] bg-surface p-6">
-    <form onsubmit={handleSubmit} class="space-y-5">
-      {#if serverError}
-        <div class="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
-          <p class="text-[13px] text-destructive">{serverError}</p>
-        </div>
-      {/if}
+    <form onsubmit={form.handleSubmit} class="space-y-5" novalidate>
+      <form.Field name="name">
+        {#snippet children(field)}
+          <TanstackField
+            {field}
+            label="Name"
+            placeholder="Item name"
+          />
+        {/snippet}
+      </form.Field>
 
-      <FormField
-        id="item-name"
-        label="Name"
-        bind:value={name}
-        error={errors.name}
-        required={true}
-        maxlength={100}
-        placeholder="Item name"
-      />
+      <form.Field name="description">
+        {#snippet children(field)}
+          <TanstackField
+            {field}
+            label="Description"
+            type="textarea"
+            rows={4}
+            placeholder="Optional description"
+          />
+        {/snippet}
+      </form.Field>
 
-      <FormField
-        id="item-description"
-        label="Description"
-        type="textarea"
-        bind:value={description}
-        error={errors.description}
-        rows={4}
-        maxlength={2000}
-        placeholder="Optional description"
-      />
+      <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+        {#snippet children(errorMessage)}
+          {#if errorMessage}
+            <div class="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <p class="text-[13px] text-destructive">{errorMessage}</p>
+            </div>
+          {/if}
+        {/snippet}
+      </form.Subscribe>
 
-      <div class="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={loading || !name.trim()}
-          class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
-        >
-          {loading ? 'Creating...' : 'Create Item'}
-        </button>
-        <a
-          href="/app/items"
-          class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
-        >
-          Cancel
-        </a>
-      </div>
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {#snippet children(isSubmitting)}
+          <div class="flex gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+            >
+              {isSubmitting ? 'Creating...' : 'Create Item'}
+            </button>
+            <a
+              href="/app/items"
+              class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+            >
+              Cancel
+            </a>
+          </div>
+        {/snippet}
+      </form.Subscribe>
     </form>
   </div>
 </div>

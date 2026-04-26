@@ -1,57 +1,51 @@
 <script lang="ts">
   import { useSession, authClient } from '$lib/auth-client'
   import { z } from 'zod/v4'
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const nameSchema = z.object({
     name: z.string().min(1, 'Name is required').max(100, 'Name must be at most 100 characters').trim(),
   })
+  type NameInput = z.infer<typeof nameSchema>
 
   const session = useSession()
 
-  let name = $state('')
   let isEditing = $state(false)
-  let loading = $state(false)
   let successMessage = $state('')
-  let errorMessage = $state('')
-  let errors = $state<Record<string, string>>({})
 
   function startEditing() {
-    name = $session.data?.user?.name || ''
-    errors = {}
-    errorMessage = ''
     successMessage = ''
     isEditing = true
   }
 
-  async function handleUpdateName(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    errorMessage = ''
+  function cancelEditing() {
     successMessage = ''
+    isEditing = false
+    form.reset()
+  }
 
-    const result = nameSchema.safeParse({ name })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    loading = true
-    try {
-      const result = await authClient.updateUser({ name: name.trim() })
-      if (result.error) {
-        errorMessage = result.error.message || 'Failed to update name'
-      } else {
+  const form = createForm(() => ({
+    defaultValues: {
+      name: $session.data?.user?.name || '',
+    },
+    validators: {
+      onSubmit: nameSchema,
+    },
+    onSubmit: async ({ value }: { value: NameInput }) => {
+      try {
+        const res = await authClient.updateUser({ name: value.name.trim() })
+        if (res.error) {
+          return { form: res.error.message || 'Failed to update name' }
+        }
         successMessage = 'Name updated successfully'
         isEditing = false
+        return null
+      } catch {
+        return { form: 'Something went wrong' }
       }
-    } catch {
-      errorMessage = 'Something went wrong'
-    } finally {
-      loading = false
-    }
-  }
+    },
+  }))
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -118,53 +112,50 @@
       </div>
 
       {#if isEditing}
-        <form onsubmit={handleUpdateName} class="space-y-4" novalidate>
-          <div>
-            <label for="name" class="mb-1.5 block text-[13px] font-medium text-text-secondary"
-              >Name</label
-            >
-            <input
-              id="name"
-              type="text"
-              bind:value={name}
-              maxlength={100}
-              aria-invalid={errors.name ? 'true' : 'false'}
-              aria-describedby={errors.name ? 'name-error' : undefined}
-              class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-              placeholder="Enter your name"
-            />
-            {#if errors.name}
-              <p id="name-error" class="mt-1 text-[12px] text-destructive">{errors.name}</p>
-            {/if}
-          </div>
+        <form onsubmit={form.handleSubmit} class="space-y-4" novalidate>
+          <form.Field name="name">
+            {#snippet children(field)}
+              <TanstackField
+                {field}
+                label="Name"
+                maxlength={100}
+                placeholder="Enter your name"
+              />
+            {/snippet}
+          </form.Field>
 
           {#if successMessage}
             <p class="text-[13px] text-emerald-400">{successMessage}</p>
           {/if}
-          {#if errorMessage}
-            <p class="text-[13px] text-destructive">{errorMessage}</p>
-          {/if}
 
-          <div class="flex gap-2">
-            <button
-              type="submit"
-              disabled={loading || !name.trim()}
-              class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onclick={() => {
-                isEditing = false
-                errorMessage = ''
-                successMessage = ''
-              }}
-              class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
-            >
-              Cancel
-            </button>
-          </div>
+          <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+            {#snippet children(errorMessage)}
+              {#if errorMessage}
+                <p class="text-[13px] text-destructive">{errorMessage}</p>
+              {/if}
+            {/snippet}
+          </form.Subscribe>
+
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {#snippet children(isSubmitting)}
+              <div class="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onclick={cancelEditing}
+                  class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+                >
+                  Cancel
+                </button>
+              </div>
+            {/snippet}
+          </form.Subscribe>
         </form>
       {:else}
         <p class="text-[14px] text-text-primary">{$session.data?.user?.name || 'No name set'}</p>

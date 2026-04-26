@@ -1,47 +1,39 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { signUp } from '$lib/auth-client'
-  import { registerSchema } from '$lib/validators/auth'
+  import { registerSchema, type RegisterInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
-  import { Input } from '$lib/components/ui/input'
-  import { Label } from '$lib/components/ui/label'
   import * as Card from '$lib/components/ui/card'
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
 
-  let name = $state('')
-  let email = $state('')
-  let password = $state('')
-  let confirmPassword = $state('')
-  let errors = $state<Record<string, string>>({})
-  let serverError = $state('')
-  let loading = $state(false)
-
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    serverError = ''
-
-    const result = registerSchema.safeParse({ name, email, password, confirmPassword })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    loading = true
-    try {
-      const res = await signUp.email({ name, email, password })
-      if (res.error) {
-        serverError = res.error.message ?? 'Registration failed. Please try again.'
-        return
+  const form = createForm(() => ({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+    validators: {
+      onSubmit: registerSchema,
+    },
+    onSubmit: async ({ value }: { value: RegisterInput }) => {
+      try {
+        const res = await signUp.email(value)
+        if (res?.error) {
+          return {
+            form: res.error.message ?? 'Registration failed. Please try again.',
+          }
+        }
+        goto(`/verify-email?email=${encodeURIComponent(value.email)}`, { replaceState: true })
+        return null
+      } catch (err) {
+        return {
+          form: err instanceof Error ? err.message : 'Registration failed. Please try again.',
+        }
       }
-      goto(`/verify-email?email=${encodeURIComponent(email)}`, { replaceState: true })
-    } catch {
-      serverError = 'Something went wrong. Please try again.'
-    } finally {
-      loading = false
-    }
-  }
+    },
+  }))
 </script>
 
 <div class="w-full max-w-sm">
@@ -52,82 +44,73 @@
     </Card.Header>
 
     <Card.Content>
-      <form onsubmit={handleSubmit} class="space-y-4" novalidate>
-        {#if serverError}
-          <p class="text-sm text-red-400">{serverError}</p>
-        {/if}
+      <form
+        onsubmit={form.handleSubmit}
+        class="space-y-4"
+        novalidate
+      >
+        <form.Field name="name">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Name"
+              placeholder="Your name"
+              autocomplete="name"
+            />
+          {/snippet}
+        </form.Field>
 
-        <div class="space-y-2">
-          <Label for="name">Name</Label>
-          <Input
-            id="name"
-            type="text"
-            placeholder="Your name"
-            bind:value={name}
-            disabled={loading}
-            autocomplete="name"
-            aria-invalid={errors.name ? 'true' : 'false'}
-            aria-describedby={errors.name ? 'name-error' : undefined}
-          />
-          {#if errors.name}
-            <p id="name-error" class="text-[12px] text-red-400">{errors.name}</p>
-          {/if}
-        </div>
+        <form.Field name="email">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
+          {/snippet}
+        </form.Field>
 
-        <div class="space-y-2">
-          <Label for="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            bind:value={email}
-            disabled={loading}
-            autocomplete="email"
-            aria-invalid={errors.email ? 'true' : 'false'}
-            aria-describedby={errors.email ? 'email-error' : undefined}
-          />
-          {#if errors.email}
-            <p id="email-error" class="text-[12px] text-red-400">{errors.email}</p>
-          {/if}
-        </div>
+        <form.Field name="password">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Password"
+              type="password"
+              placeholder="Create a password"
+              autocomplete="new-password"
+            />
+          {/snippet}
+        </form.Field>
 
-        <div class="space-y-2">
-          <Label for="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Create a password"
-            bind:value={password}
-            disabled={loading}
-            autocomplete="new-password"
-            aria-invalid={errors.password ? 'true' : 'false'}
-            aria-describedby={errors.password ? 'password-error' : undefined}
-          />
-          {#if errors.password}
-            <p id="password-error" class="text-[12px] text-red-400">{errors.password}</p>
-          {/if}
-        </div>
+        <form.Field name="confirmPassword">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Confirm Password"
+              type="password"
+              placeholder="Confirm your password"
+              autocomplete="new-password"
+            />
+          {/snippet}
+        </form.Field>
 
-        <div class="space-y-2">
-          <Label for="confirm-password">Confirm password</Label>
-          <Input
-            id="confirm-password"
-            type="password"
-            placeholder="Confirm your password"
-            bind:value={confirmPassword}
-            disabled={loading}
-            autocomplete="new-password"
-            aria-invalid={errors.confirmPassword ? 'true' : 'false'}
-            aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
-          />
-          {#if errors.confirmPassword}
-            <p id="confirmPassword-error" class="text-[12px] text-red-400">{errors.confirmPassword}</p>
-          {/if}
-        </div>
+        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+          {#snippet children(errorMessage)}
+            {#if errorMessage}
+              <p class="text-sm text-red-400">{errorMessage}</p>
+            {/if}
+          {/snippet}
+        </form.Subscribe>
 
-        <Button type="submit" class="w-full" disabled={loading}>
-          {loading ? 'Loading...' : 'Create account'}
-        </Button>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {#snippet children(isSubmitting)}
+            <Button type="submit" class="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating account...' : 'Create account'}
+            </Button>
+          {/snippet}
+        </form.Subscribe>
       </form>
     </Card.Content>
 

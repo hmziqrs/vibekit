@@ -2,10 +2,11 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
-  import FormField from '$lib/components/form-field.svelte'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
-  import { updateItemSchema } from '$lib/validators/item'
+  import { updateItemSchema, type UpdateItemInput } from '$lib/validators/item'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { createForm } from '@tanstack/svelte-form'
   import type { ItemData } from '$lib/types'
 
   let itemId = $derived(page.params.id ?? '')
@@ -21,61 +22,51 @@
     },
   }))
 
-  let name = $state('')
-  let description = $state('')
-  let errors = $state<Record<string, string>>({})
-  let loading = $state(false)
-  let serverError = $state('')
   let lastItemId = $state('')
 
-  // Sync form state from query data when item changes.
-  // This effect is the standard pattern for initializing editable
-  // local state from external async data (TanStack Query).
+  import { z } from 'zod/v4'
+  const formSchema = z.object({
+    name: z.string().min(1, 'Name is required').max(100).trim(),
+    description: z.string().max(500),
+  })
+  type FormInput = z.infer<typeof formSchema>
+
+  const form = createForm(() => ({
+    defaultValues: {
+      name: itemQuery.data?.name ?? '',
+      description: itemQuery.data?.description ?? '',
+    },
+    validators: {
+      onSubmit: formSchema,
+    },
+    onSubmit: async ({ value }: { value: FormInput }) => {
+      try {
+        const res = await fetch(`/api/items/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(value),
+        })
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string }
+          return { form: body.error || 'Failed to update item' }
+        }
+        await queryClient.invalidateQueries({ queryKey: ['items'] })
+        goto('/app/items')
+        return null
+      } catch (err) {
+        return { form: err instanceof Error ? err.message : 'Something went wrong' }
+      }
+    },
+  }))
+
   $effect(() => {
     const item = itemQuery.data
     if (item && itemId !== lastItemId) {
-      name = item.name
-      description = item.description || ''
       lastItemId = itemId
+      form.setFieldValue('name', item.name)
+      form.setFieldValue('description', item.description || '')
     }
   })
-
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    serverError = ''
-
-    const result = updateItemSchema.safeParse({
-      name,
-      description: description.trim() || undefined,
-    })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    loading = true
-    try {
-      const res = await fetch(`/api/items/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.data),
-      })
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string }
-        serverError = body.error || 'Failed to update item'
-        loading = false
-        return
-      }
-      await queryClient.invalidateQueries({ queryKey: ['items'] })
-      goto('/app/items')
-    } catch {
-      serverError = 'Something went wrong'
-      loading = false
-    }
-  }
 </script>
 
 <div class="mx-auto max-w-2xl">
@@ -105,33 +96,28 @@
     </div>
   {:else}
     <div class="mt-6 rounded-xl border border-white/[0.06] bg-surface p-6">
-      <form onsubmit={handleSubmit} class="space-y-5">
-        {#if serverError}
-          <div class="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p class="text-[13px] text-destructive">{serverError}</p>
-          </div>
-        {/if}
+      <form onsubmit={form.handleSubmit} class="space-y-5" novalidate>
+        <form.Field name="name">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Name"
+              placeholder="Item name"
+            />
+          {/snippet}
+        </form.Field>
 
-        <FormField
-          id="edit-name"
-          label="Name"
-          bind:value={name}
-          error={errors.name}
-          required={true}
-          maxlength={100}
-          placeholder="Item name"
-        />
-
-        <FormField
-          id="edit-description"
-          label="Description"
-          type="textarea"
-          bind:value={description}
-          error={errors.description}
-          rows={4}
-          maxlength={2000}
-          placeholder="Optional description"
-        />
+        <form.Field name="description">
+          {#snippet children(field)}
+            <TanstackField
+              {field}
+              label="Description"
+              type="textarea"
+              rows={4}
+              placeholder="Optional description"
+            />
+          {/snippet}
+        </form.Field>
 
         {#if itemQuery.data}
           <div class="rounded-lg border border-white/[0.06] bg-surface-elevated p-3">
@@ -142,21 +128,35 @@
           </div>
         {/if}
 
-        <div class="flex gap-2 pt-2">
-          <button
-            type="submit"
-            disabled={loading || !name.trim()}
-            class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
-          >
-            {loading ? 'Saving...' : 'Save Changes'}
-          </button>
-          <a
-            href="/app/items"
-            class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
-          >
-            Cancel
-          </a>
-        </div>
+        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+          {#snippet children(errorMessage)}
+            {#if errorMessage}
+              <div class="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+                <p class="text-[13px] text-destructive">{errorMessage}</p>
+              </div>
+            {/if}
+          {/snippet}
+        </form.Subscribe>
+
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {#snippet children(isSubmitting)}
+            <div class="flex gap-2 pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+              <a
+                href="/app/items"
+                class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+              >
+                Cancel
+              </a>
+            </div>
+          {/snippet}
+        </form.Subscribe>
       </form>
     </div>
   {/if}

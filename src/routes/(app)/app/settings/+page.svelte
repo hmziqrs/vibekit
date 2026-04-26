@@ -1,6 +1,8 @@
 <script lang="ts">
   import { authClient } from '$lib/auth-client'
   import { z } from 'zod/v4'
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const changePasswordSchema = z
     .object({
@@ -15,57 +17,37 @@
       message: 'Passwords do not match',
       path: ['confirmPassword'],
     })
-
-  let currentPassword = $state('')
-  let newPassword = $state('')
-  let confirmPassword = $state('')
-  let passwordLoading = $state(false)
-  let passwordSuccess = $state('')
-  let passwordError = $state('')
-  let errors = $state<Record<string, string>>({})
+  type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 
   let showDeleteConfirm = $state(false)
   let deleteConfirmText = $state('')
 
-  async function handleChangePassword(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    passwordError = ''
-    passwordSuccess = ''
-
-    const result = changePasswordSchema.safeParse({
-      currentPassword,
-      newPassword,
-      confirmPassword,
-    })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    passwordLoading = true
-    try {
-      const result = await authClient.changePassword({
-        currentPassword,
-        newPassword,
-        revokeOtherSessions: true,
-      })
-      if (result.error) {
-        passwordError = result.error.message || 'Failed to change password'
-      } else {
-        passwordSuccess = 'Password changed successfully'
-        currentPassword = ''
-        newPassword = ''
-        confirmPassword = ''
+  const form = createForm(() => ({
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    },
+    validators: {
+      onSubmit: changePasswordSchema,
+    },
+    onSubmit: async ({ value }: { value: ChangePasswordInput }) => {
+      try {
+        const res = await authClient.changePassword({
+          currentPassword: value.currentPassword,
+          newPassword: value.newPassword,
+          revokeOtherSessions: true,
+        })
+        if (res.error) {
+          return { form: res.error.message || 'Failed to change password' }
+        }
+        form.reset()
+        return null
+      } catch {
+        return { form: 'Something went wrong' }
       }
-    } catch {
-      passwordError = 'Something went wrong'
-    } finally {
-      passwordLoading = false
-    }
-  }
+    },
+  }))
 
   function handleDeleteAccount() {
     if (deleteConfirmText !== 'DELETE') return
@@ -88,84 +70,59 @@
       Update your password. You will be logged out of other sessions.
     </p>
 
-    <form onsubmit={handleChangePassword} class="mt-4 space-y-4" novalidate>
-      <div>
-        <label
-          for="current-password"
-          class="mb-1.5 block text-[13px] font-medium text-text-secondary"
-        >
-          Current Password
-        </label>
-        <input
-          id="current-password"
-          type="password"
-          bind:value={currentPassword}
-          aria-invalid={errors.currentPassword ? 'true' : 'false'}
-          aria-describedby={errors.currentPassword ? 'current-password-error' : undefined}
-          class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          placeholder="Enter current password"
-        />
-        {#if errors.currentPassword}
-          <p id="current-password-error" class="mt-1 text-[12px] text-destructive">{errors.currentPassword}</p>
-        {/if}
-      </div>
+    <form onsubmit={form.handleSubmit} class="mt-4 space-y-4" novalidate>
+      <form.Field name="currentPassword">
+        {#snippet children(field)}
+          <TanstackField
+            {field}
+            label="Current Password"
+            type="password"
+            placeholder="Enter current password"
+          />
+        {/snippet}
+      </form.Field>
 
-      <div>
-        <label
-          for="new-password"
-          class="mb-1.5 block text-[13px] font-medium text-text-secondary"
-        >
-          New Password
-        </label>
-        <input
-          id="new-password"
-          type="password"
-          bind:value={newPassword}
-          aria-invalid={errors.newPassword ? 'true' : 'false'}
-          aria-describedby={errors.newPassword ? 'new-password-error' : undefined}
-          class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          placeholder="Enter new password"
-        />
-        {#if errors.newPassword}
-          <p id="new-password-error" class="mt-1 text-[12px] text-destructive">{errors.newPassword}</p>
-        {/if}
-      </div>
+      <form.Field name="newPassword">
+        {#snippet children(field)}
+          <TanstackField
+            {field}
+            label="New Password"
+            type="password"
+            placeholder="Enter new password"
+          />
+        {/snippet}
+      </form.Field>
 
-      <div>
-        <label
-          for="confirm-password"
-          class="mb-1.5 block text-[13px] font-medium text-text-secondary"
-        >
-          Confirm New Password
-        </label>
-        <input
-          id="confirm-password"
-          type="password"
-          bind:value={confirmPassword}
-          aria-invalid={errors.confirmPassword ? 'true' : 'false'}
-          aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
-          class="w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          placeholder="Confirm new password"
-        />
-        {#if errors.confirmPassword}
-          <p id="confirm-password-error" class="mt-1 text-[12px] text-destructive">{errors.confirmPassword}</p>
-        {/if}
-      </div>
+      <form.Field name="confirmPassword">
+        {#snippet children(field)}
+          <TanstackField
+            {field}
+            label="Confirm New Password"
+            type="password"
+            placeholder="Confirm new password"
+          />
+        {/snippet}
+      </form.Field>
 
-      {#if passwordSuccess}
-        <p class="text-[13px] text-emerald-400">{passwordSuccess}</p>
-      {/if}
-      {#if passwordError}
-        <p class="text-[13px] text-destructive">{passwordError}</p>
-      {/if}
+      <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+        {#snippet children(errorMessage)}
+          {#if errorMessage}
+            <p class="text-[13px] text-destructive">{errorMessage}</p>
+          {/if}
+        {/snippet}
+      </form.Subscribe>
 
-      <button
-        type="submit"
-        disabled={passwordLoading || !currentPassword || !newPassword}
-        class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
-      >
-        {passwordLoading ? 'Changing...' : 'Change Password'}
-      </button>
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {#snippet children(isSubmitting)}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+          >
+            {isSubmitting ? 'Changing...' : 'Change Password'}
+          </button>
+        {/snippet}
+      </form.Subscribe>
     </form>
   </div>
 

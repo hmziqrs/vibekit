@@ -1,50 +1,44 @@
 <script lang="ts">
   import { page } from '$app/state'
   import { authClient } from '$lib/auth-client'
-  import { resetPasswordSchema } from '$lib/validators/auth'
+  import { resetPasswordSchema, type ResetPasswordInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
-  import { Input } from '$lib/components/ui/input'
-  import { Label } from '$lib/components/ui/label'
   import * as Card from '$lib/components/ui/card'
+  import { createForm } from '@tanstack/svelte-form'
+  import TanstackField from '$lib/components/tanstack-field.svelte'
 
-  let password = $state('')
-  let confirmPassword = $state('')
-  let errors = $state<Record<string, string>>({})
-  let serverError = $state('')
   let message = $state('')
-  let loading = $state(false)
   let done = $state(false)
 
   let token = $derived(page.url.searchParams.get('token') ?? '')
 
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault()
-    errors = {}
-    serverError = ''
-
-    const result = resetPasswordSchema.safeParse({ token, password, confirmPassword })
-    if (!result.success) {
-      errors = Object.fromEntries(
-        result.error.issues.map((i) => [i.path[0] as string, i.message]),
-      )
-      return
-    }
-
-    loading = true
-    try {
-      const res = await authClient.resetPassword({ newPassword: password })
-      if (res.error) {
-        serverError = res.error.message ?? 'Failed to reset password.'
-        return
+  const form = createForm(() => ({
+    defaultValues: {
+      token: page.url.searchParams.get('token') ?? '',
+      password: '',
+      confirmPassword: '',
+    },
+    validators: {
+      onSubmit: resetPasswordSchema,
+    },
+    onSubmit: async ({ value }: { value: ResetPasswordInput }) => {
+      try {
+        const res = await authClient.resetPassword({ newPassword: value.password })
+        if (res?.error) {
+          return {
+            form: res.error.message ?? 'Failed to reset password.',
+          }
+        }
+        done = true
+        message = 'Password reset successfully. You can now sign in.'
+        return null
+      } catch (err) {
+        return {
+          form: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        }
       }
-      done = true
-      message = 'Password reset successfully. You can now sign in.'
-    } catch {
-      serverError = 'Something went wrong. Please try again.'
-    } finally {
-      loading = false
-    }
-  }
+    },
+  }))
 </script>
 
 <div class="w-full max-w-sm">
@@ -74,48 +68,50 @@
           </a>
         </div>
       {:else}
-        <form onsubmit={handleSubmit} class="space-y-4" novalidate>
-          {#if serverError}
-            <p class="text-sm text-red-400">{serverError}</p>
-          {/if}
+        <form
+          onsubmit={form.handleSubmit}
+          class="space-y-4"
+          novalidate
+        >
+          <form.Field name="password">
+            {#snippet children(field)}
+              <TanstackField
+                {field}
+                label="New password"
+                type="password"
+                placeholder="Enter new password"
+                autocomplete="new-password"
+              />
+            {/snippet}
+          </form.Field>
 
-          <div class="space-y-2">
-            <Label for="password">New password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Enter new password"
-              bind:value={password}
-              disabled={loading}
-              autocomplete="new-password"
-              aria-invalid={errors.password ? 'true' : 'false'}
-              aria-describedby={errors.password ? 'password-error' : undefined}
-            />
-            {#if errors.password}
-              <p id="password-error" class="text-[12px] text-red-400">{errors.password}</p>
-            {/if}
-          </div>
+          <form.Field name="confirmPassword">
+            {#snippet children(field)}
+              <TanstackField
+                {field}
+                label="Confirm new password"
+                type="password"
+                placeholder="Confirm new password"
+                autocomplete="new-password"
+              />
+            {/snippet}
+          </form.Field>
 
-          <div class="space-y-2">
-            <Label for="confirm-password">Confirm new password</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              placeholder="Confirm new password"
-              bind:value={confirmPassword}
-              disabled={loading}
-              autocomplete="new-password"
-              aria-invalid={errors.confirmPassword ? 'true' : 'false'}
-              aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
-            />
-            {#if errors.confirmPassword}
-              <p id="confirmPassword-error" class="text-[12px] text-red-400">{errors.confirmPassword}</p>
-            {/if}
-          </div>
+          <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+            {#snippet children(errorMessage)}
+              {#if errorMessage}
+                <p class="text-sm text-red-400">{errorMessage}</p>
+              {/if}
+            {/snippet}
+          </form.Subscribe>
 
-          <Button type="submit" class="w-full" disabled={loading}>
-            {loading ? 'Loading...' : 'Reset password'}
-          </Button>
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {#snippet children(isSubmitting)}
+              <Button type="submit" class="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Loading...' : 'Reset password'}
+              </Button>
+            {/snippet}
+          </form.Subscribe>
         </form>
       {/if}
     </Card.Content>
