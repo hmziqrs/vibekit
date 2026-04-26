@@ -3,6 +3,7 @@
 	import { page } from '$app/state'
 	import { goto } from '$app/navigation'
 	import { browser } from '$app/environment'
+	import SmartLink from './smart-link.svelte'
 
 	let { class: className = '' } = $props()
 
@@ -107,8 +108,18 @@
 					{/if}
 				</div>
 			{:else}
-				<a href="/login" class="hidden text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary sm:block">Log in</a>
-				<a href="/register" class="rounded-lg bg-text-primary px-4 py-2 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-white">Get started</a>
+				<SmartLink
+          href="/login"
+          fallback="/app"
+          class="text-sm text-text-muted hover:text-text-primary transition-colors"
+          >Log in</SmartLink
+        >
+        <SmartLink
+          href="/register"
+          fallback="/app"
+          class="text-sm px-3 py-1.5 bg-accent text-white rounded-md hover:opacity-90 transition-opacity"
+          >Get started</SmartLink
+        >
 			{/if}
 		</div>
 	</div>

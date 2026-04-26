@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
+	import SmartLink from '$lib/components/smart-link.svelte'
+	import { Rocket } from '@lucide/svelte'
 </script>
 
 <svelte:head>
@@ -36,9 +38,15 @@
 			</p>
 
 			<div class="hero-fade hero-fade-2 flex flex-col items-center justify-center gap-3 sm:flex-row">
-				<a href="/register" class="w-full rounded-xl bg-brand px-7 py-3 text-[14px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover sm:w-auto">
-					Start building free
-				</a>
+				<SmartLink
+            href="/register"
+            fallback="/app"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Rocket class="w-4 h-4" />
+            Start Building Free
+          </SmartLink>
+				<SmartLink href="/register" fallback="/app" class="text-accent font-medium hover:opacity-80 transition-opacity text-base">Get started for free &rarr;</SmartLink>
 				<a href="#features" class="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3 text-[14px] font-medium text-text-secondary transition-all hover:border-white/[0.2] hover:text-text-primary sm:w-auto">
 					See what's inside
 				</a>

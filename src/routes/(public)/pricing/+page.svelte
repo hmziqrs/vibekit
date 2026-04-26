@@ -1,6 +1,7 @@
 <script lang="ts">
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
+  import SmartLink from '$lib/components/smart-link.svelte'
   import { seo } from '$lib/seo'
 
   const meta = seo({
@@ -198,12 +199,13 @@
     <p class="mx-auto mb-9 max-w-lg text-lg leading-relaxed text-text-muted">
       Get the full stack up and running in minutes. Auth, database, admin — everything wired together.
     </p>
-    <a
+    <SmartLink
       href="/register"
+      fallback="/app"
       class="inline-block rounded-xl bg-brand px-8 py-3.5 text-[15px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover"
     >
       Get started free
-    </a>
+    </SmartLink>
     <p class="mt-5 text-[13px] text-text-subtle">No credit card required. MIT licensed.</p>
   </div>
 </section>

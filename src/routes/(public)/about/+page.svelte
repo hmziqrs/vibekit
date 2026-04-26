@@ -1,6 +1,7 @@
 <script lang="ts">
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
+  import SmartLink from '$lib/components/smart-link.svelte'
   import { seo } from '$lib/seo'
 
   const meta = seo({
@@ -84,10 +85,9 @@
     <p class="mx-auto mb-8 max-w-lg text-[15px] leading-relaxed text-text-muted">
       Clone the repo, run one command, and have a full SaaS scaffold running locally in seconds.
     </p>
-    <a href="/register"
-      class="inline-block rounded-xl bg-brand px-7 py-3 text-[14px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover">
+    <SmartLink href="/register" fallback="/app" class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-white font-medium rounded-lg hover:opacity-90 transition-opacity">
       Get started free
-    </a>
+    </SmartLink>
   </div>
 </section>
 
