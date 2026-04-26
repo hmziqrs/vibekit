@@ -1,11 +1,22 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { signUp } from '$lib/auth-client'
+  import { page } from '$app/state'
+  import { signUp, useSession } from '$lib/auth-client'
   import { registerSchema, type RegisterInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
   import TanstackField from '$lib/components/tanstack-field.svelte'
+
+  const session = useSession()
+
+  // Redirect already-authenticated users away from register page
+  $effect(() => {
+    const user = $session.data?.user ?? page.data.user
+    if (user) {
+      goto('/app', { replaceState: true })
+    }
+  })
 
   const form = createForm(() => ({
     defaultValues: {

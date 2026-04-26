@@ -1,12 +1,19 @@
 <script lang="ts">
   import { useSession, signOut } from '$lib/auth-client'
   import { page } from '$app/state'
+  import { goto } from '$app/navigation'
+  import { browser } from '$app/environment'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
   let { children } = $props()
   const session = useSession()
   let mobileMenuOpen = $state(false)
+  let signingOut = $state(false)
+
+  // Use server-rendered user to prevent sidebar flash; useSession for reactive updates
+  const user = $derived($session.data?.user ?? page.data.user ?? null)
+  const isInitializing = $derived(browser && $session.isPending && !page.data.user)
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
@@ -21,9 +28,11 @@
     { href: '/app/settings', label: 'Settings' },
   ]
 
-  function handleSignOut() {
-    signOut()
-    window.location.href = '/'
+  async function handleSignOut() {
+    signingOut = true
+    await signOut()
+    signingOut = false
+    goto('/')
   }
 
   function isActive(href: string) {
@@ -115,26 +124,35 @@
 
       <!-- User section -->
       <div class="border-t border-white/[0.06] p-4">
-        {#if $session.data?.user}
+        {#if isInitializing}
+          <div class="mb-3 flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-white/[0.06]"></div>
+            <div class="min-w-0 flex-1 space-y-2">
+              <div class="h-3 w-20 animate-pulse rounded bg-white/[0.06]"></div>
+              <div class="h-2 w-28 animate-pulse rounded bg-white/[0.06]"></div>
+            </div>
+          </div>
+        {:else if user}
           <div class="mb-3 flex items-center gap-3">
             <div
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-medium text-text-secondary"
             >
-              {$session.data.user.name?.charAt(0)?.toUpperCase() || 'U'}
+              {user.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div class="min-w-0">
               <p class="truncate text-[13px] font-medium text-text-primary">
-                {$session.data.user.name}
+                {user.name}
               </p>
-              <p class="truncate text-[11px] text-text-subtle">{$session.data.user.email}</p>
+              <p class="truncate text-[11px] text-text-subtle">{user.email}</p>
             </div>
           </div>
         {/if}
         <button
           onclick={handleSignOut}
-          class="w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+          disabled={signingOut}
+          class="w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
         >
-          Sign out
+          {signingOut ? 'Signing out...' : 'Sign out'}
         </button>
       </div>
     </aside>
