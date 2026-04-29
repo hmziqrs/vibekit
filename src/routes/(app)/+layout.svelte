@@ -31,8 +31,7 @@
   async function handleSignOut() {
     signingOut = true
     await signOut()
-    signingOut = false
-    goto('/')
+    window.location.href = '/'
   }
 
   function isActive(href: string) {

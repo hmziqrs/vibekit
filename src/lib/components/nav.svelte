@@ -29,8 +29,7 @@
 		closeDropdown()
 		signingOut = true
 		await signOut()
-		signingOut = false
-		goto('/')
+		window.location.href = '/'
 	}
 
 	$effect(() => {
