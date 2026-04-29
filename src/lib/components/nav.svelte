@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { useSession, signOut } from '$lib/auth-client'
 	import { page } from '$app/state'
-	import { goto } from '$app/navigation'
+	import { goto, invalidate } from '$app/navigation'
 	import { browser } from '$app/environment'
 	import SmartLink from './smart-link.svelte'
 
@@ -29,7 +29,9 @@
 		closeDropdown()
 		signingOut = true
 		await signOut()
-		window.location.href = '/'
+		await invalidate('app:auth')
+		signingOut = false
+		goto('/')
 	}
 
 	$effect(() => {

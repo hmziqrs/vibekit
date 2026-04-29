@@ -1,6 +1,7 @@
 <script lang="ts">
   import { useSession, authClient } from '$lib/auth-client'
   import { page } from '$app/state'
+  import { invalidate } from '$app/navigation'
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
   import TanstackField from '$lib/components/tanstack-field.svelte'
@@ -41,6 +42,7 @@
         if (res.error) {
           return { form: res.error.message || 'Failed to update name' }
         }
+        await invalidate('app:auth')
         successMessage = 'Name updated successfully'
         isEditing = false
         return null
