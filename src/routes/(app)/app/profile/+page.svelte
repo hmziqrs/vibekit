@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { useSession, authClient } from '$lib/auth-client'
-  import { page } from '$app/state'
+  import { getContext } from 'svelte'
+  import type { AuthContext } from '$lib/auth.svelte'
+  import { authClient } from '$lib/auth-client'
   import { invalidate } from '$app/navigation'
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
@@ -11,9 +12,7 @@
   })
   type NameInput = z.infer<typeof nameSchema>
 
-  const session = useSession()
-  // Use server-rendered user to prevent profile info flash
-  const user = $derived($session.data?.user ?? page.data.user ?? null)
+  const auth = getContext<AuthContext>('auth')
 
   let isEditing = $state(false)
   let successMessage = $state('')
@@ -31,7 +30,7 @@
 
   const form = createForm(() => ({
     defaultValues: {
-      name: user?.name || '',
+      name: auth.user?.name || '',
     },
     validators: {
       onSubmit: nameSchema,
@@ -71,13 +70,13 @@
       <div
         class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xl font-semibold text-text-secondary"
       >
-        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+        {auth.user?.name?.charAt(0)?.toUpperCase() || 'U'}
       </div>
       <div>
         <p class="text-[15px] font-medium text-text-primary">
-          {user?.name || 'User'}
+          {auth.user?.name || 'User'}
         </p>
-        <p class="text-[13px] text-text-muted">{user?.email || ''}</p>
+        <p class="text-[13px] text-text-muted">{auth.user?.email || ''}</p>
       </div>
     </div>
 
@@ -85,7 +84,7 @@
     <div class="mb-6 rounded-lg border border-white/[0.06] bg-surface-elevated p-4">
       <p class="text-[11px] uppercase tracking-wider text-text-subtle">Role</p>
       <p class="mt-1 text-[14px] font-medium text-text-primary">
-        {user?.name ? 'Member' : 'User'}
+        {auth.user?.name ? 'Member' : 'User'}
       </p>
     </div>
 
@@ -93,8 +92,8 @@
     <div class="mb-6 rounded-lg border border-white/[0.06] bg-surface-elevated p-4">
       <p class="text-[11px] uppercase tracking-wider text-text-subtle">Member Since</p>
       <p class="mt-1 text-[14px] font-medium text-text-primary">
-        {user?.createdAt
-          ? formatDate(String(user.createdAt))
+        {auth.user?.createdAt
+          ? formatDate(String(auth.user.createdAt))
           : 'N/A'}
       </p>
     </div>
@@ -163,7 +162,7 @@
           </form.Subscribe>
         </form>
       {:else}
-        <p class="text-[14px] text-text-primary">{user?.name || 'No name set'}</p>
+        <p class="text-[14px] text-text-primary">{auth.user?.name || 'No name set'}</p>
       {/if}
     </div>
 
@@ -171,7 +170,7 @@
     <div class="mt-6 border-t border-white/[0.06] pt-6">
       <h2 class="mb-1 text-[15px] font-medium text-text-primary">Email</h2>
       <p class="mb-3 text-[13px] text-text-muted">Your email address cannot be changed.</p>
-      <p class="text-[14px] text-text-primary">{user?.email || 'N/A'}</p>
+      <p class="text-[14px] text-text-primary">{auth.user?.email || 'N/A'}</p>
     </div>
   </div>
 </div>

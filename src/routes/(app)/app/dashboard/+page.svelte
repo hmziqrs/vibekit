@@ -1,12 +1,11 @@
 <script lang="ts">
+  import { getContext } from 'svelte'
+  import type { AuthContext } from '$lib/auth.svelte'
   import { createQuery } from '@tanstack/svelte-query'
-  import { useSession } from '$lib/auth-client'
-  import { page } from '$app/state'
   import type { ItemData } from '$lib/types'
 
-  const session = useSession()
-  // Use server-rendered user name to prevent "Welcome back, User" flash
-  const userName = $derived($session.data?.user?.name ?? page.data.user?.name ?? 'User')
+  const auth = getContext<AuthContext>('auth')
+  const userName = $derived(auth.user?.name ?? 'User')
 
   const itemsQuery = createQuery(() => ({
     queryKey: ['items', 'recent'],

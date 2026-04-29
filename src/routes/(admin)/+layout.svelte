@@ -1,19 +1,14 @@
 <script lang="ts">
-  import { useSession, signOut } from '$lib/auth-client'
+  import { getContext } from 'svelte'
+  import type { AuthContext } from '$lib/auth.svelte'
   import { page } from '$app/state'
-  import { goto, invalidate } from '$app/navigation'
-  import { browser } from '$app/environment'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
   let { children } = $props()
-  const session = useSession()
+  const auth = getContext<AuthContext>('auth')
   let mobileOpen = $state(false)
   let signingOut = $state(false)
-
-  // Server-rendered user prevents auth flash; useSession takes over after hydration
-  const user = $derived($session.data?.user ?? page.data.user ?? null)
-  const isInitializing = $derived(browser && $session.isPending && !page.data.user)
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
@@ -32,10 +27,8 @@
 
   async function handleSignOut() {
     signingOut = true
-    await signOut()
-    await invalidate('app:auth')
+    await auth.logout('/')
     signingOut = false
-    goto('/')
   }
 
   function closeMobile() {
@@ -143,7 +136,7 @@
 
       <!-- Sidebar footer: user info + logout -->
       <div class="absolute bottom-0 left-0 right-0 border-t border-white/[0.06] p-4">
-        {#if isInitializing}
+        {#if auth.isPending}
           <div class="flex items-center gap-3">
             <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-white/[0.06]"></div>
             <div class="min-w-0 flex-1 space-y-2">
@@ -151,24 +144,23 @@
               <div class="h-2 w-10 animate-pulse rounded bg-white/[0.06]"></div>
             </div>
           </div>
-        {:else if user}
+        {:else if auth.user}
           <div class="flex items-center gap-3">
             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/20 text-[12px] font-semibold text-brand">
-              {user.name?.charAt(0)?.toUpperCase() ?? '?'}
+              {auth.user.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div class="min-w-0 flex-1">
-              <p class="truncate text-[13px] font-medium text-text-primary">
-                {user.name || user.email}
-              </p>
+              <p class="truncate text-[11px] text-text-subtle">{auth.user.email}</p>
+              <p class="truncate text-[13px] font-medium text-text-primary">{auth.user.name || auth.user.email}</p>
               <span
                 class={cn(
                   'inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                  (user as Record<string, unknown>)?.role === 'admin'
+                  (auth.user as Record<string, unknown>)?.role === 'admin'
                     ? 'bg-brand/20 text-brand'
                     : 'bg-white/[0.06] text-text-muted',
                 )}
               >
-                {(user as Record<string, unknown>)?.role ?? 'user'}
+                {(auth.user as Record<string, unknown>)?.role ?? 'user'}
               </span>
             </div>
             <button

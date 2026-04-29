@@ -1,19 +1,14 @@
 <script lang="ts">
-  import { useSession, signOut } from '$lib/auth-client'
+  import { getContext } from 'svelte'
+  import type { AuthContext } from '$lib/auth.svelte'
   import { page } from '$app/state'
-  import { goto, invalidate } from '$app/navigation'
-  import { browser } from '$app/environment'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
   let { children } = $props()
-  const session = useSession()
+  const auth = getContext<AuthContext>('auth')
   let mobileMenuOpen = $state(false)
   let signingOut = $state(false)
-
-  // Use server-rendered user to prevent sidebar flash; useSession for reactive updates
-  const user = $derived($session.data?.user ?? page.data.user ?? null)
-  const isInitializing = $derived(browser && $session.isPending && !page.data.user)
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
@@ -30,10 +25,8 @@
 
   async function handleSignOut() {
     signingOut = true
-    await signOut()
-    await invalidate('app:auth')
+    await auth.logout('/')
     signingOut = false
-    goto('/')
   }
 
   function isActive(href: string) {
@@ -125,7 +118,7 @@
 
       <!-- User section -->
       <div class="border-t border-white/[0.06] p-4">
-        {#if isInitializing}
+        {#if auth.isPending}
           <div class="mb-3 flex items-center gap-3">
             <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-white/[0.06]"></div>
             <div class="min-w-0 flex-1 space-y-2">
@@ -133,18 +126,18 @@
               <div class="h-2 w-28 animate-pulse rounded bg-white/[0.06]"></div>
             </div>
           </div>
-        {:else if user}
+        {:else if auth.user}
           <div class="mb-3 flex items-center gap-3">
             <div
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-medium text-text-secondary"
             >
-              {user.name?.charAt(0)?.toUpperCase() || 'U'}
+              {auth.user.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div class="min-w-0">
               <p class="truncate text-[13px] font-medium text-text-primary">
-                {user.name}
+                {auth.user.name}
               </p>
-              <p class="truncate text-[11px] text-text-subtle">{user.email}</p>
+              <p class="truncate text-[11px] text-text-subtle">{auth.user.email}</p>
             </div>
           </div>
         {/if}

@@ -1,21 +1,13 @@
 <script lang="ts">
-	import { useSession, signOut } from '$lib/auth-client'
-	import { page } from '$app/state'
-	import { goto, invalidate } from '$app/navigation'
-	import { browser } from '$app/environment'
+	import { getContext } from 'svelte'
+	import type { AuthContext } from '$lib/auth.svelte'
 	import SmartLink from './smart-link.svelte'
 
 	let { class: className = '' } = $props()
 
-	const session = useSession()
+	const auth = getContext<AuthContext>('auth')
 	let dropdownOpen = $state(false)
 	let signingOut = $state(false)
-
-	// Use server-rendered user as synchronous initial state to prevent flash.
-	// Once client hydrates, useSession() takes over for reactive updates.
-	const user = $derived($session.data?.user ?? page.data.user ?? null)
-	// Only show initializing skeleton on the client; SSR pages know the user immediately
-	const isInitializing = $derived(browser && $session.isPending && !page.data.user)
 
 	function toggleDropdown() {
 		dropdownOpen = !dropdownOpen
@@ -28,10 +20,8 @@
 	async function handleSignOut() {
 		closeDropdown()
 		signingOut = true
-		await signOut()
-		await invalidate('app:auth')
+		await auth.logout('/')
 		signingOut = false
-		goto('/')
 	}
 
 	$effect(() => {
@@ -63,10 +53,10 @@
 		</nav>
 
 		<div class="flex items-center gap-3">
-			{#if isInitializing}
+			{#if auth.isPending}
 				<!-- Loading skeleton to prevent auth flash -->
 				<div class="h-8 w-24 animate-pulse rounded-lg bg-white/[0.04]"></div>
-			{:else if user}
+			{:else if auth.user}
 				<div class="relative" data-dropdown-menu>
 					<button
 						type="button"
@@ -74,7 +64,7 @@
 						class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
 						disabled={signingOut}
 					>
-						<span class="text-text-primary">{user.name ?? user.email}</span>
+						<span class="text-text-primary">{auth.user.name ?? auth.user.email}</span>
 						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform {dropdownOpen ? 'rotate-180' : ''}"><polyline points="6 9 12 15 18 9"/></svg>
 					</button>
 
@@ -110,17 +100,17 @@
 				</div>
 			{:else}
 				<SmartLink
-          href="/login"
-          fallback="/app"
-          class="text-sm text-text-muted hover:text-text-primary transition-colors"
-          >Log in</SmartLink
-        >
-        <SmartLink
-          href="/register"
-          fallback="/app"
-          class="text-sm px-3 py-1.5 bg-accent text-white rounded-md hover:opacity-90 transition-opacity"
-          >Get started</SmartLink
-        >
+					href="/login"
+					fallback="/app"
+					class="text-sm text-text-muted hover:text-text-primary transition-colors"
+					>Log in</SmartLink
+				>
+				<SmartLink
+					href="/register"
+					fallback="/app"
+					class="text-sm px-3 py-1.5 bg-accent text-white rounded-md hover:opacity-90 transition-opacity"
+					>Get started</SmartLink
+				>
 			{/if}
 		</div>
 	</div>
