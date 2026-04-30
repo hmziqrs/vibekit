@@ -28,10 +28,12 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:rendering": "bun scripts/verify-build-rendering.ts",
-    "test:rendering:v2": "bun scripts/verify-build-rendering-v2.ts",
-    "test:e2e:rendering": "playwright test e2e/spec-testing/",
-    "test:e2e:rendering:comprehensive": "playwright test e2e/spec-testing/rendering-comprehensive.spec.ts"
+    "test:build": "bun scripts/verify-build-rendering.ts",
+    "test:rendering:dev": "playwright test e2e/spec-testing/rendering-comprehensive.spec.ts",
+    "test:rendering:prod": "playwright test --config playwright.config.preview.ts e2e/spec-testing/rendering-production.spec.ts",
+    "test:rendering": "bun run test:build && bun run test:rendering:dev",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test e2e/*.spec.ts"
   },
   "dependencies": {
     "@tanstack/svelte-db": "^0.1.82",

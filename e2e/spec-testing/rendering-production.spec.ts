@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test'
 import { ROUTES } from './rendering-manifest'
 import type { RenderingStrategy } from './rendering-manifest'
 import {
+  detectStrategy,
   fetchClientEvidence,
   fetchServerEvidence,
-  detectStrategy,
   formatGroupSummary,
   formatRouteReport,
 } from './helpers'
@@ -12,7 +12,7 @@ import {
 interface RouteResult {
   path: string
   group: string
-  server: ReturnType<typeof fetchServerEvidence> extends Promise<infer T> ? T : never
+  server: Awaited<ReturnType<typeof fetchServerEvidence>>
   client: Awaited<ReturnType<typeof fetchClientEvidence>> | null
   detected: RenderingStrategy
   expected: RenderingStrategy
@@ -20,8 +20,8 @@ interface RouteResult {
   pass: boolean
 }
 
-test.describe('Rendering Strategy Audit', () => {
-  test('route-by-route server vs client rendering proof', async ({ page }) => {
+test.describe('Rendering Strategy Audit — Production Build', () => {
+  test('route-by-route production build rendering proof', async ({ page }) => {
     const results: RouteResult[] = []
 
     for (const route of ROUTES) {
@@ -37,7 +37,7 @@ test.describe('Rendering Strategy Audit', () => {
       }
 
       const { strategy, explanation } = detectStrategy(server, client)
-      const expected = route.devStrategy
+      const expected = route.expectedStrategy
       const pass = strategy === expected
 
       results.push({
@@ -54,15 +54,17 @@ test.describe('Rendering Strategy Audit', () => {
 
     // Print expressive report
     console.log('\n')
-    console.log('=' .repeat(70))
-    console.log('  COMPREHENSIVE RENDERING AUDIT — DEV SERVER')
-    console.log('=' .repeat(70))
+    console.log('='.repeat(70))
+    console.log('  COMPREHENSIVE RENDERING AUDIT — PRODUCTION BUILD')
+    console.log('='.repeat(70))
+    console.log('')
+    console.log('  This test runs against the PRODUCTION build (wrangler dev).')
+    console.log('  It proves what was actually built and deployed.')
     console.log('')
     console.log('  Legend:')
     console.log('    BUILD   = page rendered to static HTML at build time (SSG)')
     console.log('    SERVER  = page rendered on server at request time (SSR)')
     console.log('    CLIENT  = page rendered by JavaScript in browser (CSR)')
-    console.log('    HYBRID  = server renders first, client hydrates (SSR+CSR)')
     console.log('')
 
     for (const r of results) {

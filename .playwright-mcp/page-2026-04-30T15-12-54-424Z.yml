@@ -1,0 +1,25 @@
+- generic [ref=e2]:
+  - link "Skip to content" [ref=e3] [cursor=pointer]:
+    - /url: "#main"
+  - main [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Contact us" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Send us a message and we'll get back to you soon.
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: Name
+          - textbox "Name" [ref=e11]:
+            - /placeholder: Your name
+        - generic [ref=e12]:
+          - generic [ref=e13]: Email
+          - textbox "Email" [ref=e14]:
+            - /placeholder: you@example.com
+        - generic [ref=e15]:
+          - generic [ref=e16]: Subject
+          - textbox "Subject" [ref=e17]:
+            - /placeholder: How can we help?
+        - generic [ref=e18]:
+          - generic [ref=e19]: Message
+          - textbox "Message" [ref=e20]:
+            - /placeholder: Tell us more...
+        - button "Send message" [ref=e21]

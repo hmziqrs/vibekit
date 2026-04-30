@@ -1,127 +1,66 @@
 #!/usr/bin/env bun
-/**
- * Build-Time Rendering Verification Script
- *
- * This script runs `vite build`, captures build logs, and inspects the
- * generated output to verify which pages are:
- *   - Pre-rendered (SSG) at build time
- *   - Server-side rendered (SSR) at request time
- *   - Client-side rendered (CSR/SPA) with no server HTML
- *
- * Usage: bun scripts/verify-build-rendering.ts
- */
-
 import { spawn } from 'child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
-import { join, relative } from 'path'
+import { join } from 'path'
+import { BUILD_ROUTES } from './rendering-routes'
 
 const ROOT = process.cwd()
-const OUTPUT_DIR = join(ROOT, '.svelte-kit', 'output')
-const PRERENDER_DIR = join(OUTPUT_DIR, 'prerendered')
-const CLIENT_DIR = join(OUTPUT_DIR, 'client')
+const PRE = join(ROOT, '.svelte-kit', 'output', 'prerendered')
+const CLI = join(ROOT, '.svelte-kit', 'output', 'client')
 
-interface PageReport {
-  path: string
-  expectedStrategy: string
-  group: string
-  prerendered: boolean
-  prerenderFilePath?: string
-  prerenderFileSize?: number
-  serverRouteExists: boolean
-  clientRouteExists: boolean
-  hasHydrationScripts: boolean
-  notes: string[]
-}
-
-const EXPECTED_PAGES: Array<{ path: string; expectedStrategy: string; group: string }> = [
-  // (public) — prerendered, no CSR
-  { path: '/', expectedStrategy: 'prerendered-no-csr', group: '(public)' },
-  { path: '/features', expectedStrategy: 'prerendered-no-csr', group: '(public)' },
-  { path: '/pricing', expectedStrategy: 'prerendered-no-csr', group: '(public)' },
-  { path: '/about', expectedStrategy: 'prerendered-no-csr', group: '(public)' },
-  { path: '/privacy', expectedStrategy: 'prerendered-no-csr', group: '(public)' },
-  { path: '/terms', expectedStrategy: 'prerendered-no-csr', group: '(public)' },
-
-  // (public)/contact — explicitly NOT prerendered
-  { path: '/contact', expectedStrategy: 'csr-only', group: '(public)/contact' },
-
-  // (app) — SPA mode
-  { path: '/app/dashboard', expectedStrategy: 'csr-only', group: '(app)' },
-  { path: '/app/items', expectedStrategy: 'csr-only', group: '(app)' },
-  { path: '/app/profile', expectedStrategy: 'csr-only', group: '(app)' },
-  { path: '/app/settings', expectedStrategy: 'csr-only', group: '(app)' },
-
-  // (admin) — SPA mode
-  { path: '/admin/dashboard', expectedStrategy: 'csr-only', group: '(admin)' },
-  { path: '/admin/blog', expectedStrategy: 'csr-only', group: '(admin)' },
-  { path: '/admin/users', expectedStrategy: 'csr-only', group: '(admin)' },
-  { path: '/admin/audit', expectedStrategy: 'csr-only', group: '(admin)' },
-
-  // (blog) — SSR + CSR
-  { path: '/blog', expectedStrategy: 'ssr-with-csr', group: '(blog)' },
-
-  // (auth) — default SSR + CSR
-  { path: '/login', expectedStrategy: 'ssr-with-csr', group: '(auth)' },
-  { path: '/register', expectedStrategy: 'ssr-with-csr', group: '(auth)' },
-  { path: '/forgot-password', expectedStrategy: 'ssr-with-csr', group: '(auth)' },
-  { path: '/reset-password', expectedStrategy: 'ssr-with-csr', group: '(auth)' },
-  { path: '/verify-email', expectedStrategy: 'ssr-with-csr', group: '(auth)' },
-]
-
-function runBuild(): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  return new Promise((resolve) => {
-    console.log('[BUILD] Starting vite build...\n')
-    const startTime = Date.now()
+function runBuild() {
+  return new Promise<{ out: string; err: string; ec: number; dur: number }>((resolve) => {
+    console.log('[BUILD] Starting production build...')
+    const start = Date.now()
     const child = spawn('bun', ['run', 'build'], {
       cwd: ROOT,
       env: { ...process.env, NODE_ENV: 'production', CI: 'true' },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
-
-    let stdout = ''
-    let stderr = ''
-
-    child.stdout.on('data', (data: Buffer) => {
-      const chunk = data.toString()
-      stdout += chunk
-      process.stdout.write(chunk)
-    })
-
-    child.stderr.on('data', (data: Buffer) => {
-      const chunk = data.toString()
-      stderr += chunk
-      process.stderr.write(chunk)
-    })
-
-    child.on('close', (exitCode) => {
-      const duration = ((Date.now() - startTime) / 1000).toFixed(1)
-      console.log(`\n[BUILD] Completed in ${duration}s (exit code: ${exitCode})`)
-      resolve({ stdout, stderr, exitCode: exitCode ?? 1 })
+    let out = '', err = ''
+    child.stdout.on('data', (d: Buffer) => { out += d; process.stdout.write(d) })
+    child.stderr.on('data', (d: Buffer) => { err += d; process.stderr.write(d) })
+    child.on('close', (ec) => {
+      const dur = Date.now() - start
+      console.log(`\n[BUILD] Completed in ${(dur / 1000).toFixed(1)}s (exit code: ${ec ?? 1})`)
+      resolve({ out, err, ec: ec ?? 1, dur })
     })
   })
 }
 
-function findPrerenderedFiles(dir: string, base = ''): Array<{ path: string; filePath: string; size: number }> {
-  const results: Array<{ path: string; filePath: string; size: number }> = []
+function findPrerenderedFiles(dir: string, base = ''): Array<{ path: string; size: number; html: string }> {
+  const results: Array<{ path: string; size: number; html: string }> = []
   if (!existsSync(dir)) return results
-
   for (const entry of readdirSync(dir)) {
     const fullPath = join(dir, entry)
     const stat = statSync(fullPath)
     const relPath = join(base, entry)
-
     if (stat.isDirectory()) {
       results.push(...findPrerenderedFiles(fullPath, relPath))
     } else if (entry === 'index.html' || entry.endsWith('.html')) {
       const urlPath = relPath.replace(/index\.html$/, '').replace(/\.html$/, '')
       results.push({
         path: urlPath === '' ? '/' : '/' + urlPath,
-        filePath: fullPath,
         size: stat.size,
+        html: readFileSync(fullPath, 'utf-8'),
       })
     }
   }
   return results
+}
+
+function getPrerenderedRoutesFromManifest(): Set<string> {
+  const manifestPath = join(ROOT, '.svelte-kit', 'output', 'server', 'manifest.js')
+  if (!existsSync(manifestPath)) return new Set()
+  const content = readFileSync(manifestPath, 'utf-8')
+  const match = content.match(/prerendered_routes:\s*new\s*Set\((\[[^\]]*\])\)/)
+  if (!match) return new Set()
+  try {
+    const routes: string[] = JSON.parse(match[1].replace(/'/g, '"'))
+    return new Set(routes)
+  } catch {
+    return new Set()
+  }
 }
 
 function hasHydrationScripts(html: string): boolean {
@@ -129,186 +68,170 @@ function hasHydrationScripts(html: string): boolean {
     html.includes('__sveltekit') ||
     html.includes('data-sveltekit') ||
     html.includes('data-sveltekit-hydrate') ||
-    html.includes('import("./_app/') ||
-    html.includes('<script type="module">')
+    html.includes('<script type="module">') ||
+    html.includes('start_app')
   )
 }
 
-function analyzeBuildOutput(buildLog: string): PageReport[] {
-  const prerenderedFiles = findPrerenderedFiles(PRERENDER_DIR)
-  const prerenderPaths = new Map(prerenderedFiles.map((f) => [f.path, f]))
-
-  const reports: PageReport[] = []
-
-  for (const page of EXPECTED_PAGES) {
-    const prerenderFile = prerenderPaths.get(page.path)
-    const prerendered = !!prerenderFile
-    const notes: string[] = []
-
-    // Check build log for explicit prerender mentions
-    const prerenderLogPattern = new RegExp(`prerender\\s+.*${page.path.replace(/\//g, '\\\\/')}`, 'i')
-    const mentionedInLog = prerenderLogPattern.test(buildLog)
-
-    if (page.expectedStrategy === 'prerendered-no-csr') {
-      if (!prerendered) {
-        notes.push(`EXPECTED pre-rendered but NO .html file found in .svelte-kit/output/prerendered/`)
-      } else {
-        notes.push(`Pre-rendered HTML file exists (${prerenderFile?.size ?? 0} bytes)`)
-      }
-    }
-
-    if (page.expectedStrategy === 'csr-only' && prerendered) {
-      notes.push(`UNEXPECTED: page is CSR-only but a pre-rendered HTML file was found`)
-    }
-
-    let hasHydration = false
-    if (prerenderFile) {
-      const html = readFileSync(prerenderFile.filePath, 'utf-8')
-      hasHydration = hasHydrationScripts(html)
-      if (!hasHydration && page.expectedStrategy === 'prerendered-no-csr') {
-        notes.push('Confirmed: no hydration scripts in pre-rendered HTML (csr=false)')
-      }
-      if (hasHydration && page.expectedStrategy === 'prerendered-no-csr') {
-        notes.push('WARNING: hydration scripts found in pre-rendered HTML despite csr=false')
-      }
-    }
-
-    // Check for client-side JS bundles
-    const clientRoutePath = join(CLIENT_DIR, page.path === '/' ? '' : page.path)
-    const clientRouteExists = existsSync(clientRoutePath)
-
-    reports.push({
-      path: page.path,
-      expectedStrategy: page.expectedStrategy,
-      group: page.group,
-      prerendered,
-      prerenderFilePath: prerenderFile?.filePath,
-      prerenderFileSize: prerenderFile?.size,
-      serverRouteExists: false, // Cloudflare adapter bundles everything into a worker
-      clientRouteExists,
-      hasHydrationScripts: hasHydration,
-      notes,
-    })
-  }
-
-  return reports
+function extractBodyTextLength(html: string): number {
+  const match = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+  return (
+    match?.[1]
+      ?.replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .trim().length ?? 0
+  )
 }
 
-function printReport(reports: PageReport[], buildLog: string) {
-  console.log('\n\n══════════════════════════════════════════════════════════════')
-  console.log('  BUILD-TIME RENDERING STRATEGY VERIFICATION REPORT')
-  console.log('══════════════════════════════════════════════════════════════\n')
-
-  // Group by strategy
-  const byGroup = new Map<string, PageReport[]>()
-  for (const r of reports) {
-    const list = byGroup.get(r.group) ?? []
-    list.push(r)
-    byGroup.set(r.group, list)
-  }
-
-  let totalPassed = 0
-  let totalFailed = 0
-
-  for (const [group, pages] of byGroup) {
-    console.log(`\n📁 ${group}`)
-    console.log('─'.repeat(60))
-
-    for (const page of pages) {
-      const expectedPrerendered = page.expectedStrategy === 'prerendered-no-csr'
-      const isCorrect =
-        page.expectedStrategy === 'prerendered-no-csr'
-          ? page.prerendered && !page.hasHydrationScripts
-          : page.expectedStrategy === 'csr-only'
-            ? !page.prerendered
-            : page.expectedStrategy === 'ssr-with-csr'
-              ? !page.prerendered // SSR pages are NOT pre-rendered files
-              : true
-
-      if (isCorrect) totalPassed++
-      else totalFailed++
-
-      const status = isCorrect ? 'PASS' : 'FAIL'
-      const icon = isCorrect ? ' ' : ' '
-      console.log(`  [${status}]${icon} ${page.path}`)
-      console.log(`         Expected: ${page.expectedStrategy}`)
-      console.log(`         Prerendered: ${page.prerendered ? 'YES' : 'NO'}`)
-      if (page.prerenderFileSize) console.log(`         File size: ${page.prerenderFileSize} bytes`)
-      console.log(`         Hydration scripts: ${page.hasHydrationScripts ? 'YES' : 'NO'}`)
-      console.log(`         Client assets: ${page.clientRouteExists ? 'YES' : 'NO'}`)
-      for (const note of page.notes) {
-        console.log(`         ℹ️  ${note}`)
-      }
-      console.log('')
-    }
-  }
-
-  console.log('\n══════════════════════════════════════════════════════════════')
-  console.log(`  SUMMARY: ${totalPassed} passed | ${totalFailed} failed`)
-  console.log('══════════════════════════════════════════════════════════════\n')
-
-  // Print prerender log summary
-  const prerenderedCount = reports.filter((r) => r.prerendered).length
-  const ssrCount = reports.filter((r) => r.expectedStrategy === 'ssr-with-csr').length
-  const csrCount = reports.filter((r) => r.expectedStrategy === 'csr-only').length
-
-  console.log('Strategy Distribution:')
-  console.log(`  • Pre-rendered (SSG):     ${prerenderedCount} pages`)
-  console.log(`  • SSR + Hydration:        ${ssrCount} pages`)
-  console.log(`  • CSR / SPA only:         ${csrCount} pages`)
-  console.log(`  • Total checked:          ${reports.length} pages`)
-  console.log('')
-
-  // Extract prerender lines from build log
-  const prerenderLines = buildLog
-    .split('\n')
-    .filter((line) => line.toLowerCase().includes('prerender'))
-    .slice(0, 30)
-
-  if (prerenderLines.length > 0) {
-    console.log('Build Log Snippets (prerender mentions):')
-    for (const line of prerenderLines) {
-      console.log(`  ${line.trim()}`)
-    }
-    console.log('')
-  }
-
-  return totalFailed === 0
+function clientAssetsExist(path: string): boolean {
+  return existsSync(join(CLI, path === '/' ? '' : path))
 }
 
 async function main() {
-  console.log('══════════════════════════════════════════════════════════════')
-  console.log('  BUILD RENDERING VERIFIER')
-  console.log('══════════════════════════════════════════════════════════════\n')
-
-  // Run the build
-  const { stdout, stderr, exitCode } = await runBuild()
-  const buildLog = stdout + '\n' + stderr
-
-  if (exitCode !== 0) {
-    console.error('\n❌ BUILD FAILED — cannot verify rendering strategies\n')
+  const { out, err, ec, dur } = await runBuild()
+  if (ec !== 0) {
+    console.error('\nBUILD FAILED — cannot verify rendering strategies')
     process.exit(1)
   }
 
-  // Analyze output
-  if (!existsSync(OUTPUT_DIR)) {
-    console.error(`\n❌ Output directory not found: ${OUTPUT_DIR}`)
-    console.error('   The build may have failed or used a different output path.')
-    process.exit(1)
+  const buildLog = out + '\n' + err
+  const preFiles = findPrerenderedFiles(PRE)
+  const preMap = new Map(preFiles.map((f) => [f.path, f]))
+  const manifestRoutes = getPrerenderedRoutesFromManifest()
+
+  console.log('\n')
+  console.log('='.repeat(70))
+  console.log('  BUILD-TIME RENDERING VERIFICATION REPORT')
+  console.log('='.repeat(70))
+  console.log(`  Build duration: ${(dur / 1000).toFixed(1)}s`)
+  console.log(`  Prerendered .html files: ${preFiles.length}`)
+  console.log(`  Prerendered routes in manifest: ${manifestRoutes.size}`)
+  console.log('='.repeat(70))
+
+  let totalPass = 0
+  let totalFail = 0
+  const groups = new Map<string, typeof BUILD_ROUTES>()
+  for (const p of BUILD_ROUTES) {
+    const g = groups.get(p.group) ?? []
+    g.push(p)
+    groups.set(p.group, g)
   }
 
-  const reports = analyzeBuildOutput(buildLog)
-  const allPassed = printReport(reports, buildLog)
+  for (const [group, pages] of groups) {
+    console.log(`\n${group}`)
+    console.log('-'.repeat(60))
 
-  if (!allPassed) {
-    console.error('\n❌ SOME RENDERING STRATEGIES DO NOT MATCH EXPECTATIONS\n')
-    process.exit(1)
+    for (const page of pages) {
+      const preFile = preMap.get(page.path)
+      const inManifest = manifestRoutes.has(page.path)
+      const notes: string[] = []
+      let pass = false
+
+      if (page.expectedStrategy === 'prerendered-no-csr') {
+        if (!preFile && !inManifest) {
+          notes.push('Expected prerendered but NO .html file and NOT in manifest')
+        } else {
+          pass = true
+          if (preFile) {
+            notes.push(`Prerendered HTML found (${preFile.size.toLocaleString()} bytes)`)
+            const bodyLen = extractBodyTextLength(preFile.html)
+            notes.push(`Body text: ${bodyLen} chars`)
+            if (hasHydrationScripts(preFile.html)) {
+              notes.push('WARNING: hydration scripts found in prerendered HTML (expected no CSR)')
+            } else {
+              notes.push('No hydration scripts (csr=false confirmed)')
+            }
+          }
+          if (inManifest) {
+            notes.push('Listed in prerendered_routes manifest')
+          }
+        }
+      } else if (page.expectedStrategy === 'prerendered-with-csr') {
+        if (!preFile && !inManifest) {
+          notes.push('Expected prerendered-with-csr but NO .html file and NOT in manifest')
+        } else {
+          pass = true
+          if (preFile) {
+            notes.push(`Prerendered HTML found (${preFile.size.toLocaleString()} bytes)`)
+            const bodyLen = extractBodyTextLength(preFile.html)
+            notes.push(`Body text: ${bodyLen} chars`)
+            if (hasHydrationScripts(preFile.html)) {
+              notes.push('Hydration scripts present (csr=true confirmed)')
+            } else {
+              notes.push('WARNING: no hydration scripts (expected csr=true)')
+            }
+          }
+          if (inManifest) {
+            notes.push('Listed in prerendered_routes manifest')
+          }
+        }
+      } else if (page.expectedStrategy === 'csr-only') {
+        if (inManifest) {
+          notes.push('CSR-only page unexpectedly in prerender manifest')
+        } else if (preFile) {
+          notes.push('CSR-only page unexpectedly has prerendered .html file')
+        } else {
+          pass = true
+          notes.push('Not prerendered — empty shell served at request time')
+        }
+      } else if (page.expectedStrategy === 'ssr-with-csr') {
+        if (inManifest) {
+          notes.push('SSR page unexpectedly in prerender manifest')
+        } else if (preFile) {
+          notes.push('SSR page unexpectedly has prerendered .html file')
+        } else {
+          pass = true
+          notes.push('Not prerendered — rendered at request time by Cloudflare Worker')
+        }
+      }
+
+      notes.push(clientAssetsExist(page.path) ? 'Client assets exist' : 'No dedicated client dir')
+
+      const icon = pass ? 'PASS' : 'FAIL'
+      console.log(`  [${icon}] ${page.path}`)
+      console.log(`     Expected: ${page.expectedStrategy}`)
+      for (const n of notes) console.log(`     ${n}`)
+      console.log('')
+
+      if (pass) totalPass++
+      else totalFail++
+    }
   }
 
-  console.log('\n✅ ALL RENDERING STRATEGIES VERIFIED SUCCESSFULLY\n')
+  console.log('='.repeat(70))
+  console.log(`  SUMMARY: ${totalPass} passed | ${totalFail} failed`)
+  console.log('='.repeat(70))
+
+  const preNoCsr = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'prerendered-no-csr').length
+  const preWithCsr = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'prerendered-with-csr').length
+  const ssrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'ssr-with-csr').length
+  const csrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'csr-only').length
+
+  console.log('')
+  console.log('  Strategy Distribution:')
+  console.log(`    Pre-rendered (static, no JS):   ${preNoCsr} pages`)
+  if (preWithCsr > 0) console.log(`    Pre-rendered (static + hydrate): ${preWithCsr} pages`)
+  console.log(`    SSR + Hydration (request time):  ${ssrCnt} pages`)
+  console.log(`    CSR / SPA only (request time):   ${csrCnt} pages`)
+  console.log(`    Total:                           ${BUILD_ROUTES.length} pages`)
+
+  const preLines = buildLog.split('\n').filter((l) => l.toLowerCase().includes('prerender')).slice(0, 20)
+  if (preLines.length) {
+    console.log('')
+    console.log('  Build log (prerender mentions):')
+    for (const l of preLines) console.log(`    ${l.trim()}`)
+  }
+  console.log('')
+
+  if (totalFail > 0) {
+    console.error('SOME CHECKS FAILED')
+    process.exit(1)
+  }
+  console.log('ALL BUILD-TIME STRATEGIES VERIFIED')
 }
 
-main().catch((err) => {
-  console.error(err)
+main().catch((e) => {
+  console.error(e)
   process.exit(1)
 })

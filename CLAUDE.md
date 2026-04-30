@@ -40,9 +40,12 @@ bunx shadcn-svelte@latest add <component>
 
 ### Rendering Strategy
 
-- **Landing page** (`/`): Prerendered static (`prerender = true`, `csr = false`)
-- **App routes** (planned): CSR-only (`ssr = false`) behind auth, data via TanStack Query
-- **Blog** (planned): SSR at edge with Cloudflare Cache API
+- **Public pages** (`/`, `/features`, `/pricing`, `/about`, `/privacy`, `/terms`): Prerendered at build time (`prerender = true`, `csr = false`) — pure static HTML
+- **Contact** (`/contact`): SSR + CSR hydration (`prerender = false`, `csr = true`) — cannot prerender because it has server form actions
+- **App routes** (`(app)`): CSR-only SPA (`ssr = false`, `csr = true`) behind auth, data via TanStack Query
+- **Admin routes** (`(admin)`): CSR-only SPA (`ssr = false`, `csr = true`) behind auth
+- **Blog** (`(blog)`): SSR + CSR hydration (`ssr = true`, `csr = true`) with Cloudflare Cache API
+- **Auth pages** (`(auth)`): Default SSR + CSR hydration
 
 ### Svelte 5 Runes
 
