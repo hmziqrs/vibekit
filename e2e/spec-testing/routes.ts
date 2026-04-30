@@ -1,13 +1,13 @@
 import type { RouteConfig } from './types'
 
 export const ROUTES: RouteConfig[] = [
-  // (public) group — prerendered=true, csr=false
-  { path: '/', expectedStrategy: 'prerendered-no-csr', description: 'Homepage pre-rendered at build time with no client-side JS', group: '(public)' },
-  { path: '/features', expectedStrategy: 'prerendered-no-csr', description: 'Features page pre-rendered at build time with no client-side JS', group: '(public)' },
-  { path: '/pricing', expectedStrategy: 'prerendered-no-csr', description: 'Pricing page pre-rendered at build time with no client-side JS', group: '(public)' },
-  { path: '/about', expectedStrategy: 'prerendered-no-csr', description: 'About page pre-rendered at build time with no client-side JS', group: '(public)' },
-  { path: '/privacy', expectedStrategy: 'prerendered-no-csr', description: 'Privacy page pre-rendered at build time with no client-side JS', group: '(public)' },
-  { path: '/terms', expectedStrategy: 'prerendered-no-csr', description: 'Terms page pre-rendered at build time with no client-side JS', group: '(public)' },
+  // (public) group — defaults to ssr=true, csr=true (NOT prerendered in current config)
+  { path: '/', expectedStrategy: 'ssr-with-csr', description: 'Homepage is server-rendered with hydration', group: '(public)' },
+  { path: '/features', expectedStrategy: 'ssr-with-csr', description: 'Features page is server-rendered with hydration', group: '(public)' },
+  { path: '/pricing', expectedStrategy: 'ssr-with-csr', description: 'Pricing page is server-rendered with hydration', group: '(public)' },
+  { path: '/about', expectedStrategy: 'ssr-with-csr', description: 'About page is server-rendered with hydration', group: '(public)' },
+  { path: '/privacy', expectedStrategy: 'ssr-with-csr', description: 'Privacy page is server-rendered with hydration', group: '(public)' },
+  { path: '/terms', expectedStrategy: 'ssr-with-csr', description: 'Terms page is server-rendered with hydration', group: '(public)' },
 
   // (public)/contact — explicitly overrides: prerender=false, csr=true
   { path: '/contact', expectedStrategy: 'csr-only', description: 'Contact page is NOT pre-rendered and relies on client-side rendering', group: '(public)/contact' },
