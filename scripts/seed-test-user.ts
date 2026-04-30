@@ -2,9 +2,10 @@ import { randomBytes, scryptSync } from 'node:crypto'
 import { spawn } from 'child_process'
 import { uuid } from '../src/lib/server/uuid'
 
-const TEST_USER_EMAIL = 'admin@vibekit.local'
-const TEST_USER_PASSWORD = 'admin12345678'
-const TEST_USER_NAME = 'Test Admin'
+const TEST_USERS = [
+  { email: 'admin@vibekit.local', password: 'admin12345678', name: 'Test Admin', role: 'admin' as const },
+  { email: 'user@vibekit.local', password: 'user12345678', name: 'Test User', role: 'user' as const },
+]
 
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex')
@@ -27,43 +28,51 @@ async function main() {
   const mode = process.argv[2] ?? 'seed'
 
   if (mode === 'clean') {
-    console.log('Removing test user...')
-    const cleanSql = [
-      `DELETE FROM account WHERE user_id IN (SELECT id FROM user WHERE email = '${TEST_USER_EMAIL}');`,
-      `DELETE FROM session WHERE user_id IN (SELECT id FROM user WHERE email = '${TEST_USER_EMAIL}');`,
-      `DELETE FROM item WHERE user_id IN (SELECT id FROM user WHERE email = '${TEST_USER_EMAIL}');`,
-      `DELETE FROM user WHERE email = '${TEST_USER_EMAIL}';`,
-    ]
+    console.log('Removing test users...')
+    const emails = TEST_USERS.map((u) => u.email)
+    const cleanSql = emails.flatMap((email) => [
+      `DELETE FROM account WHERE user_id IN (SELECT id FROM user WHERE email = '${email}');`,
+      `DELETE FROM session WHERE user_id IN (SELECT id FROM user WHERE email = '${email}');`,
+      `DELETE FROM item WHERE user_id IN (SELECT id FROM user WHERE email = '${email}');`,
+      `DELETE FROM user WHERE email = '${email}';`,
+    ])
     const ec = await runWrangler(cleanSql)
     if (ec !== 0) throw new Error(`wrangler exited with code ${ec}`)
-    console.log('Test user removed.')
+    console.log('Test users removed.')
     return
   }
 
-  console.log('Hashing password...')
-  const passwordHash = hashPassword(TEST_USER_PASSWORD)
-
-  const userId = uuid()
-  const accountId = uuid()
   const now = "cast(unixepoch('subsecond') * 1000 as integer)"
+  const sqlLines: string[] = []
+  const adminUserId = uuid()
 
-  const sqlLines = [
-    `INSERT OR IGNORE INTO user (id, name, email, email_verified, created_at, updated_at, display_name, role, status) VALUES ('${userId}', '${TEST_USER_NAME}', '${TEST_USER_EMAIL}', 1, ${now}, ${now}, '${TEST_USER_NAME}', 'admin', 'active');`,
-    `INSERT OR IGNORE INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES ('${accountId}', '${TEST_USER_EMAIL}', 'credential', '${userId}', '${passwordHash}', ${now}, ${now});`,
-  ]
+  for (const u of TEST_USERS) {
+    console.log(`Hashing password for ${u.email}...`)
+    const passwordHash = hashPassword(u.password)
+    const userId = u.role === 'admin' ? adminUserId : uuid()
+    const accountId = uuid()
 
-  // Seed 2 items so the app/items page has data
-  sqlLines.push(
-    `INSERT OR IGNORE INTO item (id, user_id, name, description, status, created_at, updated_at) VALUES ('${uuid()}', '${userId}', 'My First Item', 'A test item created by the seed script', 'active', ${now}, ${now});`,
-    `INSERT OR IGNORE INTO item (id, user_id, name, description, status, created_at, updated_at) VALUES ('${uuid()}', '${userId}', 'Another Item', 'Second test item for the rendering test suite', 'active', ${now}, ${now});`,
-  )
+    sqlLines.push(
+      `INSERT OR IGNORE INTO user (id, name, email, email_verified, created_at, updated_at, display_name, role, status) VALUES ('${userId}', '${u.name}', '${u.email}', 1, ${now}, ${now}, '${u.name}', '${u.role}', 'active');`,
+      `INSERT OR IGNORE INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES ('${accountId}', '${u.email}', 'credential', '${userId}', '${passwordHash}', ${now}, ${now});`,
+    )
 
-  console.log('Seeding test user via wrangler...')
+    // Seed 2 items for admin so the app/items page has data
+    if (u.role === 'admin') {
+      sqlLines.push(
+        `INSERT OR IGNORE INTO item (id, user_id, name, description, status, created_at, updated_at) VALUES ('${uuid()}', '${userId}', 'My First Item', 'A test item created by the seed script', 'active', ${now}, ${now});`,
+        `INSERT OR IGNORE INTO item (id, user_id, name, description, status, created_at, updated_at) VALUES ('${uuid()}', '${userId}', 'Another Item', 'Second test item for the rendering test suite', 'active', ${now}, ${now});`,
+      )
+    }
+  }
+
+  console.log('Seeding test users via wrangler...')
   const ec = await runWrangler(sqlLines)
   if (ec !== 0) throw new Error(`wrangler exited with code ${ec}`)
 
-  console.log(`Test user seeded: ${TEST_USER_EMAIL} / ${TEST_USER_PASSWORD}`)
-  console.log('Role: admin | email_verified: true')
+  for (const u of TEST_USERS) {
+    console.log(`${u.role}: ${u.email} / ${u.password}`)
+  }
 }
 
 main().catch(console.error)
