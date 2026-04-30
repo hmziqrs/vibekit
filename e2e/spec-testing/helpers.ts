@@ -35,7 +35,6 @@ export async function fetchServerEvidence(page: Page, url: string): Promise<Serv
   const bodyTextLength = extractBodyTextLength(html)
   const hasSvelteKitRuntime =
     html.includes('__sveltekit') ||
-    html.includes('data-sveltekit') ||
     html.includes('sveltekit:')
   const hasHydrationData =
     html.includes('data-sveltekit-fetched') || html.includes('__data')
@@ -101,15 +100,15 @@ export function detectStrategy(
     return { strategy: 'error', explanation: notes }
   }
 
-  if (server.isPopulated && !server.hasSvelteKitRuntime && !server.hasHydrationData) {
+  if (server.isPopulated && !server.hasScripts && !server.hasHydrationData) {
     notes.push(
-      `Server sent FULL HTML (${server.bodyTextLength} chars body) with NO SvelteKit runtime — rendered at BUILD time`,
+      `Server sent FULL HTML (${server.bodyTextLength} chars body) with NO scripts or hydration data — rendered at BUILD time`,
     )
     notes.push('No hydration scripts, no client JS needed — pure static HTML')
     return { strategy: 'prerendered-no-csr', explanation: notes }
   }
 
-  if (server.isPopulated && server.hasSvelteKitRuntime && server.bodyTextLength > 500) {
+  if (server.isPopulated && server.bodyTextLength > 500) {
     if (client?.hydrated) {
       notes.push(
         `Server sent POPULATED HTML (${server.bodyTextLength} chars body) with SvelteKit runtime`,

@@ -18,11 +18,11 @@ export interface RouteConfig {
 }
 
 export const ROUTES: RouteConfig[] = [
-  // (public) — prerendered at build time, no CSR
+  // (public) — prerendered, no CSR (csr=false in +layout.ts)
   {
     path: '/',
     expectedStrategy: 'prerendered-no-csr',
-    devStrategy: 'ssr-with-csr',
+    devStrategy: 'prerendered-no-csr',
     description: 'Homepage is prerendered static HTML',
     group: '(public)',
     requiresAuth: false,
@@ -31,7 +31,7 @@ export const ROUTES: RouteConfig[] = [
   {
     path: '/features',
     expectedStrategy: 'prerendered-no-csr',
-    devStrategy: 'ssr-with-csr',
+    devStrategy: 'prerendered-no-csr',
     description: 'Features page is prerendered static HTML',
     group: '(public)',
     requiresAuth: false,
@@ -40,7 +40,7 @@ export const ROUTES: RouteConfig[] = [
   {
     path: '/pricing',
     expectedStrategy: 'prerendered-no-csr',
-    devStrategy: 'ssr-with-csr',
+    devStrategy: 'prerendered-no-csr',
     description: 'Pricing page is prerendered static HTML',
     group: '(public)',
     requiresAuth: false,
@@ -49,7 +49,7 @@ export const ROUTES: RouteConfig[] = [
   {
     path: '/about',
     expectedStrategy: 'prerendered-no-csr',
-    devStrategy: 'ssr-with-csr',
+    devStrategy: 'prerendered-no-csr',
     description: 'About page is prerendered static HTML',
     group: '(public)',
     requiresAuth: false,
@@ -58,7 +58,7 @@ export const ROUTES: RouteConfig[] = [
   {
     path: '/privacy',
     expectedStrategy: 'prerendered-no-csr',
-    devStrategy: 'ssr-with-csr',
+    devStrategy: 'prerendered-no-csr',
     description: 'Privacy page is prerendered static HTML',
     group: '(public)',
     requiresAuth: false,
@@ -67,7 +67,7 @@ export const ROUTES: RouteConfig[] = [
   {
     path: '/terms',
     expectedStrategy: 'prerendered-no-csr',
-    devStrategy: 'ssr-with-csr',
+    devStrategy: 'prerendered-no-csr',
     description: 'Terms page is prerendered static HTML',
     group: '(public)',
     requiresAuth: false,

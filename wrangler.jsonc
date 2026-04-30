@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "vibekit",
   "compatibility_date": "2026-04-21",
-  "compatibility_flags": ["nodejs_als"],
+  "compatibility_flags": ["nodejs_als", "nodejs_compat"],
   "main": "worker.ts",
   "assets": {
     "binding": "ASSETS",
