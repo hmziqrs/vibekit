@@ -3,6 +3,7 @@ import { spawn } from 'child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import { BUILD_ROUTES } from './rendering-routes'
+import type { BuildRouteExpectation } from './rendering-routes'
 
 const ROOT = process.cwd()
 const PRE = join(ROOT, '.svelte-kit', 'output', 'prerendered')
@@ -166,14 +167,14 @@ async function main() {
             notes.push('Listed in prerendered_routes manifest')
           }
         }
-      } else if (page.expectedStrategy === 'csr-only') {
+      } else if (page.expectedStrategy === 'csr-only' || page.expectedStrategy === 'redirect') {
         if (inManifest) {
-          notes.push('CSR-only page unexpectedly in prerender manifest')
+          notes.push('CSR/redirect page unexpectedly in prerender manifest')
         } else if (preFile) {
-          notes.push('CSR-only page unexpectedly has prerendered .html file')
+          notes.push('CSR/redirect page unexpectedly has prerendered .html file')
         } else {
           pass = true
-          notes.push('Not prerendered — empty shell served at request time')
+          notes.push('Not prerendered — served at request time by worker')
         }
       } else if (page.expectedStrategy === 'ssr-with-csr') {
         if (inManifest) {
@@ -206,14 +207,14 @@ async function main() {
   const preNoCsr = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'prerendered-no-csr').length
   const preWithCsr = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'prerendered-with-csr').length
   const ssrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'ssr-with-csr').length
-  const csrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'csr-only').length
+  const csrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'csr-only' || p.expectedStrategy === 'redirect').length
 
   console.log('')
   console.log('  Strategy Distribution:')
   console.log(`    Pre-rendered (static, no JS):   ${preNoCsr} pages`)
   if (preWithCsr > 0) console.log(`    Pre-rendered (static + hydrate): ${preWithCsr} pages`)
   console.log(`    SSR + Hydration (request time):  ${ssrCnt} pages`)
-  console.log(`    CSR / SPA only (request time):   ${csrCnt} pages`)
+  console.log(`    CSR / SPA / Redirects:           ${csrCnt} pages`)
   console.log(`    Total:                           ${BUILD_ROUTES.length} pages`)
 
   const preLines = buildLog.split('\n').filter((l) => l.toLowerCase().includes('prerender')).slice(0, 20)

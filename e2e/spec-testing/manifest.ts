@@ -1,21 +1,4 @@
-export type RenderingStrategy =
-  | 'prerendered-no-csr'
-  | 'prerendered-with-csr'
-  | 'ssr-with-csr'
-  | 'csr-only'
-  | 'redirect'
-  | 'error'
-  | 'unknown'
-
-export interface RouteConfig {
-  path: string
-  expectedStrategy: RenderingStrategy
-  devStrategy: RenderingStrategy
-  description: string
-  group: string
-  requiresAuth: boolean
-  requiresDb: boolean
-}
+import type { RouteConfig } from './types'
 
 export const ROUTES: RouteConfig[] = [
   // (public) — prerendered, no CSR (csr=false in +layout.ts)
@@ -148,6 +131,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/app',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: '/app redirects to /app/dashboard',
     group: '(app)',
     requiresAuth: true,
@@ -157,6 +141,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/app/dashboard',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'App dashboard redirects to login (unauthenticated)',
     group: '(app)',
     requiresAuth: true,
@@ -166,6 +151,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/app/items',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'App items redirects to login (unauthenticated)',
     group: '(app)',
     requiresAuth: true,
@@ -175,6 +161,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/app/profile',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'App profile redirects to login (unauthenticated)',
     group: '(app)',
     requiresAuth: true,
@@ -184,6 +171,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/app/settings',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'App settings redirects to login (unauthenticated)',
     group: '(app)',
     requiresAuth: true,
@@ -195,6 +183,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/admin',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: '/admin redirects to /admin/dashboard',
     group: '(admin)',
     requiresAuth: true,
@@ -204,6 +193,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/admin/dashboard',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'Admin dashboard redirects to login (unauthenticated)',
     group: '(admin)',
     requiresAuth: true,
@@ -213,6 +203,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/admin/users',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'Admin users redirects to login (unauthenticated)',
     group: '(admin)',
     requiresAuth: true,
@@ -222,6 +213,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/admin/blog',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'Admin blog redirects to login (unauthenticated)',
     group: '(admin)',
     requiresAuth: true,
@@ -231,6 +223,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/admin/audit',
     expectedStrategy: 'redirect',
     devStrategy: 'redirect',
+    authenticatedStrategy: 'csr-only',
     description: 'Admin audit redirects to login (unauthenticated)',
     group: '(admin)',
     requiresAuth: true,

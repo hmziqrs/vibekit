@@ -31,7 +31,7 @@
     "test:build": "bun scripts/verify-build-rendering.ts",
     "test:seed": "bun scripts/seed-blog.ts seed && bun scripts/seed-test-user.ts seed",
     "test:seed:clean": "bun scripts/seed-test-user.ts clean && bun scripts/seed-blog.ts clean",
-    "test:rendering:dev": "playwright test e2e/spec-testing/rendering-comprehensive.spec.ts",
+    "test:rendering:dev": "playwright test e2e/spec-testing/rendering.spec.ts",
     "test:rendering:auth": "playwright test e2e/spec-testing/rendering-authenticated.spec.ts",
     "test:rendering:prod": "playwright test --config playwright.config.preview.ts e2e/spec-testing/rendering-production.spec.ts",
     "test:rendering": "bun run test:build && bun run test:rendering:dev && bun run test:rendering:auth",
