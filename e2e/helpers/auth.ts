@@ -38,3 +38,21 @@ export async function assertOnLogin(page: Page): Promise<void> {
   await page.waitForURL(/\/login/, { timeout: 10000 })
   await expect(page).toHaveURL(/\/login/)
 }
+
+export async function loginAsAdmin(page: Page): Promise<void> {
+  await login(page, ADMIN)
+}
+
+export async function goToItems(page: Page): Promise<void> {
+  await loginAsAdmin(page)
+  await page.getByRole('link', { name: 'Items' }).first().click()
+  await expect(page).toHaveURL('/app/items')
+  await page.waitForLoadState('networkidle')
+}
+
+export async function goToAdmin(page: Page): Promise<void> {
+  await loginAsAdmin(page)
+  await page.goto('/admin/dashboard')
+  await page.waitForLoadState('networkidle')
+  await dismissCookieConsent(page)
+}

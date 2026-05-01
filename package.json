@@ -37,7 +37,9 @@
     "test:rendering": "bun run test:build && bun run test:rendering:dev && bun run test:rendering:auth",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test e2e/*.spec.ts",
-    "test:e2e:auth": "playwright test e2e/authenticated.spec.ts"
+    "test:e2e:auth": "playwright test e2e/authenticated.spec.ts",
+    "test:e2e:crud": "playwright test e2e/crud.spec.ts",
+    "test:e2e:admin": "playwright test e2e/admin.spec.ts"
   },
   "dependencies": {
     "@tanstack/svelte-db": "^0.1.82",
