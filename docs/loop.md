@@ -44,9 +44,22 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Core app features
 - [ ] Blog platform completion
 - [ ] Admin & moderation tools
+- [ ] User audit log & activity tracking (dispute resolution, security reviews, compliance trails)
+- [ ] Admin sudo / impersonation mode (support acts on behalf of user with full audit trail)
+- [ ] Security alerts & anomaly detection (new device/IP, password/2FA change, suspicious activity)
 - [ ] Organizations & teams
 - [ ] Billing & payments
+- [ ] In-app notifications & system-to-user alerts (payment receipts, admin warnings, broadcast announcements)
+- [ ] User banning system (temporary/permanent platform ban with reason, appeal flow)
+- [ ] User account disabled (user-initiated deactivation vs admin disable, data retention, re-enable flow)
 - [ ] Email & communications
+- [ ] Rate limiting & abuse prevention (API throttling, auth brute-force protection, action quotas per tier)
+- [ ] Webhooks & event bus (async cross-service events, third-party integrations)
+- [ ] API keys & programmatic access (scoped tokens, usage logging)
+- [ ] Feature flags & kill switches (gradual rollout, instant disable without deploy)
+- [ ] Session & device management (list active sessions, remote logout, device fingerprinting)
+- [ ] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices)
+- [ ] User data export / portability (one-click full data download, GDPR compliance)
 - [ ] Infrastructure & DevOps
 - [ ] Testing & quality
 - [ ] SEO & performance
