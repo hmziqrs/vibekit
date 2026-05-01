@@ -3,7 +3,7 @@ import { z } from 'zod/v4'
 import { slug } from './common'
 
 export const createPostSchema = z.object({
-  contentBody: z.string().max(100000, 'Content is too long').optional().nullable(),
+  contentBody: z.string().max(100_000, 'Content is too long').optional().nullable(),
   coverImageUrl: z.string().url('Invalid URL').optional().nullable(),
   excerpt: z.string().max(500, 'Excerpt is too long').trim().optional().nullable(),
   seoDescription: z.string().max(500).trim().optional().nullable(),
@@ -15,7 +15,7 @@ export const createPostSchema = z.object({
 })
 
 export const updatePostSchema = z.object({
-  contentBody: z.string().max(100000).optional().nullable(),
+  contentBody: z.string().max(100_000).optional().nullable(),
   coverImageUrl: z.string().url().optional().nullable(),
   excerpt: z.string().max(500).trim().optional().nullable(),
   seoDescription: z.string().max(500).trim().optional().nullable(),

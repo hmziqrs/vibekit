@@ -1,9 +1,12 @@
+import { describe, expect, it } from '@jest/globals'
+import { expect, describe, it } from 'vitest'
+
 import { createItemSchema, updateItemSchema } from './item'
 
 describe(createItemSchema, () => {
   it('validates valid input with name only', () => {
     const result = createItemSchema.safeParse({ name: 'My Item' })
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toStrictEqual({ name: 'My Item' })
     }
@@ -11,7 +14,7 @@ describe(createItemSchema, () => {
 
   it('validates input with name and description', () => {
     const result = createItemSchema.safeParse({ description: 'A description', name: 'My Item' })
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toStrictEqual({ description: 'A description', name: 'My Item' })
     }
@@ -19,17 +22,17 @@ describe(createItemSchema, () => {
 
   it('rejects empty name', () => {
     const result = createItemSchema.safeParse({ name: '' })
-    expect(result.success).toBeFalsy()
+    expect(result.success).toBe(false)
   })
 
   it('rejects name over 100 characters', () => {
     const result = createItemSchema.safeParse({ name: 'a'.repeat(101) })
-    expect(result.success).toBeFalsy()
+    expect(result.success).toBe(false)
   })
 
   it('allows missing description', () => {
     const result = createItemSchema.safeParse({ name: 'My Item' })
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.description).toBeUndefined()
     }
@@ -37,14 +40,14 @@ describe(createItemSchema, () => {
 
   it('rejects description over 2000 characters', () => {
     const result = createItemSchema.safeParse({ description: 'a'.repeat(2001), name: 'My Item' })
-    expect(result.success).toBeFalsy()
+    expect(result.success).toBe(false)
   })
 })
 
 describe(updateItemSchema, () => {
   it('allows partial update with name only', () => {
     const result = updateItemSchema.safeParse({ name: 'Updated Name' })
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toStrictEqual({ name: 'Updated Name' })
     }
@@ -52,7 +55,7 @@ describe(updateItemSchema, () => {
 
   it('allows partial update with description only', () => {
     const result = updateItemSchema.safeParse({ description: 'Updated description' })
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toStrictEqual({ description: 'Updated description' })
     }
@@ -60,7 +63,7 @@ describe(updateItemSchema, () => {
 
   it('allows partial update with status only', () => {
     const result = updateItemSchema.safeParse({ status: 'archived' })
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toStrictEqual({ status: 'archived' })
     }
@@ -68,7 +71,7 @@ describe(updateItemSchema, () => {
 
   it('allows empty object', () => {
     const result = updateItemSchema.safeParse({})
-    expect(result.success).toBeTruthy()
+    expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toStrictEqual({})
     }
@@ -76,11 +79,11 @@ describe(updateItemSchema, () => {
 
   it('rejects invalid status value', () => {
     const result = updateItemSchema.safeParse({ status: 'invalid' })
-    expect(result.success).toBeFalsy()
+    expect(result.success).toBe(false)
   })
 
   it('rejects invalid name (empty string)', () => {
     const result = updateItemSchema.safeParse({ name: '' })
-    expect(result.success).toBeFalsy()
+    expect(result.success).toBe(false)
   })
 })

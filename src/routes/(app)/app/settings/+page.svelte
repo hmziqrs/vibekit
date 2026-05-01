@@ -65,7 +65,7 @@
   <p class="mt-1 text-[14px] text-text-muted">Manage your account settings.</p>
 
   <!-- Change Password -->
-  <div class="mt-6 rounded-xl border border-white/[0.06] bg-surface p-6">
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
     <h2 class="text-[15px] font-medium text-text-primary">Change Password</h2>
     <p class="mt-1 text-[13px] text-text-muted">
       Update your password. You will be logged out of other sessions.
@@ -149,7 +149,7 @@
         <input
           type="text"
           bind:value={deleteConfirmText}
-          class="w-full max-w-xs rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
+          class="w-full max-w-xs rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
           placeholder="Type DELETE to confirm"
         />
         <div class="flex gap-2">
@@ -165,7 +165,7 @@
               showDeleteConfirm = false
               deleteConfirmText = ''
             }}
-            class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+            class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
           >
             Cancel
           </button>

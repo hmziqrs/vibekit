@@ -12,7 +12,7 @@ const config = {
       handleRenderingErrors: true,
     },
     prerender: {
-      handleHttpError: ({ path, referrer, message }) => {
+      handleHttpError: ({ path: _path, referrer, message }) => {
         // Ignore missing linked pages during prerender while building out the site
         if (referrer === '/' && message.startsWith('404')) {
           return
@@ -21,15 +21,15 @@ const config = {
       },
     },
     typescript: {
-      config: (config) => ({
-        ...config,
-        include: [...config.include, '../drizzle.config.ts'],
+      config: (tsConfig) => ({
+        ...tsConfig,
         exclude: [
-          ...(config.exclude || []),
+          ...(tsConfig.exclude || []),
           '**/.svelte-kit/output/**',
           '**/.svelte-kit/build/**',
           '**/src/lib/paraglide/**',
         ],
+        include: [...tsConfig.include, '../drizzle.config.ts'],
       }),
     },
   },

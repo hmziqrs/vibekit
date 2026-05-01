@@ -9,6 +9,9 @@ import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
+/** Coalesce undefined/null to null for nullable DB columns. */
+const toNullable = (v: string | undefined | null) => v ?? null
+
 export const GET: RequestHandler = async ({ locals, url, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
@@ -23,11 +26,14 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
   const filterStatus = validStatuses.includes(rawStatus as (typeof validStatuses)[number])
     ? (rawStatus as (typeof validStatuses)[number])
     : null
-  const whereClause = isTrash
-    ? isNotNull(blogPost.deletedAt)
-    : filterStatus
-      ? and(eq(blogPost.status, filterStatus), isNull(blogPost.deletedAt))
-      : isNull(blogPost.deletedAt)
+  let whereClause: ReturnType<typeof isNull>
+  if (isTrash) {
+    whereClause = isNotNull(blogPost.deletedAt)
+  } else if (filterStatus) {
+    whereClause = and(eq(blogPost.status, filterStatus), isNull(blogPost.deletedAt))!
+  } else {
+    whereClause = isNull(blogPost.deletedAt)
+  }
 
   const posts = await db
     .select({
@@ -76,16 +82,15 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const id = uuid()
   const { title, slug, excerpt, contentBody, coverImageUrl, seoTitle, seoDescription, status } =
     parsed.data
-  const n = (v: string | undefined | null) => v ?? null
   await db.insert(blogPost).values({
     authorId: locals.user.id,
-    contentBody: n(contentBody),
-    coverImageUrl: n(coverImageUrl),
-    excerpt: n(excerpt),
+    contentBody: toNullable(contentBody),
+    coverImageUrl: toNullable(coverImageUrl),
+    excerpt: toNullable(excerpt),
     id,
     publishedAt: status === 'published' ? new Date() : null,
-    seoDescription: n(seoDescription),
-    seoTitle: n(seoTitle),
+    seoDescription: toNullable(seoDescription),
+    seoTitle: toNullable(seoTitle),
     slug,
     status,
     title,

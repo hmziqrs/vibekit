@@ -4,12 +4,12 @@
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
-  import { updateItemSchema } from '$lib/validators/item';
-import type { UpdateItemInput } from '$lib/validators/item';
+  import { updateItemSchema, type UpdateItemInput } from '$lib/validators/item'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { createForm } from '@tanstack/svelte-form'
   import type { ItemData } from '$lib/types'
   import { extractFormError } from '$lib/form-utils'
+  import { z } from 'zod/v4'
 
   const itemId = $derived(page.params.id ?? '')
   const queryClient = useQueryClient()
@@ -25,8 +25,6 @@ import type { UpdateItemInput } from '$lib/validators/item';
   }))
 
   let lastItemId = $state('')
-
-  import { z } from 'zod/v4'
   const formSchema = z.object({
     description: z.string().max(500),
     name: z.string().min(1, 'Name is required').max(100).trim(),
@@ -41,9 +39,9 @@ import type { UpdateItemInput } from '$lib/validators/item';
     onSubmit: async ({ value }: { value: FormInput }) => {
       try {
         const res = await fetch(`/api/items/${itemId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(value),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
         })
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -52,8 +50,8 @@ import type { UpdateItemInput } from '$lib/validators/item';
         await queryClient.invalidateQueries({ queryKey: ['items'] })
         goto('/app/items')
         return null
-      } catch (err) {
-        return { form: err instanceof Error ? err.message : 'Something went wrong' }
+      } catch (error) {
+        return { form: error instanceof Error ? error.message : 'Something went wrong' }
       }
     },
     validators: {

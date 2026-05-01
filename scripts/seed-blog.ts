@@ -343,13 +343,6 @@ The future is edge-native. Start building today.`,
   },
 ]
 
-function sqlValue(v: string | null | undefined) {
-  if (v == null) {
-    return 'NULL'
-  }
-  return `'${esc(v)}'`
-}
-
 function generateSql(): string[] {
   const lines: string[] = []
 
@@ -387,17 +380,15 @@ function generateSql(): string[] {
 
   for (const [slug, tagSlugs] of Object.entries(POST_TAGS)) {
     const postId = postIds[slug]
-    if (!postId) {
-      continue
-    }
-    for (const tagSlug of tagSlugs) {
-      const tagId = tagIds[tagSlug]
-      if (!tagId) {
-        continue
+    if (postId) {
+      for (const tagSlug of tagSlugs) {
+        const tagId = tagIds[tagSlug]
+        if (tagId) {
+          lines.push(
+            `INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('${postId}', '${tagId}');`
+          )
+        }
       }
-      lines.push(
-        `INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('${postId}', '${tagId}');`
-      )
     }
   }
 
@@ -451,7 +442,7 @@ async function cleanSeed() {
 }
 
 async function main() {
-  const mode = process.argv[2]
+  const [, , mode] = process.argv
 
   if (mode === 'sql') {
     const outPath = process.argv[3] || 'scripts/seed-blog.sql'

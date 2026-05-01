@@ -2,8 +2,7 @@ import { building } from '$app/environment'
 import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
-import { error } from '@sveltejs/kit'
-import type { Handle } from '@sveltejs/kit'
+import { error, type Handle } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
@@ -54,7 +53,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
   // The Cloudflare adapter wraps env in a Proxy that throws when accessing
   // Bindings in prerenderable routes (even during dev). Wrap in try-catch.
-  let db: D1Database | undefined
+  let db: D1Database | undefined = undefined
   try {
     db = event.platform?.env?.DB
   } catch {

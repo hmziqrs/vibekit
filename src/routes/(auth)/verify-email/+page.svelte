@@ -55,8 +55,8 @@
     onSubmit: async ({ value }: { value: ResendInput }) => {
       try {
         const res = await authClient.sendVerificationEmail({
-          email: value.email,
           callbackURL: '/verify-email',
+          email: value.email,
         })
         if (res?.error) {
           return {
@@ -65,9 +65,9 @@
         }
         message = 'Verification email sent! Check your inbox.'
         return null
-      } catch (err) {
+      } catch (error) {
         return {
-          form: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+          form: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
         }
       }
     },

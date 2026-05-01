@@ -1,9 +1,9 @@
 <script lang="ts">
-  const {
+  let {
     tabs,
     active = $bindable(''),
   }: {
-    tabs: Array<{ label: string; value: string }>
+    tabs: { label: string; value: string }[]
     active?: string
   } = $props()
 </script>
@@ -15,7 +15,7 @@
       onclick={() => (active = tab.value)}
       class="rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors {active ===
       tab.value
-        ? 'bg-white/[0.08] text-text-primary'
+        ? 'bg-white/8 text-text-primary'
         : 'text-text-muted hover:text-text-secondary'}"
     >
       {tab.label}

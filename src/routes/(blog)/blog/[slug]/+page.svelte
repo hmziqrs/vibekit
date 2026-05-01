@@ -38,7 +38,7 @@
 			<img
 				src={data.post.coverImageUrl}
 				alt={data.post.title}
-				class="mb-10 w-full rounded-xl border border-white/[0.06]"
+				class="mb-10 w-full rounded-xl border border-white/6"
 				loading="lazy"
 			/>
 		{/if}

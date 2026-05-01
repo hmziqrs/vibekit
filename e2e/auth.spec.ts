@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { expect, test } from 'vitest'
 
 test.describe('auth pages', () => {
   test('login page shows form fields', async ({ page }) => {

@@ -16,35 +16,6 @@ export function renderMarkdown(raw: string): string {
 // Note: This provides basic XSS protection. For production, consider
 // Integrating a full sanitizer like DOMPurify with a DOM shim for
 // Cloudflare Workers.
-const ALLOWED_TAGS = new Set([
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'p',
-  'br',
-  'hr',
-  'ul',
-  'ol',
-  'li',
-  'a',
-  'strong',
-  'em',
-  'code',
-  'pre',
-  'blockquote',
-  'del',
-  'img',
-  'table',
-  'thead',
-  'tbody',
-  'tr',
-  'th',
-  'td',
-  'input',
-])
 
 export function sanitizeHtml(html: string): string {
   return html

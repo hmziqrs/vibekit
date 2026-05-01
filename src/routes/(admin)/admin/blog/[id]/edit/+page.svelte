@@ -20,11 +20,11 @@
   } = $props()
 
   const { post } = data
-  const title = $state(post.title)
-  const slug = $state(post.slug)
-  const excerpt = $state(post.excerpt ?? '')
-  const contentBody = $state(post.contentBody ?? '')
-  const coverImageUrl = $state(post.coverImageUrl ?? '')
+  let title = $state(post.title)
+  let slug = $state(post.slug)
+  let excerpt = $state(post.excerpt ?? '')
+  let contentBody = $state(post.contentBody ?? '')
+  let coverImageUrl = $state(post.coverImageUrl ?? '')
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
   let serverError = $state('')
@@ -52,11 +52,11 @@
     try {
       const res = await fetch(`/api/blog/${data.post.id}`, {
         body: JSON.stringify({
-          title,
-          slug,
-          excerpt,
           contentBody,
           coverImageUrl: coverImageUrl || null,
+          excerpt,
+          slug,
+          title,
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PATCH',

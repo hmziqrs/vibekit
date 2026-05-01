@@ -2,10 +2,8 @@ import { writeAuditLog } from '$lib/server/audit'
 import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
 import { rateLimit } from '$lib/server/rate-limit'
-import { json } from '@sveltejs/kit'
-import type { RequestHandler } from '@sveltejs/kit'
-import { and, eq, isNull, sql } from 'drizzle-orm'
-import type { SQL } from 'drizzle-orm'
+import { json, type RequestHandler } from '@sveltejs/kit'
+import { and, eq, isNull, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 const updateSchema = z.object({

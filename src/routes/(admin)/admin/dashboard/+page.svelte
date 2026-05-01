@@ -89,7 +89,7 @@
 <!-- Stat cards -->
 <div class="mt-8 grid gap-4 sm:grid-cols-3">
   <!-- Users -->
-  <div class="rounded-xl border border-white/[0.06] bg-surface p-6">
+  <div class="rounded-xl border border-white/6 bg-surface p-6">
     <div class="flex items-center justify-between">
       <p class="text-[13px] text-text-muted">Users</p>
       <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">

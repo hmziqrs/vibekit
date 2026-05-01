@@ -19,13 +19,13 @@
     onSubmit: async ({ value }: { value: FormInput }) => {
       try {
         const payload = {
-          name: value.name,
           description: value.description.trim() || undefined,
+          name: value.name,
         }
         const res = await fetch('/api/items', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
         })
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -35,9 +35,9 @@
         }
         goto('/app/items')
         return null
-      } catch (err) {
+      } catch (error) {
         return {
-          form: err instanceof Error ? err.message : 'Something went wrong',
+          form: error instanceof Error ? error.message : 'Something went wrong',
         }
       }
     },

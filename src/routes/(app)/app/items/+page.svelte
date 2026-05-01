@@ -6,8 +6,8 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import type { ItemData } from '$lib/types'
 
-  const statusFilter = $state<string>('active')
-  const search = $state('')
+  let statusFilter = $state<string>('active')
+  let search = $state('')
   let deleteTarget = $state<ItemData | null>(null)
   let deleteDialogOpen = $state(false)
 
@@ -23,7 +23,7 @@
       const data = (await res.json()) as { items: ItemData[] }
       return data.items
     },
-    queryKey: ['items', { status: statusFilter, search }],
+    queryKey: ['items', { search, status: statusFilter }],
   }))
 
   function formatDate(dateStr: string) {
@@ -107,15 +107,15 @@
 
   <!-- Items list -->
   {#if itemsQuery.isLoading}
-    <div class="rounded-xl border border-white/[0.06] bg-surface">
-      <div class="divide-y divide-white/[0.04] p-1">
+    <div class="rounded-xl border border-white/6 bg-surface">
+      <div class="divide-y divide-white/6 p-1">
         {#each [1, 2, 3, 4, 5] as skeleton (skeleton)}
           <div class="flex items-center justify-between px-5 py-3">
             <div class="space-y-2">
-              <div class="h-4 w-48 animate-pulse rounded bg-white/[0.04]"></div>
-              <div class="h-3 w-24 animate-pulse rounded bg-white/[0.04]"></div>
+              <div class="h-4 w-48 animate-pulse rounded bg-white/4"></div>
+              <div class="h-3 w-24 animate-pulse rounded bg-white/4"></div>
             </div>
-            <div class="h-6 w-16 animate-pulse rounded-full bg-white/[0.04]"></div>
+            <div class="h-6 w-16 animate-pulse rounded-full bg-white/4"></div>
           </div>
         {/each}
       </div>
@@ -131,7 +131,7 @@
       </button>
     </div>
   {:else if !itemsQuery.data?.length}
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-8 text-center">
+    <div class="rounded-xl border border-white/6 bg-surface p-8 text-center">
       <p class="text-[14px] text-text-muted">
         {search ? 'No items match your search.' : 'No items yet.'}
       </p>
@@ -145,8 +145,8 @@
       {/if}
     </div>
   {:else}
-    <div class="rounded-xl border border-white/[0.06] bg-surface">
-      <div class="divide-y divide-white/[0.04]">
+    <div class="rounded-xl border border-white/6 bg-surface">
+      <div class="divide-y divide-white/6">
         {#each itemsQuery.data as item (item.id)}
           <div class="flex items-center justify-between px-5 py-3">
             <a
@@ -162,7 +162,7 @@
 
               <button
                 onclick={() => toggleArchive(item.id, item.status)}
-                class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+                class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
                 title={item.status === 'active' ? 'Archive' : 'Restore'}
               >
                 <svg
@@ -188,7 +188,7 @@
 
               <a
                 href="/app/items/{item.id}/edit"
-                class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+                class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
                 title="Edit"
               >
                 <svg

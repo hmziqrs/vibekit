@@ -4,7 +4,6 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 
 import { BUILD_ROUTES } from './rendering-routes'
-import type { BuildRouteExpectation } from './rendering-routes'
 
 const ROOT = process.cwd()
 const PRE = join(ROOT, '.svelte-kit', 'output', 'prerendered')
@@ -54,8 +53,8 @@ function findPrerenderedFiles(
     } else if (entry === 'index.html' || entry.endsWith('.html')) {
       const urlPath = relPath.replace(/index\.html$/, '').replace(/\.html$/, '')
       results.push({
-        html: readFileSync(fullPath, 'utf-8'),
-        path: urlPath === '' ? '/' : '/' + urlPath,
+        html: readFileSync(fullPath, 'utf8'),
+        path: urlPath === '' ? '/' : `/${urlPath}`,
         size: stat.size,
       })
     }

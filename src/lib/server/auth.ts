@@ -28,7 +28,7 @@ const authConfig = {
     },
   },
   plugins: [
-    sveltekitCookies(getRequestEvent), // make sure this is the last plugin in the array
+    sveltekitCookies(getRequestEvent), // Make sure this is the last plugin in the array
   ],
   secret: env.BETTER_AUTH_SECRET,
   user: {

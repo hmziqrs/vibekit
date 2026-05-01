@@ -21,8 +21,8 @@ const TEST_USERS = [
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex')
   const key = scryptSync(password.normalize('NFKC'), salt, 64, {
-    N: 16384,
-    maxmem: 128 * 16384 * 16 * 2,
+    N: 16_384,
+    maxmem: 128 * 16_384 * 16 * 2,
     p: 1,
     r: 16,
   })

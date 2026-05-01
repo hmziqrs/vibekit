@@ -1,5 +1,5 @@
 <script lang="ts">
-  const {
+  let {
     value = $bindable(''),
     placeholder = 'Search...',
   }: {

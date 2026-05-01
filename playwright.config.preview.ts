@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
-  forbidOnly: !!process.env.CI,
+  forbidOnly: Boolean(process.env.CI),
   fullyParallel: false,
   reporter: 'html',
   retries: process.env.CI ? 2 : 0,
@@ -13,7 +13,7 @@ export default defineConfig({
   webServer: {
     command: 'bun run preview',
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 30_000,
     url: 'http://localhost:4173',
   },
   workers: process.env.CI ? 1 : undefined,

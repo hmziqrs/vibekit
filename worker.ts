@@ -5,17 +5,17 @@ import { Server } from './.svelte-kit/output/server/index.js'
 
 // ../../node_modules/.pnpm/worktop@0.8.0-next.18/node_modules/worktop/cache/index.mjs
 async function e(e3, t2) {
-  const n2 = 'string' != typeof t2 && 'HEAD' === t2.method
+  const n2 = typeof t2 !== 'string' && t2.method === 'HEAD'
   n2 && (t2 = new Request(t2, { method: 'GET' }))
   let r3 = await e3.match(t2)
   return (n2 && r3 && (r3 = new Response(null, r3)), r3)
 }
 function t(e3, t2, n2, o2) {
   return (
-    (typeof t2 == 'string' || t2.method === 'GET') &&
-    r(n2) &&
-    (n2.headers.has('Set-Cookie') &&
-      (n2 = new Response(n2.body, n2)).headers.append('Cache-Control', 'private=Set-Cookie'),
+    (typeof t2 === 'string' || t2.method === 'GET') &&
+      r(n2) &&
+      (n2.headers.has('Set-Cookie') &&
+        (n2 = new Response(n2.body, n2)).headers.append('Cache-Control', 'private=Set-Cookie'),
       o2.waitUntil(e3.put(t2, n2.clone()))),
     n2
   )
@@ -25,7 +25,7 @@ function r(e3) {
   if (!n.has(e3.status)) {
     return false
   }
-  if (~(e3.headers.get('Vary') || '').indexOf('*')) {
+  if ((e3.headers.get('Vary') || '').indexOf('*') !== -1) {
     return false
   }
   const t2 = e3.headers.get('Cache-Control') || ''
@@ -78,27 +78,27 @@ const worker_default = {
    */
   async fetch(req, env2, ctx) {
     if (!origin) {
-      origin = new URL(req.url).origin
+      ;({ origin } = new URL(req.url))
     }
     await initialized
     let pragma = req.headers.get('cache-control') || ''
     let res = !pragma.includes('no-cache') && (await r2(req))
     if (res) return res
-    let { pathname, search } = new URL(req.url)
+    const { pathname, search } = new URL(req.url)
     try {
       pathname = decodeURIComponent(pathname)
-    } catch { }
+    } catch {}
     const stripped_pathname = pathname.replace(/\/$/, '')
     let is_static_asset = false
     const filename = stripped_pathname.slice(base_path.length + 1)
     if (filename) {
       is_static_asset =
         manifest.assets.has(filename) ||
-        manifest.assets.has(filename + '/index.html') ||
+        manifest.assets.has(`${filename}/index.html`) ||
         filename in manifest._.server_assets ||
-        filename + '/index.html' in manifest._.server_assets
+        `${filename}/index.html` in manifest._.server_assets
     }
-    let location = pathname.at(-1) === '/' ? stripped_pathname : pathname + '/'
+    let location = pathname.at(-1) === '/' ? stripped_pathname : `${pathname}/`
     if (
       is_static_asset ||
       prerendered.has(pathname) ||
@@ -109,28 +109,28 @@ const worker_default = {
     } else if (location && prerendered.has(location)) {
       if (search) location += search
       res = new Response('', {
-        status: 308,
         headers: {
           location,
         },
+        status: 308,
       })
     } else {
       res = await server.respond(req, {
-        platform: {
-          env: env2,
-          ctx,
-          context: ctx,
-          // deprecated in favor of ctx
-          // @ts-expect-error webworker types from worktop are not compatible with Cloudflare Workers types
-          caches,
-          // @ts-expect-error the type is correct but ts is confused because platform.cf uses the type from index.ts while req.cf uses the type from index.d.ts
-          cf: req.cf,
-        },
         getClientAddress() {
           return (
             /** @type {string} */
             req.headers.get('cf-connecting-ip')
           )
+        },
+        platform: {
+          env: env2,
+          ctx,
+          context: ctx,
+          // Deprecated in favor of ctx
+          // @ts-expect-error webworker types from worktop are not compatible with Cloudflare Workers types
+          caches,
+          // @ts-expect-error the type is correct but ts is confused because platform.cf uses the type from index.ts while req.cf uses the type from index.d.ts
+          cf: req.cf,
         },
       })
     }

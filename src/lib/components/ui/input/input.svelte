@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { HTMLInputAttributes, HTMLInputTypeAttribute } from "svelte/elements";
-	import { cn } from '$lib/utils.js';
-import type { WithElementRef } from '$lib/utils.js';
+	import { cn, type WithElementRef } from '$lib/utils.js';
 
 	type InputType = Exclude<HTMLInputTypeAttribute, "file">;
 
@@ -10,7 +9,7 @@ import type { WithElementRef } from '$lib/utils.js';
 			({ type: "file"; files?: FileList } | { type?: InputType; files?: undefined })
 	>;
 
-	const {
+	let {
 		ref = $bindable(null),
 		value = $bindable(),
 		type,

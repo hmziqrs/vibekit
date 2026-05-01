@@ -15,9 +15,9 @@
     createdAt: string
   }
 
-  const search = $state('')
-  const statusFilter = $state('')
-  const pageNum = $state(1)
+  let search = $state('')
+  let statusFilter = $state('')
+  let pageNum = $state(1)
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
   let showDeleteDialog = $state(false)
@@ -33,7 +33,7 @@
       if (!res.ok) throw new Error('Failed to fetch users')
       return res.json() as Promise<{ users: UserRow[]; total: number }>
     },
-    queryKey: ['admin', 'users', { search, status: statusFilter, page: pageNum }],
+    queryKey: ['admin', 'users', { page: pageNum, search, status: statusFilter }],
     retry: 1,
   }))
 

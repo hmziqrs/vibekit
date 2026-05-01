@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     sveltekit(),
-    paraglideVitePlugin({ project: './project.inlang', outdir: './src/lib/paraglide' }),
+    paraglideVitePlugin({ outdir: './src/lib/paraglide', project: './project.inlang' }),
   ],
   ssr: {
     external: ['better-auth', '@better-auth/core'],

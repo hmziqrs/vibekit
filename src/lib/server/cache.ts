@@ -21,7 +21,6 @@ export async function purgeBlogCache(
     return
   }
 
-  const tags = blogCacheTags(slug)
   const cache = (platform.caches as CacheStorage & { default: Cache }).default
 
   // Purge by reconstructing cache keys — Cloudflare Cache API doesn't support

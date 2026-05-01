@@ -1,5 +1,5 @@
 import { STRATEGY_LABEL } from './constants'
-import type { ClientEvidence, RenderingStrategy, RouteResult, ServerEvidence } from './types'
+import type { ClientEvidence, RenderingStrategy, ServerEvidence } from './types'
 
 export function formatRouteReport(result: {
   path: string

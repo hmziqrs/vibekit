@@ -2,8 +2,7 @@
   import { authClient, useSession } from '$lib/auth-client'
   import { page } from '$app/state'
   import { goto } from '$app/navigation'
-  import { forgotPasswordSchema } from '$lib/validators/auth';
-import type { ForgotPasswordInput } from '$lib/validators/auth';
+  import { forgotPasswordSchema, type ForgotPasswordInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
@@ -28,7 +27,7 @@ import type { ForgotPasswordInput } from '$lib/validators/auth';
     },
     onSubmit: async ({ value }: { value: ForgotPasswordInput }) => {
       try {
-        const origin = window.location.origin
+        const {origin} = window.location
         const res = await authClient.requestPasswordReset({
           email: value.email,
           redirectTo: `${origin}/reset-password`,
@@ -40,9 +39,9 @@ import type { ForgotPasswordInput } from '$lib/validators/auth';
         }
         message = 'Check your email for a reset link'
         return null
-      } catch (err) {
+      } catch (error) {
         return {
-          form: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+          form: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
         }
       }
     },

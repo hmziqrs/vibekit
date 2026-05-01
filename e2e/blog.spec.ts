@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { expect, test } from 'vitest'
 
 test.describe('blog pages', () => {
   test('blog index shows seeded posts', async ({ page }) => {

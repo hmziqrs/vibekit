@@ -12,9 +12,6 @@ import type { RequestHandler } from './$types'
 const findPost = async (db: ReturnType<typeof getDb>, id: string) =>
   db.select().from(blogPost).where(eq(blogPost.id, id)).get()
 
-const postExists = async (db: ReturnType<typeof getDb>, id: string) =>
-  db.select({ id: blogPost.id }).from(blogPost).where(eq(blogPost.id, id)).get()
-
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })

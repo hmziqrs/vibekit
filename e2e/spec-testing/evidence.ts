@@ -52,7 +52,8 @@ export async function fetchClientEvidence(
   const bodyTextLength = await page.evaluate(
     () => document.body.textContent.replace(/\s+/g, ' ').trim().length
   )
-  const finalHTMLSize = (await page.content()).length
+  const pageContent = await page.content()
+  const finalHTMLSize = pageContent.length
 
   return {
     bodyTextDelta: bodyTextLength - serverBodyText,

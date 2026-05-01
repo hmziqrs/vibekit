@@ -1,3 +1,5 @@
+import type { vi, describe, expect, it } from 'vitest'
+
 import { blogCacheTags, purgeBlogCache } from './cache'
 import type { CachePlatform } from './cache'
 
@@ -23,7 +25,7 @@ describe(blogCacheTags, () => {
   })
 })
 
-describe(purgeBlogCache, () => {
+describe('purgeBlogCache', () => {
   it('does nothing when platform is undefined', async () => {
     await expect(purgeBlogCache(undefined, 'slug')).resolves.toBeUndefined()
   })
@@ -33,7 +35,7 @@ describe(purgeBlogCache, () => {
   })
 
   it('calls cache delete for index and slug', async () => {
-    const deleteFn = vi.fn().mockResolvedValue(undefined)
+    const deleteFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
     const platform = {
       caches: {
         default: { delete: deleteFn },
@@ -46,7 +48,7 @@ describe(purgeBlogCache, () => {
   })
 
   it('handles cache delete errors gracefully', async () => {
-    const deleteFn = vi.fn().mockRejectedValue(new Error('cache error'))
+    const deleteFn = vi.fn<() => Promise<void>>().mockRejectedValue(new Error('cache error'))
     const platform = {
       caches: {
         default: { delete: deleteFn },

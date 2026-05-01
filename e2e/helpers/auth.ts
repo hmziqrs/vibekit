@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
-import { expect } from 'vitest'
 
 export const ADMIN = { email: 'admin@vibekit.local', name: 'Test Admin', password: 'admin12345678' }
 export const USER = { email: 'user@vibekit.local', name: 'Test User', password: 'user12345678' }

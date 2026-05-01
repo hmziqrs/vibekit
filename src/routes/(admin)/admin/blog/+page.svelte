@@ -15,8 +15,8 @@
     deletedAt: string | null
   }
 
-  const statusFilter = $state('all')
-  const search = $state('')
+  let statusFilter = $state('all')
+  let search = $state('')
   let deleteTarget = $state<PostRow | null>(null)
   let showConfirmDialog = $state(false)
 
@@ -42,7 +42,7 @@
       }
       return { posts }
     },
-    queryKey: ['admin', 'posts', { status: statusFilter, search }],
+    queryKey: ['admin', 'posts', { search, status: statusFilter }],
     retry: 1,
   }))
 

@@ -5,7 +5,7 @@ import type { RequestHandler } from './$types'
 export const GET: RequestHandler = async ({ platform }) => {
   const start = Date.now()
 
-  let db: string
+  let db = 'error'
   try {
     const d1 = platform?.env?.DB
     if (d1) {

@@ -2,8 +2,7 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { signIn, useSession } from '$lib/auth-client'
-  import { loginSchema } from '$lib/validators/auth';
-import type { LoginInput } from '$lib/validators/auth';
+  import { loginSchema, type LoginInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
@@ -39,9 +38,9 @@ import type { LoginInput } from '$lib/validators/auth';
         const next = page.url.searchParams.get('next') ?? '/app'
         goto(next, { replaceState: true })
         return null
-      } catch (err) {
+      } catch (error) {
         return {
-          form: err instanceof Error ? err.message : 'Invalid email or password',
+          form: error instanceof Error ? error.message : 'Invalid email or password',
         }
       }
     },

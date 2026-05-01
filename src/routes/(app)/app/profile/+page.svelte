@@ -65,11 +65,11 @@
   <h1 class="text-2xl font-semibold text-text-primary">Profile</h1>
   <p class="mt-1 text-[14px] text-text-muted">Manage your account information.</p>
 
-  <div class="mt-6 rounded-xl border border-white/[0.06] bg-surface p-6">
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
     <!-- Avatar placeholder -->
     <div class="mb-6 flex items-center gap-4">
       <div
-        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xl font-semibold text-text-secondary"
+        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/6 text-xl font-semibold text-text-secondary"
       >
         {auth.user?.name?.charAt(0)?.toUpperCase() || 'U'}
       </div>
@@ -82,7 +82,7 @@
     </div>
 
     <!-- Role -->
-    <div class="mb-6 rounded-lg border border-white/[0.06] bg-surface-elevated p-4">
+    <div class="mb-6 rounded-lg border border-white/6 bg-surface-elevated p-4">
       <p class="text-[11px] uppercase tracking-wider text-text-subtle">Role</p>
       <p class="mt-1 text-[14px] font-medium text-text-primary">
         {auth.user?.name ? 'Member' : 'User'}
@@ -90,7 +90,7 @@
     </div>
 
     <!-- Member since -->
-    <div class="mb-6 rounded-lg border border-white/[0.06] bg-surface-elevated p-4">
+    <div class="mb-6 rounded-lg border border-white/6 bg-surface-elevated p-4">
       <p class="text-[11px] uppercase tracking-wider text-text-subtle">Member Since</p>
       <p class="mt-1 text-[14px] font-medium text-text-primary">
         {auth.user?.createdAt
@@ -100,7 +100,7 @@
     </div>
 
     <!-- Name section -->
-    <div class="border-t border-white/[0.06] pt-6">
+    <div class="border-t border-white/6 pt-6">
       <div class="mb-4 flex items-center justify-between">
         <div>
           <h2 class="text-[15px] font-medium text-text-primary">Display Name</h2>
@@ -109,7 +109,7 @@
         {#if !isEditing}
           <button
             onclick={startEditing}
-            class="rounded-lg px-3 py-1.5 text-[13px] font-medium text-brand transition-colors hover:bg-white/[0.04]"
+            class="rounded-lg px-3 py-1.5 text-[13px] font-medium text-brand transition-colors hover:bg-white/4"
           >
             Edit
           </button>
@@ -154,7 +154,7 @@
                 <button
                   type="button"
                   onclick={cancelEditing}
-                  class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+                  class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
                 >
                   Cancel
                 </button>
@@ -168,7 +168,7 @@
     </div>
 
     <!-- Email (read-only) -->
-    <div class="mt-6 border-t border-white/[0.06] pt-6">
+    <div class="mt-6 border-t border-white/6 pt-6">
       <h2 class="mb-1 text-[15px] font-medium text-text-primary">Email</h2>
       <p class="mb-3 text-[13px] text-text-muted">Your email address cannot be changed.</p>
       <p class="text-[14px] text-text-primary">{auth.user?.email || 'N/A'}</p>

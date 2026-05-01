@@ -2,8 +2,7 @@ import { getDb } from '$lib/server/db'
 import { item } from '$lib/server/db/schema'
 import { updateItemSchema } from '$lib/validators/item'
 import { json } from '@sveltejs/kit'
-import { and, eq, isNull, sql } from 'drizzle-orm'
-import type { SQL } from 'drizzle-orm'
+import { and, eq, isNull, sql, type SQL } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 

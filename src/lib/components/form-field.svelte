@@ -1,5 +1,5 @@
 <script lang="ts">
-  const {
+  let {
     label,
     id,
     type = 'text',

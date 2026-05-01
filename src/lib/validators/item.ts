@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 
-import { name, slug } from './common'
+import { name } from './common'
 
 export const createItemSchema = z.object({
   description: z

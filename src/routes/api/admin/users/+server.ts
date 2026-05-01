@@ -1,7 +1,6 @@
 import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
-import { json } from '@sveltejs/kit'
-import type { RequestHandler } from '@sveltejs/kit'
+import { json, type RequestHandler } from '@sveltejs/kit'
 import { and, desc, eq, isNull, like, sql } from 'drizzle-orm'
 
 export const GET: RequestHandler = async ({ url, locals, platform }) => {
