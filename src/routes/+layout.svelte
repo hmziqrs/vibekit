@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { setContext } from 'svelte'
-	import type { Pathname } from '$app/types';
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { goto, invalidate } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { useSession, signOut } from '$lib/auth-client';
+	import { signOut, useSession } from '$lib/auth-client';
 	import type { AuthContext } from '$lib/auth.svelte';
 	import { QueryClientProvider } from '@tanstack/svelte-query';
 	import { createQueryClient } from '$lib/query-client';
@@ -15,7 +13,7 @@
 	import ConsentBanner from '$lib/components/consent-banner.svelte';
 	import SkipLink from '$lib/components/skip-link.svelte';
 
-	let { children } = $props();
+	const { children } = $props();
 	const queryClient = createQueryClient();
 
 	const session = useSession();
@@ -30,10 +28,10 @@
 	}
 
 	setContext('auth', {
-		get user() { return user },
-		get isPending() { return isPending },
 		get isAdmin() { return isAdmin },
+		get isPending() { return isPending },
 		logout,
+		get user() { return user },
 	} satisfies AuthContext);
 </script>
 
@@ -49,7 +47,7 @@
 <div style="display:none">
 	{#each locales as locale (locale)}
 		<a
-			href={resolve(localizeHref(page.url.pathname, { locale }) as Pathname)}
+			href={localizeHref(page.url.pathname, { locale })}
 		>{locale}</a>
 	{/each}
 </div>

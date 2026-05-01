@@ -4,8 +4,8 @@
   import { seo } from '$lib/seo'
 
   const meta = seo({
-    title: 'Terms of Service',
     description: 'Vibekit terms of service — the rules governing your use of the platform.',
+    title: 'Terms of Service',
   })
 </script>
 

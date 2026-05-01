@@ -1,7 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { validateImageUpload, generateStorageKey } from './upload'
+import { generateStorageKey, validateImageUpload } from './upload'
 
-describe('validateImageUpload', () => {
+describe(validateImageUpload, () => {
   it('accepts a valid JPEG under 5MB', () => {
     const file = new File(['x'.repeat(1000)], 'photo.jpg', { type: 'image/jpeg' })
     expect(validateImageUpload(file)).toBeNull()
@@ -40,7 +39,7 @@ describe('validateImageUpload', () => {
   })
 })
 
-describe('generateStorageKey', () => {
+describe(generateStorageKey, () => {
   it('preserves file extension', () => {
     const key = generateStorageKey('photo.jpg')
     expect(key).toMatch(/^[a-f0-9-]{36}\.jpg$/)

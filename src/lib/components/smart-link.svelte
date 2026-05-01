@@ -11,7 +11,7 @@
     [key: string]: unknown
   }
 
-  let { href, fallback, class: className, children, ...rest }: Props = $props()
+  const { href, fallback, class: className, children, ...rest }: Props = $props()
 
   const session = useSession()
 

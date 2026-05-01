@@ -2,10 +2,12 @@
   import { page } from '$app/state'
   import { goto } from '$app/navigation'
   import { authClient, useSession } from '$lib/auth-client'
-  import { resetPasswordSchema, type ResetPasswordInput } from '$lib/validators/auth'
+  import { resetPasswordSchema } from '$lib/validators/auth';
+import type { ResetPasswordInput } from '$lib/validators/auth';
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const session = useSession()
@@ -21,16 +23,13 @@
   let message = $state('')
   let done = $state(false)
 
-  let token = $derived(page.url.searchParams.get('token') ?? '')
+  const token = $derived(page.url.searchParams.get('token') ?? '')
 
   const form = createForm(() => ({
     defaultValues: {
-      token: page.url.searchParams.get('token') ?? '',
-      password: '',
       confirmPassword: '',
-    },
-    validators: {
-      onSubmit: resetPasswordSchema,
+      password: '',
+      token: page.url.searchParams.get('token') ?? '',
     },
     onSubmit: async ({ value }: { value: ResetPasswordInput }) => {
       try {
@@ -48,6 +47,9 @@
           form: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
         }
       }
+    },
+    validators: {
+      onSubmit: resetPasswordSchema,
     },
   }))
 </script>
@@ -108,7 +110,7 @@
             {/snippet}
           </form.Field>
 
-          <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+          <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
             {#snippet children(errorMessage)}
               {#if errorMessage}
                 <p class="text-sm text-red-400">{errorMessage}</p>

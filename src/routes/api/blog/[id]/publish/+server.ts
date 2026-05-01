@@ -1,7 +1,7 @@
-import { rateLimit } from '$lib/server/rate-limit'
 import { purgeBlogCache } from '$lib/server/cache'
 import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
+import { rateLimit } from '$lib/server/rate-limit'
 import { json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
 
   await db
     .update(blogPost)
-    .set({ status: 'published', publishedAt: new Date(), updatedAt: new Date() })
+    .set({ publishedAt: new Date(), status: 'published', updatedAt: new Date() })
     .where(eq(blogPost.id, params.id))
 
   await purgeBlogCache(platform, existing.slug)

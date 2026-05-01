@@ -1,5 +1,5 @@
 <script lang="ts">
-  let {
+  const {
     currentUrl = '',
     onUpload,
     onRemove,
@@ -33,7 +33,7 @@
       const formData = new FormData()
       formData.append('file', file)
 
-      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+      const res = await fetch('/api/admin/upload', { body: formData, method: 'POST' })
       const data = (await res.json()) as { url?: string; error?: string }
 
       if (!res.ok || data.error) {
@@ -51,14 +51,14 @@
 
   function onFileInput(e: Event) {
     const input = e.target as HTMLInputElement
-    if (input.files?.[0]) handleFile(input.files[0])
+    if (input.files?.[0]) {handleFile(input.files[0])}
   }
 
   function onDrop(e: DragEvent) {
     e.preventDefault()
     dragOver = false
     const file = e.dataTransfer?.files?.[0]
-    if (file) handleFile(file)
+    if (file) {handleFile(file)}
   }
 
   function onDragOver(e: DragEvent) {

@@ -4,11 +4,11 @@
 	import Footer from '$lib/components/footer.svelte'
 
 	const meta = seo({
-		title: 'Blog',
 		description: 'Articles about SvelteKit, Cloudflare, and building SaaS products.',
+		title: 'Blog',
 	})
 
-	let { data } = $props()
+	const { data } = $props()
 </script>
 
 <svelte:head>

@@ -3,11 +3,11 @@
   import ImageUpload from '$lib/components/image-upload.svelte'
   import { createPostSchema } from '$lib/validators/blog'
 
-  let title = $state('')
+  const title = $state('')
   let slug = $state('')
-  let excerpt = $state('')
-  let contentBody = $state('')
-  let coverImageUrl = $state('')
+  const excerpt = $state('')
+  const contentBody = $state('')
+  const coverImageUrl = $state('')
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
   let serverError = $state('')
@@ -25,12 +25,12 @@
     serverError = ''
 
     const result = createPostSchema.safeParse({
-      title,
-      slug,
-      excerpt: excerpt || undefined,
       contentBody: contentBody || undefined,
       coverImageUrl: coverImageUrl || undefined,
+      excerpt: excerpt || undefined,
+      slug,
       status: 'draft',
+      title,
     })
     if (!result.success) {
       errors = Object.fromEntries(
@@ -42,8 +42,6 @@
     saving = true
     try {
       const res = await fetch('/api/blog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
           slug,
@@ -52,6 +50,8 @@
           coverImageUrl: coverImageUrl || undefined,
           status: 'draft',
         }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
       })
 
       if (!res.ok) {

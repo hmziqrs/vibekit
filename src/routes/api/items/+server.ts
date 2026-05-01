@@ -2,7 +2,7 @@ import { getDb } from '$lib/server/db'
 import { item } from '$lib/server/db/schema'
 import { createItemSchema } from '$lib/validators/item'
 import { json } from '@sveltejs/kit'
-import { and, desc, isNull, like, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull, like } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
@@ -27,11 +27,11 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 
   const items = await db
     .select({
+      createdAt: item.createdAt,
+      description: item.description,
       id: item.id,
       name: item.name,
-      description: item.description,
       status: item.status,
-      createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     })
     .from(item)
@@ -49,23 +49,23 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const body = await request.json()
   const parsed = createItemSchema.safeParse(body)
   if (!parsed.success) {
-    return json({ error: 'Validation failed', details: parsed.error.issues }, { status: 400 })
+    return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
 
   const db = getDb(platform!.env.DB)
   const created = await db
     .insert(item)
     .values({
-      userId: locals.user.id,
-      name: parsed.data.name,
       description: parsed.data.description ?? null,
+      name: parsed.data.name,
+      userId: locals.user.id,
     })
     .returning({
+      createdAt: item.createdAt,
+      description: item.description,
       id: item.id,
       name: item.name,
-      description: item.description,
       status: item.status,
-      createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     })
     .get()

@@ -5,19 +5,19 @@
   import { seo } from '$lib/seo'
 
   const meta = seo({
-    title: 'About',
     description:
       'Learn about Vibekit — an open-source SvelteKit SaaS boilerplate built for Cloudflare Workers.',
+    title: 'About',
   })
 
   const stack = [
-    { name: 'SvelteKit', desc: 'Full-stack framework with runes-mode Svelte 5' },
-    { name: 'Cloudflare Workers', desc: 'Edge runtime with global distribution' },
-    { name: 'D1 / Drizzle', desc: 'Type-safe SQLite ORM at the edge' },
-    { name: 'Better Auth', desc: 'Self-hosted auth with sessions and RBAC' },
-    { name: 'Tailwind CSS', desc: 'Utility-first styling with custom design tokens' },
-    { name: 'TanStack', desc: 'Query, Table, and Router for server state' },
-    { name: 'Paraglide JS', desc: 'Compile-time i18n with zero runtime overhead' },
+    { desc: 'Full-stack framework with runes-mode Svelte 5', name: 'SvelteKit' },
+    { desc: 'Edge runtime with global distribution', name: 'Cloudflare Workers' },
+    { desc: 'Type-safe SQLite ORM at the edge', name: 'D1 / Drizzle' },
+    { desc: 'Self-hosted auth with sessions and RBAC', name: 'Better Auth' },
+    { desc: 'Utility-first styling with custom design tokens', name: 'Tailwind CSS' },
+    { desc: 'Query, Table, and Router for server state', name: 'TanStack' },
+    { desc: 'Compile-time i18n with zero runtime overhead', name: 'Paraglide JS' },
   ]
 </script>
 

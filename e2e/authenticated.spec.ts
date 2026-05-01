@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN, USER, login, logout, assertOnLogin } from './helpers/auth'
+import { expect, test } from 'vitest'
+
+import { ADMIN, USER, assertOnLogin, login, logout } from './helpers/auth'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -11,11 +13,13 @@ test.describe('login flow', () => {
   })
 
   test('respects ?next= redirect after login', async ({ page }) => {
-    await page.goto('/login?next=' + encodeURIComponent('/app/settings'), { waitUntil: 'networkidle' })
+    await page.goto(`/login?next=${encodeURIComponent('/app/settings')}`, {
+      waitUntil: 'networkidle',
+    })
     await page.fill('input[type="email"]', ADMIN.email)
     await page.fill('input[type="password"]', ADMIN.password)
     await page.click('button[type="submit"]')
-    await page.waitForURL('**/app/**', { timeout: 10000 })
+    await page.waitForURL('**/app/**', { timeout: 10_000 })
     // The login page may redirect to /app first, then client-side reads ?next
     await page.waitForTimeout(1000)
     await expect(page).toHaveURL(/\/app/)
@@ -28,7 +32,9 @@ test.describe('login flow', () => {
     await page.click('button[type="submit"]')
     // Wait for the error to appear (client-side validation + API call)
     await page.waitForTimeout(1500)
-    await expect(page.locator('[class*="destructive"], [class*="red"]').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[class*="destructive"], [class*="red"]').first()).toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('invalid email shows error', async ({ page }) => {
@@ -37,7 +43,9 @@ test.describe('login flow', () => {
     await page.fill('input[type="password"]', 'anypassword123')
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1500)
-    await expect(page.locator('[class*="destructive"], [class*="red"]').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[class*="destructive"], [class*="red"]').first()).toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('already authenticated user is redirected away from /login', async ({ page }) => {
@@ -56,7 +64,7 @@ test.describe('register flow', () => {
     await page.getByLabel('Password', { exact: true }).fill('password123')
     await page.getByLabel('Confirm password').fill('password123')
     await page.getByRole('button', { name: 'Create account' }).click()
-    await page.waitForURL('**/verify-email**', { timeout: 10000 })
+    await page.waitForURL('**/verify-email**', { timeout: 10_000 })
     await expect(page).toHaveURL(/\/verify-email/)
   })
 

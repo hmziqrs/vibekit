@@ -1,11 +1,11 @@
-import { createAuth } from '$lib/server/auth'
+import type { createAuth } from '$lib/server/auth'
 
 type Auth = ReturnType<typeof createAuth>
 type AuthUser = Auth['$Infer']['Session']['user']
 type AuthSession = Auth['$Infer']['Session']['session']
 
 // See https://svelte.dev/docs/kit/types#app.d.ts
-// for information about these interfaces
+// For information about these interfaces
 declare global {
   namespace App {
     interface Platform {
@@ -21,10 +21,8 @@ declare global {
       auth: Auth
     }
 
-    // interface Error {}
-    // interface PageData {}
-    // interface PageState {}
+    // Interface Error {}
+    // Interface PageData {}
+    // Interface PageState {}
   }
 }
-
-export {}

@@ -30,24 +30,24 @@ export const actions: Actions = {
     }
 
     await getDb(db).insert(contactSubmission).values({
-      name: parsed.data.name,
       email: parsed.data.email,
-      subject: parsed.data.subject,
       message: parsed.data.message,
+      name: parsed.data.name,
+      subject: parsed.data.subject,
     })
 
     const sendEmail = platform?.env?.SEND_EMAIL
     const notifyEmail = platform?.env?.CONTACT_NOTIFICATION_EMAIL
-    if (sendEmail && notifyEmail) {
+    if (sendEmail && typeof notifyEmail === 'string' && notifyEmail.length > 0) {
       try {
         await sendEmail.send({
-          from: { email: 'noreply@vibekit.com', name: 'Vibekit Contact Form' },
-          to: [{ email: notifyEmail }],
+          from: 'noreply@vibekit.com',
           subject: `Contact form: ${parsed.data.subject}`,
           text: `Name: ${parsed.data.name}\nEmail: ${parsed.data.email}\nSubject: ${parsed.data.subject}\n\nMessage:\n${parsed.data.message}`,
+          to: notifyEmail,
         })
-      } catch (err) {
-        console.error('Failed to send contact notification email:', err)
+      } catch (error) {
+        console.error('Failed to send contact notification email:', error)
       }
     }
 

@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { expect, test } from 'vitest'
+
 import { goToItems } from './helpers/auth'
 
 test.describe.configure({ mode: 'serial' })
@@ -6,7 +8,10 @@ test.describe.configure({ mode: 'serial' })
 test.describe('item CRUD', () => {
   test('create item', async ({ page }) => {
     await goToItems(page)
-    await page.getByRole('link', { name: /create item/i }).first().click()
+    await page
+      .getByRole('link', { name: /create item/i })
+      .first()
+      .click()
     await expect(page).toHaveURL('/app/items/new')
 
     const itemName = `Test Item ${Date.now()}`
@@ -15,7 +20,7 @@ test.describe('item CRUD', () => {
 
     // Submit and wait for either redirect or error
     await page.getByRole('button', { name: 'Create Item' }).click()
-    await page.waitForURL('**/app/items', { timeout: 10000 }).catch(async () => {
+    await page.waitForURL('**/app/items', { timeout: 10_000 }).catch(async () => {
       // If no redirect, check for error on form
       const text = await page.textContent('body')
       throw new Error(`Create item did not redirect. Page content: ${text?.substring(0, 500)}`)
@@ -26,7 +31,7 @@ test.describe('item CRUD', () => {
     await page.waitForTimeout(500)
     // Full reload to ensure TanStack Query refetches
     await page.reload({ waitUntil: 'networkidle' })
-    await expect(page.getByText(itemName)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(itemName)).toBeVisible({ timeout: 10_000 })
   })
 
   test('edit item', async ({ page }) => {
@@ -40,7 +45,7 @@ test.describe('item CRUD', () => {
     await page.getByPlaceholder('Item name').fill(updatedName)
     await page.getByRole('button', { name: 'Save Changes' }).click()
 
-    await page.waitForURL('**/app/items', { timeout: 10000 })
+    await page.waitForURL('**/app/items', { timeout: 10_000 })
     await expect(page.getByText(updatedName)).toBeVisible()
   })
 

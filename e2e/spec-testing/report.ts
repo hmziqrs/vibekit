@@ -1,5 +1,5 @@
-import type { RenderingStrategy, RouteResult, ServerEvidence, ClientEvidence } from './types'
 import { STRATEGY_LABEL } from './constants'
+import type { ClientEvidence, RenderingStrategy, RouteResult, ServerEvidence } from './types'
 
 export function formatRouteReport(result: {
   path: string
@@ -15,11 +15,11 @@ export function formatRouteReport(result: {
 
   lines.push(`[${icon}] ${result.path}`)
   lines.push(
-    `  SERVER: ${result.server.htmlSize.toLocaleString()} bytes HTML | ${result.server.bodyTextLength} chars body | SvelteKit: ${result.server.hasSvelteKitRuntime ? 'YES' : 'NO'} | Scripts: ${result.server.hasScripts ? 'YES' : 'NO'}`,
+    `  SERVER: ${result.server.htmlSize.toLocaleString()} bytes HTML | ${result.server.bodyTextLength} chars body | SvelteKit: ${result.server.hasSvelteKitRuntime ? 'YES' : 'NO'} | Scripts: ${result.server.hasScripts ? 'YES' : 'NO'}`
   )
   if (result.client) {
     lines.push(
-      `  CLIENT: hydrated=${result.client.hydrated} | final body: ${result.client.bodyTextLength} chars | delta: ${result.client.bodyTextDelta >= 0 ? '+' : ''}${result.client.bodyTextDelta}`,
+      `  CLIENT: hydrated=${result.client.hydrated} | final body: ${result.client.bodyTextLength} chars | delta: ${result.client.bodyTextDelta >= 0 ? '+' : ''}${result.client.bodyTextDelta}`
     )
   }
   lines.push(`  DETECTED: ${result.detected}`)
@@ -33,7 +33,7 @@ export function formatRouteReport(result: {
 }
 
 export function formatGroupSummary(
-  results: Array<{ path: string; group: string; detected: RenderingStrategy; pass: boolean }>,
+  results: { path: string; group: string; detected: RenderingStrategy; pass: boolean }[]
 ): string {
   const groups = new Map<string, typeof results>()
   for (const r of results) {
@@ -51,11 +51,15 @@ export function formatGroupSummary(
     const failed = pages.length - passed
     totalPass += passed
     totalFail += failed
-    lines.push(`${group}: ${passed}/${pages.length} passed${failed > 0 ? ` (${failed} FAILED)` : ''}`)
+    lines.push(
+      `${group}: ${passed}/${pages.length} passed${failed > 0 ? ` (${failed} FAILED)` : ''}`
+    )
   }
 
   const strategies = new Map<RenderingStrategy, number>()
-  for (const r of results) strategies.set(r.detected, (strategies.get(r.detected) ?? 0) + 1)
+  for (const r of results) {
+    strategies.set(r.detected, (strategies.get(r.detected) ?? 0) + 1)
+  }
 
   lines.push('')
   lines.push('Strategy Distribution:')

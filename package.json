@@ -8,7 +8,7 @@
     "build": "wrangler types --check && vite build",
     "preview": "wrangler dev --config wrangler.jsonc --port 4173",
     "prepare": "svelte-kit sync || echo ''",
-    "check": "wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check": "wrangler types --check && svelte-kit sync && rm -rf .svelte-kit/output .svelte-kit/cloudflare-tmp && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "gen": "wrangler types",
     "db:push": "drizzle-kit push",

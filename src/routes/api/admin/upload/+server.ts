@@ -1,5 +1,5 @@
 import { rateLimit } from '$lib/server/rate-limit'
-import { validateImageUpload, uploadToR2 } from '$lib/server/upload'
+import { uploadToR2, validateImageUpload } from '$lib/server/upload'
 import { json } from '@sveltejs/kit'
 
 import type { RequestHandler } from './$types'

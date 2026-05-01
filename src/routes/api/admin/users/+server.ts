@@ -1,8 +1,8 @@
-import { json } from '@sveltejs/kit'
-import type { RequestHandler } from '@sveltejs/kit'
 import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
-import { eq, and, isNull, desc, like, sql } from 'drizzle-orm'
+import { json } from '@sveltejs/kit'
+import type { RequestHandler } from '@sveltejs/kit'
+import { and, desc, eq, isNull, like, sql } from 'drizzle-orm'
 
 export const GET: RequestHandler = async ({ url, locals, platform }) => {
   if (!locals.user || locals.user.role !== 'admin') {
@@ -30,19 +30,22 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
   const whereClause = and(...conditions)
 
   const [countResult, users] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(user).where(whereClause),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(user)
+      .where(whereClause),
     db
       .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
+        createdAt: user.createdAt,
         displayName: user.displayName,
-        role: user.role,
-        status: user.status,
+        email: user.email,
         emailVerified: user.emailVerified,
+        id: user.id,
         image: user.image,
         lastLoginAt: user.lastLoginAt,
-        createdAt: user.createdAt,
+        name: user.name,
+        role: user.role,
+        status: user.status,
         updatedAt: user.updatedAt,
       })
       .from(user)
@@ -52,5 +55,5 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
       .offset(offset),
   ])
 
-  return json({ users, total: countResult[0].count })
+  return json({ total: countResult[0].count, users })
 }

@@ -13,12 +13,12 @@
     createdAt: string
   }
 
-  let { data } = $props()
-  let selectedAction = $derived(page.url.searchParams.get('action') ?? '')
+  const { data } = $props()
+  const selectedAction = $derived(page.url.searchParams.get('action') ?? '')
 
   function handleFilter(action: string) {
     const params = new URLSearchParams()
-    if (action) params.set('action', action)
+    if (action) {params.set('action', action)}
     goto(`/admin/audit?${params}`, { keepFocus: true, noScroll: true })
   }
 
@@ -33,7 +33,7 @@
   }
 
   function formatMetadata(meta: string | null) {
-    if (!meta) return null
+    if (!meta) {return null}
     try {
       const parsed = JSON.parse(meta)
       return JSON.stringify(parsed, null, 2)

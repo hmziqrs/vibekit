@@ -2,16 +2,17 @@
   import { authClient } from '$lib/auth-client'
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const changePasswordSchema = z
     .object({
+      confirmPassword: z.string().min(1, 'Please confirm your new password'),
       currentPassword: z.string().min(1, 'Current password is required'),
       newPassword: z
         .string()
         .min(8, 'Password must be at least 8 characters')
         .max(128, 'Password must be at most 128 characters'),
-      confirmPassword: z.string().min(1, 'Please confirm your new password'),
     })
     .refine((data) => data.newPassword === data.confirmPassword, {
       message: 'Passwords do not match',
@@ -24,12 +25,9 @@
 
   const form = createForm(() => ({
     defaultValues: {
+      confirmPassword: '',
       currentPassword: '',
       newPassword: '',
-      confirmPassword: '',
-    },
-    validators: {
-      onSubmit: changePasswordSchema,
     },
     onSubmit: async ({ value }: { value: ChangePasswordInput }) => {
       try {
@@ -47,10 +45,13 @@
         return { form: 'Something went wrong' }
       }
     },
+    validators: {
+      onSubmit: changePasswordSchema,
+    },
   }))
 
   function handleDeleteAccount() {
-    if (deleteConfirmText !== 'DELETE') return
+    if (deleteConfirmText !== 'DELETE') {return}
     alert(
       'Account deletion is not yet implemented. This would permanently delete your account and all data.'
     )
@@ -104,7 +105,7 @@
         {/snippet}
       </form.Field>
 
-      <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+      <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
         {#snippet children(errorMessage)}
           {#if errorMessage}
             <p class="text-[13px] text-destructive">{errorMessage}</p>

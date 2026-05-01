@@ -347,7 +347,7 @@ Write tests for auth and app functionality:
 - [ ] Reset password works with valid token
 - [ ] Email verification flow works
 - [ ] Nav shows authenticated state (Dashboard link, user info)
-- [ ] Unauthenticated /app/* redirects to /login?next=...
+- [ ] Unauthenticated /app/\* redirects to /login?next=...
 - [ ] /app dashboard shows welcome message with user data
 - [ ] Profile page shows and allows editing user info
 - [ ] Settings page allows password change

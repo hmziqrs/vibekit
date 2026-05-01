@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     return json({ error: 'Storage not configured' }, { status: 500 })
   }
 
-  const key = params.key
+  const { key } = params
   if (!key || key.includes('..')) {
     return json({ error: 'Invalid key' }, { status: 400 })
   }

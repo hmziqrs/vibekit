@@ -1,20 +1,20 @@
 import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  fullyParallel: false,
   reporter: 'html',
+  retries: process.env.CI ? 2 : 0,
+  testDir: './e2e',
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
   },
   webServer: {
     command: 'bun run preview',
-    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
+    url: 'http://localhost:4173',
   },
+  workers: process.env.CI ? 1 : undefined,
 })

@@ -2,10 +2,12 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { signIn, useSession } from '$lib/auth-client'
-  import { loginSchema, type LoginInput } from '$lib/validators/auth'
+  import { loginSchema } from '$lib/validators/auth';
+import type { LoginInput } from '$lib/validators/auth';
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const session = useSession()
@@ -23,9 +25,6 @@
     defaultValues: {
       email: '',
       password: '',
-    },
-    validators: {
-      onSubmit: loginSchema,
     },
     onSubmit: async ({ value }: { value: LoginInput }) => {
       console.log("submit")
@@ -46,6 +45,9 @@
         }
       }
     },
+    validators: {
+      onSubmit: loginSchema,
+    },
   }))
 </script>
 
@@ -62,7 +64,7 @@
         class="space-y-4"
         novalidate
       >
-        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+        <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
           {#snippet children(errorMessage)}
             {#if errorMessage}
               <p class="text-sm text-red-400">{errorMessage}</p>

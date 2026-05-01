@@ -19,10 +19,12 @@ Complete the remaining blog infrastructure items from the PRD: image upload via 
 ### Step 1: R2 Upload API Endpoint
 
 **Files:**
+
 - `src/routes/api/admin/upload/+server.ts` — new file (image upload handler)
 - `src/lib/server/upload.ts` — new file (upload utility)
 
 **Details:**
+
 - `POST /api/admin/upload` — accepts `multipart/form-data` with a single `file` field
 - Validates: admin role, file type (image/jpeg, image/png, image/webp, image/gif), size <= 5MB
 - Generates UUID-based filename to prevent collisions: `{uuid}.{ext}`
@@ -33,16 +35,19 @@ Complete the remaining blog infrastructure items from the PRD: image upload via 
 **Alternative for v1:** Since R2 doesn't serve objects via Workers by default, we'll create a catch-all route that reads from the R2 bucket and returns the image with proper content-type and cache headers. This keeps it simple for local dev and staging.
 
 **Files:**
+
 - `src/routes/cdn/blog/[...key]/+server.ts` — new file (R2 read proxy)
 
 ### Step 2: Image Upload UI in Admin Blog Editor
 
 **Files:**
+
 - `src/lib/components/image-upload.svelte` — new component (reusable upload widget)
 - `src/routes/(admin)/admin/blog/new/+page.svelte` — update (add cover image upload)
 - `src/routes/(admin)/admin/blog/[id]/edit/+page.svelte` — update (add cover image upload)
 
 **Details:**
+
 - `ImageUpload` component: file input, preview, upload progress, remove button
 - Shows current cover image if set (on edit page)
 - On upload: calls `/api/admin/upload`, gets URL, sets `coverImageUrl`
@@ -53,6 +58,7 @@ Complete the remaining blog infrastructure items from the PRD: image upload via 
 ### Step 3: Cache-Tag Purge on Blog Mutations
 
 **Files:**
+
 - `src/lib/server/cache.ts` — new file (cache purge utility)
 - `src/routes/api/blog/+server.ts` — update (purge on POST)
 - `src/routes/api/blog/[id]/+server.ts` — update (purge on PATCH/DELETE)
@@ -66,6 +72,7 @@ Complete the remaining blog infrastructure items from the PRD: image upload via 
 **Details:**
 
 `cache.ts` utility:
+
 - `purgeBlogCache(platform, tags: string[])` — uses Cloudflare Cache API via `platform.caches` or `platform.env.ASSETS`
 - Tags: `blog:index`, `blog:slug:{slug}`, `blog:tag:{tag}`
 - On publish: purge `blog:index` + `blog:slug:{slug}`
@@ -76,16 +83,19 @@ Complete the remaining blog infrastructure items from the PRD: image upload via 
 - On restore: purge `blog:index`
 
 Cache headers on blog pages:
+
 - `Cache-Control: public, max-age=300, s-maxage=3600, stale-while-revalidate=60`
 - `CDN-Cache-Control: public, max-age=3600`
 
 ### Step 4: 30-Day Hard-Delete Cron
 
 **Files:**
+
 - `src/routes/api/admin/cleanup/+server.ts` — new file (manual trigger + cron handler)
 - `wrangler.jsonc` — update (add cron trigger)
 
 **Details:**
+
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 3 * * *"] }` (daily at 3am UTC)
 - Export `scheduled` handler in a top-level scheduled worker OR use an API endpoint that can be called by cron
 - Since SvelteKit doesn't natively export a `scheduled` handler, we'll create a dedicated cleanup endpoint that:
@@ -100,9 +110,11 @@ Cache headers on blog pages:
 ### Step 5: Public Cache Strategy Documentation
 
 **Files:**
+
 - `docs/deployment.md` — update (add cache strategy section)
 
 **Details:**
+
 - Document cache headers for blog pages
 - Document cache-tag purge mechanism
 - Document CDN-Cache-Control vs Cache-Control semantics
@@ -111,10 +123,12 @@ Cache headers on blog pages:
 ### Step 6: Tests
 
 **Unit tests:**
+
 - `src/lib/server/upload.test.ts` — test file validation (type, size), key generation
 - `src/lib/server/cache.test.ts` — test purgeBlogCache logic, tag generation
 
 **E2E tests:**
+
 - `e2e/blog-upload.spec.ts` — test image upload flow (admin creates post with image)
 - Update `e2e/public.spec.ts` — verify cache headers on blog pages
 

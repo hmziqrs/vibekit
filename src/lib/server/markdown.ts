@@ -2,7 +2,9 @@ import { micromark } from 'micromark'
 import { gfm, gfmHtml } from 'micromark-extension-gfm'
 
 export function renderMarkdown(raw: string): string {
-  if (!raw) return ''
+  if (!raw) {
+    return ''
+  }
 
   return micromark(raw, {
     extensions: [gfm()],
@@ -12,7 +14,7 @@ export function renderMarkdown(raw: string): string {
 
 // Basic HTML sanitization for rendered markdown
 // Note: This provides basic XSS protection. For production, consider
-// integrating a full sanitizer like DOMPurify with a DOM shim for
+// Integrating a full sanitizer like DOMPurify with a DOM shim for
 // Cloudflare Workers.
 const ALLOWED_TAGS = new Set([
   'h1',

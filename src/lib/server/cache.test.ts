@@ -1,21 +1,21 @@
-import { describe, it, expect, vi } from 'vitest'
 import { blogCacheTags, purgeBlogCache } from './cache'
+import type { CachePlatform } from './cache'
 
-describe('blogCacheTags', () => {
+describe(blogCacheTags, () => {
   it('returns index tag only when no slug', () => {
-    expect(blogCacheTags()).toEqual(['blog:index'])
+    expect(blogCacheTags()).toStrictEqual(['blog:index'])
   })
 
   it('includes slug tag when slug provided', () => {
-    expect(blogCacheTags('my-post')).toEqual(['blog:index', 'blog:slug:my-post'])
+    expect(blogCacheTags('my-post')).toStrictEqual(['blog:index', 'blog:slug:my-post'])
   })
 
   it('includes tag tag when tag provided', () => {
-    expect(blogCacheTags(undefined, 'svelte')).toEqual(['blog:index', 'blog:tag:svelte'])
+    expect(blogCacheTags(undefined, 'svelte')).toStrictEqual(['blog:index', 'blog:tag:svelte'])
   })
 
   it('includes all tags', () => {
-    expect(blogCacheTags('my-post', 'svelte')).toEqual([
+    expect(blogCacheTags('my-post', 'svelte')).toStrictEqual([
       'blog:index',
       'blog:slug:my-post',
       'blog:tag:svelte',
@@ -23,7 +23,7 @@ describe('blogCacheTags', () => {
   })
 })
 
-describe('purgeBlogCache', () => {
+describe(purgeBlogCache, () => {
   it('does nothing when platform is undefined', async () => {
     await expect(purgeBlogCache(undefined, 'slug')).resolves.toBeUndefined()
   })
@@ -37,8 +37,8 @@ describe('purgeBlogCache', () => {
     const platform = {
       caches: {
         default: { delete: deleteFn },
-      } as unknown as CacheStorage,
-    }
+      },
+    } as CachePlatform
 
     await purgeBlogCache(platform, 'test-post')
 
@@ -50,8 +50,8 @@ describe('purgeBlogCache', () => {
     const platform = {
       caches: {
         default: { delete: deleteFn },
-      } as unknown as CacheStorage,
-    }
+      },
+    } as CachePlatform
 
     await expect(purgeBlogCache(platform, 'test')).resolves.toBeUndefined()
   })

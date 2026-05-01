@@ -5,6 +5,7 @@
   import { invalidate } from '$app/navigation'
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const nameSchema = z.object({
@@ -32,9 +33,6 @@
     defaultValues: {
       name: auth.user?.name || '',
     },
-    validators: {
-      onSubmit: nameSchema,
-    },
     onSubmit: async ({ value }: { value: NameInput }) => {
       try {
         const res = await authClient.updateUser({ name: value.name.trim() })
@@ -49,12 +47,15 @@
         return { form: 'Something went wrong' }
       }
     },
+    validators: {
+      onSubmit: nameSchema,
+    },
   }))
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'long',
       day: 'numeric',
+      month: 'long',
       year: 'numeric',
     })
   }
@@ -132,7 +133,7 @@
             <p class="text-[13px] text-emerald-400">{successMessage}</p>
           {/if}
 
-          <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+          <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
             {#snippet children(errorMessage)}
               {#if errorMessage}
                 <p class="text-[13px] text-destructive">{errorMessage}</p>

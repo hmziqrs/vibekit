@@ -1,40 +1,38 @@
-import { describe, it, expect } from 'vitest'
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from './auth'
 
-import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from './auth'
-
-describe('loginSchema', () => {
+describe(loginSchema, () => {
   it('validates a valid login', () => {
     const result = loginSchema.safeParse({ email: 'user@example.com', password: 'secret123' })
-    expect(result.success).toBe(true)
+    expect(result.success).toBeTruthy()
   })
 
   it('rejects empty password', () => {
     const result = loginSchema.safeParse({ email: 'user@example.com', password: '' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 
   it('rejects invalid email', () => {
     const result = loginSchema.safeParse({ email: 'not-an-email', password: 'secret123' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 })
 
-describe('registerSchema', () => {
+describe(registerSchema, () => {
   const validInput = {
-    name: 'John',
-    email: 'john@example.com',
-    password: 'securepassword',
     confirmPassword: 'securepassword',
+    email: 'john@example.com',
+    name: 'John',
+    password: 'securepassword',
   }
 
   it('validates a valid registration', () => {
     const result = registerSchema.safeParse(validInput)
-    expect(result.success).toBe(true)
+    expect(result.success).toBeTruthy()
   })
 
   it('rejects mismatched passwords', () => {
     const result = registerSchema.safeParse({ ...validInput, confirmPassword: 'different' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
     if (!result.success) {
       expect(result.error.issues[0].message).toBe('Passwords do not match')
     }
@@ -43,49 +41,49 @@ describe('registerSchema', () => {
   it('rejects short password', () => {
     const result = registerSchema.safeParse({
       ...validInput,
-      password: 'short',
       confirmPassword: 'short',
+      password: 'short',
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 
   it('rejects empty name', () => {
     const result = registerSchema.safeParse({ ...validInput, name: '' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 })
 
-describe('forgotPasswordSchema', () => {
+describe(forgotPasswordSchema, () => {
   it('validates a valid email', () => {
     const result = forgotPasswordSchema.safeParse({ email: 'user@example.com' })
-    expect(result.success).toBe(true)
+    expect(result.success).toBeTruthy()
   })
 
   it('rejects invalid email', () => {
     const result = forgotPasswordSchema.safeParse({ email: 'bad' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 })
 
-describe('resetPasswordSchema', () => {
+describe(resetPasswordSchema, () => {
   const validInput = {
-    token: 'reset-token-abc',
-    password: 'newpassword123',
     confirmPassword: 'newpassword123',
+    password: 'newpassword123',
+    token: 'reset-token-abc',
   }
 
   it('validates a valid reset', () => {
     const result = resetPasswordSchema.safeParse(validInput)
-    expect(result.success).toBe(true)
+    expect(result.success).toBeTruthy()
   })
 
   it('rejects mismatched passwords', () => {
     const result = resetPasswordSchema.safeParse({ ...validInput, confirmPassword: 'different' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 
   it('rejects empty token', () => {
     const result = resetPasswordSchema.safeParse({ ...validInput, token: '' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBeFalsy()
   })
 })

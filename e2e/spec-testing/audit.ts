@@ -1,9 +1,12 @@
-import { expect, type Page } from '@playwright/test'
-import type { RouteConfig, RouteResult } from './types'
-import { ROUTES } from './manifest'
-import { fetchServerEvidence, fetchClientEvidence } from './evidence'
+import { expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect } from 'vitest'
+
 import { detectStrategy } from './detection'
-import { formatRouteReport, formatGroupSummary, printAuditHeader } from './report'
+import { fetchClientEvidence, fetchServerEvidence } from './evidence'
+import { ROUTES } from './manifest'
+import { formatGroupSummary, formatRouteReport, printAuditHeader } from './report'
+import type { RouteConfig, RouteResult } from './types'
 
 export interface AuditOptions {
   title: string
@@ -14,10 +17,7 @@ export interface AuditOptions {
   setup?: (page: Page) => Promise<void>
 }
 
-export async function runRenderingAudit(
-  page: Page,
-  options: AuditOptions,
-): Promise<RouteResult[]> {
+export async function runRenderingAudit(page: Page, options: AuditOptions): Promise<RouteResult[]> {
   const routes = options.routes ?? ROUTES
 
   if (options.setup) {
@@ -28,7 +28,9 @@ export async function runRenderingAudit(
 
   for (const route of routes) {
     const expected = route[options.strategyKey]
-    if (!expected) continue
+    if (!expected) {
+      continue
+    }
 
     const server = await fetchServerEvidence(page, route.path)
 
@@ -37,7 +39,7 @@ export async function runRenderingAudit(
       try {
         client = await fetchClientEvidence(page, route.path, server.bodyTextLength)
       } catch {
-        // client navigation failed — tolerate for routes needing auth/DB
+        // Client navigation failed — tolerate for routes needing auth/DB
       }
     }
 
@@ -45,14 +47,14 @@ export async function runRenderingAudit(
     const pass = strategy === expected
 
     results.push({
-      path: route.path,
-      group: route.group,
-      server,
       client,
       detected: strategy,
       expected,
       explanation,
+      group: route.group,
       pass,
+      path: route.path,
+      server,
     })
   }
 
@@ -78,9 +80,7 @@ export async function runRenderingAudit(
     const hard = failures.filter((f) => !tolerable.some((t) => t.path === f.path))
 
     if (tolerable.length > 0) {
-      console.log(
-        `Tolerated ${tolerable.length} failure(s) for routes needing DB seed or auth:`,
-      )
+      console.log(`Tolerated ${tolerable.length} failure(s) for routes needing DB seed or auth:`)
       for (const f of tolerable) {
         console.log(`  - ${f.path}: expected ${f.expected}, detected ${f.detected}`)
       }
@@ -88,13 +88,13 @@ export async function runRenderingAudit(
 
     expect(
       hard.length,
-      `${hard.length} route(s) failed unexpectedly: ${hard.map((f) => f.path).join(', ')}`,
+      `${hard.length} route(s) failed unexpectedly: ${hard.map((f) => f.path).join(', ')}`
     ).toBe(0)
   } else {
     const failures = results.filter((r) => !r.pass)
     expect(
       failures.length,
-      `${failures.length} route(s) failed: ${failures.map((f) => f.path).join(', ')}`,
+      `${failures.length} route(s) failed: ${failures.map((f) => f.path).join(', ')}`
     ).toBe(0)
   }
 

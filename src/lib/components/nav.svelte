@@ -3,7 +3,7 @@
 	import type { AuthContext } from '$lib/auth.svelte'
 	import SmartLink from './smart-link.svelte'
 
-	let { class: className = '' } = $props()
+	const { class: className = '' } = $props()
 
 	const auth = getContext<AuthContext>('auth')
 	let dropdownOpen = $state(false)
@@ -25,7 +25,7 @@
 	}
 
 	$effect(() => {
-		if (!dropdownOpen) return
+		if (!dropdownOpen) {return}
 		function handleClickOutside(e: MouseEvent) {
 			const target = e.target as HTMLElement
 			if (!target.closest('[data-dropdown-menu]')) {

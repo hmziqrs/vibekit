@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expect, test } from 'vitest'
 
 test.describe('blog pages', () => {
   test('blog index shows seeded posts', async ({ page }) => {
@@ -12,7 +13,9 @@ test.describe('blog pages', () => {
     await page.goto('/blog', { waitUntil: 'networkidle' })
     await page.getByText('Getting Started with SvelteKit 2').click()
     await expect(page).toHaveURL('/blog/getting-started-with-sveltekit-2')
-    await expect(page.getByRole('heading', { name: 'Getting Started with SvelteKit 2' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Getting Started with SvelteKit 2' })
+    ).toBeVisible()
     await expect(page.locator('article .prose')).toBeVisible()
     await expect(page.locator('article time')).toBeVisible()
   })

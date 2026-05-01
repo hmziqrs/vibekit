@@ -22,7 +22,6 @@
     "prefer-rest-params": "error",
     "prefer-spread": "error",
     "import/no-cycle": "warn",
-    "import/no-unresolved": "off",
     "typescript/no-explicit-any": "warn",
     "typescript/no-unused-vars": "warn"
   },

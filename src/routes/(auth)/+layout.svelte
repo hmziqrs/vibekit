@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Nav from '$lib/components/nav.svelte'
 
-	let { children } = $props()
+	const { children } = $props()
 </script>
 
 <div class="min-h-screen bg-surface-base">

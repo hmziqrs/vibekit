@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expect, test } from 'vitest'
 
 test.describe('auth pages', () => {
   test('login page shows form fields', async ({ page }) => {
@@ -64,7 +65,9 @@ test.describe('auth pages', () => {
     await page.getByRole('button', { name: 'Create account' }).click()
     await expect(page.locator('#name-error')).toHaveText('Name is required')
     await expect(page.locator('#email-error')).toHaveText('Please enter a valid email address')
-    await expect(page.locator('#password-error')).toHaveText('Password must be at least 8 characters')
+    await expect(page.locator('#password-error')).toHaveText(
+      'Password must be at least 8 characters'
+    )
     await expect(page.locator('#confirmPassword-error')).toHaveText('Please confirm your password')
   })
 

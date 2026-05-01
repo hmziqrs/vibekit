@@ -1,46 +1,80 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query'
 
+  interface UserSummary {
+    id: string
+    name: string | null
+    email: string
+    displayName: string | null
+    role: string
+    status: string
+    emailVerified: boolean | null
+    image: string | null
+    lastLoginAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  interface PostSummary {
+    id: string
+    title: string
+    slug: string
+    status: string
+    publishedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    deletedAt: Date | null
+  }
+
+  interface ItemSummary {
+    id: string
+    name: string
+    description: string | null
+    status: string
+    createdAt: Date
+    updatedAt: Date
+  }
+
   interface UsersResponse {
-    users: unknown[]
+    users: UserSummary[]
     total: number
   }
 
   interface PostsResponse {
-    posts: unknown[]
+    posts: PostSummary[]
   }
 
   interface ItemsResponse {
-    items: unknown[]
+    items: ItemSummary[]
   }
 
   const usersQuery = createQuery(() => ({
-    queryKey: ['admin', 'users', { limit: 1 }],
     queryFn: async () => {
       const res = await fetch('/api/admin/users?limit=1')
       if (!res.ok) throw new Error('Failed to fetch users')
       return res.json() as Promise<UsersResponse>
     },
+    queryKey: ['admin', 'users', { limit: 1 }],
     retry: 1,
   }))
 
   const postsQuery = createQuery(() => ({
-    queryKey: ['admin', 'posts'],
     queryFn: async () => {
       const res = await fetch('/api/blog')
       if (!res.ok) throw new Error('Failed to fetch posts')
       return res.json() as Promise<PostsResponse>
     },
+    queryKey: ['admin', 'posts'],
     retry: 1,
   }))
 
   const itemsQuery = createQuery(() => ({
-    queryKey: ['admin', 'items'],
     queryFn: async () => {
       const res = await fetch('/api/items')
       if (!res.ok) throw new Error('Failed to fetch items')
       return res.json() as Promise<ItemsResponse>
     },
+    queryKey: ['admin', 'items'],
     retry: 1,
   }))
 

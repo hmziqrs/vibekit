@@ -5,7 +5,7 @@
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
-  let { children } = $props()
+  const { children } = $props()
   const auth = getContext<AuthContext>('auth')
   let mobileMenuOpen = $state(false)
   let signingOut = $state(false)
@@ -30,7 +30,7 @@
   }
 
   function isActive(href: string) {
-    return page.url.pathname === href || page.url.pathname.startsWith(href + '/')
+    return page.url.pathname === href || page.url.pathname.startsWith(`${href  }/`)
   }
 
   function closeMobileMenu() {

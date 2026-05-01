@@ -1,22 +1,20 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import { z } from 'zod/v4'
 
   const formSchema = z.object({
-    name: z.string().min(1, 'Name is required').max(100).trim(),
     description: z.string().max(500),
+    name: z.string().min(1, 'Name is required').max(100).trim(),
   })
   type FormInput = z.infer<typeof formSchema>
 
   const form = createForm(() => ({
     defaultValues: {
-      name: '',
       description: '',
-    },
-    validators: {
-      onSubmit: formSchema,
+      name: '',
     },
     onSubmit: async ({ value }: { value: FormInput }) => {
       try {
@@ -42,6 +40,9 @@
           form: err instanceof Error ? err.message : 'Something went wrong',
         }
       }
+    },
+    validators: {
+      onSubmit: formSchema,
     },
   }))
 </script>
@@ -74,7 +75,7 @@
         {/snippet}
       </form.Field>
 
-      <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+      <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
         {#snippet children(errorMessage)}
           {#if errorMessage}
             <div class="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">

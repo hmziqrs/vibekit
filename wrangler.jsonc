@@ -23,8 +23,8 @@
   ],
   "send_email": [
     {
-      "name": "SEND_EMAIL"
-    }
+      "name": "SEND_EMAIL",
+    },
   ],
   "vars": {
     "ORIGIN": "http://localhost:5173",
@@ -32,12 +32,10 @@
     "PUBLIC_CF_WEB_ANALYTICS_TOKEN": "",
     "PUBLIC_FIREBASE_CONFIG": "",
     "CONTACT_NOTIFICATION_EMAIL": "",
-    "CRON_SECRET": ""
+    "CRON_SECRET": "",
   },
   "triggers": {
-    "crons": [
-      "0 3 * * *"
-    ]
+    "crons": ["0 3 * * *"],
   },
   "workers_dev": true,
   "preview_urls": true,

@@ -1,6 +1,6 @@
 import { getDb } from '$lib/server/db'
 import { auditLog, user } from '$lib/server/db/schema'
-import { desc, eq, count } from 'drizzle-orm'
+import { count, desc, eq } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -13,13 +13,13 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 
   const logs = await db
     .select({
-      id: auditLog.id,
       action: auditLog.action,
-      entityType: auditLog.entityType,
-      entityId: auditLog.entityId,
-      userEmail: user.email,
-      metadata: auditLog.metadata,
       createdAt: auditLog.createdAt,
+      entityId: auditLog.entityId,
+      entityType: auditLog.entityType,
+      id: auditLog.id,
+      metadata: auditLog.metadata,
+      userEmail: user.email,
     })
     .from(auditLog)
     .leftJoin(user, eq(auditLog.userId, user.id))

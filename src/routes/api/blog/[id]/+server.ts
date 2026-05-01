@@ -20,7 +20,9 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
   const post = await findPost(getDb(platform!.env.DB), params.id)
-  if (!post) return json({ error: 'Not found' }, { status: 404 })
+  if (!post) {
+    return json({ error: 'Not found' }, { status: 404 })
+  }
   return json({ post })
 }
 
@@ -37,41 +39,53 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   const body = await request.json()
   const parsed = updatePostSchema.safeParse(body)
   if (!parsed.success) {
-    return json({ error: 'Validation failed', details: parsed.error.issues }, { status: 400 })
+    return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
 
   const db = getDb(platform!.env.DB)
   const existing = await findPost(db, params.id)
-  if (!existing) return json({ error: 'Not found' }, { status: 404 })
-
-  const data = parsed.data
-  const updates: Record<string, unknown> = { updatedAt: new Date() }
-  const simpleFields = [
-    'title',
-    'excerpt',
-    'contentBody',
-    'coverImageUrl',
-    'seoTitle',
-    'seoDescription',
-  ] as const
-
-  for (const key of simpleFields) {
-    if (data[key] !== undefined) updates[key] = data[key]
+  if (!existing) {
+    return json({ error: 'Not found' }, { status: 404 })
   }
-  if (data.status !== undefined) updates.status = data.status
+
+  const { data } = parsed
+  const updates: Partial<typeof blogPost.$inferInsert> = { updatedAt: new Date() }
+  if (data.title !== undefined) {
+    updates.title = data.title
+  }
+  if (data.excerpt !== undefined) {
+    updates.excerpt = data.excerpt
+  }
+  if (data.contentBody !== undefined) {
+    updates.contentBody = data.contentBody
+  }
+  if (data.coverImageUrl !== undefined) {
+    updates.coverImageUrl = data.coverImageUrl
+  }
+  if (data.seoTitle !== undefined) {
+    updates.seoTitle = data.seoTitle
+  }
+  if (data.seoDescription !== undefined) {
+    updates.seoDescription = data.seoDescription
+  }
+  if (data.status !== undefined) {
+    updates.status = data.status
+  }
 
   if (data.slug !== undefined && data.slug !== existing.slug) {
     await db
       .insert(blogPostSlugHistory)
-      .values({ id: uuid(), postId: params.id, oldSlug: existing.slug })
+      .values({ id: uuid(), oldSlug: existing.slug, postId: params.id })
     updates.slug = data.slug
   }
-  if (data.status === 'published' && !existing.publishedAt) updates.publishedAt = new Date()
+  if (data.status === 'published' && !existing.publishedAt) {
+    updates.publishedAt = new Date()
+  }
 
   await db.update(blogPost).set(updates).where(eq(blogPost.id, params.id))
 
   if (existing.status === 'published' || updates.status === 'published') {
-    await purgeBlogCache(platform, (updates.slug as string) ?? existing.slug)
+    await purgeBlogCache(platform, updates.slug ?? existing.slug)
   }
 
   return json({ success: true })
@@ -89,7 +103,9 @@ export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
 
   const db = getDb(platform!.env.DB)
   const existing = await findPost(db, params.id)
-  if (!existing) return json({ error: 'Not found' }, { status: 404 })
+  if (!existing) {
+    return json({ error: 'Not found' }, { status: 404 })
+  }
 
   await db
     .update(blogPost)

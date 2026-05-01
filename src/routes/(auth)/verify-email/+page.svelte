@@ -4,6 +4,7 @@
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import { z } from 'zod/v4'
 
@@ -19,8 +20,8 @@
   let failed = $state(false)
   let verifyAttempted = $state(false)
 
-  let token = $derived(page.url.searchParams.get('token') ?? '')
-  let initialEmail = $derived(page.url.searchParams.get('email') ?? '')
+  const token = $derived(page.url.searchParams.get('token') ?? '')
+  const initialEmail = $derived(page.url.searchParams.get('email') ?? '')
 
   // Trigger verification client-side once when token is present.
   $effect(() => {
@@ -51,9 +52,6 @@
     defaultValues: {
       email: initialEmail,
     },
-    validators: {
-      onSubmit: resendSchema,
-    },
     onSubmit: async ({ value }: { value: ResendInput }) => {
       try {
         const res = await authClient.sendVerificationEmail({
@@ -72,6 +70,9 @@
           form: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
         }
       }
+    },
+    validators: {
+      onSubmit: resendSchema,
     },
   }))
 </script>
@@ -121,7 +122,7 @@
               {/snippet}
             </form.Field>
 
-            <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+            <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
               {#snippet children(errorMessage)}
                 {#if errorMessage}
                   <p class="text-sm text-red-400">{errorMessage}</p>
@@ -166,7 +167,7 @@
               {/snippet}
             </form.Field>
 
-            <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+            <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
               {#snippet children(errorMessage)}
                 {#if errorMessage}
                   <p class="text-sm text-red-400">{errorMessage}</p>

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expect, test } from 'vitest'
 
 test.describe('public pages', () => {
   test('homepage loads with hero text', async ({ page }) => {
@@ -15,8 +16,8 @@ test.describe('public pages', () => {
   test('pricing page loads', async ({ page }) => {
     await page.goto('/pricing')
     await expect(page.getByText('Simple, predictable pricing')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Starter', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Pro', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { exact: true, name: 'Starter' })).toBeVisible()
+    await expect(page.getByRole('heading', { exact: true, name: 'Pro' })).toBeVisible()
   })
 
   test('about page loads', async ({ page }) => {
@@ -40,10 +41,10 @@ test.describe('public pages', () => {
 
     await page.getByRole('navigation').getByRole('link', { name: 'Pricing' }).click()
     await expect(page).toHaveURL('/pricing')
-    await expect(page.getByRole('heading', { name: 'Starter', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { exact: true, name: 'Starter' })).toBeVisible()
 
     await page.getByRole('navigation').getByRole('link', { name: 'Blog' }).click()
     await expect(page).toHaveURL('/blog')
-    await expect(page.getByRole('heading', { name: 'Blog', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { exact: true, name: 'Blog' })).toBeVisible()
   })
 })

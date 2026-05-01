@@ -5,7 +5,7 @@ import { rateLimit } from '$lib/server/rate-limit'
 import { uuid } from '$lib/server/uuid'
 import { createPostSchema } from '$lib/validators/blog'
 import { json } from '@sveltejs/kit'
-import { eq, desc, isNull, and, isNotNull } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
@@ -31,14 +31,14 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 
   const posts = await db
     .select({
+      createdAt: blogPost.createdAt,
+      deletedAt: blogPost.deletedAt,
       id: blogPost.id,
-      title: blogPost.title,
+      publishedAt: blogPost.publishedAt,
       slug: blogPost.slug,
       status: blogPost.status,
-      publishedAt: blogPost.publishedAt,
-      createdAt: blogPost.createdAt,
+      title: blogPost.title,
       updatedAt: blogPost.updatedAt,
-      deletedAt: blogPost.deletedAt,
     })
     .from(blogPost)
     .where(whereClause)
@@ -61,7 +61,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const body = await request.json()
   const parsed = createPostSchema.safeParse(body)
   if (!parsed.success) {
-    return json({ error: 'Validation failed', details: parsed.error.issues }, { status: 400 })
+    return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
   const db = getDb(platform!.env.DB)
   const existing = await db
@@ -69,24 +69,26 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     .from(blogPost)
     .where(eq(blogPost.slug, parsed.data.slug))
     .get()
-  if (existing) return json({ error: 'Slug already exists' }, { status: 409 })
+  if (existing) {
+    return json({ error: 'Slug already exists' }, { status: 409 })
+  }
 
   const id = uuid()
   const { title, slug, excerpt, contentBody, coverImageUrl, seoTitle, seoDescription, status } =
     parsed.data
   const n = (v: string | undefined | null) => v ?? null
   await db.insert(blogPost).values({
-    id,
-    title,
-    slug,
-    excerpt: n(excerpt),
+    authorId: locals.user.id,
     contentBody: n(contentBody),
     coverImageUrl: n(coverImageUrl),
-    seoTitle: n(seoTitle),
-    seoDescription: n(seoDescription),
-    status,
-    authorId: locals.user.id,
+    excerpt: n(excerpt),
+    id,
     publishedAt: status === 'published' ? new Date() : null,
+    seoDescription: n(seoDescription),
+    seoTitle: n(seoTitle),
+    slug,
+    status,
+    title,
   })
 
   if (status === 'published') {

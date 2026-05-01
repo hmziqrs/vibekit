@@ -15,15 +15,14 @@
     createdAt: string
   }
 
-  let search = $state('')
-  let statusFilter = $state('')
-  let pageNum = $state(1)
+  const search = $state('')
+  const statusFilter = $state('')
+  const pageNum = $state(1)
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
   let showDeleteDialog = $state(false)
 
   const usersQuery = createQuery(() => ({
-    queryKey: ['admin', 'users', { search, status: statusFilter, page: pageNum }],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
@@ -34,14 +33,15 @@
       if (!res.ok) throw new Error('Failed to fetch users')
       return res.json() as Promise<{ users: UserRow[]; total: number }>
     },
+    queryKey: ['admin', 'users', { search, status: statusFilter, page: pageNum }],
     retry: 1,
   }))
 
   async function changeRole(user: UserRow, newRole: 'user' | 'admin') {
     const res = await fetch(`/api/admin/users/${user.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: newRole }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH',
     })
     if (res.ok) {
       openMenuId = null
@@ -52,9 +52,9 @@
   async function toggleStatus(user: UserRow) {
     const newStatus = user.status === 'active' ? 'suspended' : 'active'
     const res = await fetch(`/api/admin/users/${user.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH',
     })
     if (res.ok) {
       openMenuId = null
@@ -63,7 +63,7 @@
   }
 
   async function deleteUser() {
-    if (!confirmDelete) return
+    if (!confirmDelete) {return}
     const res = await fetch(`/api/admin/users/${confirmDelete.id}`, { method: 'DELETE' })
     if (res.ok) {
       confirmDelete = null
@@ -97,9 +97,9 @@
   }
 
   const filterTabs = [
-    { value: '', label: 'All' },
-    { value: 'active', label: 'Active' },
-    { value: 'suspended', label: 'Suspended' },
+    { label: 'All', value: '' },
+    { label: 'Active', value: 'active' },
+    { label: 'Suspended', value: 'suspended' },
   ]
 </script>
 

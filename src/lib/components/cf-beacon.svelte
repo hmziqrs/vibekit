@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { token }: { token?: string } = $props()
+  const { token }: { token?: string } = $props()
 </script>
 
 {#if token}

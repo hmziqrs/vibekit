@@ -1,16 +1,17 @@
-import { json } from '@sveltejs/kit'
-import type { RequestHandler } from '@sveltejs/kit'
-import { z } from 'zod'
+import { writeAuditLog } from '$lib/server/audit'
 import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
-import { eq, and, isNull, sql } from 'drizzle-orm'
-import { writeAuditLog } from '$lib/server/audit'
 import { rateLimit } from '$lib/server/rate-limit'
+import { json } from '@sveltejs/kit'
+import type { RequestHandler } from '@sveltejs/kit'
+import { and, eq, isNull, sql } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
+import { z } from 'zod'
 
 const updateSchema = z.object({
+  displayName: z.string().max(100).optional(),
   role: z.enum(['user', 'admin']).optional(),
   status: z.enum(['active', 'suspended']).optional(),
-  displayName: z.string().max(100).optional(),
 })
 
 export const PATCH: RequestHandler = async ({ params, request, locals, platform }) => {
@@ -46,8 +47,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
     return json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 })
   }
 
-  const updates: Record<string, unknown> = {}
-  const auditMetadata: Record<string, unknown> = {}
+  type UserUpdate = Partial<Pick<typeof user.$inferInsert, 'role' | 'status' | 'displayName'>> & {
+    updatedAt?: SQL
+  }
+  interface AuditMetadata {
+    oldRole?: string | null
+    newRole?: string | null
+    oldStatus?: string | null
+    newStatus?: string | null
+    oldDisplayName?: string | null
+    newDisplayName?: string | null
+  }
+  const updates: UserUpdate = {}
+  const auditMetadata: AuditMetadata = {}
 
   if (parsed.data.role !== undefined && parsed.data.role !== existing.role) {
     updates.role = parsed.data.role
@@ -73,30 +85,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
 
   updates.updatedAt = sql`(cast(unixepoch('subsecond') * 1000 as integer))`
 
-  const [updated] = await db
-    .update(user)
-    .set(updates)
-    .where(eq(user.id, targetId))
-    .returning({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role,
-      status: user.status,
-      emailVerified: user.emailVerified,
-      image: user.image,
-      lastLoginAt: user.lastLoginAt,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    })
+  const [updated] = await db.update(user).set(updates).where(eq(user.id, targetId)).returning({
+    createdAt: user.createdAt,
+    displayName: user.displayName,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    id: user.id,
+    image: user.image,
+    lastLoginAt: user.lastLoginAt,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+    updatedAt: user.updatedAt,
+  })
 
   await writeAuditLog(platform!.env.DB, {
     action: 'user.update',
-    entityType: 'user',
     entityId: targetId,
-    userId: locals.user.id,
+    entityType: 'user',
     metadata: auditMetadata,
+    userId: locals.user.id,
   })
 
   return json({ user: updated })
@@ -139,10 +147,10 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 
   await writeAuditLog(platform!.env.DB, {
     action: 'user.delete',
-    entityType: 'user',
     entityId: targetId,
+    entityType: 'user',
+    metadata: { deletedUserEmail: existing.email, deletedUserName: existing.name },
     userId: locals.user.id,
-    metadata: { deletedUserName: existing.name, deletedUserEmail: existing.email },
   })
 
   return new Response(null, { status: 204 })

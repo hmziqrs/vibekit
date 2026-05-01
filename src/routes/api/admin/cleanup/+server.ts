@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     .returning({ id: user.id })
 
   return json({
-    purged: { posts: deletedPosts.length, items: deletedItems.length, users: deletedUsers.length },
     cutoff: cutoff.toISOString(),
+    purged: { items: deletedItems.length, posts: deletedPosts.length, users: deletedUsers.length },
   })
 }

@@ -5,7 +5,7 @@
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
-  let { children } = $props()
+  const { children } = $props()
   const auth = getContext<AuthContext>('auth')
   let mobileOpen = $state(false)
   let signingOut = $state(false)
@@ -15,14 +15,14 @@
   useAnalytics(firebaseConfig)
 
   const navItems = [
-    { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'Users', href: '/admin/users', icon: 'users' },
-    { label: 'Blog', href: '/admin/blog', icon: 'blog' },
-    { label: 'Audit Log', href: '/admin/audit', icon: 'audit' },
+    { href: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { href: '/admin/users', icon: 'users', label: 'Users' },
+    { href: '/admin/blog', icon: 'blog', label: 'Blog' },
+    { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
   ]
 
   function isActive(href: string) {
-    return page.url.pathname === href || page.url.pathname.startsWith(href + '/')
+    return page.url.pathname === href || page.url.pathname.startsWith(`${href  }/`)
   }
 
   async function handleSignOut() {
@@ -155,12 +155,12 @@
               <span
                 class={cn(
                   'inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                  (auth.user as Record<string, unknown>)?.role === 'admin'
+                  auth.user?.role === 'admin'
                     ? 'bg-brand/20 text-brand'
                     : 'bg-white/[0.06] text-text-muted',
                 )}
               >
-                {(auth.user as Record<string, unknown>)?.role ?? 'user'}
+                {auth.user?.role ?? 'user'}
               </span>
             </div>
             <button

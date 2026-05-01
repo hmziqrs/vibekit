@@ -5,57 +5,57 @@
   import { seo } from '$lib/seo'
 
   const meta = seo({
-    title: 'Pricing',
     description:
       'Start free and upgrade when you need more. Simple, predictable pricing for SvelteKit SaaS projects on Cloudflare.',
+    title: 'Pricing',
   })
 
   const starterFeatures = [
-    { text: 'Everything in the template', included: true },
-    { text: 'Unlimited users (self-hosted)', included: true },
-    { text: 'Community support', included: true },
-    { text: 'Email and password auth', included: true },
-    { text: 'Cloudflare D1 edge database', included: true },
-    { text: 'Blog engine with Markdown', included: true },
-    { text: 'Priority updates', included: false },
-    { text: 'Commercial license', included: false },
-    { text: 'Discord access', included: false },
-    { text: 'Dedicated support', included: false },
+    { included: true, text: 'Everything in the template' },
+    { included: true, text: 'Unlimited users (self-hosted)' },
+    { included: true, text: 'Community support' },
+    { included: true, text: 'Email and password auth' },
+    { included: true, text: 'Cloudflare D1 edge database' },
+    { included: true, text: 'Blog engine with Markdown' },
+    { included: false, text: 'Priority updates' },
+    { included: false, text: 'Commercial license' },
+    { included: false, text: 'Discord access' },
+    { included: false, text: 'Dedicated support' },
   ]
 
   const proFeatures = [
-    { text: 'Everything in Starter', included: true },
-    { text: 'Priority updates and new features', included: true },
-    { text: 'Discord access with core team', included: true },
-    { text: 'Commercial license included', included: true },
-    { text: 'Email and password auth', included: true },
-    { text: 'Cloudflare D1 edge database', included: true },
-    { text: 'Blog engine with Markdown', included: true },
-    { text: 'Priority updates', included: true },
-    { text: 'Commercial license', included: true },
-    { text: 'Dedicated support', included: false },
+    { included: true, text: 'Everything in Starter' },
+    { included: true, text: 'Priority updates and new features' },
+    { included: true, text: 'Discord access with core team' },
+    { included: true, text: 'Commercial license included' },
+    { included: true, text: 'Email and password auth' },
+    { included: true, text: 'Cloudflare D1 edge database' },
+    { included: true, text: 'Blog engine with Markdown' },
+    { included: true, text: 'Priority updates' },
+    { included: true, text: 'Commercial license' },
+    { included: false, text: 'Dedicated support' },
   ]
 
   const faqs = [
     {
-      question: 'Can I switch plans later?',
       answer:
         'Yes. Upgrade or downgrade at any time. When you upgrade, you get immediate access to Pro features. Downgrades take effect at the end of your billing cycle.',
+      question: 'Can I switch plans later?',
     },
     {
-      question: 'Is the source code included?',
       answer:
         'Absolutely. Both plans include the full source code. Starter is MIT licensed. Pro includes an additional commercial license for client work.',
+      question: 'Is the source code included?',
     },
     {
-      question: 'What happens after the free trial?',
       answer:
         'Pro includes a 14-day free trial with no credit card required. After the trial, you can continue with the Starter plan for free or upgrade to Pro.',
+      question: 'What happens after the free trial?',
     },
     {
-      question: 'Do you offer refunds?',
       answer:
         'Yes. If you are not satisfied within the first 30 days of a Pro subscription, contact us for a full refund — no questions asked.',
+      question: 'Do you offer refunds?',
     },
   ]
 

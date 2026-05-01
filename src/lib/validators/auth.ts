@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 
-import { email, password, name } from './common'
+import { email, name, password } from './common'
 
 export const loginSchema = z.object({
   email,
@@ -9,10 +9,10 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    name,
-    email,
-    password,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
+    email,
+    name,
+    password,
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -25,9 +25,9 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    token: z.string().min(1, 'Reset token is required'),
-    password,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
+    password,
+    token: z.string().min(1, 'Reset token is required'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

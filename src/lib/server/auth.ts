@@ -7,8 +7,12 @@ import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { uuidv7 } from 'uuidv7'
 
 const authConfig = {
+  advanced: {
+    database: {
+      generateId: () => uuidv7(),
+    },
+  },
   baseURL: env.ORIGIN,
-  secret: env.BETTER_AUTH_SECRET,
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
@@ -23,45 +27,41 @@ const authConfig = {
       console.log(`[dev] Email verification for ${user.email}: ${url}`)
     },
   },
-  user: {
-    additionalFields: {
-      displayName: {
-        type: 'string',
-        required: false,
-        input: false,
-      },
-      role: {
-        type: ['user', 'admin'],
-        required: false,
-        defaultValue: 'user',
-        input: false,
-      },
-      status: {
-        type: ['active', 'suspended'],
-        required: false,
-        defaultValue: 'active',
-        input: false,
-      },
-      lastLoginAt: {
-        type: 'date',
-        required: false,
-        input: false,
-      },
-      deletedAt: {
-        type: 'date',
-        required: false,
-        input: false,
-      },
-    },
-  },
-  advanced: {
-    database: {
-      generateId: () => uuidv7(),
-    },
-  },
   plugins: [
     sveltekitCookies(getRequestEvent), // make sure this is the last plugin in the array
   ],
+  secret: env.BETTER_AUTH_SECRET,
+  user: {
+    additionalFields: {
+      deletedAt: {
+        input: false,
+        required: false,
+        type: 'date',
+      },
+      displayName: {
+        input: false,
+        required: false,
+        type: 'string',
+      },
+      lastLoginAt: {
+        input: false,
+        required: false,
+        type: 'date',
+      },
+      role: {
+        defaultValue: 'user',
+        input: false,
+        required: false,
+        type: ['user', 'admin'],
+      },
+      status: {
+        defaultValue: 'active',
+        input: false,
+        required: false,
+        type: ['active', 'suspended'],
+      },
+    },
+  },
 } satisfies Omit<Parameters<typeof betterAuth>[0], 'database'>
 
 export const createAuth = (d1: D1Database) =>

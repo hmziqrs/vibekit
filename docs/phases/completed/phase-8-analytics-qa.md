@@ -25,6 +25,7 @@ Add the Cloudflare Web Analytics beacon script to public-facing pages. This is p
 The beacon is a lightweight `<script>` tag that sends page view data to Cloudflare. In development, we'll use a placeholder token that gets replaced in production via environment variable.
 
 **Files:**
+
 - `src/routes/(public)/+layout.svelte` — add beacon script
 - `src/routes/(blog)/+layout.svelte` — add beacon script
 
@@ -35,16 +36,19 @@ The beacon is a lightweight `<script>` tag that sends page view data to Cloudfla
 Wire Firebase Analytics into authenticated surfaces, fully gated behind the existing consent banner.
 
 **New files:**
+
 - `src/lib/firebase.ts` — Firebase app initialization + analytics exports
 - `src/lib/analytics.svelte.ts` — analytics wrapper that checks consent before sending events
 
 **Update:**
+
 - `src/lib/components/consent-banner.svelte` — export a reactive `consentGiven` signal
 - `src/routes/(app)/+layout.svelte` — initialize Firebase Analytics if consent given
 - `src/routes/(admin)/+layout.svelte` — initialize Firebase Analytics if consent given
 - `src/app.html` — no changes (Firebase loaded dynamically, not via script tag)
 
 **Details:**
+
 - Firebase config read from `PUBLIC_FIREBASE_CONFIG` env var (JSON string, marked as public in `wrangler.jsonc`)
 - Analytics module only imports Firebase SDK when consent is `'accepted'`
 - If consent is `'declined'` or not set, Firebase is never initialized
@@ -55,6 +59,7 @@ Wire Firebase Analytics into authenticated surfaces, fully gated behind the exis
 ### Step 3: Responsive QA
 
 Verify responsive behavior across surfaces:
+
 - `(public)` — mobile-first: test on 375px, 768px, 1024px viewports
 - `(app)` — fluid: test on mobile and desktop
 - `(admin)` — desktop-first: ensure tables don't break on smaller screens

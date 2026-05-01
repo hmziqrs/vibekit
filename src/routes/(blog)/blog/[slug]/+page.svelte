@@ -3,11 +3,11 @@
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
 
-	let { data } = $props()
+	const { data } = $props()
 
 	const meta = $derived(seo({
-		title: data.post.title,
 		description: data.post.seoDescription ?? data.post.excerpt ?? '',
+		title: data.post.title,
 	}))
 </script>
 

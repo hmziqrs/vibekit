@@ -13,7 +13,9 @@ interface FirebaseConfig {
 }
 
 export async function initFirebase(configJson: string): Promise<boolean> {
-  if (!configJson || analytics) return false
+  if (!configJson || analytics) {
+    return false
+  }
 
   try {
     const config: FirebaseConfig = JSON.parse(configJson)
@@ -37,8 +39,13 @@ export async function initFirebase(configJson: string): Promise<boolean> {
   }
 }
 
-export async function trackEvent(name: string, params?: Record<string, unknown>) {
-  if (!analytics) return
+export async function trackEvent(
+  name: string,
+  params?: Record<string, string | number | boolean | undefined>
+) {
+  if (!analytics) {
+    return
+  }
   const { logEvent } = await import('firebase/analytics')
   logEvent(analytics, name, params)
 }

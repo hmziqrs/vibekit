@@ -1,58 +1,58 @@
 import { uuid } from '$lib/server/uuid'
 import { sql } from 'drizzle-orm'
-import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 import { user } from './auth.schema'
 
 export const contactSubmission = sqliteTable('contact_submission', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  name: text('name').notNull(),
-  email: text('email').notNull(),
-  subject: text('subject').notNull(),
-  message: text('message').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
+  email: text('email').notNull(),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  message: text('message').notNull(),
+  name: text('name').notNull(),
+  subject: text('subject').notNull(),
 })
 
 export const blogPost = sqliteTable('blog_post', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  title: text('title').notNull(),
-  slug: text('slug').notNull().unique(),
-  excerpt: text('excerpt'),
-  contentBody: text('content_body'),
-  coverImageUrl: text('cover_image_url'),
-  seoTitle: text('seo_title'),
-  seoDescription: text('seo_description'),
-  status: text('status', { enum: ['draft', 'published', 'archived'] })
-    .default('draft')
-    .notNull(),
   authorId: text('author_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
-  publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+  contentBody: text('content_body'),
+  coverImageUrl: text('cover_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
+  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
+  excerpt: text('excerpt'),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+  seoDescription: text('seo_description'),
+  seoTitle: text('seo_title'),
+  slug: text('slug').notNull().unique(),
+  status: text('status', { enum: ['draft', 'published', 'archived'] })
+    .default('draft')
+    .notNull(),
+  title: text('title').notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
-  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
 })
 
 export const blogTag = sqliteTable('blog_tag', {
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
   id: text('id')
     .primaryKey()
     .$defaultFn(() => uuid()),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
 })
 
 export const blogPostTag = sqliteTable(
@@ -73,16 +73,16 @@ export const blogPostTag = sqliteTable(
 export const blogPostSlugHistory = sqliteTable(
   'blog_post_slug_history',
   {
-    id: text('id')
-      .primaryKey()
-      .$defaultFn(() => uuid()),
-    postId: text('post_id')
-      .notNull()
-      .references(() => blogPost.id, { onDelete: 'cascade' }),
-    oldSlug: text('old_slug').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    oldSlug: text('old_slug').notNull(),
+    postId: text('post_id')
+      .notNull()
+      .references(() => blogPost.id, { onDelete: 'cascade' }),
   },
   (table) => ({
     oldSlugIdx: index('blog_slug_history_old_slug_idx').on(table.oldSlug),
@@ -90,40 +90,40 @@ export const blogPostSlugHistory = sqliteTable(
 )
 
 export const item = sqliteTable('item', {
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
+  description: text('description'),
   id: text('id')
     .primaryKey()
     .$defaultFn(() => uuid()),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  description: text('description'),
   status: text('status', { enum: ['active', 'archived'] })
     .default('active')
-    .notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
-  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
-})
-
-export const auditLog = sqliteTable('audit_log', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  action: text('action').notNull(),
-  entityType: text('entity_type').notNull(),
-  entityId: text('entity_id').notNull(),
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
-  metadata: text('metadata'),
+})
+
+export const auditLog = sqliteTable('audit_log', {
+  action: text('action').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
+  entityId: text('entity_id').notNull(),
+  entityType: text('entity_type').notNull(),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  metadata: text('metadata'),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
 })
 
 export * from './auth.schema'

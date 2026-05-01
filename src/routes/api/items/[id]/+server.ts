@@ -3,6 +3,7 @@ import { item } from '$lib/server/db/schema'
 import { updateItemSchema } from '$lib/validators/item'
 import { json } from '@sveltejs/kit'
 import { and, eq, isNull, sql } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
@@ -25,11 +26,11 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
 
   return json({
     item: {
+      createdAt: found.createdAt,
+      description: found.description,
       id: found.id,
       name: found.name,
-      description: found.description,
       status: found.status,
-      createdAt: found.createdAt,
       updatedAt: found.updatedAt,
     },
   })
@@ -43,7 +44,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   const body = await request.json()
   const parsed = updateItemSchema.safeParse(body)
   if (!parsed.success) {
-    return json({ error: 'Validation failed', details: parsed.error.issues }, { status: 400 })
+    return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
 
   const db = getDb(platform!.env.DB)
@@ -52,24 +53,33 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     return json({ error: 'Not found' }, { status: 404 })
   }
 
-  const updates: Record<string, unknown> = {
+  type ItemUpdate = Partial<Pick<typeof item.$inferInsert, 'name' | 'description' | 'status'>> & {
+    updatedAt: SQL
+  }
+  const updates: ItemUpdate = {
     updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
   }
 
-  if (parsed.data.name !== undefined) updates.name = parsed.data.name
-  if (parsed.data.description !== undefined) updates.description = parsed.data.description ?? null
-  if (parsed.data.status !== undefined) updates.status = parsed.data.status
+  if (parsed.data.name !== undefined) {
+    updates.name = parsed.data.name
+  }
+  if (parsed.data.description !== undefined) {
+    updates.description = parsed.data.description ?? null
+  }
+  if (parsed.data.status !== undefined) {
+    updates.status = parsed.data.status
+  }
 
   await db.update(item).set(updates).where(eq(item.id, params.id))
 
   const updated = await findItem(db, params.id, locals.user.id)
   return json({
     item: {
+      createdAt: updated!.createdAt,
+      description: updated!.description,
       id: updated!.id,
       name: updated!.name,
-      description: updated!.description,
       status: updated!.status,
-      createdAt: updated!.createdAt,
       updatedAt: updated!.updatedAt,
     },
   })

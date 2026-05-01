@@ -1,11 +1,6 @@
 import { uuid } from '$lib/server/uuid'
 
-const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-])
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -29,10 +24,7 @@ export function generateStorageKey(filename: string): string {
   return `${uuid()}.${ext}`
 }
 
-export async function uploadToR2(
-  bucket: R2Bucket,
-  file: File,
-): Promise<UploadResult> {
+export async function uploadToR2(bucket: R2Bucket, file: File): Promise<UploadResult> {
   const key = generateStorageKey(file.name)
   await bucket.put(key, file.stream(), {
     httpMetadata: { contentType: file.type },

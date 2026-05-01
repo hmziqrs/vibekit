@@ -15,21 +15,20 @@
     deletedAt: string | null
   }
 
-  let statusFilter = $state('all')
-  let search = $state('')
+  const statusFilter = $state('all')
+  const search = $state('')
   let deleteTarget = $state<PostRow | null>(null)
   let showConfirmDialog = $state(false)
 
   const statusColors: Record<string, string> = {
+    archived: 'bg-red-500/15 text-red-400',
+    deleted: 'bg-white/[0.06] text-text-muted',
     draft: 'bg-yellow-500/15 text-yellow-400',
     published: 'bg-green-500/15 text-green-400',
-    archived: 'bg-red-500/15 text-red-400',
     trash: 'bg-white/[0.06] text-text-muted',
-    deleted: 'bg-white/[0.06] text-text-muted',
   }
 
   const postsQuery = createQuery(() => ({
-    queryKey: ['admin', 'posts', { status: statusFilter, search }],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.set('status', statusFilter)
@@ -43,11 +42,12 @@
       }
       return { posts }
     },
+    queryKey: ['admin', 'posts', { status: statusFilter, search }],
     retry: 1,
   }))
 
   async function deletePost() {
-    if (!deleteTarget) return
+    if (!deleteTarget) {return}
     const res = await fetch(`/api/blog/${deleteTarget.id}`, { method: 'DELETE' })
     if (res.ok) {
       deleteTarget = null
@@ -58,15 +58,15 @@
 
   async function restorePost(id: string) {
     const res = await fetch(`/api/blog/${id}/restore`, { method: 'POST' })
-    if (res.ok) postsQuery.refetch()
+    if (res.ok) {postsQuery.refetch()}
   }
 
   const tabs = [
-    { value: 'all', label: 'All' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'published', label: 'Published' },
-    { value: 'archived', label: 'Archived' },
-    { value: 'trash', label: 'Trash' },
+    { label: 'All', value: 'all' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Published', value: 'published' },
+    { label: 'Archived', value: 'archived' },
+    { label: 'Trash', value: 'trash' },
   ]
 </script>
 

@@ -2,10 +2,12 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { signUp, useSession } from '$lib/auth-client'
-  import { registerSchema, type RegisterInput } from '$lib/validators/auth'
+  import { registerSchema } from '$lib/validators/auth';
+import type { RegisterInput } from '$lib/validators/auth';
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
+  import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const session = useSession()
@@ -20,13 +22,10 @@
 
   const form = createForm(() => ({
     defaultValues: {
-      name: '',
-      email: '',
-      password: '',
       confirmPassword: '',
-    },
-    validators: {
-      onSubmit: registerSchema,
+      email: '',
+      name: '',
+      password: '',
     },
     onSubmit: async ({ value }: { value: RegisterInput }) => {
       try {
@@ -43,6 +42,9 @@
           form: err instanceof Error ? err.message : 'Registration failed. Please try again.',
         }
       }
+    },
+    validators: {
+      onSubmit: registerSchema,
     },
   }))
 </script>
@@ -107,7 +109,7 @@
           {/snippet}
         </form.Field>
 
-        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+        <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
           {#snippet children(errorMessage)}
             {#if errorMessage}
               <p class="text-sm text-red-400">{errorMessage}</p>

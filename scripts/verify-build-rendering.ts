@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 import { spawn } from 'child_process'
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
+
 import { BUILD_ROUTES } from './rendering-routes'
 import type { BuildRouteExpectation } from './rendering-routes'
 
@@ -15,23 +16,35 @@ function runBuild() {
     const start = Date.now()
     const child = spawn('bun', ['run', 'build'], {
       cwd: ROOT,
-      env: { ...process.env, NODE_ENV: 'production', CI: 'true' },
+      env: { ...process.env, CI: 'true', NODE_ENV: 'production' },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
-    let out = '', err = ''
-    child.stdout.on('data', (d: Buffer) => { out += d; process.stdout.write(d) })
-    child.stderr.on('data', (d: Buffer) => { err += d; process.stderr.write(d) })
+    let out = '',
+      err = ''
+    child.stdout.on('data', (d: Buffer) => {
+      out += d
+      process.stdout.write(d)
+    })
+    child.stderr.on('data', (d: Buffer) => {
+      err += d
+      process.stderr.write(d)
+    })
     child.on('close', (ec) => {
       const dur = Date.now() - start
       console.log(`\n[BUILD] Completed in ${(dur / 1000).toFixed(1)}s (exit code: ${ec ?? 1})`)
-      resolve({ out, err, ec: ec ?? 1, dur })
+      resolve({ dur, ec: ec ?? 1, err, out })
     })
   })
 }
 
-function findPrerenderedFiles(dir: string, base = ''): Array<{ path: string; size: number; html: string }> {
-  const results: Array<{ path: string; size: number; html: string }> = []
-  if (!existsSync(dir)) return results
+function findPrerenderedFiles(
+  dir: string,
+  base = ''
+): { path: string; size: number; html: string }[] {
+  const results: { path: string; size: number; html: string }[] = []
+  if (!existsSync(dir)) {
+    return results
+  }
   for (const entry of readdirSync(dir)) {
     const fullPath = join(dir, entry)
     const stat = statSync(fullPath)
@@ -41,9 +54,9 @@ function findPrerenderedFiles(dir: string, base = ''): Array<{ path: string; siz
     } else if (entry === 'index.html' || entry.endsWith('.html')) {
       const urlPath = relPath.replace(/index\.html$/, '').replace(/\.html$/, '')
       results.push({
+        html: readFileSync(fullPath, 'utf-8'),
         path: urlPath === '' ? '/' : '/' + urlPath,
         size: stat.size,
-        html: readFileSync(fullPath, 'utf-8'),
       })
     }
   }
@@ -52,10 +65,14 @@ function findPrerenderedFiles(dir: string, base = ''): Array<{ path: string; siz
 
 function getPrerenderedRoutesFromManifest(): Set<string> {
   const manifestPath = join(ROOT, '.svelte-kit', 'output', 'server', 'manifest.js')
-  if (!existsSync(manifestPath)) return new Set()
-  const content = readFileSync(manifestPath, 'utf-8')
+  if (!existsSync(manifestPath)) {
+    return new Set()
+  }
+  const content = readFileSync(manifestPath, 'utf8')
   const match = content.match(/prerendered_routes:\s*new\s*Set\((\[[^\]]*\])\)/)
-  if (!match) return new Set()
+  if (!match) {
+    return new Set()
+  }
   try {
     const routes: string[] = JSON.parse(match[1].replace(/'/g, '"'))
     return new Set(routes)
@@ -96,7 +113,7 @@ async function main() {
     process.exit(1)
   }
 
-  const buildLog = out + '\n' + err
+  const buildLog = `${out}\n${err}`
   const preFiles = findPrerenderedFiles(PRE)
   const preMap = new Map(preFiles.map((f) => [f.path, f]))
   const manifestRoutes = getPrerenderedRoutesFromManifest()
@@ -192,11 +209,16 @@ async function main() {
       const icon = pass ? 'PASS' : 'FAIL'
       console.log(`  [${icon}] ${page.path}`)
       console.log(`     Expected: ${page.expectedStrategy}`)
-      for (const n of notes) console.log(`     ${n}`)
+      for (const n of notes) {
+        console.log(`     ${n}`)
+      }
       console.log('')
 
-      if (pass) totalPass++
-      else totalFail++
+      if (pass) {
+        totalPass++
+      } else {
+        totalFail++
+      }
     }
   }
 
@@ -205,23 +227,34 @@ async function main() {
   console.log('='.repeat(70))
 
   const preNoCsr = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'prerendered-no-csr').length
-  const preWithCsr = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'prerendered-with-csr').length
+  const preWithCsr = BUILD_ROUTES.filter(
+    (p) => p.expectedStrategy === 'prerendered-with-csr'
+  ).length
   const ssrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'ssr-with-csr').length
-  const csrCnt = BUILD_ROUTES.filter((p) => p.expectedStrategy === 'csr-only' || p.expectedStrategy === 'redirect').length
+  const csrCnt = BUILD_ROUTES.filter(
+    (p) => p.expectedStrategy === 'csr-only' || p.expectedStrategy === 'redirect'
+  ).length
 
   console.log('')
   console.log('  Strategy Distribution:')
   console.log(`    Pre-rendered (static, no JS):   ${preNoCsr} pages`)
-  if (preWithCsr > 0) console.log(`    Pre-rendered (static + hydrate): ${preWithCsr} pages`)
+  if (preWithCsr > 0) {
+    console.log(`    Pre-rendered (static + hydrate): ${preWithCsr} pages`)
+  }
   console.log(`    SSR + Hydration (request time):  ${ssrCnt} pages`)
   console.log(`    CSR / SPA / Redirects:           ${csrCnt} pages`)
   console.log(`    Total:                           ${BUILD_ROUTES.length} pages`)
 
-  const preLines = buildLog.split('\n').filter((l) => l.toLowerCase().includes('prerender')).slice(0, 20)
+  const preLines = buildLog
+    .split('\n')
+    .filter((l) => l.toLowerCase().includes('prerender'))
+    .slice(0, 20)
   if (preLines.length) {
     console.log('')
     console.log('  Build log (prerender mentions):')
-    for (const l of preLines) console.log(`    ${l.trim()}`)
+    for (const l of preLines) {
+      console.log(`    ${l.trim()}`)
+    }
   }
   console.log('')
 
@@ -232,7 +265,7 @@ async function main() {
   console.log('ALL BUILD-TIME STRATEGIES VERIFIED')
 }
 
-main().catch((e) => {
-  console.error(e)
+main().catch((error) => {
+  console.error(error)
   process.exit(1)
 })

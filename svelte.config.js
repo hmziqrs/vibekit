@@ -7,15 +7,9 @@ const config = {
     runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true),
   },
   kit: {
+    adapter: adapter(),
     experimental: {
       handleRenderingErrors: true,
-    },
-    adapter: adapter(),
-    typescript: {
-      config: (config) => ({
-        ...config,
-        include: [...config.include, '../drizzle.config.ts'],
-      }),
     },
     prerender: {
       handleHttpError: ({ path, referrer, message }) => {
@@ -25,6 +19,18 @@ const config = {
         }
         throw new Error(message)
       },
+    },
+    typescript: {
+      config: (config) => ({
+        ...config,
+        include: [...config.include, '../drizzle.config.ts'],
+        exclude: [
+          ...(config.exclude || []),
+          '**/.svelte-kit/output/**',
+          '**/.svelte-kit/build/**',
+          '**/src/lib/paraglide/**',
+        ],
+      }),
     },
   },
 }

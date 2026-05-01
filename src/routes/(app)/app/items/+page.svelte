@@ -6,15 +6,14 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import type { ItemData } from '$lib/types'
 
-  let statusFilter = $state<string>('active')
-  let search = $state('')
+  const statusFilter = $state<string>('active')
+  const search = $state('')
   let deleteTarget = $state<ItemData | null>(null)
   let deleteDialogOpen = $state(false)
 
   const queryClient = useQueryClient()
 
   const itemsQuery = createQuery(() => ({
-    queryKey: ['items', { status: statusFilter, search }],
     queryFn: async (): Promise<ItemData[]> => {
       const params = new URLSearchParams()
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
@@ -24,12 +23,13 @@
       const data = (await res.json()) as { items: ItemData[] }
       return data.items
     },
+    queryKey: ['items', { status: statusFilter, search }],
   }))
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
       day: 'numeric',
+      month: 'short',
       year: 'numeric',
     })
   }
@@ -37,9 +37,9 @@
   async function toggleArchive(id: string, currentStatus: string) {
     const newStatus = currentStatus === 'active' ? 'archived' : 'active'
     const res = await fetch(`/api/items/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH',
     })
     if (res.ok) {
       await queryClient.invalidateQueries({ queryKey: ['items'] })
@@ -47,7 +47,7 @@
   }
 
   async function deleteItem() {
-    if (!deleteTarget) return
+    if (!deleteTarget) {return}
     const res = await fetch(`/api/items/${deleteTarget.id}`, { method: 'DELETE' })
     if (res.ok) {
       deleteTarget = null
@@ -57,9 +57,9 @@
   }
 
   const filterTabs = [
-    { value: 'all', label: 'All' },
-    { value: 'active', label: 'Active' },
-    { value: 'archived', label: 'Archived' },
+    { label: 'All', value: 'all' },
+    { label: 'Active', value: 'active' },
+    { label: 'Archived', value: 'archived' },
   ]
 </script>
 

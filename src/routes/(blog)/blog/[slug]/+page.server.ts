@@ -2,14 +2,14 @@ import { getDb } from '$lib/server/db'
 import { blogPost, blogPostSlugHistory } from '$lib/server/db/schema'
 import { renderAndSanitize } from '$lib/server/markdown'
 import { redirect } from '@sveltejs/kit'
-import { eq, isNull, and } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async ({ params, platform, setHeaders }) => {
   setHeaders({
-    'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
     'CDN-Cache-Control': 'public, max-age=3600',
+    'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
   })
   const db = getDb(platform!.env.DB)
   const { slug } = params

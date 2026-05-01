@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { expect, test } from 'vitest'
+
 import { goToAdmin } from './helpers/auth'
 
 test.describe.configure({ mode: 'serial' })
@@ -39,12 +41,15 @@ test.describe('admin user management', () => {
     await page.waitForLoadState('networkidle')
 
     // Find the regular user row and open its three-dot menu
-    const userRow = page.locator('tr, [class*="row"]').filter({ hasText: 'user@vibekit.local' }).first()
+    const userRow = page
+      .locator('tr, [class*="row"]')
+      .filter({ hasText: 'user@vibekit.local' })
+      .first()
     await userRow.getByRole('button').last().click()
     await page.waitForTimeout(500)
 
     // Click "Suspend" (exact to avoid matching "Suspended" filter tab)
-    await page.getByRole('button', { name: 'Suspend', exact: true }).click()
+    await page.getByRole('button', { exact: true, name: 'Suspend' }).click()
     await page.waitForTimeout(1000)
 
     // Verify user is now suspended (red badge)
@@ -53,7 +58,7 @@ test.describe('admin user management', () => {
     // Re-activate
     await userRow.getByRole('button').last().click()
     await page.waitForTimeout(500)
-    await page.getByRole('button', { name: 'Activate', exact: true }).click()
+    await page.getByRole('button', { exact: true, name: 'Activate' }).click()
     await page.waitForTimeout(1000)
 
     await expect(userRow.getByText('active', { exact: false })).toBeVisible()
@@ -88,7 +93,7 @@ test.describe('admin blog management', () => {
     await page.getByRole('button', { name: 'Save Draft' }).click()
 
     // Should redirect to edit page
-    await page.waitForURL(/\/admin\/blog\/.*\/edit/, { timeout: 10000 })
+    await page.waitForURL(/\/admin\/blog\/.*\/edit/, { timeout: 10_000 })
     await expect(page.getByRole('heading', { name: 'Edit Post' })).toBeVisible()
 
     // Navigate back to blog list (file input intercepts clicks on "Back to list" link)
@@ -101,7 +106,10 @@ test.describe('admin blog management', () => {
     await expect(page.getByText(postTitle)).toBeVisible()
 
     // Delete the draft
-    await page.getByRole('button', { name: /delete/i }).first().click()
+    await page
+      .getByRole('button', { name: /delete/i })
+      .first()
+      .click()
     await page.locator('.fixed button').getByText('Delete').click()
     await page.waitForTimeout(1000)
   })

@@ -5,22 +5,22 @@ import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  optimizeDeps: {
+    exclude: ['better-auth', '@better-auth/core', '@better-auth/svelte'],
+  },
   plugins: [
     tailwindcss(),
     sveltekit(),
     paraglideVitePlugin({ project: './project.inlang', outdir: './src/lib/paraglide' }),
   ],
-  optimizeDeps: {
-    exclude: ['better-auth', '@better-auth/core', '@better-auth/svelte'],
-  },
   ssr: {
     external: ['better-auth', '@better-auth/core'],
   },
   test: {
-    include: ['src/**/*.{test,spec}.{js,ts}'],
+    environment: 'node',
     exclude: ['node_modules', '.svelte-kit', 'build'],
     globals: true,
-    environment: 'node',
+    include: ['src/**/*.{test,spec}.{js,ts}'],
     server: {
       deps: {
         inline: [/@sveltejs\/kit/],

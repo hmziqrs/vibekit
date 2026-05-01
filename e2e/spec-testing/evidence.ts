@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
-import type { ServerEvidence, ClientEvidence } from './types'
+
 import { THRESHOLD } from './constants'
+import type { ClientEvidence, ServerEvidence } from './types'
 
 export async function fetchServerEvidence(page: Page, url: string): Promise<ServerEvidence> {
   const resp = await page.request.get(url, { maxRedirects: 0 })
@@ -9,52 +10,55 @@ export async function fetchServerEvidence(page: Page, url: string): Promise<Serv
   const headers: Record<string, string> = resp.headers()
 
   const bodyTextLength = extractBodyTextLength(html)
-  const hasSvelteKitRuntime =
-    html.includes('__sveltekit') || html.includes('sveltekit:')
-  const hasHydrationData =
-    html.includes('data-sveltekit-fetched') || html.includes('__data')
+  const hasSvelteKitRuntime = html.includes('__sveltekit') || html.includes('sveltekit:')
+  const hasHydrationData = html.includes('data-sveltekit-fetched') || html.includes('__data')
   const hasScripts =
     html.includes('<script') &&
     (html.includes('.js') || html.includes('type="module"') || html.includes('__sveltekit'))
 
   return {
-    status,
-    html,
-    headers,
-    htmlSize: html.length,
     bodyTextLength,
-    hasSvelteKitRuntime,
     hasHydrationData,
     hasScripts,
-    isPopulated: bodyTextLength > THRESHOLD.POPULATED_BODY,
+    hasSvelteKitRuntime,
+    headers,
+    html,
+    htmlSize: html.length,
     isEmptyShell: bodyTextLength < THRESHOLD.EMPTY_SHELL,
+    isPopulated: bodyTextLength > THRESHOLD.POPULATED_BODY,
+    status,
   }
 }
 
 export async function fetchClientEvidence(
   page: Page,
   url: string,
-  serverBodyText: number,
+  serverBodyText: number
 ): Promise<ClientEvidence> {
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.waitForTimeout(200)
 
+  interface WindowWithSvelteKit extends Window {
+    __sveltekit?: unknown
+    start_app?: unknown
+  }
+
   const hydrated = await page.evaluate(
     () =>
-      !!(window as any).__sveltekit ||
-      !!(window as any).start_app ||
-      document.documentElement.innerHTML.includes('__sveltekit'),
+      Boolean((window as WindowWithSvelteKit).__sveltekit) ||
+      Boolean((window as WindowWithSvelteKit).start_app) ||
+      document.documentElement.innerHTML.includes('__sveltekit')
   )
-  const bodyTextLength = await page.evaluate(() =>
-    document.body.innerText.replace(/\s+/g, ' ').trim().length,
+  const bodyTextLength = await page.evaluate(
+    () => document.body.textContent.replace(/\s+/g, ' ').trim().length
   )
   const finalHTMLSize = (await page.content()).length
 
   return {
-    hydrated,
+    bodyTextDelta: bodyTextLength - serverBodyText,
     bodyTextLength,
     finalHTMLSize,
-    bodyTextDelta: bodyTextLength - serverBodyText,
+    hydrated,
   }
 }
 

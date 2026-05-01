@@ -10,17 +10,21 @@ let lastCleanup = Date.now()
 
 function cleanup() {
   const now = Date.now()
-  if (now - lastCleanup < CLEANUP_INTERVAL) return
+  if (now - lastCleanup < CLEANUP_INTERVAL) {
+    return
+  }
   lastCleanup = now
   for (const [key, entry] of store) {
-    if (entry.resetAt <= now) store.delete(key)
+    if (entry.resetAt <= now) {
+      store.delete(key)
+    }
   }
 }
 
 export function rateLimit(
   key: string,
   limit = 20,
-  windowMs = 60_000,
+  windowMs = 60_000
 ): { allowed: boolean; remaining: number } {
   cleanup()
 

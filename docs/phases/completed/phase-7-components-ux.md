@@ -20,6 +20,7 @@ Build reusable UI components to reduce duplication across app/admin surfaces, fi
 Create shared components that eliminate the repeating patterns found across 5 list/form pages (1020 lines total of duplicated patterns).
 
 **New files:**
+
 - `src/lib/components/form-field.svelte` — label + input/textarea + error display
 - `src/lib/components/status-badge.svelte` — colored pill for status display
 - `src/lib/components/search-input.svelte` — search input with magnifying glass icon
@@ -27,24 +28,29 @@ Create shared components that eliminate the repeating patterns found across 5 li
 - `src/lib/components/confirm-dialog.svelte` — modal confirmation dialog
 
 **`form-field.svelte`:**
+
 - Props: `label`, `for` (id), `type` (text/email/password/textarea), `value` (bindable), `error?`, `required?`, `maxlength?`, `placeholder?`, `rows?`
 - Renders: label + input/textarea + conditional error message
 - Uses semantic color tokens for error states
 
 **`status-badge.svelte`:**
+
 - Props: `status` (string), `colorMap` (optional Record<string, string>)
 - Default color map: { active: 'emerald', archived: 'amber', draft: 'yellow', published: 'green', suspended: 'red', trash: 'red' }
 - Renders as `rounded-full px-2 py-0.5 text-[11px] font-medium` pill
 
 **`search-input.svelte`:**
+
 - Props: `value` (bindable), `placeholder?`
 - Renders: search icon + input with `pl-9` padding
 
 **`filter-tabs.svelte`:**
+
 - Props: `tabs` (Array<{label, value}>), `active` (bindable string)
 - Renders tab buttons with active/inactive styling
 
 **`confirm-dialog.svelte`:**
+
 - Props: `open` (bindable boolean), `title`, `message`, `confirmLabel?`, `variant?` ('danger' | 'default'), `onConfirm` (callback)
 - Modal overlay with backdrop, Cancel + Confirm buttons
 - Uses `AlertDialog`-like semantics
@@ -52,6 +58,7 @@ Create shared components that eliminate the repeating patterns found across 5 li
 ### Step 2: Refactor Existing Pages to Use New Components
 
 **Update these files to use the new components:**
+
 - `src/routes/(app)/app/items/+page.svelte` — use StatusBadge, SearchInput, FilterTabs, ConfirmDialog
 - `src/routes/(app)/app/items/new/+page.svelte` — use FormField
 - `src/routes/(app)/app/items/[id]/edit/+page.svelte` — use FormField
@@ -65,6 +72,7 @@ Create shared components that eliminate the repeating patterns found across 5 li
 **Problem:** `hooks.server.ts` returns `new Response(null, { status: 403 })` for non-admin users hitting `/admin/*`. This bypasses SvelteKit's error handling, so `+error.svelte` never renders — users see a blank page.
 
 **Fix:** Change `handleRouteGuards` to use SvelteKit's `error()` function instead of raw `Response`:
+
 ```ts
 import { error } from '@sveltejs/kit'
 // ...
@@ -82,6 +90,7 @@ This ensures `+error.svelte` renders with the proper 403 UI (shield icon, "Forbi
 Implement a simple in-memory rate limiter for admin mutation endpoints using a sliding window counter.
 
 **New file:** `src/lib/server/rate-limit.ts`
+
 - `rateLimit(key, limit, windowMs)` — returns `{ allowed: boolean, remaining: number }`
 - Uses an in-memory `Map<string, { count: number, resetAt: number }>`
 - Keys are `userId + action` to scope per-user
@@ -89,6 +98,7 @@ Implement a simple in-memory rate limiter for admin mutation endpoints using a s
 - Cleanup stale entries periodically
 
 **Update these endpoints to use rate limiting:**
+
 - `src/routes/api/blog/+server.ts` (POST)
 - `src/routes/api/blog/[id]/+server.ts` (PATCH, DELETE)
 - `src/routes/api/blog/[id]/publish/+server.ts` (POST)
@@ -103,6 +113,7 @@ Implement a simple in-memory rate limiter for admin mutation endpoints using a s
 ### Step 5: Tests
 
 **Unit tests:**
+
 - `src/lib/server/rate-limit.test.ts` — test limit enforcement, window sliding, cleanup
 
 **No new E2E tests** — the components and rate limiter are tested via unit tests. Existing E2E tests should still pass.

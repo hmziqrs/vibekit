@@ -4,40 +4,39 @@
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
-  import { updateItemSchema, type UpdateItemInput } from '$lib/validators/item'
+  import { updateItemSchema } from '$lib/validators/item';
+import type { UpdateItemInput } from '$lib/validators/item';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { createForm } from '@tanstack/svelte-form'
   import type { ItemData } from '$lib/types'
+  import { extractFormError } from '$lib/form-utils'
 
-  let itemId = $derived(page.params.id ?? '')
+  const itemId = $derived(page.params.id ?? '')
   const queryClient = useQueryClient()
 
   const itemQuery = createQuery(() => ({
-    queryKey: ['item', itemId],
     queryFn: async (): Promise<ItemData> => {
       const res = await fetch(`/api/items/${itemId}`)
       if (!res.ok) throw new Error('Item not found')
       const data = (await res.json()) as { item: ItemData }
       return data.item
     },
+    queryKey: ['item', itemId],
   }))
 
   let lastItemId = $state('')
 
   import { z } from 'zod/v4'
   const formSchema = z.object({
-    name: z.string().min(1, 'Name is required').max(100).trim(),
     description: z.string().max(500),
+    name: z.string().min(1, 'Name is required').max(100).trim(),
   })
   type FormInput = z.infer<typeof formSchema>
 
   const form = createForm(() => ({
     defaultValues: {
-      name: itemQuery.data?.name ?? '',
       description: itemQuery.data?.description ?? '',
-    },
-    validators: {
-      onSubmit: formSchema,
+      name: itemQuery.data?.name ?? '',
     },
     onSubmit: async ({ value }: { value: FormInput }) => {
       try {
@@ -56,6 +55,9 @@
       } catch (err) {
         return { form: err instanceof Error ? err.message : 'Something went wrong' }
       }
+    },
+    validators: {
+      onSubmit: formSchema,
     },
   }))
 
@@ -128,7 +130,7 @@
           </div>
         {/if}
 
-        <form.Subscribe selector={(state) => (state as any).errorMap?.onSubmit?.form as string | undefined}>
+        <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
           {#snippet children(errorMessage)}
             {#if errorMessage}
               <div class="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">

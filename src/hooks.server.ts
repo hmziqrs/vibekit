@@ -8,7 +8,7 @@ import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
 const handleParaglide: Handle = ({ event, resolve }) =>
-  paraglideMiddleware(event.request, ({ request, locale }) => {
+  paraglideMiddleware(event.request as Request, ({ request, locale }) => {
     event.request = request
 
     return resolve(event, {
@@ -53,7 +53,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   }
 
   // The Cloudflare adapter wraps env in a Proxy that throws when accessing
-  // bindings in prerenderable routes (even during dev). Wrap in try-catch.
+  // Bindings in prerenderable routes (even during dev). Wrap in try-catch.
   let db: D1Database | undefined
   try {
     db = event.platform?.env?.DB
@@ -75,18 +75,24 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
     event.locals.user = session.user
   }
 
-  return svelteKitHandler({ event, resolve, auth, building })
+  return svelteKitHandler({ auth, building, event, resolve })
 }
 
 const handleRouteGuards: Handle = async ({ event, resolve }) => {
-  const pathname = event.url.pathname
-  const user = event.locals.user
+  const { pathname } = event.url
+  const { user } = event.locals
 
   // Redirect authenticated users away from auth pages
-  if (user && (pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname.startsWith('/reset-password'))) {
+  if (
+    user &&
+    (pathname === '/login' ||
+      pathname === '/register' ||
+      pathname === '/forgot-password' ||
+      pathname.startsWith('/reset-password'))
+  ) {
     return new Response('Redirect', {
-      status: 302,
       headers: { location: '/app' },
+      status: 302,
     })
   }
 
@@ -94,8 +100,8 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
   if (pathname.startsWith('/admin')) {
     if (!user) {
       return new Response(null, {
-        status: 302,
         headers: { Location: `/login?next=${encodeURIComponent(pathname)}` },
+        status: 302,
       })
     }
     if (user.role !== 'admin') {
@@ -107,8 +113,8 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
   if (pathname.startsWith('/app')) {
     if (!user) {
       return new Response(null, {
-        status: 302,
         headers: { Location: `/login?next=${encodeURIComponent(pathname)}` },
+        status: 302,
       })
     }
   }

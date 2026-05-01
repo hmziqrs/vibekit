@@ -19,22 +19,22 @@ export function seo({
   const fullTitle = title === siteName ? title : `${title} — ${siteName}`
 
   return {
-    title: fullTitle,
-    description,
     canonical,
+    description,
     openGraph: {
-      title: fullTitle,
       description,
-      siteName,
       image,
-      type,
       publishedTime,
+      siteName,
+      title: fullTitle,
+      type,
     },
+    title: fullTitle,
     twitter: {
       card: image ? 'summary_large_image' : 'summary',
-      title: fullTitle,
       description,
       image,
+      title: fullTitle,
     },
   }
 }

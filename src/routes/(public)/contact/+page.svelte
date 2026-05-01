@@ -4,19 +4,19 @@
   import { contactSchema } from '$lib/validators/contact'
 
   const meta = seo({
-    title: 'Contact',
     description: 'Get in touch with the Vibekit team.',
+    title: 'Contact',
   })
 
-  let { form } = $props()
+  const { form } = $props()
 
   let clientErrors = $state<Record<string, string>>({})
-  let serverErrors = $derived<Record<string, string>>(
+  const serverErrors = $derived<Record<string, string>>(
     Object.fromEntries((form?.errors ?? []).map((e: { field: string; message: string }) => [e.field, e.message])),
   )
-  let errors = $derived<Record<string, string>>({ ...serverErrors, ...clientErrors })
-  let values = $derived(form?.values ?? {})
-  let success = $derived(form?.success ?? false)
+  const errors = $derived<Record<string, string>>({ ...serverErrors, ...clientErrors })
+  const values = $derived(form?.values ?? {})
+  const success = $derived(form?.success ?? false)
   let submitting = $state(false)
 
   function handleEnhance({

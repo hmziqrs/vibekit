@@ -19,9 +19,9 @@ export const GET: RequestHandler = async ({ platform }) => {
   }
 
   return json({
-    ok: db === 'connected',
     db,
-    time: new Date().toISOString(),
+    ok: db === 'connected',
     responseTime: Date.now() - start,
+    time: new Date().toISOString(),
   })
 }

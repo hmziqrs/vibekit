@@ -1,14 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { rateLimit, _reset } from './rate-limit'
+import { _reset, rateLimit } from './rate-limit'
 
 beforeEach(() => {
   _reset()
 })
 
-describe('rateLimit', () => {
+describe(rateLimit, () => {
   it('allows requests within the limit', () => {
     const result = rateLimit('test', 5, 60_000)
-    expect(result.allowed).toBe(true)
+    expect(result.allowed).toBeTruthy()
     expect(result.remaining).toBe(4)
   })
 
@@ -16,7 +15,7 @@ describe('rateLimit', () => {
     rateLimit('test', 3, 60_000)
     rateLimit('test', 3, 60_000)
     const result = rateLimit('test', 3, 60_000)
-    expect(result.allowed).toBe(true)
+    expect(result.allowed).toBeTruthy()
     expect(result.remaining).toBe(0)
   })
 
@@ -24,7 +23,7 @@ describe('rateLimit', () => {
     rateLimit('test', 2, 60_000)
     rateLimit('test', 2, 60_000)
     const result = rateLimit('test', 2, 60_000)
-    expect(result.allowed).toBe(false)
+    expect(result.allowed).toBeFalsy()
     expect(result.remaining).toBe(0)
   })
 
@@ -33,26 +32,26 @@ describe('rateLimit', () => {
     rateLimit('test', 1, 1000)
 
     // Should be blocked
-    expect(rateLimit('test', 1, 1000).allowed).toBe(false)
+    expect(rateLimit('test', 1, 1000).allowed).toBeFalsy()
 
     // Advance past window
     vi.advanceTimersByTime(1001)
-    expect(rateLimit('test', 1, 1000).allowed).toBe(true)
+    expect(rateLimit('test', 1, 1000).allowed).toBeTruthy()
 
     vi.useRealTimers()
   })
 
   it('tracks different keys independently', () => {
-    expect(rateLimit('key-a', 1, 60_000).allowed).toBe(true)
-    expect(rateLimit('key-b', 1, 60_000).allowed).toBe(true)
-    expect(rateLimit('key-a', 1, 60_000).allowed).toBe(false)
-    expect(rateLimit('key-b', 1, 60_000).allowed).toBe(false)
+    expect(rateLimit('key-a', 1, 60_000).allowed).toBeTruthy()
+    expect(rateLimit('key-b', 1, 60_000).allowed).toBeTruthy()
+    expect(rateLimit('key-a', 1, 60_000).allowed).toBeFalsy()
+    expect(rateLimit('key-b', 1, 60_000).allowed).toBeFalsy()
   })
 
   it('uses default limit of 20', () => {
     for (let i = 0; i < 20; i++) {
-      expect(rateLimit('test').allowed).toBe(true)
+      expect(rateLimit('test').allowed).toBeTruthy()
     }
-    expect(rateLimit('test').allowed).toBe(false)
+    expect(rateLimit('test').allowed).toBeFalsy()
   })
 })

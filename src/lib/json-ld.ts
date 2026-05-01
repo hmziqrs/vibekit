@@ -2,10 +2,10 @@ export function organizationJsonLd() {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    description: 'A complete SvelteKit stack for building SaaS on Cloudflare.',
+    logo: 'https://vibekit.dev/favicon.svg',
     name: 'Vibekit',
     url: 'https://vibekit.dev',
-    logo: 'https://vibekit.dev/favicon.svg',
-    description: 'A complete SvelteKit stack for building SaaS on Cloudflare.',
   }
 }
 
@@ -22,8 +22,8 @@ export function webpageJsonLd(title: string, description: string, url: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: title,
     description,
+    name: title,
     url,
   }
 }
@@ -46,18 +46,18 @@ export function articleJsonLd({
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: title,
-    description,
-    url,
-    image,
-    datePublished: publishedTime,
     author: {
       '@type': 'Person',
       name: authorName,
     },
+    datePublished: publishedTime,
+    description,
+    headline: title,
+    image,
     publisher: {
       '@type': 'Organization',
       name: 'Vibekit',
     },
+    url,
   }
 }

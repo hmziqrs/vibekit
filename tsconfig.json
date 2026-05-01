@@ -12,5 +12,14 @@
     "strict": true,
     "moduleResolution": "bundler",
     "types": ["./worker-configuration.d.ts"]
-  }
+  },
+  "exclude": [
+    "node_modules",
+    ".svelte-kit/output",
+    ".svelte-kit/build",
+    "build",
+    "dist",
+    "worker.ts",
+    "src/lib/paraglide"
+  ]
 }

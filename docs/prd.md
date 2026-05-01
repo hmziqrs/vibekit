@@ -721,10 +721,12 @@ Two-stack analytics: **Cloudflare Web Analytics** for privacy-friendly, beacon-o
 ## 16.2 App (Firebase Analytics)
 
 **Event tracking:**
+
 - Sign-up completion, login success/failure, email verification completion, feature usage events.
 - Gated behind user consent (see §16.4).
 
 **Crash / error tracking:**
+
 - Firebase Crashlytics is mobile-only and not available for web. The web equivalent is capturing unhandled errors as custom Firebase Analytics events.
 - A global error handler in the `(app)` shell captures `window.onerror` and `unhandledrejection` events and logs them via `logEvent('app_error', { message, stack_hint, route })`.
 - Critical API failures (5xx responses from `+server.ts` endpoints) are also logged via `logEvent('api_failure', { endpoint, status })`.
@@ -1096,31 +1098,31 @@ MVP is complete when:
 
 All open questions resolved for v1 MVP:
 
-| Question                            | Decision                                                                                                                                                    |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Core domain modules inside `/app/*` | **Generic resource module**: Start with a single "Items" module to establish TanStack Query/Form/Table patterns before building domain-specific features.   |
-| Blog content format                 | **GitHub Flavored Markdown**: Simple, well-supported, works perfectly with `@tailwindcss/typography`. Render with `micromark` + DOMPurify for sanitization. |
-| Blog image handling                 | **Basic image upload**: Implement minimal Cloudflare R2 + Images integration for v1.                                                                        |
-| Blog rendering                      | **SSR at the edge with tagged cache**: render on request from D1, not build-time prerendered. Cache API tags drive invalidation.                            |
-| Social authentication               | **Email/password only**: Defer social providers to post-MVP.                                                                                                |
-| Password reset                      | **In v1**: Better Auth's built-in flow delivered via `send_email`.                                                                                          |
-| Email verification                  | **Required for signup**: user can log in pre-verification; sensitive actions gated until verified.                                                          |
-| MFA / 2FA                           | **Post-MVP**: Deferred.                                                                                                                                     |
-| Admin user impersonation            | **Post-MVP**: Not required for initial launch.                                                                                                              |
-| User table ownership                | **Extend Better Auth's `user` via `additionalFields`**: no parallel `app_users` table.                                                                      |
-| Public / auth form posture          | **Form actions + shared Zod**: progressive enhancement on `(public)` + `(auth)`; TanStack Form inside `(app)` + `(admin)`. Validation runs on both sides.   |
-| Blog status vs soft delete          | **Both, distinct**: `status = 'archived'` = public-hidden, admin-editable. `deleted_at IS NOT NULL` = trash, 30-day retention, cron hard-deletes.           |
-| Slug redirects                      | **Slug history table**: previous slugs stored in `blog_post_slug_history`, resolved with 301 on miss.                                                       |
+| Question                            | Decision                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core domain modules inside `/app/*` | **Generic resource module**: Start with a single "Items" module to establish TanStack Query/Form/Table patterns before building domain-specific features.                                |
+| Blog content format                 | **GitHub Flavored Markdown**: Simple, well-supported, works perfectly with `@tailwindcss/typography`. Render with `micromark` + DOMPurify for sanitization.                              |
+| Blog image handling                 | **Basic image upload**: Implement minimal Cloudflare R2 + Images integration for v1.                                                                                                     |
+| Blog rendering                      | **SSR at the edge with tagged cache**: render on request from D1, not build-time prerendered. Cache API tags drive invalidation.                                                         |
+| Social authentication               | **Email/password only**: Defer social providers to post-MVP.                                                                                                                             |
+| Password reset                      | **In v1**: Better Auth's built-in flow delivered via `send_email`.                                                                                                                       |
+| Email verification                  | **Required for signup**: user can log in pre-verification; sensitive actions gated until verified.                                                                                       |
+| MFA / 2FA                           | **Post-MVP**: Deferred.                                                                                                                                                                  |
+| Admin user impersonation            | **Post-MVP**: Not required for initial launch.                                                                                                                                           |
+| User table ownership                | **Extend Better Auth's `user` via `additionalFields`**: no parallel `app_users` table.                                                                                                   |
+| Public / auth form posture          | **Form actions + shared Zod**: progressive enhancement on `(public)` + `(auth)`; TanStack Form inside `(app)` + `(admin)`. Validation runs on both sides.                                |
+| Blog status vs soft delete          | **Both, distinct**: `status = 'archived'` = public-hidden, admin-editable. `deleted_at IS NOT NULL` = trash, 30-day retention, cron hard-deletes.                                        |
+| Slug redirects                      | **Slug history table**: previous slugs stored in `blog_post_slug_history`, resolved with 301 on miss.                                                                                    |
 | Analytics stack                     | **Cloudflare Web Analytics** (public + admin) + **Firebase Analytics** (app only — event tracking + crash/error via custom `logEvent`). Admin tracked via audit log + Workers Logs only. |
-| Consent banner                      | **Minimal in-house** (shadcn `Dialog`) on `/app/*` only: blocks Firebase until accepted. Not shown on `/admin/*` — Firebase not loaded there at all.       |
-| Blog regeneration strategy          | **Cloudflare Cache API with tags**: tag blog routes on render, purge relevant tags when posts are published/updated/archived.                               |
-| Email provider                      | **Cloudflare Workers `send_email` binding** via Email Routing.                                                                                              |
-| Rate limiting                       | **Cloudflare Rate Limiting rules** (dashboard-configured) on auth, contact, and admin mutation endpoints.                                                   |
-| Error tracking                      | **Cloudflare Workers Logs + Logpush to R2** (free tier); Tail Worker aggregates error-level events.                                                         |
-| Audit log                           | **Required in MVP**: schema + writes on every admin mutation + minimal read UI.                                                                             |
-| Responsive posture                  | **Split by surface**: mobile-first for `(public)` + `(blog)`, desktop-first for `(admin)`, fluid for `(app)`.                                               |
-| ID format                           | **UUID v7** (text, generated via `uuidv7` package). Time-ordered for better SQLite index performance.                                                       |
-| E2E test runner                     | **Playwright**: Official SvelteKit default with excellent Workers support.                                                                                  |
+| Consent banner                      | **Minimal in-house** (shadcn `Dialog`) on `/app/*` only: blocks Firebase until accepted. Not shown on `/admin/*` — Firebase not loaded there at all.                                     |
+| Blog regeneration strategy          | **Cloudflare Cache API with tags**: tag blog routes on render, purge relevant tags when posts are published/updated/archived.                                                            |
+| Email provider                      | **Cloudflare Workers `send_email` binding** via Email Routing.                                                                                                                           |
+| Rate limiting                       | **Cloudflare Rate Limiting rules** (dashboard-configured) on auth, contact, and admin mutation endpoints.                                                                                |
+| Error tracking                      | **Cloudflare Workers Logs + Logpush to R2** (free tier); Tail Worker aggregates error-level events.                                                                                      |
+| Audit log                           | **Required in MVP**: schema + writes on every admin mutation + minimal read UI.                                                                                                          |
+| Responsive posture                  | **Split by surface**: mobile-first for `(public)` + `(blog)`, desktop-first for `(admin)`, fluid for `(app)`.                                                                            |
+| ID format                           | **UUID v7** (text, generated via `uuidv7` package). Time-ordered for better SQLite index performance.                                                                                    |
+| E2E test runner                     | **Playwright**: Official SvelteKit default with excellent Workers support.                                                                                                               |
 
 ---
 

@@ -8,15 +8,15 @@ export async function writeAuditLog(
     entityType: string
     entityId: string
     userId: string
-    metadata?: Record<string, unknown>
-  },
+    metadata?: unknown
+  }
 ) {
   const db = getDb(d1)
   await db.insert(auditLog).values({
     action: entry.action,
-    entityType: entry.entityType,
     entityId: entry.entityId,
-    userId: entry.userId,
+    entityType: entry.entityType,
     metadata: entry.metadata ? JSON.stringify(entry.metadata) : null,
+    userId: entry.userId,
   })
 }

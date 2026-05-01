@@ -7,7 +7,9 @@ export function isAnalyticsInitialized() {
 }
 
 export async function initAnalyticsIfConsented(configJson?: string) {
-  if (initialized) return
+  if (initialized) {
+    return
+  }
 
   const consent = typeof localStorage !== 'undefined' ? localStorage.getItem('consent') : null
 
@@ -17,11 +19,18 @@ export async function initAnalyticsIfConsented(configJson?: string) {
 }
 
 export function trackPageView(path: string) {
-  if (!initialized) return
+  if (!initialized) {
+    return
+  }
   trackEvent('page_view', { page_path: path })
 }
 
-export function trackAction(action: string, params?: Record<string, unknown>) {
-  if (!initialized) return
+export function trackAction(
+  action: string,
+  params?: Record<string, string | number | boolean | undefined>
+) {
+  if (!initialized) {
+    return
+  }
   trackEvent(action, params)
 }

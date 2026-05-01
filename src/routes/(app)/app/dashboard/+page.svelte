@@ -8,19 +8,19 @@
   const userName = $derived(auth.user?.name ?? 'User')
 
   const itemsQuery = createQuery(() => ({
-    queryKey: ['items', 'recent'],
     queryFn: async (): Promise<ItemData[]> => {
       const res = await fetch('/api/items?status=active')
       if (!res.ok) throw new Error('Failed to fetch items')
       const data = (await res.json()) as { items: ItemData[] }
       return data.items
     },
+    queryKey: ['items', 'recent'],
   }))
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
       day: 'numeric',
+      month: 'short',
       year: 'numeric',
     })
   }

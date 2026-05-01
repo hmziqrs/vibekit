@@ -3,7 +3,7 @@
   import ImageUpload from '$lib/components/image-upload.svelte'
   import { updatePostSchema } from '$lib/validators/blog'
 
-  let {
+  const {
     data,
   }: {
     data: {
@@ -19,11 +19,12 @@
     }
   } = $props()
 
-  let title = $state(data.post.title)
-  let slug = $state(data.post.slug)
-  let excerpt = $state(data.post.excerpt ?? '')
-  let contentBody = $state(data.post.contentBody ?? '')
-  let coverImageUrl = $state(data.post.coverImageUrl ?? '')
+  const { post } = data
+  const title = $state(post.title)
+  const slug = $state(post.slug)
+  const excerpt = $state(post.excerpt ?? '')
+  const contentBody = $state(post.contentBody ?? '')
+  const coverImageUrl = $state(post.coverImageUrl ?? '')
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
   let serverError = $state('')
@@ -34,11 +35,11 @@
     serverError = ''
 
     const result = updatePostSchema.safeParse({
-      title,
-      slug,
-      excerpt: excerpt || null,
       contentBody: contentBody || null,
       coverImageUrl: coverImageUrl || null,
+      excerpt: excerpt || null,
+      slug,
+      title,
     })
     if (!result.success) {
       errors = Object.fromEntries(
@@ -50,8 +51,6 @@
     saving = true
     try {
       const res = await fetch(`/api/blog/${data.post.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
           slug,
@@ -59,6 +58,8 @@
           contentBody,
           coverImageUrl: coverImageUrl || null,
         }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
       })
 
       if (!res.ok) {
@@ -88,7 +89,7 @@
   }
 
   async function archive() {
-    if (!confirm('Archive this post?')) return
+    if (!confirm('Archive this post?')) {return}
     await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
     goto('/admin/blog')
   }

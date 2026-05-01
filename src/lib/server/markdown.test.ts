@@ -1,8 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { renderAndSanitize, renderMarkdown, sanitizeHtml } from './markdown'
 
-import { renderMarkdown, sanitizeHtml, renderAndSanitize } from './markdown'
-
-describe('renderMarkdown', () => {
+describe(renderMarkdown, () => {
   it('renders headings', () => {
     const html = renderMarkdown('# Hello')
     expect(html).toContain('<h1')
@@ -56,7 +54,7 @@ describe('renderMarkdown', () => {
   })
 })
 
-describe('sanitizeHtml', () => {
+describe(sanitizeHtml, () => {
   it('removes script tags', () => {
     const result = sanitizeHtml('<p>Hello</p><script>alert("xss")</script>')
     expect(result).not.toContain('<script')
@@ -80,7 +78,7 @@ describe('sanitizeHtml', () => {
   })
 })
 
-describe('renderAndSanitize', () => {
+describe(renderAndSanitize, () => {
   it('renders and sanitizes markdown', () => {
     const result = renderAndSanitize('# Hello **world**')
     expect(result).toContain('<h1')

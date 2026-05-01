@@ -4,8 +4,8 @@
   import { seo } from '$lib/seo'
 
   const meta = seo({
-    title: 'Privacy Policy',
     description: 'Vibekit privacy policy — how we collect, use, and protect your data.',
+    title: 'Privacy Policy',
   })
 </script>
 

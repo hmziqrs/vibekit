@@ -5,7 +5,7 @@
   import type { HTMLInputAttributes } from 'svelte/elements'
   import { getFieldError } from '$lib/validation'
 
-  let {
+  const {
     field,
     label,
     type = 'text',
@@ -16,15 +16,15 @@
   }: {
     field: TField
     label: string
-    type?: HTMLInputAttributes['type'] | 'textarea'
+    type?: Exclude<HTMLInputAttributes['type'], null> | 'textarea'
     placeholder?: string
-    autocomplete?: string
+    autocomplete?: HTMLInputAttributes['autocomplete']
     rows?: number
     maxlength?: number
   } = $props()
 
-  let errors = $derived(field.state.meta.errors as StandardSchemaV1Issue[])
-  let hasError = $derived(errors.length > 0)
+  const errors = $derived(field.state.meta.errors as StandardSchemaV1Issue[])
+  const hasError = $derived(errors.length > 0)
 </script>
 
 <div class="space-y-2">
@@ -45,10 +45,10 @@
   {:else}
     <Input
       id={String(field.name)}
-      type={type as any}
+      {type}
       {placeholder}
       {maxlength}
-      autocomplete={autocomplete as any}
+      {autocomplete}
       value={field.state.value}
       oninput={(e) => field.handleChange(e.currentTarget.value)}
       onblur={field.handleBlur}
