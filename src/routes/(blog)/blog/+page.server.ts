@@ -29,7 +29,7 @@ export const load: PageServerLoad = async ({ platform, setHeaders }) => {
     .where(and(eq(blogPost.status, 'published'), isNull(blogPost.deletedAt)))
     .orderBy(desc(blogPost.publishedAt))
     .limit(limit)
-    .offset(0)
+    .offset((page - 1) * limit)
 
   return { posts }
 }

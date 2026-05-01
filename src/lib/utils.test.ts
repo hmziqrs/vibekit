@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import { cn } from './utils'
 
-describe('cn', () => {
+describe(cn, () => {
   it('merges class names', () => {
     expect(cn('foo', 'bar')).toBe('foo bar')
   })
 
   it('handles conditional classes', () => {
-    expect(cn('foo', false && 'bar', 'baz')).toBe('foo baz')
+    const condition = false
+    expect(cn('foo', condition && 'bar', 'baz')).toBe('foo baz')
   })
 
   it('handles undefined and null', () => {

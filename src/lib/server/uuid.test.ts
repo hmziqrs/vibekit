@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { uuid, uuidv7 } from './uuid'
 
-describe('uuid', () => {
+describe(uuid, () => {
   it('returns a valid UUID v7 string', () => {
     const id = uuid()
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)

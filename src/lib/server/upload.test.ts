@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { describe, expect, it } from 'vitest'
-
 import { generateStorageKey, validateImageUpload } from './upload'
 
 describe(validateImageUpload, () => {
@@ -43,7 +41,7 @@ describe(validateImageUpload, () => {
   })
 })
 
-describe('generateStorageKey', () => {
+describe(generateStorageKey, () => {
   it('preserves file extension', () => {
     const key = generateStorageKey('photo.jpg')
     expect(key).toMatch(/^[a-f0-9-]{36}\.jpg$/)

@@ -68,7 +68,12 @@
         "vitest/no-focused-tests": "error",
         "vitest/no-identical-title": "error",
         "vitest/prefer-to-be": "error",
-        "vitest/no-importing-vitest-globals": "off"
+        "vitest/no-importing-vitest-globals": "off",
+        "vitest/prefer-to-be-truthy": "off",
+        "vitest/prefer-to-be-falsy": "off",
+        "vitest/prefer-strict-boolean-matchers": "off",
+        "jest/valid-title": "off",
+        "jest/no-hooks": "off"
       }
     },
     {

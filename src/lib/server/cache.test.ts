@@ -1,7 +1,6 @@
-import type { vi, describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { blogCacheTags, purgeBlogCache } from './cache'
-import type { CachePlatform } from './cache'
+import { blogCacheTags, purgeBlogCache, type CachePlatform } from './cache'
 
 describe(blogCacheTags, () => {
   it('returns index tag only when no slug', () => {
@@ -25,7 +24,7 @@ describe(blogCacheTags, () => {
   })
 })
 
-describe('purgeBlogCache', () => {
+describe(purgeBlogCache, () => {
   it('does nothing when platform is undefined', async () => {
     await expect(purgeBlogCache(undefined, 'slug')).resolves.toBeUndefined()
   })
