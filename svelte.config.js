@@ -1,4 +1,11 @@
-import adapter from '@sveltejs/adapter-cloudflare'
+import adapter_cloudflare from '@sveltejs/adapter-cloudflare'
+import adapter_node from '@sveltejs/adapter-node'
+
+const adapterType = process.env.ADAPTER ?? 'node'
+
+/** @type {import('@sveltejs/kit').Adapter} */
+const adapter =
+  adapterType === 'cloudflare' ? adapter_cloudflare() : adapter_node({ precompress: true })
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -7,7 +14,7 @@ const config = {
     runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true),
   },
   kit: {
-    adapter: adapter(),
+    adapter,
     experimental: {
       handleRenderingErrors: true,
     },

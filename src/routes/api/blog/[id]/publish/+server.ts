@@ -1,5 +1,3 @@
-import { purgeBlogCache } from '$lib/server/cache'
-import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
 import { rateLimit } from '$lib/server/rate-limit'
 import { json } from '@sveltejs/kit'
@@ -7,7 +5,7 @@ import { eq } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
-export const POST: RequestHandler = async ({ locals, params, platform }) => {
+export const POST: RequestHandler = async ({ locals, params }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -17,7 +15,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     return json({ error: 'Too many requests' }, { status: 429 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const existing = await db
     .select({ id: blogPost.id, slug: blogPost.slug })
     .from(blogPost)
@@ -32,7 +30,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     .set({ publishedAt: new Date(), status: 'published', updatedAt: new Date() })
     .where(eq(blogPost.id, params.id))
 
-  await purgeBlogCache(platform, existing.slug)
+  await locals.services.cache.purgeBlog(existing.slug)
 
   return json({ success: true })
 }

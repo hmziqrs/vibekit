@@ -1,4 +1,3 @@
-import { getDb } from '$lib/server/db'
 import { blogPost, blogPostSlugHistory } from '$lib/server/db/schema'
 import { renderAndSanitize } from '$lib/server/markdown'
 import { redirect } from '@sveltejs/kit'
@@ -6,12 +5,12 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
-export const load: PageServerLoad = async ({ params, platform, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
   setHeaders({
     'CDN-Cache-Control': 'public, max-age=3600',
     'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
   })
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const { slug } = params
 
   // Try to find published, non-deleted post by slug

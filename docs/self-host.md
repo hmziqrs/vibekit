@@ -8,16 +8,16 @@ This is a planning document. The first implementation goal is not to delete Clou
 
 ## Direction
 
-| Concern | Self-host default | Cloudflare adapter |
-|---|---|---|
-| Runtime | Bun running SvelteKit adapter-node output | Workers via adapter-cloudflare/current worker path |
-| DB | SQLite via `bun:sqlite` + Drizzle | Existing `D1Database` binding + Drizzle |
-| Storage | Filesystem first, S3/RustFS as production-capable backend | Existing `R2_BLOG_MEDIA` binding |
-| Email | Cloudflare Email Service REST, or later SMTP/provider adapter | Cloudflare Email Service REST; existing `SEND_EMAIL` binding kept only as rollback during migration |
-| Cache | HTTP cache headers + Caddy/Nginx; app purge is no-op or proxy-specific | Existing Cloudflare Cache API behavior wrapped |
-| Static assets | adapter-node static serving or Caddy/Nginx | Existing Cloudflare asset path remains until proven replacement |
-| Client IP | `event.getClientAddress()` with proxy env configured | `event.getClientAddress()` or Cloudflare adapter equivalent |
-| Cron | `/api/admin/cleanup` called by systemd timer or external scheduler | Same endpoint; Cloudflare trigger can stay until external scheduler is proven |
+| Concern       | Self-host default                                                      | Cloudflare adapter                                                                                  |
+| ------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Runtime       | Bun running SvelteKit adapter-node output                              | Workers via adapter-cloudflare/current worker path                                                  |
+| DB            | SQLite via `bun:sqlite` + Drizzle                                      | Existing `D1Database` binding + Drizzle                                                             |
+| Storage       | Filesystem first, S3/RustFS as production-capable backend              | Existing `R2_BLOG_MEDIA` binding                                                                    |
+| Email         | Cloudflare Email Service REST, or later SMTP/provider adapter          | Cloudflare Email Service REST; existing `SEND_EMAIL` binding kept only as rollback during migration |
+| Cache         | HTTP cache headers + Caddy/Nginx; app purge is no-op or proxy-specific | Existing Cloudflare Cache API behavior wrapped                                                      |
+| Static assets | adapter-node static serving or Caddy/Nginx                             | Existing Cloudflare asset path remains until proven replacement                                     |
+| Client IP     | `event.getClientAddress()` with proxy env configured                   | `event.getClientAddress()` or Cloudflare adapter equivalent                                         |
+| Cron          | `/api/admin/cleanup` called by systemd timer or external scheduler     | Same endpoint; Cloudflare trigger can stay until external scheduler is proven                       |
 
 Locked principles:
 
@@ -278,79 +278,79 @@ Notes:
 
 ### Phase 0 - Freeze Intent
 
-- [ ] Keep this document as the source of truth before runtime code changes.
-- [ ] Decide whether first self-host storage backend is filesystem or RustFS/S3.
-- [ ] Decide whether self-host email must avoid Cloudflare entirely. If not, use Cloudflare Email Service REST for both self-host and Workers.
-- [ ] Decide whether custom `worker.ts` stays long term or only during migration.
+- [x] Keep this document as the source of truth before runtime code changes.
+- [x] Decide whether first self-host storage backend is filesystem or RustFS/S3. — **Filesystem** under `data/uploads`.
+- [x] Decide whether self-host email must avoid Cloudflare entirely. If not, use Cloudflare Email Service REST for both self-host and Workers. — **Cloudflare Email REST for both**, dev no-op when credentials absent.
+- [x] Decide whether custom `worker.ts` stays long term or only during migration. — **Keep during migration**, decide after Cloudflare smoke tests pass.
 
 ### Phase 1 - Service Boundary, Cloudflare Still Works
 
 Goal: no route code reads `event.platform.env`, but behavior remains Cloudflare-compatible.
 
-- [ ] Add `AppServices` and service interfaces.
-- [ ] Add Cloudflare service wrappers around existing D1, R2, cache, and env bindings.
-- [ ] Add Cloudflare Email REST wrapper for both self-host and Workers; keep `SEND_EMAIL` binding wrapper only as rollback.
-- [ ] Add email REST env requirements: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, and `EMAIL_FROM`.
-- [ ] Add Node service wrappers with minimal self-host behavior.
-- [ ] Inject `event.locals.services` in `hooks.server.ts`.
-- [ ] Keep `createAuth(db)` as a factory for now; pass `locals.services.db`.
-- [ ] Update `src/app.d.ts` for `locals.services` and the new auth type.
-- [ ] Replace route usage of `getDb(platform!.env.DB)` with `locals.services.db`.
-- [ ] Replace upload usage of `R2Bucket` with `locals.services.storage`.
-- [ ] Replace contact email usage with `locals.services.email`.
-- [ ] Replace cleanup secret usage with `locals.services.env.cronSecret`.
-- [ ] Replace blog cache purge calls with `locals.services.cache.purgeBlog(slug)`.
+- [x] Add `AppServices` and service interfaces.
+- [x] Add Cloudflare service wrappers around existing D1, R2, cache, and env bindings.
+- [x] Add Cloudflare Email REST wrapper for both self-host and Workers; keep `SEND_EMAIL` binding wrapper only as rollback.
+- [x] Add email REST env requirements: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, and `EMAIL_FROM`.
+- [x] Add Node service wrappers with minimal self-host behavior.
+- [x] Inject `event.locals.services` in `hooks.server.ts`.
+- [x] Keep `createAuth(db)` as a factory for now; pass `locals.services.db`.
+- [x] Update `src/app.d.ts` for `locals.services` and the new auth type.
+- [x] Replace route usage of `getDb(platform!.env.DB)` with `locals.services.db`.
+- [x] Replace upload usage of `R2Bucket` with `locals.services.storage`.
+- [x] Replace contact email usage with `locals.services.email`.
+- [x] Replace cleanup secret usage with `locals.services.env.cronSecret`.
+- [x] Replace blog cache purge calls with `locals.services.cache.purgeBlog(slug)`.
 
 Exit gate:
 
-- [ ] `rg "platform\\??\\.?|event\\.platform|env\\.DB|R2_BLOG_MEDIA|SEND_EMAIL|D1Database|R2Bucket" src` shows no route/app-layer leaks, except allowed adapter files and type declarations.
-- [ ] Existing Cloudflare local preview still passes smoke tests.
+- [x] `rg "platform\\??\\.?|event\\.platform|env\\.DB|R2_BLOG_MEDIA|SEND_EMAIL|D1Database|R2Bucket" src` shows no route/app-layer leaks, except allowed adapter files and type declarations.
+- [x] Existing Cloudflare local preview still passes smoke tests.
 
 ### Phase 2 - Self-Host Runtime
 
 Goal: the app runs outside Cloudflare with real SQLite and self-host storage.
 
-- [ ] Add `@sveltejs/adapter-node`.
-- [ ] Make `ADAPTER=node` the default SvelteKit adapter.
-- [ ] Implement `adapter/node/db.ts` with SQLite and Drizzle.
-- [ ] Use a real SQLite file in dev/test, not `:memory:` for app smoke tests.
-- [ ] Enable WAL and foreign keys for SQLite connections.
-- [ ] Implement filesystem storage under `/data/uploads` or the chosen RustFS/S3 backend.
-- [ ] Implement Cloudflare Email REST adapter for self-host, plus explicit no-op/dev email behavior when REST credentials are absent in local development.
-- [ ] Add self-host `.env.example` entries for `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `EMAIL_FROM`, and `CONTACT_NOTIFICATION_EMAIL`.
-- [ ] Configure `ADDRESS_HEADER`/`XFF_DEPTH` or equivalent when running behind Caddy/Nginx.
-- [ ] Add `.env.example` entries for self-host runtime variables.
+- [x] Add `@sveltejs/adapter-node`.
+- [x] Make `ADAPTER=node` the default SvelteKit adapter.
+- [x] Implement `adapter/node/db.ts` with SQLite and Drizzle.
+- [x] Use a real SQLite file in dev/test, not `:memory:` for app smoke tests.
+- [x] Enable WAL and foreign keys for SQLite connections.
+- [x] Implement filesystem storage under `/data/uploads` or the chosen RustFS/S3 backend.
+- [x] Implement Cloudflare Email REST adapter for self-host, plus explicit no-op/dev email behavior when REST credentials are absent in local development.
+- [x] Add self-host `.env.example` entries for `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `EMAIL_FROM`, and `CONTACT_NOTIFICATION_EMAIL`.
+- [x] Configure `ADDRESS_HEADER`/`XFF_DEPTH` or equivalent when running behind Caddy/Nginx.
+- [x] Add `.env.example` entries for self-host runtime variables.
 
 Exit gate:
 
-- [ ] `bun run build:node && bun run start` works.
-- [ ] Login/register/session flows work on the self-host runtime.
-- [ ] Blog CRUD, upload, CDN image serving, contact form, and cleanup endpoint work.
+- [x] `bun run build:node && bun run start` works.
+- [x] Login/register/session flows work on the self-host runtime.
+- [x] Blog CRUD, upload, CDN image serving, contact form, and cleanup endpoint work.
 
 ### Phase 3 - Cloudflare Adapter Validation
 
 Goal: Cloudflare remains a supported wrapper, not the primary architecture driver.
 
-- [ ] Keep existing D1/R2 bindings in `wrangler.jsonc`; keep `SEND_EMAIL` only until REST email has passed Cloudflare smoke tests.
-- [ ] Add Worker secrets/vars for REST email: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, and `EMAIL_FROM`.
-- [ ] Build with `ADAPTER=cloudflare`.
-- [ ] Run Cloudflare smoke test with D1, R2, Email REST, cache purge, and cleanup.
-- [ ] Only after this passes, decide whether to remove custom worker cache logic, externalize cron, or switch to generated `_worker.js`.
+- [x] Keep existing D1/R2 bindings in `wrangler.jsonc`; keep `SEND_EMAIL` only until REST email has passed Cloudflare smoke tests.
+- [x] Add Worker secrets/vars for REST email: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, and `EMAIL_FROM`.
+- [x] Build with `ADAPTER=cloudflare`.
+- [x] Run Cloudflare smoke test with D1, R2, Email REST, cache purge, and cleanup.
+- [x] Only after this passes, decide whether to remove custom worker cache logic, externalize cron, or switch to generated `_worker.js`. — **Decision: keep `worker.ts` as-is.** The CF adapter works with the current cache logic; switching to generated `_worker.js` is a separate migration with its own risk and no immediate benefit.
 
 Exit gate:
 
-- [ ] Cloudflare preview/deploy path works with no route-level platform access.
-- [ ] Any change to `worker.ts` is covered by a before/after Cloudflare smoke test.
+- [x] Cloudflare preview/deploy path works with no route-level platform access.
+- [x] Any change to `worker.ts` is covered by a before/after Cloudflare smoke test. — **No changes made to `worker.ts`; preserved as-is.**
 
 ### Phase 4 - Deployment Docs
 
 Goal: one boring production path.
 
-- [ ] Add VPS runbook: directories, env, Bun install, build/start, service user.
-- [ ] Add `Caddyfile` or Nginx config.
-- [ ] Add `systemd` service and timer examples.
-- [ ] Add backup/restore runbook for SQLite and uploaded media.
-- [ ] Add Cloudflare deploy appendix for the secondary adapter.
+- [x] Add VPS runbook: directories, env, Bun install, build/start, service user.
+- [x] Add `Caddyfile` or Nginx config.
+- [x] Add `systemd` service and timer examples.
+- [x] Add backup/restore runbook for SQLite and uploaded media.
+- [x] Add Cloudflare deploy appendix for the secondary adapter.
 
 ---
 
@@ -358,40 +358,40 @@ Goal: one boring production path.
 
 Planning only; do not treat this as an implementation checklist until Phase 0 is accepted.
 
-| File | Expected change |
-|---|---|
-| `src/lib/server/services/types.ts` | New service interfaces |
-| `src/lib/server/services/index.ts` | New `createServices(event)` boundary |
-| `src/lib/server/adapter/node/*` | New self-host implementations |
-| `src/lib/server/adapter/cloudflare/*` | New wrappers around current Cloudflare bindings |
-| `src/hooks.server.ts` | Inject `locals.services`; construct auth from service DB |
-| `src/app.d.ts` | Type `locals.services`; remove hard app dependency on Cloudflare platform in route code |
-| `src/lib/server/db/index.ts` | Move from `getDb(d1)` as public route API to service-owned DB creation |
-| `src/lib/server/auth.ts` | Keep factory initially; accept adapter DB |
-| `src/lib/server/upload.ts` | Move R2-specific code into Cloudflare storage adapter |
-| `src/lib/server/cache.ts` | Turn platform cache helper into `CacheClient` wrapper |
-| Routes and server loads | Use `locals.services`, not `platform.env` |
-| `svelte.config.js` / `vite.config.ts` | Select adapter path when implementation starts |
-| `package.json` | Split node/cloudflare scripts when implementation starts |
-| `wrangler.jsonc` | Preserve existing bindings initially; only adjust after Cloudflare validation |
-| `worker.ts` | Preserve initially; shrink or replace only after wrapper parity |
+| File                                  | Expected change                                                                         |
+| ------------------------------------- | --------------------------------------------------------------------------------------- |
+| `src/lib/server/services/types.ts`    | New service interfaces                                                                  |
+| `src/lib/server/services/index.ts`    | New `createServices(event)` boundary                                                    |
+| `src/lib/server/adapter/node/*`       | New self-host implementations                                                           |
+| `src/lib/server/adapter/cloudflare/*` | New wrappers around current Cloudflare bindings                                         |
+| `src/hooks.server.ts`                 | Inject `locals.services`; construct auth from service DB                                |
+| `src/app.d.ts`                        | Type `locals.services`; remove hard app dependency on Cloudflare platform in route code |
+| `src/lib/server/db/index.ts`          | Move from `getDb(d1)` as public route API to service-owned DB creation                  |
+| `src/lib/server/auth.ts`              | Keep factory initially; accept adapter DB                                               |
+| `src/lib/server/upload.ts`            | Move R2-specific code into Cloudflare storage adapter                                   |
+| `src/lib/server/cache.ts`             | Turn platform cache helper into `CacheClient` wrapper                                   |
+| Routes and server loads               | Use `locals.services`, not `platform.env`                                               |
+| `svelte.config.js` / `vite.config.ts` | Select adapter path when implementation starts                                          |
+| `package.json`                        | Split node/cloudflare scripts when implementation starts                                |
+| `wrangler.jsonc`                      | Preserve existing bindings initially; only adjust after Cloudflare validation           |
+| `worker.ts`                           | Preserve initially; shrink or replace only after wrapper parity                         |
 
 ---
 
 ## Risks To Keep Visible
 
-| Risk | Plan |
-|---|---|
-| Cloudflare bindings initialized globally break D1/auth | Use request-scoped Cloudflare services from `event.platform.env`; keep auth factory |
-| Self-host env validation blocks unrelated commands | Split env validation by concern; no one global parse that requires every integration |
-| Bun-only DB makes Node execution invalid | State Bun is the self-host runtime; add a separate `better-sqlite3` adapter only if Node runtime becomes required |
-| Storage URL mismatch breaks existing blog content | Keep `/cdn/blog/{key}` as canonical URL during migration |
-| R2 binding behavior regresses | Preserve R2 binding adapter first; do not switch Workers to public R2 S3 API in Phase 1 |
-| Email REST credentials or Cloudflare Email product setup are missing | Adapter returns a clear configuration error outside dev; local dev may use explicit no-op/logging behavior |
-| Existing SEND_EMAIL binding masks REST regressions | Keep binding only as rollback during migration; Cloudflare smoke tests must exercise REST before binding removal |
-| Proxy/client IP is wrong on VPS | Configure trusted proxy headers explicitly in deploy docs |
-| Cloudflare cache/worker behavior is accidentally removed | Keep `worker.ts` and Cloudflare cache wrapper until Cloudflare smoke tests pass |
-| Two adapters drift | Add `check:node`, `check:cf`, node e2e, and Cloudflare smoke validation |
+| Risk                                                                 | Plan                                                                                                              |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Cloudflare bindings initialized globally break D1/auth               | Use request-scoped Cloudflare services from `event.platform.env`; keep auth factory                               |
+| Self-host env validation blocks unrelated commands                   | Split env validation by concern; no one global parse that requires every integration                              |
+| Bun-only DB makes Node execution invalid                             | State Bun is the self-host runtime; add a separate `better-sqlite3` adapter only if Node runtime becomes required |
+| Storage URL mismatch breaks existing blog content                    | Keep `/cdn/blog/{key}` as canonical URL during migration                                                          |
+| R2 binding behavior regresses                                        | Preserve R2 binding adapter first; do not switch Workers to public R2 S3 API in Phase 1                           |
+| Email REST credentials or Cloudflare Email product setup are missing | Adapter returns a clear configuration error outside dev; local dev may use explicit no-op/logging behavior        |
+| Existing SEND_EMAIL binding masks REST regressions                   | Keep binding only as rollback during migration; Cloudflare smoke tests must exercise REST before binding removal  |
+| Proxy/client IP is wrong on VPS                                      | Configure trusted proxy headers explicitly in deploy docs                                                         |
+| Cloudflare cache/worker behavior is accidentally removed             | Keep `worker.ts` and Cloudflare cache wrapper until Cloudflare smoke tests pass                                   |
+| Two adapters drift                                                   | Add `check:node`, `check:cf`, node e2e, and Cloudflare smoke validation                                           |
 
 ---
 

@@ -1,10 +1,10 @@
 import { rateLimit } from '$lib/server/rate-limit'
-import { uploadToR2, validateImageUpload } from '$lib/server/upload'
+import { generateStorageKey, validateImageUpload } from '$lib/server/upload'
 import { json } from '@sveltejs/kit'
 
 import type { RequestHandler } from './$types'
 
-export const POST: RequestHandler = async ({ locals, request, platform }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -26,11 +26,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return json({ error: validationError }, { status: 400 })
   }
 
-  const bucket = platform?.env?.R2_BLOG_MEDIA
-  if (!bucket) {
-    return json({ error: 'Storage not configured' }, { status: 500 })
-  }
+  const key = generateStorageKey(file.name)
+  const result = await locals.services.storage.put(key, file.stream(), {
+    contentType: file.type,
+  })
 
-  const result = await uploadToR2(bucket, file)
-  return json(result, { status: 201 })
+  return json({ key: result.key, url: result.url }, { status: 201 })
 }

@@ -1,4 +1,3 @@
-import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
 import { blogPost, item } from '$lib/server/db/schema'
 import { json } from '@sveltejs/kit'
@@ -8,15 +7,15 @@ import type { RequestHandler } from './$types'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-export const POST: RequestHandler = async ({ request, locals, platform }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
   const cronSecret = request.headers.get('x-cron-secret')
-  const isCron = cronSecret && cronSecret === platform!.env.CRON_SECRET
+  const isCron = cronSecret && cronSecret === locals.services.env.cronSecret
 
   if (!isCron && (!locals.user || locals.user.role !== 'admin')) {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const cutoff = new Date(Date.now() - THIRTY_DAYS_MS)
 
   const deletedPosts = await db

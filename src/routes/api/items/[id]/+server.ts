@@ -1,24 +1,24 @@
-import { getDb } from '$lib/server/db'
 import { item } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { updateItemSchema } from '$lib/validators/item'
 import { json } from '@sveltejs/kit'
 import { and, eq, isNull, sql, type SQL } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
-const findItem = async (db: ReturnType<typeof getDb>, id: string, userId: string) =>
+const findItem = async (db: AppDb, id: string, userId: string) =>
   db
     .select()
     .from(item)
     .where(and(eq(item.id, id), eq(item.userId, userId), isNull(item.deletedAt)))
     .get()
 
-export const GET: RequestHandler = async ({ locals, params, platform }) => {
+export const GET: RequestHandler = async ({ locals, params }) => {
   if (!locals.user) {
     return json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const found = await findItem(getDb(platform!.env.DB), params.id, locals.user.id)
+  const found = await findItem(locals.services.db, params.id, locals.user.id)
   if (!found) {
     return json({ error: 'Not found' }, { status: 404 })
   }
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
   })
 }
 
-export const PATCH: RequestHandler = async ({ locals, params, request, platform }) => {
+export const PATCH: RequestHandler = async ({ locals, params, request }) => {
   if (!locals.user) {
     return json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -46,7 +46,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const existing = await findItem(db, params.id, locals.user.id)
   if (!existing) {
     return json({ error: 'Not found' }, { status: 404 })
@@ -84,12 +84,12 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   })
 }
 
-export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
+export const DELETE: RequestHandler = async ({ locals, params }) => {
   if (!locals.user) {
     return json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const existing = await findItem(db, params.id, locals.user.id)
   if (!existing) {
     return json({ error: 'Not found' }, { status: 404 })

@@ -1,16 +1,15 @@
-import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
-export const load: PageServerLoad = async ({ platform, setHeaders }) => {
+export const load: PageServerLoad = async ({ locals, setHeaders }) => {
   setHeaders({
     'CDN-Cache-Control': 'public, max-age=3600',
     'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
   })
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
 
   const page = 1
   const limit = 10

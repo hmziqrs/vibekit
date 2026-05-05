@@ -1,14 +1,13 @@
-import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
 import { json, type RequestHandler } from '@sveltejs/kit'
 import { and, desc, eq, isNull, like, sql } from 'drizzle-orm'
 
-export const GET: RequestHandler = async ({ url, locals, platform }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Unauthorized' }, { status: locals.user ? 403 : 401 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
 
   const status = url.searchParams.get('status')
   const search = url.searchParams.get('search')

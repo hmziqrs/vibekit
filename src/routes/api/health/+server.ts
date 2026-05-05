@@ -1,15 +1,15 @@
 import { json } from '@sveltejs/kit'
+import { sql } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
-export const GET: RequestHandler = async ({ platform }) => {
+export const GET: RequestHandler = async ({ locals }) => {
   const start = Date.now()
 
   let db = 'error'
   try {
-    const d1 = platform?.env?.DB
-    if (d1) {
-      await d1.prepare('SELECT 1').first()
+    if (locals.services) {
+      await locals.services.db.run(sql`SELECT 1`)
       db = 'connected'
     } else {
       db = 'unavailable'

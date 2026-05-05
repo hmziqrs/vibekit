@@ -1,5 +1,4 @@
 import { writeAuditLog } from '$lib/server/audit'
-import { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/schema'
 import { rateLimit } from '$lib/server/rate-limit'
 import { json, type RequestHandler } from '@sveltejs/kit'
@@ -12,7 +11,7 @@ const updateSchema = z.object({
   status: z.enum(['active', 'suspended']).optional(),
 })
 
-export const PATCH: RequestHandler = async ({ params, request, locals, platform }) => {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Unauthorized' }, { status: locals.user ? 403 : 401 })
   }
@@ -27,7 +26,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
     return json({ error: 'User ID required' }, { status: 400 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
 
   const [existing] = await db
     .select()
@@ -97,7 +96,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
     updatedAt: user.updatedAt,
   })
 
-  await writeAuditLog(platform!.env.DB, {
+  await writeAuditLog(db, {
     action: 'user.update',
     entityId: targetId,
     entityType: 'user',
@@ -108,7 +107,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
   return json({ user: updated })
 }
 
-export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Unauthorized' }, { status: locals.user ? 403 : 401 })
   }
@@ -127,7 +126,7 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
     return json({ error: 'Cannot delete yourself' }, { status: 400 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
 
   const [existing] = await db
     .select()
@@ -143,7 +142,7 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
     .set({ deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))` })
     .where(eq(user.id, targetId))
 
-  await writeAuditLog(platform!.env.DB, {
+  await writeAuditLog(db, {
     action: 'user.delete',
     entityId: targetId,
     entityType: 'user',

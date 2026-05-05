@@ -1,11 +1,10 @@
-import { getDb } from '$lib/server/db'
 import { auditLog, user } from '$lib/server/db/schema'
 import { count, desc, eq } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
-export const load: PageServerLoad = async ({ platform, url }) => {
-  const db = getDb(platform!.env.DB)
+export const load: PageServerLoad = async ({ locals, url }) => {
+  const { db } = locals.services
   const action = url.searchParams.get('action')
   const page = Math.max(1, Number(url.searchParams.get('page') || '1'))
   const limit = 50

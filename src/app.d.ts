@@ -1,4 +1,5 @@
 import type { createAuth } from '$lib/server/auth'
+import type { AppServices } from '$lib/server/services'
 
 type Auth = ReturnType<typeof createAuth>
 type AuthUser = Auth['$Infer']['Session']['user']
@@ -16,6 +17,7 @@ declare global {
     }
 
     interface Locals {
+      services: AppServices
       user?: AuthUser
       session?: AuthSession
       auth: Auth

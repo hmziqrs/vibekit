@@ -1,10 +1,11 @@
 import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
-import { getDb } from '$lib/server/db'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { uuidv7 } from 'uuidv7'
+
+import type { AppDb } from './services/types'
 
 const authConfig = {
   advanced: {
@@ -64,10 +65,10 @@ const authConfig = {
   },
 } satisfies Omit<Parameters<typeof betterAuth>[0], 'database'>
 
-export const createAuth = (d1: D1Database) =>
+export const createAuth = (db: AppDb) =>
   betterAuth({
     ...authConfig,
-    database: drizzleAdapter(getDb(d1), { provider: 'sqlite' }),
+    database: drizzleAdapter(db, { provider: 'sqlite' }),
   })
 
 /**

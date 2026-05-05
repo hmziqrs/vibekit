@@ -4,11 +4,6 @@ const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/g
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
-export interface UploadResult {
-  key: string
-  url: string
-}
-
 export function validateImageUpload(file: File): string | null {
   if (!ALLOWED_TYPES.has(file.type)) {
     return `Invalid file type: ${file.type}. Allowed: JPEG, PNG, WebP, GIF.`
@@ -22,12 +17,4 @@ export function validateImageUpload(file: File): string | null {
 export function generateStorageKey(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
   return `${uuid()}.${ext}`
-}
-
-export async function uploadToR2(bucket: R2Bucket, file: File): Promise<UploadResult> {
-  const key = generateStorageKey(file.name)
-  await bucket.put(key, file.stream(), {
-    httpMetadata: { contentType: file.type },
-  })
-  return { key, url: `/cdn/blog/${key}` }
 }

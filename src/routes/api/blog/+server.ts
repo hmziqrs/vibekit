@@ -1,5 +1,3 @@
-import { purgeBlogCache } from '$lib/server/cache'
-import { getDb } from '$lib/server/db'
 import { blogPost } from '$lib/server/db/schema'
 import { rateLimit } from '$lib/server/rate-limit'
 import { uuid } from '$lib/server/uuid'
@@ -12,11 +10,11 @@ import type { RequestHandler } from './$types'
 /** Coalesce undefined/null to null for nullable DB columns. */
 const toNullable = (v: string | undefined | null) => v ?? null
 
-export const GET: RequestHandler = async ({ locals, url, platform }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const rawStatus = url.searchParams.get('status') ?? ''
   const page = Math.max(1, Number(url.searchParams.get('page') || '1'))
   const limit = 20
@@ -54,7 +52,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
   return json({ posts })
 }
 
-export const POST: RequestHandler = async ({ locals, request, platform }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
   if (!locals.user || locals.user.role !== 'admin') {
     return json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -69,7 +67,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!parsed.success) {
     return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const existing = await db
     .select({ id: blogPost.id })
     .from(blogPost)
@@ -97,7 +95,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   })
 
   if (status === 'published') {
-    await purgeBlogCache(platform, slug)
+    await locals.services.cache.purgeBlog(slug)
   }
 
   return json({ id }, { status: 201 })

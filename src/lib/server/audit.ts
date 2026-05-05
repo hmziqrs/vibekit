@@ -1,8 +1,8 @@
-import { getDb } from './db'
 import { auditLog } from './db/schema'
+import type { AppDb } from './services/types'
 
 export async function writeAuditLog(
-  d1: D1Database,
+  db: AppDb,
   entry: {
     action: string
     entityType: string
@@ -11,7 +11,6 @@ export async function writeAuditLog(
     metadata?: unknown
   }
 ) {
-  const db = getDb(d1)
   await db.insert(auditLog).values({
     action: entry.action,
     entityId: entry.entityId,

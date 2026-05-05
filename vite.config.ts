@@ -4,7 +4,12 @@ import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vitest/config'
 
+const adapter = process.env.ADAPTER ?? 'node'
+
 export default defineConfig({
+  define: {
+    __ADAPTER__: JSON.stringify(adapter),
+  },
   optimizeDeps: {
     exclude: ['better-auth', '@better-auth/core', '@better-auth/svelte'],
   },
@@ -14,7 +19,7 @@ export default defineConfig({
     paraglideVitePlugin({ outdir: './src/lib/paraglide', project: './project.inlang' }),
   ],
   ssr: {
-    external: ['better-auth', '@better-auth/core'],
+    external: ['better-auth', '@better-auth/core', 'bun:sqlite', 'drizzle-orm/bun-sqlite'],
   },
   test: {
     environment: 'node',

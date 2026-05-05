@@ -1,4 +1,3 @@
-import { getDb } from '$lib/server/db'
 import { item } from '$lib/server/db/schema'
 import { createItemSchema } from '$lib/validators/item'
 import { json } from '@sveltejs/kit'
@@ -6,12 +5,12 @@ import { and, desc, eq, isNull, like } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
-export const GET: RequestHandler = async ({ locals, url, platform }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
   if (!locals.user) {
     return json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const status = url.searchParams.get('status')
   const search = url.searchParams.get('search')?.trim()
 
@@ -41,7 +40,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
   return json({ items })
 }
 
-export const POST: RequestHandler = async ({ locals, request, platform }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
   if (!locals.user) {
     return json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -52,7 +51,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return json({ details: parsed.error.issues, error: 'Validation failed' }, { status: 400 })
   }
 
-  const db = getDb(platform!.env.DB)
+  const { db } = locals.services
   const created = await db
     .insert(item)
     .values({
