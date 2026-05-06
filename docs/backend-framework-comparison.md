@@ -285,15 +285,207 @@ All existing `app.use()` middleware and `app.onError()` continue to work unchang
 
 ### Honest cons
 
-1. **Two routing systems** — SvelteKit owns pages and `load()` functions. Hono owns `/api/*`. Everyone needs to know the split. The namespace convention must be enforced by discipline.
+1. **Two routing systems** — SvelteKit owns pages and `load()` functions. Hono owns `/api/*`. Everyone needs to know the split. The namespace convention must be enforced by discipline. Not a code problem — existing routes under `src/routes/api/` map 1:1 to Hono routes and are deleted, not duplicated.
 
-2. **`createAuth(c.env.DB)` called per request** — the factory is invoked in both the session middleware and the auth route handler per request, matching what SvelteKit does today. Negligible on Workers. On VPS, memoize if it becomes a hot path.
+2. **`createAuth(c.env.DB)` called per request** — naive implementation calls the factory in both the session middleware and the auth route handler. **Solved**: `withServices` middleware (see below) creates both `services` and `auth` once per request and stores them in context via `c.set()`. No second call anywhere.
 
-3. **`event.platform` is undefined on VPS** — `adapter-node` does not populate `event.platform`, so `event.platform?.env` falls back to `{}` in the hook. VPS-specific bindings (SQLite path, secrets) need to be injected through a separate module-level env object merged into the `app.fetch` call.
+3. **`event.platform` is undefined on VPS** — `adapter-node` does not populate `event.platform`, so `event.platform?.env` falls back to `{}`. **Solved**: the existing `createServices` function already accepts `{ platform?: { env?: { DB?: unknown } } }`. Passing `{ platform: { env: c.env } }` from Hono context covers both runtimes: on CF Workers `c.env.DB` is the D1 binding; on VPS `c.env` is `{}` and `createServices` falls through to `createNodeServices()` which reads `process.env.DATABASE_PATH`. No new adapter code needed.
 
-4. **SvelteKit hooks don't apply to Hono routes** — since `handleHono` short-circuits before `handleBetterAuth` and `handleRouteGuards`, any SvelteKit-level middleware (security headers, route guards, response wrappers) that runs after `handleHono` in the sequence won't apply to `/api/*` responses. Mitigation: run shared middleware before `handleHono`, and replicate auth guards inside Hono (the session middleware already handles this).
+4. **SvelteKit hooks don't apply to Hono routes** — **Largely pre-solved**: `handleSecurityHeaders` already explicitly skips `/api/` routes. `handleRouteGuards` only touches page paths. The only gap is API-response security headers, which Hono's built-in `secureHeaders()` middleware fills in one line. Auth guards are replicated once in `withSession` + `requireUser` middleware, not per route.
 
-5. **RPC IDE performance** — Hono's official docs warn that more routes cause slower IDE performance due to massive type instantiation on every edit. Mitigation: pre-compile types with `hcWithType` (compute types at build time, not editor time). See [Hono RPC docs — Known issues](https://hono.dev/docs/guides/rpc#ide-performance).
+5. **RPC IDE performance** — Hono's official docs warn that more routes cause slower IDE performance due to massive type instantiation on every edit. **Solved**: use `hcWithType` instead of `hc` — types are computed at build time, not on every keystroke. Split large route groups into sub-apps if needed. See [Hono RPC docs — Known issues](https://hono.dev/docs/guides/rpc#ide-performance).
+
+---
+
+### Near-zero boilerplate implementation
+
+This section shows the recommended implementation that resolves all five cons and eliminates the per-route boilerplate found in every current `+server.ts` under `src/routes/api/`.
+
+#### Types
+
+```ts
+// src/lib/server/hono/types.ts
+import type { createAuth } from '$lib/server/auth'
+import type { AppServices } from '$lib/server/services/types'
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
+
+export type Bindings = {
+  DB: D1Database
+  R2_BLOG_MEDIA: R2Bucket
+  // mirror wrangler.jsonc bindings here
+}
+
+export type Variables = {
+  services: AppServices
+  auth: ReturnType<typeof createAuth>
+  user: ReturnType<typeof createAuth>['$Infer']['Session']['user'] | null
+  session: ReturnType<typeof createAuth>['$Infer']['Session']['session'] | null
+}
+```
+
+#### Middleware stack
+
+The entire session + auth guard setup is written once here and applied to route groups — never repeated in individual routes.
+
+`withServices` is the key bridge: it calls the existing `createServices({ platform: { env: c.env } })`, which already handles both runtimes internally (cons 2 and 3 solved in one call).
+
+```ts
+// src/lib/server/hono/middleware.ts
+import { createMiddleware } from 'hono/factory'
+import { createAuth } from '$lib/server/auth'
+import { createServices } from '$lib/server/services'
+import type { Bindings, Variables } from './types'
+
+type Env = { Bindings: Bindings; Variables: Variables }
+
+// Resolves DB/storage/email for both CF Workers and VPS — reuses existing adapter logic, no duplication
+export const withServices = createMiddleware<Env>(async (c, next) => {
+  const services = await createServices({ platform: { env: c.env } })
+  if (!services) return c.json({ error: 'Service unavailable' }, 503)
+  c.set('services', services)
+  c.set('auth', createAuth(services.db))  // single call per request
+  await next()
+})
+
+// Equivalent to event.locals population in handleBetterAuth — runs once, stored in context
+export const withSession = createMiddleware<Env>(async (c, next) => {
+  const session = await c.get('auth').api.getSession({ headers: c.req.raw.headers })
+  c.set('user', session?.user ?? null)
+  c.set('session', session?.session ?? null)
+  await next()
+})
+
+// Applied once per route group — never written inside individual handlers
+export const requireUser = createMiddleware<Env>(async (c, next) => {
+  if (!c.get('user')) return c.json({ error: 'Unauthorized' }, 401)
+  await next()
+})
+
+export const requireAdmin = createMiddleware<Env>(async (c, next) => {
+  const user = c.get('user')
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+  if (user.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+  await next()
+})
+```
+
+#### App with route groups
+
+```ts
+// src/lib/server/hono/index.ts
+import { Hono } from 'hono'
+import { secureHeaders } from 'hono/secure-headers'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
+import { withServices, withSession, requireUser, requireAdmin } from './middleware'
+import type { Bindings, Variables } from './types'
+
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+  // secureHeaders fills the gap left by handleSecurityHeaders skipping /api/ (con 4)
+  .use('*', secureHeaders(), withServices, withSession)
+  // Better Auth handler — same path the auth client already calls
+  .on(['POST', 'GET'], '/api/auth/*', (c) => c.get('auth').handler(c.req.raw))
+  // Global handler replaces per-route try/catch across all routes
+  .onError((err, c) => {
+    console.error(err)
+    return c.json({ error: 'Internal Server Error' }, 500)
+  })
+
+// requireUser applied once — every route below is automatically protected
+const routes = app
+  .use('/api/*', requireUser)
+  .get('/api/items', async (c) => {
+    const { db } = c.get('services')
+    // no auth check, no try/catch, no manual validation
+    const items = await db.query.items.findMany()
+    return c.json({ items })
+  })
+  .post(
+    '/api/items',
+    zValidator('json', z.object({ name: z.string().min(1) })),  // 400 auto-returned on failure
+    async (c) => {
+      const body = c.req.valid('json')   // typed + validated
+      const { db } = c.get('services')
+      // ...
+      return c.json({ ok: true }, 201)
+    },
+  )
+
+// Admin sub-group — requireAdmin applied once for all routes below
+const adminRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+  .use('*', requireAdmin)
+  .get('/users', async (c) => {
+    // no role check needed — middleware enforces it
+    const { db } = c.get('services')
+    // ...
+  })
+
+app.route('/api/admin', adminRoutes)
+
+export type AppType = typeof routes
+export { app }
+```
+
+#### Typesafe client with `hcWithType`
+
+`hcWithType` pre-computes the RPC types at build time. The editor reads the precomputed types rather than re-deriving them on every keystroke (con 5 solved):
+
+```ts
+// src/lib/api.ts
+import { hcWithType } from 'hono/client'
+import type { AppType } from '$lib/server/hono'
+
+const origin = typeof location !== 'undefined' ? location.origin : 'http://localhost:5173'
+
+export const api = hcWithType<AppType>(origin, {
+  init: { credentials: 'include' },
+})
+```
+
+```ts
+// In a Svelte component — fully typed, no codegen
+const res = await api.api.items.$get()
+const { items } = await res.json()   // type inferred from route return
+```
+
+#### hooks.server.ts — minimal change
+
+`handleSecurityHeaders` already skips `/api/`. `handleRouteGuards` only touches page paths. One `handleHono` added before `handleBetterAuth`:
+
+```ts
+const handleHono: Handle = async ({ event, resolve }) => {
+  if (event.url.pathname.startsWith('/api/')) {
+    return app.fetch(
+      event.request,
+      event.platform?.env ?? {},
+      event.platform?.ctx,
+    )
+  }
+  return resolve(event)
+}
+
+// handleBetterAuth and handleRouteGuards only run for page routes — no change needed
+export const handle = sequence(
+  handleParaglide,
+  handleSecurityHeaders,
+  handleHono,          // intercepts /api/* before SvelteKit's router
+  handleBetterAuth,
+  handleRouteGuards,
+)
+```
+
+#### What this eliminates
+
+Every current `+server.ts` under `src/routes/api/` contains the same four patterns. All four are removed from individual routes:
+
+| Boilerplate in every current route | Eliminated by |
+|---|---|
+| `if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 })` | `requireUser` on route group |
+| `if (user.role !== 'admin') return json(...)` | `requireAdmin` on route group |
+| `schema.safeParse(body)` + manual error response | `zValidator('json', schema)` |
+| Per-route `try/catch` + `json({ error }, { status })` | `app.onError()` global handler |
+
+`c.get('services')` replaces `locals.services` — same access pattern, different context object. Migration is mechanical: for each `src/routes/api/*/+server.ts`, add the equivalent chained route to the Hono app and delete the file.
 
 ---
 
@@ -336,26 +528,29 @@ Note that Remote Functions have platform-specific issues — they did not work o
 
 | Concern | SvelteKit-only | SvelteKit + Hono |
 |---|---|---|
-| Typesafe API client | Experimental (Remote Functions) | Stable — `hc<AppType>()`, no codegen |
-| Validation | Manual Zod per route | `@hono/zod-validator`, centralized |
+| Typesafe API client | Experimental (Remote Functions) | Stable — `hcWithType<AppType>()`, no codegen, build-time types |
+| Validation | Manual `safeParse` per route | `zValidator('json', schema)` — centralized, auto-400 |
 | Error handling | Per-route try/catch | `app.onError()` global handler |
+| Auth guard | `if (!locals.user)` in every route | `requireUser` / `requireAdmin` on route group — written once |
 | OpenAPI | No | `@hono/zod-openapi` + `@hono/swagger-ui` |
-| Rate limiting (CF) | None / manual | `@hono-rate-limiter/cloudflare` |
+| Rate limiting (CF) | None / manual | `@hono-rate-limiter/cloudflare` middleware |
 | Built-in middleware | SvelteKit hooks only | Hono's ~20 built-in middlewares (JWT, Logger, ETag, Cache, etc.) |
-| Better Auth | `svelteKitHandler` in hooks, manual `event.locals` population | Hono handles auth routes; `svelteKitHandler` for page routes only |
+| Better Auth | `svelteKitHandler` in hooks, manual `event.locals` population | `withSession` middleware; `svelteKitHandler` for page routes only |
 | Session access | `event.locals.user` | `c.get('user')` — equivalent |
-| D1/R2 in API | `event.platform.env.DB` | `c.env.DB` (passed from `event.platform.env`) |
+| Services / DB access | `locals.services.db` | `c.get('services').db` — equivalent, both runtimes via `createServices` |
+| VPS runtime bindings | `event.platform` (auto by adapter) | `createServices({ platform: { env: c.env } })` — same existing adapter |
 | CF Workers maturity | GA (April 2025) | GA (April 2025) |
 | Bun / VPS | `adapter-node` | Same adapter — Hono runs inside it |
 | Bundle overhead | None | ~14KB |
-| Routing systems | One | Two (SvelteKit pages + Hono `/api/*`) |
+| Routing systems | One | Two — SvelteKit (pages) + Hono (`/api/*`); existing routes deleted not duplicated |
 | API portability | Coupled to SvelteKit | Portable `fetch` handler |
-| IDE performance | Standard | RPC type inference can slow IDE — mitigate with `hcWithType` |
+| IDE performance | Standard | `hcWithType` pre-computes types at build — no per-keystroke instantiation |
+| Security headers on API | `handleSecurityHeaders` skips `/api/` | `secureHeaders()` Hono middleware fills the gap |
 | Operational complexity | Low | Low — same single process |
 
 **Stay SvelteKit-only** if the API surface is small and internal. Watch `experimental.remoteFunctions` for a native typesafe solution.
 
-**Add Hono** if you want a typesafe API client today, the API surface is growing, or you want centralized validation and error handling. Runs inside the same SvelteKit process — no ops change.
+**Add Hono** if you want a typesafe API client today, the API surface is growing, or you want centralized validation and error handling. With the near-zero boilerplate implementation above, per-route auth checks and validation boilerplate are eliminated entirely. Runs inside the same SvelteKit process — no ops change.
 
 ---
 
