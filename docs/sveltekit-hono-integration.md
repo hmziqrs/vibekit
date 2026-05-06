@@ -8,11 +8,11 @@ The integration runs in-process: `handle` short-circuits API requests to `app.fe
 
 ## Why Hono
 
-The current API surface under `src/routes/api/` (admin, blog, health, items, seed-test-user) repeats the same four patterns in every `+server.ts`:
+The current API surface under `src/routes/api/` (admin, blog, health, items) repeats the same four patterns across many `+server.ts` endpoints:
 
 1. `if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 })`
 2. Role checks for admin endpoints
-3. `schema.safeParse(body)` plus a manual 422 response
+3. `schema.safeParse(body)` plus a manual validation error response
 4. Per-route `try/catch` returning `json({ error }, { status })`
 
 Hono replaces all four with middleware applied once per route group. It also provides:
@@ -22,7 +22,8 @@ Hono replaces all four with middleware applied once per route group. It also pro
 - A global `app.onError()` handler instead of per-route `try/catch`.
 - Optional OpenAPI generation via `@hono/zod-openapi` and Swagger UI via `@hono/swagger-ui`.
 - ~20 built-in middlewares (Logger, ETag, Cache, Compress, Secure Headers, Body Limit, JWT, Bearer Auth, etc.).
-- GA on Cloudflare Workers since April 2025; ~14KB bundle (`hono/tiny`).
+- Cloudflare announced GA support for Hono-based full-stack adapters on Workers on April 8, 2025.
+- The `hono/tiny` preset is documented as under 14kB (minified baseline; real app bundle size depends on imports).
 
 ---
 
@@ -107,7 +108,7 @@ export type ProtectedVariables = Omit<Variables, 'user' | 'session'> & {
 export type ProtectedEnv = { Bindings: Bindings; Variables: ProtectedVariables }
 ```
 
-`Bindings` are typed as optional because `event.platform?.env` is `{}` on `adapter-node`. This forces handlers (or the middleware that wraps them) to acknowledge both runtimes.
+`Bindings` are typed as optional because on `adapter-node`, `event.platform` is typically `undefined` and this integration passes `{}` as the fallback env into `app.fetch(...)`. This forces handlers (or the middleware that wraps them) to acknowledge both runtimes.
 
 ---
 
@@ -123,7 +124,8 @@ import type { Env, ProtectedEnv } from './types'
 
 // Resolves DB / storage / email / cache for both runtimes via the existing factory.
 // Cloudflare: c.env.DB is the D1 binding.
-// adapter-node: c.env is {} and createServices falls through to createNodeServices().
+// adapter-node: event.platform is typically undefined; this integration passes {}
+// to app.fetch(...), so createServices falls through to createNodeServices().
 export const withServices = createMiddleware<Env>(async (c, next) => {
   const services = await createServices({ platform: { env: c.env } })
   if (!services) return c.json({ error: 'Service unavailable' }, 503)
@@ -185,7 +187,7 @@ import type { Bindings, Variables, ProtectedEnv } from './types'
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   // secureHeaders fills the gap left by handleSecurityHeaders skipping /api/*
   .use('*', secureHeaders(), withServices, withSession)
-  // Better Auth — same path the existing auth client already calls
+  // Better Auth — mount at configured auth base path (default: /api/auth/*)
   .on(['POST', 'GET'], '/api/auth/*', (c) => c.get('auth').handler(c.req.raw))
   // Global error handler replaces every per-route try/catch
   .onError((err, c) => {
@@ -247,7 +249,7 @@ export { app }
 
 ### Why route chaining matters
 
-`AppType` inference follows the exact value you export. Chaining `.get(...).post(...)` and exporting `typeof routes` is what allows `hc<AppType>()` on the client to know every endpoint, its inputs, and its responses. Splitting into separate `app.get(...)` statements drops that inference.
+`AppType` inference follows the exact value you export. Chaining `.get(...).post(...)` and exporting `typeof routes` is the recommended pattern for reliable `hc<AppType>()` inference, especially as route trees grow.
 
 ### Sub-app type narrowing
 
@@ -280,7 +282,7 @@ export const handle = sequence(
   handleParaglide,
   handleSecurityHeaders, // already skips /api/* — no change needed
   handleHono,            // short-circuits /api/* before SvelteKit's router
-  handleBetterAuth,      // runs only for non-API requests
+  handleBetterAuth,      // runs for requests not short-circuited by handleHono
   handleRouteGuards,     // page-only — unchanged
 )
 ```
@@ -330,6 +332,7 @@ The migration from `src/routes/api/**/*+server.ts` to Hono is mechanical. For ea
 2. Convert `locals.services` → `c.get('services')`.
 3. Convert `locals.user` → `c.get('user')` (typed non-null inside protected groups).
 4. Replace manual `safeParse` with `zValidator(target, schema)` and read `c.req.valid(target)`.
+   For `json`/`form` targets, ensure callers send the matching `Content-Type` header.
 5. Delete the per-route auth/role check — middleware handles it.
 6. Delete the per-route `try/catch` — `app.onError()` handles it.
 7. Delete the original `+server.ts` file.
@@ -340,7 +343,7 @@ Boilerplate eliminated:
 |---|---|
 | `if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 })` | `requireUser` on the sub-app |
 | `if (user.role !== 'admin') ...` | `requireAdmin` on the sub-app |
-| `schema.safeParse(body)` + manual 422 | `zValidator('json', schema)` |
+| `schema.safeParse(body)` + manual validation response | `zValidator('json', schema)` (default invalid response: 400; customize hook if you need 422) |
 | Per-route `try/catch` + error JSON | `app.onError()` |
 | `rateLimit(...)` + `if (!allowed) return 429` | `withRateLimit(prefix, limit, windowMs)` |
 | Manual `searchParams.get('page')` + clamp | `zValidator('query', paginationSchema)` |
@@ -457,6 +460,7 @@ export const fallback: RequestHandler = ({ request, platform }) =>
 ```
 
 The hook approach is preferred because Hono handles `/api/*` before SvelteKit's router runs, and it keeps the entire API entry point in one place.
+If you later add explicit method handlers (for example `GET`), remember that `HEAD` will prefer `GET` over `fallback`.
 
 ---
 
@@ -466,7 +470,7 @@ The hook approach is preferred because Hono handles `/api/*` before SvelteKit's 
 
 2. **`event.platform` is undefined on `adapter-node`.** The hook passes `event.platform?.env ?? {}` and `withServices` calls `createServices({ platform: { env: c.env } })`. The existing `createServices` already handles both runtimes — no new adapter code needed.
 
-3. **SvelteKit hooks don't run on Hono routes.** `handleSecurityHeaders` already skips `/api/*`, so this is mostly a no-op. The one gap (security headers on API responses) is filled by Hono's `secureHeaders()` middleware.
+3. **Hook scope depends on order.** Hooks *before* `handleHono` still run for `/api/*` requests; hooks after `handleHono` are bypassed when `handleHono` returns a response. `handleSecurityHeaders` already skips `/api/*`, and the API header gap is filled by Hono's `secureHeaders()` middleware.
 
 4. **`createAuth` per request.** Naively, the auth handler and the session middleware would each call `createAuth(db)`. `withServices` resolves it once and stores it via `c.set('auth', ...)`; both the `/api/auth/*` handler and `withSession` read it back from context.
 
@@ -474,7 +478,7 @@ The hook approach is preferred because Hono handles `/api/*` before SvelteKit's 
 
 6. **`AppType` follows the value you export.** Always export `typeof routes` from a chained declaration. A spread or re-assignment can collapse the inferred type to `Hono<...>` and break the client.
 
-7. **Better Auth path.** Hono catches `/api/auth/*` first; the SvelteKit `svelteKitHandler` no longer sees those requests. The cookie format and session shape are unchanged because both paths call into the same `createAuth(db).handler(...)`.
+7. **Better Auth path.** Hono catches your configured auth base path first (default `/api/auth/*`); the SvelteKit `svelteKitHandler` no longer sees those requests. The cookie format and session shape are unchanged because both paths call into the same `createAuth(db).handler(...)`.
 
 ---
 
@@ -486,7 +490,9 @@ The hook approach is preferred because Hono handles `/api/*` before SvelteKit's 
 - [Hono — secure headers middleware](https://hono.dev/docs/middleware/builtin/secure-headers)
 - [Hono — `zod-openapi` example](https://hono.dev/examples/zod-openapi)
 - [Hono — Cloudflare Workers guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/more-web-frameworks/hono/)
+- [Cloudflare changelog — Full-stack frameworks GA on Workers (April 8, 2025)](https://developers.cloudflare.com/changelog/post/2025-04-08-fullstack-on-workers/)
 - [Better Auth — Hono integration](https://better-auth.com/docs/integrations/hono)
+- [Better Auth options (`basePath` / `baseURL`)](https://better-auth.com/docs/reference/options)
 - [Better Auth — SvelteKit integration](https://better-auth.com/docs/integrations/svelte-kit)
 - [SvelteKit Hooks docs](https://svelte.dev/docs/kit/hooks)
 - [SvelteKit Routing docs](https://svelte.dev/docs/kit/routing)
