@@ -58,7 +58,7 @@ Single process. SvelteKit's adapter sees one app. Hono runs inside the same Work
 The integration assumes the project already has:
 
 - `createServices(event)` in `src/lib/server/services/index.ts` — resolves `db`, `storage`, `email`, `cache` for both adapters. It accepts `{ platform?: { env?: { DB?: unknown } } }`, which is exactly what Hono's `c` can provide.
-- `createAuth(d1)` factory in `src/lib/server/auth.ts` — Better Auth instance scoped to a per-request DB.
+- `createAuth(d1)` factory in `src/lib/server/auth.ts` — Better Auth instance scoped to a per-request DB. It currently includes `sveltekitCookies(getRequestEvent)` as its last plugin. You can reuse this in Hono, or define a separate Hono-only factory if you prefer stricter separation (see Step 3a and Gotcha #7).
 - The hook chain in `src/hooks.server.ts`: `sequence(handleParaglide, handleSecurityHeaders, handleBetterAuth, handleRouteGuards)`.
 - `handleSecurityHeaders` already skips `/api/*`, and `handleRouteGuards` only touches page paths — so adding Hono requires no changes to either.
 
@@ -80,7 +80,7 @@ bun add @hono/zod-openapi @hono/swagger-ui
 
 ```ts
 // src/lib/server/hono/types.ts
-import type { createAuth } from '$lib/server/auth'
+import type { createAuthForHono } from '$lib/server/auth-hono'
 import type { AppServices } from '$lib/server/services/types'
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 
@@ -92,9 +92,9 @@ export type Bindings = {
 
 export type Variables = {
   services: AppServices
-  auth: ReturnType<typeof createAuth>
-  user: ReturnType<typeof createAuth>['$Infer']['Session']['user'] | null
-  session: ReturnType<typeof createAuth>['$Infer']['Session']['session'] | null
+  auth: ReturnType<typeof createAuthForHono>
+  user: ReturnType<typeof createAuthForHono>['$Infer']['Session']['user'] | null
+  session: ReturnType<typeof createAuthForHono>['$Infer']['Session']['session'] | null
 }
 
 export type Env = { Bindings: Bindings; Variables: Variables }
@@ -112,12 +112,47 @@ export type ProtectedEnv = { Bindings: Bindings; Variables: ProtectedVariables }
 
 ---
 
-## Step 3 — Middleware
+## Step 3a — Optional Hono-specific Better Auth factory
+
+The shared `createAuth(db)` plugs in `sveltekitCookies(getRequestEvent)` so SvelteKit form actions (e.g. `auth.api.signInEmail` called from a `+page.server.ts` action) can set cookies via `event.cookies.set(...)`, which SvelteKit flushes inside `resolve()`.
+
+When Hono returns its own `Response` from `app.fetch(...)`, it bypasses SvelteKit `resolve()`. In this setup, many teams still use the same Better Auth instance successfully because Better Auth returns `Set-Cookie` headers on the auth response. If you want stricter framework separation (and to avoid relying on SvelteKit request context from Hono code), you can define a sibling factory that omits the SvelteKit cookie plugin.
+
+```ts
+// src/lib/server/auth-hono.ts
+import { env } from '$env/dynamic/private'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { betterAuth } from 'better-auth/minimal'
+import { uuidv7 } from 'uuidv7'
+import type { AppDb } from './services/types'
+
+// Same configuration as createAuth(...) in src/lib/server/auth.ts MINUS the
+// sveltekitCookies plugin. Keep the two configs in sync (extract a shared
+// baseConfig if you find yourself drifting).
+export const createAuthForHono = (db: AppDb) =>
+  betterAuth({
+    advanced: { database: { generateId: () => uuidv7() } },
+    baseURL: env.ORIGIN,
+    database: drizzleAdapter(db, { provider: 'sqlite' }),
+    emailAndPassword: { enabled: true, requireEmailVerification: true /* ... */ },
+    secret: env.BETTER_AUTH_SECRET,
+    // user: { additionalFields: { ... } } — mirror src/lib/server/auth.ts
+    plugins: [
+      // intentionally no sveltekitCookies — Hono owns the response
+    ],
+  })
+```
+
+Page-side code (form actions, `event.locals.auth`, `+page.server.ts` load functions) keeps using the original `createAuth(db)`. Adopt `createAuthForHono(db)` only if you choose the split-factory approach.
+
+---
+
+## Step 3b — Middleware
 
 ```ts
 // src/lib/server/hono/middleware.ts
 import { createMiddleware } from 'hono/factory'
-import { createAuth } from '$lib/server/auth'
+import { createAuthForHono } from '$lib/server/auth-hono'
 import { createServices } from '$lib/server/services'
 import { rateLimit } from '$lib/server/rate-limit'
 import type { Env, ProtectedEnv } from './types'
@@ -130,7 +165,7 @@ export const withServices = createMiddleware<Env>(async (c, next) => {
   const services = await createServices({ platform: { env: c.env } })
   if (!services) return c.json({ error: 'Service unavailable' }, 503)
   c.set('services', services)
-  c.set('auth', createAuth(services.db))
+  c.set('auth', createAuthForHono(services.db))
   await next()
 })
 
@@ -174,6 +209,7 @@ Each middleware is written once. Routes never repeat session lookups, role check
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
 import { zValidator } from '@hono/zod-validator'
+import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   withServices,
@@ -185,19 +221,18 @@ import {
 import type { Bindings, Variables, ProtectedEnv } from './types'
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
-  // secureHeaders fills the gap left by handleSecurityHeaders skipping /api/*
+  // secureHeaders is not a drop-in for handleSecurityHeaders — defaults differ
+  // from the project's CSP. Configure it to match if you need parity.
   .use('*', secureHeaders(), withServices, withSession)
-  // Better Auth — mount at configured auth base path (default: /api/auth/*)
+  // Better Auth — mount at configured auth base path (default: /api/auth/*).
+  // POST/GET matches Better Auth's official Hono guide. If your configured
+  // endpoints require additional methods, verify and widen accordingly.
   .on(['POST', 'GET'], '/api/auth/*', (c) => c.get('auth').handler(c.req.raw))
   // Global error handler replaces every per-route try/catch
   .onError((err, c) => {
     console.error(err)
     return c.json({ error: 'Internal Server Error' }, 500)
   })
-
-// Public routes — services available, user may be null
-const publicRoutes = app
-  .get('/api/health', (c) => c.json({ ok: true }))
 
 // Protected sub-app — narrower Variables type so c.get('user') is non-null
 const protectedApp = new Hono<ProtectedEnv>()
@@ -239,7 +274,31 @@ const adminApp = new Hono<ProtectedEnv>()
     },
   )
 
+// IMPORTANT: AppType inference follows the value you export. Every route that
+// should appear on the typed RPC client must be part of *this* chain — assigning
+// `app.get(...)` to a separate variable does not propagate into `typeof routes`.
 const routes = app
+  .get('/api/health', async (c) => {
+    const start = Date.now()
+    let dbStatus: 'connected' | 'error' | 'unavailable' = 'error'
+    try {
+      const services = c.get('services')
+      if (services) {
+        await services.db.run(sql`SELECT 1`)
+        dbStatus = 'connected'
+      } else {
+        dbStatus = 'unavailable'
+      }
+    } catch {
+      dbStatus = 'error'
+    }
+    return c.json({
+      db: dbStatus,
+      ok: dbStatus === 'connected',
+      responseTime: Date.now() - start,
+      time: new Date().toISOString(),
+    })
+  })
   .route('/api', protectedApp)
   .route('/api/admin', adminApp)
 
@@ -478,7 +537,7 @@ If you later add explicit method handlers (for example `GET`), remember that `HE
 
 6. **`AppType` follows the value you export.** Always export `typeof routes` from a chained declaration. A spread or re-assignment can collapse the inferred type to `Hono<...>` and break the client.
 
-7. **Better Auth path.** Hono catches your configured auth base path first (default `/api/auth/*`); the SvelteKit `svelteKitHandler` no longer sees those requests. The cookie format and session shape are unchanged because both paths call into the same `createAuth(db).handler(...)`.
+7. **Better Auth factory split is optional.** The shared `createAuth(db)` often works for both SvelteKit and Hono flows. A separate `createAuthForHono(db)` (without `sveltekitCookies`) is an architecture choice for cleaner separation between Hono and SvelteKit contexts, not a strict requirement. If you keep one shared factory, validate cookie behavior in your `/api/auth/*` flows (sign-in, refresh, sign-out). If you split, keep both configs aligned.
 
 ---
 
