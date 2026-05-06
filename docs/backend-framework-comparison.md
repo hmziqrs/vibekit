@@ -23,7 +23,7 @@ src/
 
 1. **Zero new dependencies** — no framework to learn, no version skew, no integration surface.
 
-2. **Better Auth is fully native** — `svelteKitHandler` populates `event.locals.user` and `event.locals.session` automatically. Every `+server.ts` and `+page.server.ts` has the authenticated user in scope with no extra work.
+2. **Better Auth is fully native** — `svelteKitHandler` integrates directly into the SvelteKit hooks lifecycle. Session data must be manually populated into `event.locals` (Better Auth does not auto-populate it — see official docs). This is a one-time setup in `hooks.server.ts`. The `sveltekitCookies` plugin handles cookie management for server actions and form mutations.
 
    ```ts
    // hooks.server.ts
@@ -32,6 +32,16 @@ src/
    import { building } from '$app/environment'
 
    export async function handle({ event, resolve }) {
+     // Fetch current session — svelteKitHandler does NOT auto-populate event.locals
+     const session = await auth.api.getSession({
+       headers: event.request.headers,
+     })
+
+     if (session) {
+       event.locals.user = session.user
+       event.locals.session = session.session
+     }
+
      return svelteKitHandler({ event, resolve, auth, building })
    }
    ```
@@ -44,7 +54,7 @@ src/
 
 ### Cons
 
-1. **No stable typesafe API client today** — Remote Functions are experimental. Until they stabilize, all TanStack Query calls to `+server.ts` endpoints are plain untyped fetches. Issue [#12645](https://github.com/sveltejs/kit/issues/12645) (Typed API Routes) is still open on the SvelteKit repo.
+1. **No stable typesafe API client today** — Remote Functions are experimental. Until they stabilize, all TanStack Query calls to `+server.ts` endpoints are plain untyped fetches. Issue [#12645](https://github.com/sveltejs/kit/issues/12645) (Typed API Routes) was closed as "not planned" — the SvelteKit team has no intention of adding typed API routes.
 
 2. **Manual validation per route** — every `+server.ts` individually calls `z.parse()` or `safeParse()`. No centralized schema pipeline, no compile-time guarantee that all routes validate consistently.
 
@@ -56,7 +66,7 @@ src/
 
 - API surface is small and purely internal.
 - Team wants zero cognitive overhead from a secondary framework.
-- Willing to wait for Remote Functions to stabilize.
+- Willing to wait for Remote Functions to stabilize (note: issue #12645 for typed API routes was closed as "not planned").
 
 ---
 
@@ -64,7 +74,7 @@ src/
 
 Add Hono as the API layer inside SvelteKit. SvelteKit still owns all page rendering, the Better Auth hook, and both deployment adapters. Hono owns all structured API routes under `/api/`.
 
-**Current state**: Hono v4.12.16 (April 30, 2026). ~14KB bundle (`hono/tiny` preset under 12KB). GA on Cloudflare Workers since April 2025 per the official Cloudflare changelog.
+**Current state**: Hono v4.12.17 (May 5, 2026). ~14KB bundle (`hono/tiny` preset under 14KB). GA on Cloudflare Workers since April 2025 per the official Cloudflare changelog.
 
 ---
 
@@ -77,8 +87,10 @@ Intercept requests in `hooks.server.ts` before SvelteKit's router sees them. Sve
 import { sequence } from '@sveltejs/kit/hooks'
 import type { Handle } from '@sveltejs/kit'
 import { handleParaglide } from '$lib/paraglide/server'
-import { handleBetterAuth } from '$lib/server/auth'
-import { app } from '$lib/server/hono'
+import { handleBetterAuth } from '$lib/server/auth'   // NOTE: this is a custom wrapper defined in hooks.server.ts,
+import { app } from '$lib/server/hono'                 // not a public export of $lib/server/auth.ts. The real
+                                                       // handleBetterAuth includes service creation, security
+                                                       // headers, and route guards — simplified here for brevity.
 
 const handleHono: Handle = async ({ event, resolve }) => {
   if (event.url.pathname.startsWith('/api/')) {
@@ -93,11 +105,14 @@ const handleHono: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
-// handleBetterAuth still runs for page routes — populates event.locals
-export const handle = sequence(handleParaglide, handleBetterAuth, handleHono)
+// Hono handles all /api/* (including /api/auth/*) — placed before handleBetterAuth
+// so Hono's auth handler is reached. handleBetterAuth only runs for page routes.
+// Security headers and route guards (if any) should also run before handleHono
+// to apply to all responses, including those from Hono.
+export const handle = sequence(handleParaglide, handleHono, handleBetterAuth)
 ```
 
-`handleHono` is placed after `handleBetterAuth` in the sequence. For `/api/` requests, `handleBetterAuth` runs first then `handleHono` short-circuits to Hono — so Hono fully owns the response. Session validation inside Hono middleware (below) is still needed because `event.locals` is not forwarded into Hono's context.
+`handleHono` is placed before `handleBetterAuth` in the sequence. For `/api/` requests, `handleHono` short-circuits to Hono — SvelteKit's router and Better Auth never see the request. For page routes, `handleHono` calls `resolve()` and `handleBetterAuth` handles page-route session hydration normally. Security headers and route guards that wrap all responses should run before `handleHono` so they apply to Hono responses too.
 
 ---
 
@@ -259,7 +274,7 @@ All existing `app.use()` middleware and `app.onError()` continue to work unchang
 
 | Gap in SvelteKit-only | Hono solution |
 |---|---|
-| No stable typesafe client | `hc<AppType>()` — stable, no codegen |
+| No stable typesafe client (issue #12645 closed as not planned) | `hc<AppType>()` — stable, no codegen |
 | Manual Zod parse per route | `zValidator('json', schema)` — centralized, auto-400 |
 | Per-route try/catch | `app.onError((err, c) => ...)` — global handler |
 | No OpenAPI | `@hono/zod-openapi` — from same route definitions |
@@ -276,7 +291,44 @@ All existing `app.use()` middleware and `app.onError()` continue to work unchang
 
 3. **`event.platform` is undefined on VPS** — `adapter-node` does not populate `event.platform`, so `event.platform?.env` falls back to `{}` in the hook. VPS-specific bindings (SQLite path, secrets) need to be injected through a separate module-level env object merged into the `app.fetch` call.
 
-4. **Better Auth mounted twice** — `svelteKitHandler` stays in `hooks.server.ts` for page-route session hydration. Hono also mounts `auth.handler` at `/api/auth/*` for actual auth endpoints. Both use the same `createAuth` factory and config — one extra `app.on(...)` line, not a real burden.
+4. **SvelteKit hooks don't apply to Hono routes** — since `handleHono` short-circuits before `handleBetterAuth` and `handleRouteGuards`, any SvelteKit-level middleware (security headers, route guards, response wrappers) that runs after `handleHono` in the sequence won't apply to `/api/*` responses. Mitigation: run shared middleware before `handleHono`, and replicate auth guards inside Hono (the session middleware already handles this).
+
+5. **RPC IDE performance** — Hono's official docs warn that more routes cause slower IDE performance due to massive type instantiation on every edit. Mitigation: pre-compile types with `hcWithType` (compute types at build time, not editor time). See [Hono RPC docs — Known issues](https://hono.dev/docs/guides/rpc#ide-performance).
+
+---
+
+### Alternative integration: `[...rest]/+server.ts` catch-all
+
+An alternative to hooks interception is using a SvelteKit catch-all route that delegates to Hono. No `hooks.server.ts` modification needed:
+
+```ts
+// src/routes/api/[...rest]/+server.ts
+import { app } from '$lib/server/hono'
+import type { RequestHandler } from './$types'
+
+export const fallback: RequestHandler = ({ request, platform }) => {
+  return app.fetch(request, platform?.env ?? {}, platform?.ctx)
+}
+```
+
+This is simpler (no hooks changes), but requests pass through SvelteKit's full routing pipeline before reaching Hono. The hooks interception approach is more direct — Hono handles the request before SvelteKit's router ever sees it.
+
+---
+
+### Hono capabilities not yet leveraged
+
+These are capabilities Hono provides that could replace or enhance existing custom code:
+
+- **Built-in middleware**: Basic Auth, Bearer Auth, JWT, Logger, ETag, Cache, Compress, Secure Headers, Body Limit, Language detection, Context Storage — ~20 built-in middleware that could replace custom hooks code.
+- **SmartRouter**: Hono auto-selects between `RegExpRouter` (fast dispatch, better for VPS/Bun persistent runtimes) and `LinearRouter` (fast init, better for CF Workers cold starts). Directly relevant to the dual-runtime design.
+- **`@hono/swagger-ui`**: Mounts a Swagger UI interface as a Hono route (e.g., at `/api/docs`) without separate tooling.
+- **JSX rendering**: Hono can render full pages with JSX, streaming, Suspense, and error boundaries. Not needed if SvelteKit owns all pages, but available if the API ever needs to serve its own UI.
+
+---
+
+### Remote Functions reliability
+
+Note that Remote Functions have platform-specific issues — they did not work on Deno Deploy as of October 2025 (per the [Tolu blog](https://www.tolu.se/blog/sveltekit-rpc-hono/)). This adds risk beyond the "experimental" label if you deploy to non-VPS/non-CF platforms.
 
 ---
 
@@ -287,9 +339,10 @@ All existing `app.use()` middleware and `app.onError()` continue to work unchang
 | Typesafe API client | Experimental (Remote Functions) | Stable — `hc<AppType>()`, no codegen |
 | Validation | Manual Zod per route | `@hono/zod-validator`, centralized |
 | Error handling | Per-route try/catch | `app.onError()` global handler |
-| OpenAPI | No | `@hono/zod-openapi` |
+| OpenAPI | No | `@hono/zod-openapi` + `@hono/swagger-ui` |
 | Rate limiting (CF) | None / manual | `@hono-rate-limiter/cloudflare` |
-| Better Auth | Native `svelteKitHandler` | Native `auth.handler(c.req.raw)` — same factory |
+| Built-in middleware | SvelteKit hooks only | Hono's ~20 built-in middlewares (JWT, Logger, ETag, Cache, etc.) |
+| Better Auth | `svelteKitHandler` in hooks, manual `event.locals` population | Hono handles auth routes; `svelteKitHandler` for page routes only |
 | Session access | `event.locals.user` | `c.get('user')` — equivalent |
 | D1/R2 in API | `event.platform.env.DB` | `c.env.DB` (passed from `event.platform.env`) |
 | CF Workers maturity | GA (April 2025) | GA (April 2025) |
@@ -297,6 +350,7 @@ All existing `app.use()` middleware and `app.onError()` continue to work unchang
 | Bundle overhead | None | ~14KB |
 | Routing systems | One | Two (SvelteKit pages + Hono `/api/*`) |
 | API portability | Coupled to SvelteKit | Portable `fetch` handler |
+| IDE performance | Standard | RPC type inference can slow IDE — mitigate with `hcWithType` |
 | Operational complexity | Low | Low — same single process |
 
 **Stay SvelteKit-only** if the API surface is small and internal. Watch `experimental.remoteFunctions` for a native typesafe solution.
@@ -307,14 +361,17 @@ All existing `app.use()` middleware and `app.onError()` continue to work unchang
 
 ## Sources
 
+- [SvelteKit Remote Functions docs](https://svelte.dev/docs/kit/remote-functions)
+- [Typed API Routes issue #12645](https://github.com/sveltejs/kit/issues/12645)
 - [Better Auth — Hono integration](https://better-auth.com/docs/integrations/hono)
 - [Better Auth — SvelteKit integration](https://better-auth.com/docs/integrations/svelte-kit)
 - [Better Auth — Cloudflare D1 config](https://better-auth.com/docs/concepts/database)
 - [Hono — RPC / hc client](https://hono.dev/docs/guides/rpc)
 - [Hono — zod-openapi example](https://hono.dev/examples/zod-openapi)
 - [Hono — error handling API](https://hono.dev/docs/api/hono)
+- [Hono — benchmarks](https://hono.dev/docs/concepts/benchmarks)
+- [Hono — routers (SmartRouter)](https://hono.dev/docs/concepts/routers)
 - [Hono — Cloudflare Workers guide (official CF docs)](https://developers.cloudflare.com/workers/framework-guides/web-apps/more-web-frameworks/hono/)
 - [Full-stack frameworks GA on Cloudflare Workers — April 2025](https://developers.cloudflare.com/changelog/post/2025-04-08-fullstack-on-workers/)
 - [SvelteKit + Hono RPC — Tolu Blog](https://www.tolu.se/blog/sveltekit-rpc-hono/)
-- [SvelteKit Remote Functions docs](https://svelte.dev/docs/kit/remote-functions)
-- [Typed API Routes issue #12645](https://github.com/sveltejs/kit/issues/12645)
+- [@hono-rate-limiter/cloudflare — npm](https://www.npmjs.com/package/@hono-rate-limiter/cloudflare)
