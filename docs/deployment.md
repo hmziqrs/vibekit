@@ -176,7 +176,7 @@ EnvironmentFile=/opt/vibekit/.env
 Environment=ADAPTER=node
 Environment=PORT=3000
 Environment=ADDRESS_HEADER=X-Forwarded-For
-ExecStart=/home/vibekit/.bun/bin/bun ./build/index.js
+ExecStart=/usr/bin/node ./build/index.js
 Restart=on-failure
 RestartSec=5
 
@@ -320,20 +320,20 @@ Local development only requires the required variables in `.env`. Remote databas
 
 ```bash
 # Generate migration SQL from schema changes
-bun run db:generate
+npm run db:generate
 
 # Push latest schema to local D1
-bun run db:push:local
+npm run db:push:local
 
 # Run all local migrations sequentially
-bun run db:migrate:local
+npm run db:migrate:local
 ```
 
 For production:
 
 ```bash
 # Push schema to remote D1 (requires Cloudflare credentials)
-bun run db:push
+npm run db:push
 ```
 
 ### First Admin User
@@ -371,16 +371,16 @@ When making schema changes:
 
 1. **Generate** the migration from schema changes:
    ```bash
-   bun run db:generate
+   npm run db:generate
    ```
 2. **Review** the generated SQL in `migrations/` before applying.
 3. **Apply locally** to verify:
    ```bash
-   bun run db:push:local
+   npm run db:push:local
    ```
 4. **Apply to production** after verifying locally:
    ```bash
-   bun run db:push
+   npm run db:push
    ```
 
 ### 30-Day Soft-Delete Cleanup (Cron)
@@ -461,10 +461,10 @@ Uploaded blog images are stored in Cloudflare R2 (`R2_BLOG_MEDIA` bucket) and se
 
 ```bash
 # Build for Cloudflare
-ADAPTER=cloudflare bun run build
+ADAPTER=cloudflare npm run build
 
 # Preview locally
-bun run preview
+npm run preview
 
 # Deploy
 wrangler deploy
@@ -495,7 +495,6 @@ wrangler secret put CONTACT_NOTIFICATION_EMAIL
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Cloudflare bindings initialized globally break D1/auth               | Request-scoped Cloudflare services from `event.platform.env`; auth factory pattern                                |
 | Self-host env validation blocks unrelated commands                   | Split env validation by concern; no single global parse that requires every integration                            |
-| Bun-only DB makes Node execution invalid                             | Bun is the self-host runtime; add a `better-sqlite3` adapter only if Node runtime becomes required                |
 | Storage URL mismatch breaks existing blog content                    | `/cdn/blog/{key}` is canonical URL across both adapters                                                           |
 | R2 binding behavior regresses                                        | R2 binding adapter is preserved; Workers do not use public R2 S3 API                                              |
 | Email REST credentials or Cloudflare Email product setup are missing | Adapter returns a clear configuration error outside dev; local dev uses explicit no-op/logging behavior            |
@@ -511,7 +510,7 @@ wrangler secret put CONTACT_NOTIFICATION_EMAIL
   "dev": "ADAPTER=node vite dev",
   "build": "ADAPTER=cloudflare wrangler types --check && ADAPTER=cloudflare vite build",
   "build:node": "ADAPTER=node vite build",
-  "start": "bun ./build/index.js",
+  "start": "node ./build/index.js",
   "check:node": "ADAPTER=node svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
   "check:cf": "ADAPTER=cloudflare wrangler types --check && ADAPTER=cloudflare svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
 }
