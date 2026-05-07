@@ -1,6 +1,5 @@
+import { uuid, uuidv7 } from '$lib/server/uuid'
 import { describe, expect, expectTypeOf, it } from 'vitest'
-
-import { uuid, uuidv7 } from './uuid'
 
 describe(uuid, () => {
   it('returns a valid UUID v7 string', () => {

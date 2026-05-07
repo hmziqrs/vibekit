@@ -1,6 +1,5 @@
+import { generateStorageKey, validateImageUpload } from '$lib/server/upload'
 import { describe, expect, it } from 'vitest'
-
-import { generateStorageKey, validateImageUpload } from './upload'
 
 describe(validateImageUpload, () => {
   it('accepts a valid JPEG under 5MB', () => {

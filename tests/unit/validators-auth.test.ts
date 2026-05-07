@@ -1,6 +1,10 @@
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from '$lib/validators/auth'
 import { describe, expect, it } from 'vitest'
-
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from './auth'
 
 describe(loginSchema, () => {
   it('validates a valid login', () => {

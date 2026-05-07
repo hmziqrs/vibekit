@@ -25,7 +25,7 @@ export default defineConfig({
     environment: 'node',
     exclude: ['node_modules', '.svelte-kit', 'build'],
     globals: true,
-    include: ['src/**/*.{test,spec}.{js,ts}'],
+    include: ['tests/unit/**/*.test.{js,ts}'],
     server: {
       deps: {
         inline: [/@sveltejs\/kit/],

@@ -1,6 +1,5 @@
+import { createPostSchema, publishPostSchema, updatePostSchema } from '$lib/validators/blog'
 import { describe, expect, it } from 'vitest'
-
-import { createPostSchema, publishPostSchema, updatePostSchema } from './blog'
 
 describe(createPostSchema, () => {
   const validInput = {

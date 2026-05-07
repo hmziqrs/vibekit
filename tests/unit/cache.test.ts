@@ -1,6 +1,5 @@
+import { blogCacheTags, purgeBlogCache, type CachePlatform } from '$lib/server/cache'
 import { describe, expect, it, vi } from 'vitest'
-
-import { blogCacheTags, purgeBlogCache, type CachePlatform } from './cache'
 
 describe(blogCacheTags, () => {
   it('returns index tag only when no slug', () => {

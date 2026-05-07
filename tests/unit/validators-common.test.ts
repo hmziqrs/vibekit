@@ -1,6 +1,5 @@
+import { email, name, paginationSchema, password, slug } from '$lib/validators/common'
 import { describe, expect, it } from 'vitest'
-
-import { email, name, paginationSchema, password, slug } from './common'
 
 describe(email, () => {
   it('accepts valid emails', () => {

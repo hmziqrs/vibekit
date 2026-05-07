@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   reporter: 'html',
   retries: process.env.CI ? 2 : 0,
-  testDir: './e2e',
+  testDir: './tests/e2e',
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',

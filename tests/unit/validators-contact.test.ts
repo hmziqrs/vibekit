@@ -1,6 +1,5 @@
+import { contactSchema } from '$lib/validators/contact'
 import { describe, expect, it } from 'vitest'
-
-import { contactSchema } from './contact'
 
 describe(contactSchema, () => {
   const validInput = {

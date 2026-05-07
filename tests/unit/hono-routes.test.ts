@@ -1,10 +1,9 @@
+import { requireUser, requireAdmin, withRateLimit } from '$lib/server/hono/middleware'
+import type { Env, ProtectedEnv } from '$lib/server/hono/types'
 import { _reset } from '$lib/server/rate-limit'
 import { sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { requireUser, requireAdmin, withRateLimit } from './middleware'
-import type { Env, ProtectedEnv } from './types'
 
 // Mock services factory for testing
 function mockServices(overrides: Record<string, any> = {}) {

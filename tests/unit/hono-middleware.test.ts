@@ -1,9 +1,13 @@
+import {
+  requireAdmin,
+  requireUser,
+  withOwnedItem,
+  withRateLimit,
+} from '$lib/server/hono/middleware'
+import type { Env, ProtectedEnv } from '$lib/server/hono/types'
 import { _reset } from '$lib/server/rate-limit'
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { requireAdmin, requireUser, withOwnedItem, withRateLimit } from './middleware'
-import type { Env, ProtectedEnv } from './types'
 
 describe(requireUser, () => {
   it('returns 401 when user is null', async () => {

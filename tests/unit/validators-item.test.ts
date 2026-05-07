@@ -1,6 +1,5 @@
+import { createItemSchema, updateItemSchema } from '$lib/validators/item'
 import { describe, expect, it } from 'vitest'
-
-import { createItemSchema, updateItemSchema } from './item'
 
 describe('createItemSchema', () => {
   it('validates valid input with name only', () => {
