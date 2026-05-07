@@ -7,7 +7,7 @@ import { uuidv7 } from 'uuidv7'
 
 import type { AppDb } from './services/types'
 
-const authConfig = {
+export const authConfig = {
   advanced: {
     database: {
       generateId: () => uuidv7(),
@@ -28,9 +28,6 @@ const authConfig = {
       console.log(`[dev] Email verification for ${user.email}: ${url}`)
     },
   },
-  plugins: [
-    sveltekitCookies(getRequestEvent), // Make sure this is the last plugin in the array
-  ],
   secret: env.BETTER_AUTH_SECRET,
   user: {
     additionalFields: {
@@ -63,12 +60,15 @@ const authConfig = {
       },
     },
   },
-} satisfies Omit<Parameters<typeof betterAuth>[0], 'database'>
+} satisfies Omit<Parameters<typeof betterAuth>[0], 'database' | 'plugins'>
 
 export const createAuth = (db: AppDb) =>
   betterAuth({
     ...authConfig,
     database: drizzleAdapter(db, { provider: 'sqlite' }),
+    plugins: [
+      sveltekitCookies(getRequestEvent), // Make sure this is the last plugin in the array
+    ],
   })
 
 /**

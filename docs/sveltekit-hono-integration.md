@@ -211,13 +211,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { zValidator } from '@hono/zod-validator'
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
-import {
-  withServices,
-  withSession,
-  requireUser,
-  requireAdmin,
-  withRateLimit,
-} from './middleware'
+import { withServices, withSession, requireUser, requireAdmin, withRateLimit } from './middleware'
 import type { Bindings, Variables, ProtectedEnv } from './types'
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -254,25 +248,26 @@ const protectedApp = new Hono<ProtectedEnv>()
       const { db } = c.get('services')
       // ...
       return c.json({ ok: true }, 201)
-    },
+    }
   )
 
-const adminApp = new Hono<ProtectedEnv>()
-  .use('*', requireAdmin)
-  .get(
-    '/users',
-    zValidator('query', z.object({
+const adminApp = new Hono<ProtectedEnv>().use('*', requireAdmin).get(
+  '/users',
+  zValidator(
+    'query',
+    z.object({
       page: z.coerce.number().min(1).default(1),
       limit: z.coerce.number().min(1).max(100).default(20),
-    })),
-    async (c) => {
-      const { page, limit } = c.req.valid('query')
-      const { db } = c.get('services')
-      const offset = (page - 1) * limit
-      // ...
-      return c.json({ users: [], page, limit })
-    },
-  )
+    })
+  ),
+  async (c) => {
+    const { page, limit } = c.req.valid('query')
+    const { db } = c.get('services')
+    const offset = (page - 1) * limit
+    // ...
+    return c.json({ users: [], page, limit })
+  }
+)
 
 // IMPORTANT: AppType inference follows the value you export. Every route that
 // should appear on the typed RPC client must be part of *this* chain — assigning
@@ -328,11 +323,7 @@ import { app } from '$lib/server/hono'
 
 const handleHono: Handle = ({ event, resolve }) => {
   if (event.url.pathname.startsWith('/api/')) {
-    return app.fetch(
-      event.request,
-      event.platform?.env ?? {},
-      event.platform?.ctx,
-    )
+    return app.fetch(event.request, event.platform?.env ?? {}, event.platform?.ctx)
   }
   return resolve(event)
 }
@@ -340,9 +331,9 @@ const handleHono: Handle = ({ event, resolve }) => {
 export const handle = sequence(
   handleParaglide,
   handleSecurityHeaders, // already skips /api/* — no change needed
-  handleHono,            // short-circuits /api/* before SvelteKit's router
-  handleBetterAuth,      // runs for requests not short-circuited by handleHono
-  handleRouteGuards,     // page-only — unchanged
+  handleHono, // short-circuits /api/* before SvelteKit's router
+  handleBetterAuth, // runs for requests not short-circuited by handleHono
+  handleRouteGuards // page-only — unchanged
 )
 ```
 
@@ -364,7 +355,7 @@ const hcWithType = (...args: Parameters<typeof hc>): Client => hc<AppType>(...ar
 
 export const api = hcWithType(
   typeof location !== 'undefined' ? location.origin : 'http://localhost:5173',
-  { init: { credentials: 'include' } }, // forwards the session cookie
+  { init: { credentials: 'include' } } // forwards the session cookie
 )
 ```
 
@@ -398,14 +389,14 @@ The migration from `src/routes/api/**/*+server.ts` to Hono is mechanical. For ea
 
 Boilerplate eliminated:
 
-| Pattern in every current `+server.ts` | Replaced by |
-|---|---|
-| `if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 })` | `requireUser` on the sub-app |
-| `if (user.role !== 'admin') ...` | `requireAdmin` on the sub-app |
-| `schema.safeParse(body)` + manual validation response | `zValidator('json', schema)` (default invalid response: 400; customize hook if you need 422) |
-| Per-route `try/catch` + error JSON | `app.onError()` |
-| `rateLimit(...)` + `if (!allowed) return 429` | `withRateLimit(prefix, limit, windowMs)` |
-| Manual `searchParams.get('page')` + clamp | `zValidator('query', paginationSchema)` |
+| Pattern in every current `+server.ts`                                       | Replaced by                                                                                  |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 })` | `requireUser` on the sub-app                                                                 |
+| `if (user.role !== 'admin') ...`                                            | `requireAdmin` on the sub-app                                                                |
+| `schema.safeParse(body)` + manual validation response                       | `zValidator('json', schema)` (default invalid response: 400; customize hook if you need 422) |
+| Per-route `try/catch` + error JSON                                          | `app.onError()`                                                                              |
+| `rateLimit(...)` + `if (!allowed) return 429`                               | `withRateLimit(prefix, limit, windowMs)`                                                     |
+| Manual `searchParams.get('page')` + clamp                                   | `zValidator('query', paginationSchema)`                                                      |
 
 ### Shared validators
 
@@ -416,7 +407,7 @@ Move pagination and other reusable schemas next to the rest of the validators so
 import { z } from 'zod'
 
 export const paginationSchema = z.object({
-  page:  z.coerce.number().min(1).default(1),
+  page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
 })
 export type PaginationQuery = z.infer<typeof paginationSchema>
@@ -461,7 +452,9 @@ protectedApp
   .patch('/items/:id', withOwnedItem, zValidator('json', updateItemSchema), async (c) => {
     /* ... */
   })
-  .delete('/items/:id', withOwnedItem, async (c) => { /* ... */ })
+  .delete('/items/:id', withOwnedItem, async (c) => {
+    /* ... */
+  })
 ```
 
 ---
@@ -529,7 +522,7 @@ If you later add explicit method handlers (for example `GET`), remember that `HE
 
 2. **`event.platform` is undefined on `adapter-node`.** The hook passes `event.platform?.env ?? {}` and `withServices` calls `createServices({ platform: { env: c.env } })`. The existing `createServices` already handles both runtimes — no new adapter code needed.
 
-3. **Hook scope depends on order.** Hooks *before* `handleHono` still run for `/api/*` requests; hooks after `handleHono` are bypassed when `handleHono` returns a response. `handleSecurityHeaders` already skips `/api/*`, and the API header gap is filled by Hono's `secureHeaders()` middleware.
+3. **Hook scope depends on order.** Hooks _before_ `handleHono` still run for `/api/*` requests; hooks after `handleHono` are bypassed when `handleHono` returns a response. `handleSecurityHeaders` already skips `/api/*`, and the API header gap is filled by Hono's `secureHeaders()` middleware.
 
 4. **`createAuth` per request.** Naively, the auth handler and the session middleware would each call `createAuth(db)`. `withServices` resolves it once and stores it via `c.set('auth', ...)`; both the `/api/auth/*` handler and `withSession` read it back from context.
 

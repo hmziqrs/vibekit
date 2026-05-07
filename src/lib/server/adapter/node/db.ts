@@ -1,30 +1,40 @@
+import { mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
+
 import * as schema from '../../db/schema'
 
 const DB_PATH = process.env.DATABASE_PATH ?? 'data/vibekit.db'
 
-let _db: ReturnType<typeof createNodeDb> | undefined
+type BunSqliteDb = import('drizzle-orm/bun-sqlite').DrizzleInstance<typeof schema>
+type BetterSqliteDb = import('drizzle-orm/better-sqlite3').BetterSQLite3Database<typeof schema>
+type NodeDb = BunSqliteDb | BetterSqliteDb
 
-export function createNodeDb() {
+let _db: NodeDb | undefined
+
+export async function createNodeDb(): Promise<NodeDb> {
   if (_db) return _db
 
-  // Dynamic import: bun:sqlite is only available in the Bun runtime.
-  // This avoids Node/Rollup trying to resolve it at build time.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Database } = require('bun:sqlite')
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { drizzle } = require('drizzle-orm/bun-sqlite')
-
-  // Ensure parent directory exists for fresh deployments
-  const { mkdirSync } = require('node:fs')
-  const { dirname } = require('node:path')
   mkdirSync(dirname(DB_PATH), { recursive: true })
 
-  const sqlite = new Database(DB_PATH, { create: true })
+  const isBun = typeof (globalThis as any).Bun !== 'undefined'
 
-  sqlite.exec('PRAGMA journal_mode = WAL')
-  sqlite.exec('PRAGMA foreign_keys = ON')
-  sqlite.exec('PRAGMA busy_timeout = 5000')
+  if (isBun) {
+    const { Database } = await import('bun:sqlite')
+    const { drizzle } = await import('drizzle-orm/bun-sqlite')
+    const sqlite = new Database(DB_PATH, { create: true })
+    sqlite.exec('PRAGMA journal_mode = WAL')
+    sqlite.exec('PRAGMA foreign_keys = ON')
+    sqlite.exec('PRAGMA busy_timeout = 5000')
+    _db = drizzle(sqlite, { schema })
+  } else {
+    const { default: Database } = await import('better-sqlite3')
+    const { drizzle } = await import('drizzle-orm/better-sqlite3')
+    const sqlite = new Database(DB_PATH)
+    sqlite.pragma('journal_mode = WAL')
+    sqlite.pragma('foreign_keys = ON')
+    sqlite.pragma('busy_timeout = 5000')
+    _db = drizzle(sqlite, { schema })
+  }
 
-  _db = drizzle(sqlite, { schema })
   return _db
 }

@@ -28,3 +28,4 @@ project.inlang/cache/
 #e2e garbage
 playwright-report/
 test-results/
+.playwright-mcp/

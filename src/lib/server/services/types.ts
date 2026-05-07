@@ -1,7 +1,7 @@
 import type { createNodeDb } from '../adapter/node/db'
 import type { getDb } from '../db'
 
-export type AppDb = ReturnType<typeof getDb> | ReturnType<typeof createNodeDb>
+export type AppDb = ReturnType<typeof getDb> | Awaited<ReturnType<typeof createNodeDb>>
 
 export interface StoredObject {
   body: ReadableStream

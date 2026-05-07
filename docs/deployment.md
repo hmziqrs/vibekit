@@ -16,13 +16,13 @@ const { db, storage, email, cache, env } = locals.services
 
 **Service interfaces** (`src/lib/server/services/types.ts`):
 
-| Service      | Self-host default                     | Cloudflare adapter                       |
-| ------------ | ------------------------------------- | ---------------------------------------- |
-| `db`         | SQLite via `better-sqlite3` + Drizzle   | D1 binding + Drizzle                     |
-| `storage`    | Filesystem (`data/uploads`)           | R2 binding (`R2_BLOG_MEDIA`)             |
-| `email`      | Cloudflare Email Service REST         | Cloudflare Email Service REST            |
-| `cache`      | No-op (Caddy/Nginx headers)           | Cloudflare Cache API purge               |
-| `env`        | Process env (`process.env`)           | `event.platform.env`                     |
+| Service   | Self-host default                     | Cloudflare adapter            |
+| --------- | ------------------------------------- | ----------------------------- |
+| `db`      | SQLite via `better-sqlite3` + Drizzle | D1 binding + Drizzle          |
+| `storage` | Filesystem (`data/uploads`)           | R2 binding (`R2_BLOG_MEDIA`)  |
+| `email`   | Cloudflare Email Service REST         | Cloudflare Email Service REST |
+| `cache`   | No-op (Caddy/Nginx headers)           | Cloudflare Cache API purge    |
+| `env`     | Process env (`process.env`)           | `event.platform.env`          |
 
 **Adapter selection** is controlled by the `ADAPTER` environment variable (`node` or `cloudflare`). Service implementations live in `src/lib/server/adapter/{node,cloudflare}/`. The `hooks.server.ts` boundary injects services at request time:
 
@@ -98,14 +98,14 @@ cp .env.example .env
 
 **Optional:**
 
-| Variable                     | Description                                  |
-| ---------------------------- | -------------------------------------------- |
-| `ADAPTER`                    | `node` (default) or `cloudflare`             |
-| `DATABASE_PATH`              | SQLite path (default: `data/vibekit.db`)     |
-| `UPLOAD_DIR`                 | File storage path (default: `data/uploads`)  |
-| `CONTACT_NOTIFICATION_EMAIL` | Email for contact form notifications         |
-| `CF_ACCOUNT_ID`              | Cloudflare account ID for email REST         |
-| `CF_API_TOKEN`               | Cloudflare API token for email REST          |
+| Variable                     | Description                                       |
+| ---------------------------- | ------------------------------------------------- |
+| `ADAPTER`                    | `node` (default) or `cloudflare`                  |
+| `DATABASE_PATH`              | SQLite path (default: `data/vibekit.db`)          |
+| `UPLOAD_DIR`                 | File storage path (default: `data/uploads`)       |
+| `CONTACT_NOTIFICATION_EMAIL` | Email for contact form notifications              |
+| `CF_ACCOUNT_ID`              | Cloudflare account ID for email REST              |
+| `CF_API_TOKEN`               | Cloudflare API token for email REST               |
 | `EMAIL_FROM`                 | Verified sender address for Cloudflare Email REST |
 
 Generate secrets:
@@ -418,8 +418,8 @@ Add a `triggers` section to `wrangler.jsonc`:
 ```jsonc
 {
   "triggers": {
-    "crons": ["0 3 * * *"]   // Run daily at 3:00 AM UTC
-  }
+    "crons": ["0 3 * * *"], // Run daily at 3:00 AM UTC
+  },
 }
 ```
 
@@ -491,15 +491,15 @@ wrangler secret put CONTACT_NOTIFICATION_EMAIL
 
 ## Risks
 
-| Risk                                                                 | Mitigation                                                                                                        |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Cloudflare bindings initialized globally break D1/auth               | Request-scoped Cloudflare services from `event.platform.env`; auth factory pattern                                |
-| Self-host env validation blocks unrelated commands                   | Split env validation by concern; no single global parse that requires every integration                            |
-| Storage URL mismatch breaks existing blog content                    | `/cdn/blog/{key}` is canonical URL across both adapters                                                           |
-| R2 binding behavior regresses                                        | R2 binding adapter is preserved; Workers do not use public R2 S3 API                                              |
-| Email REST credentials or Cloudflare Email product setup are missing | Adapter returns a clear configuration error outside dev; local dev uses explicit no-op/logging behavior            |
-| Proxy/client IP is wrong on VPS                                      | Configure trusted proxy headers (`ADDRESS_HEADER=X-Forwarded-For`) in deploy docs                                 |
-| Two adapters drift                                                    | Both `check:node` and `check:cf` are available; Node e2e and Cloudflare smoke tests validate parity               |
+| Risk                                                                 | Mitigation                                                                                              |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Cloudflare bindings initialized globally break D1/auth               | Request-scoped Cloudflare services from `event.platform.env`; auth factory pattern                      |
+| Self-host env validation blocks unrelated commands                   | Split env validation by concern; no single global parse that requires every integration                 |
+| Storage URL mismatch breaks existing blog content                    | `/cdn/blog/{key}` is canonical URL across both adapters                                                 |
+| R2 binding behavior regresses                                        | R2 binding adapter is preserved; Workers do not use public R2 S3 API                                    |
+| Email REST credentials or Cloudflare Email product setup are missing | Adapter returns a clear configuration error outside dev; local dev uses explicit no-op/logging behavior |
+| Proxy/client IP is wrong on VPS                                      | Configure trusted proxy headers (`ADDRESS_HEADER=X-Forwarded-For`) in deploy docs                       |
+| Two adapters drift                                                   | Both `check:node` and `check:cf` are available; Node e2e and Cloudflare smoke tests validate parity     |
 
 ---
 

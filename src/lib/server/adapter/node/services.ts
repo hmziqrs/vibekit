@@ -5,10 +5,10 @@ import { createNodeEmail } from './email-rest'
 import { readNodeEnv } from './env'
 import { createNodeStorage } from './storage-filesystem'
 
-export function createNodeServices(): AppServices {
+export async function createNodeServices(): Promise<AppServices> {
   return {
     cache: createNodeCache(),
-    db: createNodeDb(),
+    db: await createNodeDb(),
     email: createNodeEmail(),
     env: readNodeEnv(),
     storage: createNodeStorage(),

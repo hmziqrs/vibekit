@@ -45,6 +45,7 @@
     "test:e2e:admin": "playwright test e2e/admin.spec.ts"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.7.6",
     "@tanstack/svelte-db": "^0.1.82",
     "@tanstack/svelte-form": "^1.29.1",
     "@tanstack/svelte-query": "^6.1.18",
@@ -56,6 +57,7 @@
     "dompurify": "^3.4.1",
     "drizzle-orm": "^0.45.2",
     "firebase": "^12.12.1",
+    "hono": "^4.12.18",
     "micromark": "^4.0.2",
     "micromark-extension-gfm": "^3.0.0",
     "tailwind-merge": "^3.5.0",

@@ -2,6 +2,7 @@ import { building } from '$app/environment'
 import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
+import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
 import { error, type Handle } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
@@ -117,9 +118,27 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
+const handleHono: Handle = ({ event, resolve }) => {
+  if (event.url.pathname.startsWith('/api/')) {
+    return app.fetch(
+      event.request,
+      {
+        ...event.platform?.env,
+        __services: event.locals.services,
+        __auth: event.locals.auth,
+        __user: event.locals.user ?? null,
+        __session: event.locals.session ?? null,
+      },
+      event.platform?.ctx
+    )
+  }
+  return resolve(event)
+}
+
 export const handle: Handle = sequence(
   handleParaglide,
   handleSecurityHeaders,
   handleBetterAuth,
+  handleHono,
   handleRouteGuards
 )
