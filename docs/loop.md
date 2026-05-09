@@ -56,6 +56,14 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - Draft preview (shareable link or admin-only preview route)
   - Delete button on the blog edit page
   - Audit log writes on blog mutations
+  - Cover image preview in editor (not just URL)
+  - Drag-and-drop image reordering for inline images
+  - Link card / oEmbed support (Twitter, YouTube, GitHub gists)
+  - SEO preview (Google/social card preview in editor)
+  - Full-text content search (admin side minimum)
+  - Scheduled publishing (set future publishedAt, cron promotes drafts)
+  - Related posts by tag overlap on single post page
+  - Copy-as-markdown option when viewing a post
 - [ ] Admin & moderation tools
 - [ ] User audit log & activity tracking (dispute resolution, security reviews, compliance trails)
 - [ ] Admin sudo / impersonation mode (support acts on behalf of user with full audit trail)
