@@ -38,7 +38,7 @@ No Cloud. No Pro. No SSR dependency.
 Use only free Tiptap packages:
 
 ```bash
-bun add @tiptap/core @tiptap/pm @tiptap/starter-kit
+bun add @tiptap/core @tiptap/starter-kit
 bun add @tiptap/extension-link
 bun add @tiptap/extension-image
 bun add @tiptap/extension-placeholder
@@ -46,7 +46,14 @@ bun add @tiptap/extension-typography
 bun add @tiptap/extension-text-align
 bun add @tiptap/extension-table @tiptap/extension-table-row @tiptap/extension-table-cell @tiptap/extension-table-header
 bun add @tiptap/extension-underline
+bun add @tiptap/extension-character-count
 ```
+
+Note: `@tiptap/pm` is a transitive dependency of `@tiptap/core` — do NOT install it separately.
+
+Svelte 5 integration uses `@tiptap/core` directly. There is no `@tiptap/svelte-5` package.
+Mount the Editor instance to a DOM element via `$effect` and call `editor.mount(element)` /
+`editor.destroy()` manually. No Svelte 4 wrapper needed.
 
 Avoid:
 
@@ -65,17 +72,62 @@ Tracked changes extension
 
 # 2. File structure
 
+## Source code
+
 ```txt
 src/lib/editor/
   ArticleEditor.svelte
   EditorToolbar.svelte
   BubbleMenu.svelte
+  SlashMenu.svelte
   extensions/
     figure-image.ts
     embed-block.ts
+    pull-quote.ts
+    fact-box.ts
+    timeline-block.ts
+    source-block.ts
+    related-article.ts
+    correction-note.ts
+    update-note.ts
+  nodeviews/
+    FigureImageView.svelte
+    EmbedBlockView.svelte
+    PullQuoteView.svelte
+    FactBoxView.svelte
+    TimelineView.svelte
+    SourceBlockView.svelte
+    RelatedArticleView.svelte
+    NoteBlockView.svelte
   utils/
-    editor-content.ts
+    detect-embed-provider.ts
+    normalize-url.ts
+    extract-text.ts
+    validate-content.ts
+    clean-paste.ts
 ```
+
+## Test page (for e2e browser testing)
+
+```txt
+src/routes/(admin)/admin/editor-test/+page.svelte
+```
+
+This route inherits `ssr=false, csr=true` from the admin group layout — no SSR concerns.
+
+## Unit tests
+
+```txt
+tests/unit/editor/
+  article-editor.test.ts
+  editor-toolbar.test.ts
+  extensions.test.ts
+  nodeviews.test.ts
+  utils.test.ts
+```
+
+Tests follow the existing project pattern: vitest globals (`describe`/`it`/`expect`) imported explicitly.
+Svelte component mount tests use jsdom or `@testing-library/svelte`.
 
 Start simple:
 
@@ -90,20 +142,24 @@ Add custom extensions later.
 
 # 3. Main editor component
 
+No `@tiptap/svelte` — use `@tiptap/core`'s `Editor` class directly with manual DOM mounting.
+In Svelte 5, create the editor in `$effect` and destroy it in the cleanup return.
+
 Your editor should accept:
 
 ```ts
 type ArticleEditorProps = {
-  content?: object | string | null;
-  placeholder?: string;
-  editable?: boolean;
-};
+  content?: object | string | null
+  placeholder?: string
+  editable?: boolean
+}
 ```
 
 And expose:
 
 ```ts
-onChange(json, html)
+onUpdate(json, html, text)
+onAutoSave?(json)
 ```
 
 So the parent page can save content however it wants.
@@ -111,14 +167,54 @@ So the parent page can save content however it wants.
 Usage:
 
 ```svelte
+<script lang="ts">
+  import ArticleEditor from '$lib/editor/ArticleEditor.svelte'
+
+  let bodyJson = $state<object | null>(null)
+  let bodyHtml = $state('')
+  let bodyText = $state('')
+</script>
+
 <ArticleEditor
-  content={articleBody}
+  content={bodyJson}
   placeholder="Start writing..."
-  onChange={(json, html) => {
-    bodyJson = json;
-    bodyHtml = html;
+  onUpdate={({ json, html, text }) => {
+    bodyJson = json
+    bodyHtml = html
+    bodyText = text
   }}
 />
+```
+
+Svelte 5 integration pattern:
+
+```svelte
+<script lang="ts">
+  import { Editor } from '@tiptap/core'
+  // ... extensions
+
+  let { content, placeholder, onUpdate }: Props = $props()
+  let editorEl = $state<HTMLDivElement>()
+
+  $effect(() => {
+    const editor = new Editor({
+      element: editorEl!,
+      extensions: [...],
+      content: content,
+      onUpdate: ({ editor }) => {
+        onUpdate({
+          json: editor.getJSON(),
+          html: editor.getHTML(),
+          text: editor.getText(),
+        })
+      },
+    })
+
+    return () => editor.destroy()
+  })
+</script>
+
+<div bind:this={editorEl}></div>
 ```
 
 ---
@@ -218,65 +314,58 @@ Source/citation block
 
 # 6. Editor styling
 
-Use your own CSS/Tailwind styles for `.ProseMirror`.
+Use project Tailwind v4 color tokens — never hardcoded hex. Token reference in `src/routes/layout.css`.
 
-Minimum styles:
+Minimum styles — use `:global()` in a `<style>` block inside `ArticleEditor.svelte`:
 
 ```css
-.ProseMirror {
+:global(.ProseMirror) {
   min-height: 500px;
   outline: none;
 }
 
-.ProseMirror p {
+:global(.ProseMirror p) {
   margin: 0.75rem 0;
   line-height: 1.8;
 }
 
-.ProseMirror h2 {
+:global(.ProseMirror h2) {
   font-size: 1.75rem;
   font-weight: 700;
   margin-top: 2rem;
 }
 
-.ProseMirror h3 {
+:global(.ProseMirror h3) {
   font-size: 1.35rem;
   font-weight: 700;
   margin-top: 1.5rem;
 }
 
-.ProseMirror blockquote {
+:global(.ProseMirror blockquote) {
   border-left: 4px solid currentColor;
   padding-left: 1rem;
   opacity: 0.85;
 }
 
-.ProseMirror img {
+:global(.ProseMirror img) {
   max-width: 100%;
   border-radius: 0.75rem;
 }
 
-.ProseMirror table {
+:global(.ProseMirror table) {
   border-collapse: collapse;
   width: 100%;
 }
 
-.ProseMirror td,
-.ProseMirror th {
-  border: 1px solid #ddd;
+:global(.ProseMirror td),
+:global(.ProseMirror th) {
+  border: 1px solid var(--border);
   padding: 0.5rem;
 }
 ```
 
-In Svelte, put this in the component using:
-
-```svelte
-<style>
-  :global(.ProseMirror) {
-    outline: none;
-  }
-</style>
-```
+For toolbar/styling on editor chrome: use Tailwind classes like `bg-surface`, `text-text-primary`,
+`border-border`, `text-brand` from `$lib/utils`'s `cn()` helper.
 
 ---
 
@@ -298,8 +387,8 @@ JSON
 Example output:
 
 ```ts
-const json = editor.getJSON();
-const html = editor.getHTML();
+const json = editor.getJSON()
+const html = editor.getHTML()
 ```
 
 Parent component can decide what to do with it.
@@ -567,49 +656,9 @@ Attrs:
 
 ---
 
-# 11. Editor-only component structure
+# 11. Important writing UX
 
-```txt
-src/lib/editor/
-  ArticleEditor.svelte
-  EditorToolbar.svelte
-  BubbleMenu.svelte
-  SlashMenu.svelte
-
-  extensions/
-    figure-image.ts
-    embed-block.ts
-    pull-quote.ts
-    fact-box.ts
-    timeline-block.ts
-    source-block.ts
-    related-article.ts
-    correction-note.ts
-    update-note.ts
-
-  nodeviews/
-    FigureImageView.svelte
-    EmbedBlockView.svelte
-    PullQuoteView.svelte
-    FactBoxView.svelte
-    TimelineView.svelte
-    SourceBlockView.svelte
-    RelatedArticleView.svelte
-    NoteBlockView.svelte
-
-  utils/
-    detect-embed-provider.ts
-    normalize-url.ts
-    extract-text.ts
-    validate-content.ts
-    clean-paste.ts
-```
-
----
-
-# 12. Important writing UX
-
-## 12.1 Slash command menu
+## 11.1 Slash command menu
 
 For speed:
 
@@ -636,7 +685,7 @@ This makes the editor feel modern and fast.
 
 ---
 
-## 12.2 Bubble menu
+## 11.2 Bubble menu
 
 When text is selected, show:
 
@@ -653,7 +702,7 @@ Not required for MVP, but very nice.
 
 ---
 
-## 12.3 Paste cleanup
+## 11.3 Paste cleanup
 
 This is big. Writers will paste from:
 
@@ -683,7 +732,7 @@ This matters more than people think.
 
 ---
 
-## 12.4 Autosave
+## 11.4 Autosave
 
 Even without full publishing, add editor-level autosave:
 
@@ -697,7 +746,7 @@ Critical for long articles.
 
 ---
 
-## 12.5 Local draft backup
+## 11.5 Local draft backup
 
 Optional but very useful. If API save fails or browser crashes:
 
@@ -710,7 +759,7 @@ For writers, this is a lifesaver.
 
 ---
 
-## 12.6 Word count and reading time
+## 11.6 Word count and reading time
 
 Inside editor:
 
@@ -724,7 +773,7 @@ Use Tiptap character count extension or your own text extraction.
 
 ---
 
-## 12.7 Content warnings / checks
+## 11.7 Content warnings / checks
 
 Before saving/publishing, show warnings like:
 
@@ -743,7 +792,7 @@ Even without public rendering, these checks help keep article quality high.
 
 ---
 
-# 13. MVP phases
+# 12. MVP phases
 
 ## Phase 1 — Basic working editor
 
@@ -865,7 +914,7 @@ Revision snapshots
 
 ---
 
-# 14. Final component API
+# 13. Final component API
 
 Aim for this:
 
@@ -879,8 +928,14 @@ Aim for this:
     bodyHtml = html
     bodyText = text
   }}
+  onAutoSave={({ json }) => {
+    // Save to API / localStorage
+  }}
 />
 ```
+
+All props use Svelte 5 `$props()` — no `export let`.
+Editor lifecycle managed via `$effect` + cleanup, not `onMount`/`onDestroy`.
 
 The editor should not know anything about:
 
@@ -894,11 +949,12 @@ article pages
 SvelteKit load functions
 ```
 
-It should only be a clean reusable Svelte editor.
+Admin routes are CSR-only (`ssr=false, csr=true`) — no SSR concerns.
+It should only be a clean reusable Svelte 5 editor.
 
 ---
 
-# 15. Build priority
+# 14. Build priority
 
 Do not build everything at once.
 
@@ -942,7 +998,7 @@ Revision snapshots
 
 ---
 
-# 16. Final recommended feature list
+# 15. Final recommended feature list
 
 For a proper news-grade Tiptap OSS editor (no Pro, no Cloud):
 
@@ -970,197 +1026,4 @@ Local draft backup
 Word count
 Content validation
 JSON output
-```
-
-For serious article writing, the first custom node should be:
-
-```txt
-figureImage
-```
-
-Because normal images are not enough for news. You’ll want:
-
-```txt
-image
-caption
-alt text
-source/credit
-```
-
-Example JSON shape:
-
-```json
-{
-  "type": "figureImage",
-  "attrs": {
-    "src": "/uploads/image.webp",
-    "alt": "People standing near a flooded road",
-    "caption": "A flooded road after heavy rain.",
-    "credit": "Photo: Staff"
-  }
-}
-```
-
----
-
-# 11. MVP phases
-
-## Phase 1 — Basic working editor
-
-Build:
-
-```txt
-ArticleEditor.svelte
-Toolbar
-StarterKit
-Placeholder
-Link
-Image
-Typography
-TextAlign
-JSON/HTML output
-```
-
-Done when:
-
-```txt
-You can type article content
-Use headings
-Use bold/italic/underline
-Add lists
-Add quotes
-Add links
-Add images by URL
-Receive updated JSON in parent component
-```
-
----
-
-## Phase 2 — Better writing UX
-
-Add:
-
-```txt
-Bubble menu for selected text
-Floating menu for empty paragraph
-Keyboard shortcuts
-Word count
-Character count
-Autosave callback
-```
-
-Useful UX:
-
-```txt
-Cmd+B bold
-Cmd+I italic
-Cmd+K add link
-Markdown shortcuts
-Placeholder text
-```
-
----
-
-## Phase 3 — Media support
-
-Add:
-
-```txt
-Image upload button
-Image preview
-Alt text input
-Caption input
-Credit input
-Custom figureImage extension
-```
-
-This is where it starts feeling like a proper news editor.
-
----
-
-## Phase 4 — Advanced article blocks
-
-Add custom blocks:
-
-```txt
-Pull quote
-Fact box
-Embed block
-Related article block
-Correction/update note
-```
-
-Each custom block should have its own toolbar insertion button.
-
----
-
-## Phase 5 — Polish
-
-Add:
-
-```txt
-Slash command menu
-Drag/drop image support
-Paste image support
-Paste cleanup
-Better table controls
-Word count
-Reading time estimate
-Missing alt text warning
-```
-
----
-
-# 12. Final component API
-
-Aim for this:
-
-```svelte
-<ArticleEditor
-  content={bodyJson}
-  editable={true}
-  placeholder="Write your article..."
-  onUpdate={({ json, html, text }) => {
-    bodyJson = json;
-    bodyHtml = html;
-    bodyText = text;
-  }}
-/>
-```
-
-The editor should not know anything about:
-
-```txt
-database
-SSR
-routing
-publishing
-SEO
-article pages
-SvelteKit load functions
-```
-
-It should only be a clean reusable Svelte editor.
-
----
-
-# Final recommendation
-
-Build in this order:
-
-```txt
-1. Basic Tiptap Svelte editor
-2. Toolbar
-3. JSON output
-4. Link/image support
-5. Styling
-6. Image upload/caption custom node
-7. Pull quote/fact box/embed blocks
-8. Slash commands and polish
-```
-
-For your current need, the core target is:
-
-```txt
-A complete reusable Svelte component that emits JSON and stays 100% Tiptap OSS.
 ```
