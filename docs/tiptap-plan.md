@@ -260,7 +260,7 @@ const extensions = [
   TableRow,
   TableHeader,
   TableCell,
-];
+]
 ```
 
 This gives you a strong base editor.
@@ -410,7 +410,7 @@ Later replace with upload flow.
 Initial version:
 
 ```ts
-editor.chain().focus().setImage({ src: imageUrl }).run();
+editor.chain().focus().setImage({ src: imageUrl }).run()
 ```
 
 Later custom image node should support:
@@ -441,8 +441,8 @@ Apply link
 Commands:
 
 ```ts
-editor.chain().focus().setLink({ href: url }).run();
-editor.chain().focus().unsetLink().run();
+editor.chain().focus().setLink({ href: url }).run()
+editor.chain().focus().unsetLink().run()
 ```
 
 Add URL validation before applying.

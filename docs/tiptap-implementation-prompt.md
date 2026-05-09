@@ -1,6 +1,7 @@
 Implement docs/tiptap-plan.md phase by phase, following the plan's build priority (MVP → Then add → Later polish).
 
 Environment:
+
 - SvelteKit 2, Svelte 5 runes mode (enforced via svelte.config.js)
 - Admin routes are CSR-only SPA (ssr=false, csr=true) — no SSR concerns
 - Package manager: Bun
@@ -42,13 +43,14 @@ For each phase:
 Svelte 5 Tiptap integration:
 No @tiptap/svelte — use @tiptap/core Editor class directly. Mount and destroy via $effect:
 
-  $effect(() => {
-    const editor = new Editor({ element: el, extensions, content, onUpdate })
-    return () => editor.destroy()
-  })
+$effect(() => {
+const editor = new Editor({ element: el, extensions, content, onUpdate })
+return () => editor.destroy()
+})
 
 Constraints:
-- No @tiptap-pro/*, no Tiptap Cloud, no Collaborator
+
+- No @tiptap-pro/\*, no Tiptap Cloud, no Collaborator
 - No Svelte 4 patterns (export let, $:, on: directives) — Svelte 5 runes only
 - No hardcoded colors — use project token Tailwind classes only
 - Editor must stay 100% OSS and reusable
