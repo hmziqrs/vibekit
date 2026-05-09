@@ -42,7 +42,20 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Dev environment & DX
 - [ ] Auth security hardening
 - [ ] Core app features
-- [ ] Blog platform completion
+- [ ] Blog platform — full-fledged publishing system:
+  - Markdown editor with toolbar, split-pane preview, keyboard shortcuts (Milkdown / TipTap / CodeMirror+preview)
+  - Inline image upload-insert flow inside the editor body (upload to R2 → insert markdown image syntax)
+  - Syntax highlighting for code blocks (Shiki or similar, rendered server-side)
+  - Tag system: wire up dead tagIds code — tag CRUD API, tag selector in editor, public tag pages, tag display on posts
+  - Pagination on public blog index (cursor or offset, load more or page nav)
+  - Author attribution on public posts (join user table for display name)
+  - Reading time estimation on posts
+  - Table of contents auto-generated from headings
+  - Replace regex sanitization with DOMPurify
+  - RSS/Atom feed endpoint
+  - Draft preview (shareable link or admin-only preview route)
+  - Delete button on the blog edit page
+  - Audit log writes on blog mutations
 - [ ] Admin & moderation tools
 - [ ] User audit log & activity tracking (dispute resolution, security reviews, compliance trails)
 - [ ] Admin sudo / impersonation mode (support acts on behalf of user with full audit trail)
