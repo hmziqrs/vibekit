@@ -19,8 +19,10 @@
 
   let editingCaption = $state(false)
   let editingCredit = $state(false)
+  // oxlint-disable-next-line capitalized-comments
   // svelte-ignore state_referenced_locally
   let captionInput = $state(caption)
+  // oxlint-disable-next-line capitalized-comments
   // svelte-ignore state_referenced_locally
   let creditInput = $state(credit)
 

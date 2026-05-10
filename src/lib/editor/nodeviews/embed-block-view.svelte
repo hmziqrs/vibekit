@@ -18,6 +18,7 @@
   }: Props = $props()
 
   let editingCaption = $state(false)
+  // oxlint-disable-next-line capitalized-comments
   // svelte-ignore state_referenced_locally
   let captionInput = $state(caption)
 

@@ -75,14 +75,16 @@ export const PullQuote = Node.create<PullQuoteOptions>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const children: unknown[] = [['p', {}, HTMLAttributes.text || '']]
-    if (HTMLAttributes.attribution) {
-      children.push(['cite', {}, HTMLAttributes.attribution])
-    }
-    return [
+    const base = [
       'blockquote',
       mergeAttributes(this.options.HTMLAttributes, { 'data-pull-quote': '' }),
-      ...children,
-    ]
+      ['p', {}, HTMLAttributes.text || ''],
+    ] as const
+
+    if (HTMLAttributes.attribution) {
+      return [...base, ['cite', {}, HTMLAttributes.attribution]]
+    }
+
+    return base
   },
 })

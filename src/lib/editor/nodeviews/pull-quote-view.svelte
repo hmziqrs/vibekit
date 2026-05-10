@@ -13,8 +13,10 @@
 
   let editingAttribution = $state(false)
   let editingText = $state(false)
+  // oxlint-disable-next-line capitalized-comments
   // svelte-ignore state_referenced_locally
   let attributionInput = $state(attribution)
+  // oxlint-disable-next-line capitalized-comments
   // svelte-ignore state_referenced_locally
   let textInput = $state(text)
 

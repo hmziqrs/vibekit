@@ -7,6 +7,7 @@
   let { title, onUpdateAttrs }: Props = $props()
 
   let editing = $state(false)
+  // oxlint-disable-next-line capitalized-comments
   // svelte-ignore state_referenced_locally
   let titleInput = $state(title)
 

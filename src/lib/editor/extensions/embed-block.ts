@@ -93,19 +93,19 @@ export const EmbedBlock = Node.create<EmbedBlockOptions>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const children: (string | Record<string, unknown>)[] = [
-      ['iframe', { allowfullscreen: 'true', src: HTMLAttributes.url }] as unknown as string,
-    ]
-    if (HTMLAttributes.caption) {
-      children.push(['p', {}, HTMLAttributes.caption] as unknown as string)
-    }
-    return [
+    const base = [
       'div',
       mergeAttributes(this.options.HTMLAttributes, {
         'data-embed-block': '',
         'data-provider': HTMLAttributes.provider,
       }),
-      ...children,
-    ]
+      ['iframe', { allowfullscreen: 'true', src: HTMLAttributes.url }],
+    ] as const
+
+    if (HTMLAttributes.caption) {
+      return [...base, ['p', {}, HTMLAttributes.caption]]
+    }
+
+    return base
   },
 })

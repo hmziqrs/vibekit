@@ -170,7 +170,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
         },
         render: () => {
           let commandCallback: ((item: SlashMenuItem) => void) | null = null
-          let component: Record<string, unknown> | null = null
+          let component: object | null = null
           let filteredItems: SlashMenuItem[] = []
           let popup: HTMLDivElement | null = null
           let selectedIndex = 0
