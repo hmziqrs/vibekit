@@ -124,10 +124,10 @@ const handleHono: Handle = ({ event, resolve }) => {
       event.request,
       {
         ...event.platform?.env,
-        __services: event.locals.services,
         __auth: event.locals.auth,
-        __user: event.locals.user ?? null,
+        __services: event.locals.services,
         __session: event.locals.session ?? null,
+        __user: event.locals.user ?? null,
       },
       event.platform?.ctx
     )

@@ -63,7 +63,7 @@ describe(slug, () => {
   })
 })
 
-describe('paginationSchema', () => {
+describe(paginationSchema, () => {
   it('applies defaults for missing fields', () => {
     const result = paginationSchema.parse({})
     expect(result).toStrictEqual({ limit: 20, page: 1 })

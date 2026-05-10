@@ -37,7 +37,8 @@ export function createNodeStorage(): StorageClient {
       if (existsSync(metaPath)) {
         try {
           const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as Record<string, string>
-          contentType = meta['contentType'] ?? contentType(({ cacheControl } = meta))
+          contentType = meta['contentType'] ?? contentType
+          cacheControl = meta['cacheControl'] ?? cacheControl
         } catch {
           // Ignore malformed metadata
         }
@@ -79,6 +80,7 @@ export function createNodeStorage(): StorageClient {
         const reader = body.getReader()
         // eslint-disable-next-line no-constant-condition
         while (true) {
+          // oxlint-disable-next-line no-await-in-loop
           const { done, value } = await reader.read()
           if (done) break
           if (value) chunks.push(value)

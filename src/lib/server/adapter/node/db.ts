@@ -1,13 +1,14 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite'
+
 import * as schema from '../../db/schema'
 
 const DB_PATH = process.env.DATABASE_PATH ?? 'data/vibekit.db'
 
-type BunSqliteDb = import('drizzle-orm/bun-sqlite').DrizzleInstance<typeof schema>
-type BetterSqliteDb = import('drizzle-orm/better-sqlite3').BetterSQLite3Database<typeof schema>
-type NodeDb = BunSqliteDb | BetterSqliteDb
+type NodeDb = BunSQLiteDatabase<typeof schema> | BetterSQLite3Database<typeof schema>
 
 let _db: NodeDb | undefined
 
@@ -16,7 +17,7 @@ export async function createNodeDb(): Promise<NodeDb> {
 
   mkdirSync(dirname(DB_PATH), { recursive: true })
 
-  const isBun = typeof (globalThis as any).Bun !== 'undefined'
+  const isBun = 'Bun' in globalThis
 
   if (isBun) {
     const { Database } = await import('bun:sqlite')
