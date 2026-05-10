@@ -4,6 +4,20 @@ import { mount, unmount } from 'svelte'
 
 import SlashMenuContent, { type SlashMenuItem } from '../slash-menu.svelte'
 
+function replaceBlobSrc(editor: Editor, blobUrl: string, attrs: Record<string, unknown>) {
+  const { tr } = editor.state
+  let found = false
+  editor.state.doc.descendants((node, pos) => {
+    if (found) return false
+    if (node.type.name === 'figureImage' && node.attrs.src === blobUrl) {
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs })
+      found = true
+      return false
+    }
+  })
+  if (found) editor.view.dispatch(tr)
+}
+
 export interface SlashCommandOptions {
   HTMLAttributes: Record<string, unknown>
 }
@@ -94,7 +108,7 @@ function getSlashItems(_editor: Editor): SlashMenuItem[] {
             })
             .then(({ url }) => {
               URL.revokeObjectURL(blobUrl)
-              e.commands.updateAttributes('figureImage', {
+              replaceBlobSrc(e, blobUrl, {
                 src: url,
                 uploadProgress: 100,
                 uploadState: 'done',
@@ -102,7 +116,7 @@ function getSlashItems(_editor: Editor): SlashMenuItem[] {
             })
             .catch(() => {
               URL.revokeObjectURL(blobUrl)
-              e.commands.updateAttributes('figureImage', {
+              replaceBlobSrc(e, blobUrl, {
                 uploadState: 'error',
               })
             })
@@ -125,24 +139,10 @@ function getSlashItems(_editor: Editor): SlashMenuItem[] {
     {
       aliases: ['related', 'link', 'article'],
       command: (e) => {
-        const title = prompt('Article title:') || ''
-        const slug = prompt('Article slug:') || ''
-        const excerpt = prompt('Excerpt (optional):') || ''
-        e.chain().focus().setRelatedArticle({ articleId: '', excerpt, slug, title }).run()
+        e.view.dom.dispatchEvent(new CustomEvent('open-article-search', { bubbles: true }))
       },
-      description: 'Related article card',
-      label: 'Related Article',
-    },
-    {
-      aliases: ['embed-article', 'section'],
-      command: (e) => {
-        const articleTitle = prompt('Article title:') || ''
-        const articleSlug = prompt('Article slug:') || ''
-        const content = prompt('Content to embed:') || ''
-        e.chain().focus().setArticleSectionEmbed({ articleSlug, articleTitle, content }).run()
-      },
-      description: 'Embed a section from another article',
-      label: 'Article Section',
+      description: 'Search and insert an article reference or embed',
+      label: 'Article',
     },
     {
       aliases: ['correction', 'errata'],

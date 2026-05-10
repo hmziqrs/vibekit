@@ -46,6 +46,24 @@
     editor.chain().focus().setLink({ href: url }).run()
   }
 
+  function replaceBlobSrc(
+    blobUrl: string,
+    attrs: Record<string, unknown>,
+  ) {
+    if (!editor) return
+    const { tr } = editor.state
+    let found = false
+    editor.state.doc.descendants((node, pos) => {
+      if (found) return false
+      if (node.type.name === 'figureImage' && node.attrs.src === blobUrl) {
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs })
+        found = true
+        return false
+      }
+    })
+    if (found) editor.view.dispatch(tr)
+  }
+
   function handleImage() {
     if (!editor) return
     const input = document.createElement('input')
@@ -72,7 +90,7 @@
         })
         .then(({ url }) => {
           URL.revokeObjectURL(blobUrl)
-          editor.commands.updateAttributes('figureImage', {
+          replaceBlobSrc(blobUrl, {
             src: url,
             uploadProgress: 100,
             uploadState: 'done',
@@ -80,7 +98,7 @@
         })
         .catch(() => {
           URL.revokeObjectURL(blobUrl)
-          editor.commands.updateAttributes('figureImage', {
+          replaceBlobSrc(blobUrl, {
             uploadState: 'error',
           })
         })

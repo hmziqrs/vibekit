@@ -48,7 +48,7 @@ export const LinkPreviewCard = Node.create<LinkPreviewOptions>({
       const dom = document.createElement('div')
       dom.classList.add('link-preview-nodeview')
 
-      const props = {
+      const props = $state({
         description: node.attrs.description as string,
         fetchError: node.attrs.fetchError as boolean,
         fetching: node.attrs.fetching as boolean,
@@ -61,7 +61,7 @@ export const LinkPreviewCard = Node.create<LinkPreviewOptions>({
         siteName: node.attrs.siteName as string,
         title: node.attrs.title as string,
         url: node.attrs.url as string,
-      }
+      })
 
       const component = mount(LinkPreviewView, { props, target: dom })
 

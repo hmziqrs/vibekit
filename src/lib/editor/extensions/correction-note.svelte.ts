@@ -36,7 +36,7 @@ export const CorrectionNote = Node.create<CorrectionNoteOptions>({
       const dom = document.createElement('div')
       dom.classList.add('correction-note-nodeview')
 
-      const props = {
+      const props = $state({
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
           if (pos === undefined) return
@@ -44,7 +44,7 @@ export const CorrectionNote = Node.create<CorrectionNoteOptions>({
         },
         text: node.attrs.text,
         type: 'correction' as const,
-      }
+      })
 
       const component = mount(NoteBlockView, {
         props,

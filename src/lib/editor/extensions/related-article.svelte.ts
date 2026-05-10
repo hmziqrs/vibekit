@@ -50,7 +50,7 @@ export const RelatedArticle = Node.create<RelatedArticleOptions>({
       const dom = document.createElement('div')
       dom.classList.add('related-article-nodeview')
 
-      const props = {
+      const props = $state({
         articleId: node.attrs.articleId,
         authorName: node.attrs.authorName,
         coverImageUrl: node.attrs.coverImageUrl,
@@ -63,7 +63,7 @@ export const RelatedArticle = Node.create<RelatedArticleOptions>({
         publishedAt: node.attrs.publishedAt,
         slug: node.attrs.slug,
         title: node.attrs.title,
-      }
+      })
 
       const component = mount(RelatedArticleView, {
         props,

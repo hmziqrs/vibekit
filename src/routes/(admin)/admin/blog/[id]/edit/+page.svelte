@@ -1,7 +1,13 @@
 <script lang="ts">
+  import type { Editor } from '@tiptap/core'
   import { goto } from '$app/navigation'
+  import { invalidateAll } from '$app/navigation'
   import ArticleEditor from '$lib/editor/article-editor.svelte'
   import ImageUpload from '$lib/components/image-upload.svelte'
+  import SeoPanel from '$lib/components/seo-panel.svelte'
+  import TocPanel from '$lib/components/toc-panel.svelte'
+  import MediaLibrary from '$lib/components/media-library.svelte'
+  import ArticleSearch from '$lib/components/article-search.svelte'
   import { updatePostSchema } from '$lib/validators/blog'
 
   const {
@@ -16,6 +22,10 @@
         contentBody: string | null
         coverImageUrl: string | null
         status: string
+        seoTitle: string | null
+        seoDescription: string | null
+        canonicalUrl: string | null
+        ogImageUrl: string | null
       }
     }
   } = $props()
@@ -26,9 +36,26 @@
   let excerpt = $state(post.excerpt ?? '')
   let contentBody = $state(post.contentBody ?? '')
   let coverImageUrl = $state(post.coverImageUrl ?? '')
+  let seoTitle = $state(post.seoTitle ?? '')
+  let seoDescription = $state(post.seoDescription ?? '')
+  let canonicalUrl = $state(post.canonicalUrl ?? '')
+  let ogImageUrl = $state(post.ogImageUrl ?? '')
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
   let serverError = $state('')
+  let editor = $state<Editor | null>(null)
+  let editorWrapperEl = $state<HTMLDivElement | undefined>(undefined)
+  let showMediaLibrary = $state(false)
+  let showArticleSearch = $state(false)
+  let activeTab = $state<'toc' | 'seo'>('toc')
+
+  $effect(() => {
+    const el = editorWrapperEl
+    if (!el) return
+    const handler = () => { showArticleSearch = true }
+    el.addEventListener('open-article-search', handler)
+    return () => el.removeEventListener('open-article-search', handler)
+  })
 
   function parseContent(raw: string): object | string | null {
     if (!raw) return null
@@ -47,15 +74,30 @@
     contentBody = JSON.stringify(payload.json)
   }
 
+  function handleEditorReady(e: Editor) {
+    editor = e
+  }
+
+  function handleSeoUpdate(field: string, value: string) {
+    if (field === 'seoTitle') seoTitle = value
+    else if (field === 'seoDescription') seoDescription = value
+    else if (field === 'canonicalUrl') canonicalUrl = value
+    else if (field === 'ogImageUrl') ogImageUrl = value
+  }
+
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
     errors = {}
     serverError = ''
 
     const result = updatePostSchema.safeParse({
+      canonicalUrl: canonicalUrl || null,
       contentBody: contentBody || null,
       coverImageUrl: coverImageUrl || null,
       excerpt: excerpt || null,
+      ogImageUrl: ogImageUrl || null,
+      seoDescription: seoDescription || null,
+      seoTitle: seoTitle || null,
       slug,
       title,
     })
@@ -70,9 +112,13 @@
     try {
       const res = await fetch(`/api/blog/${data.post.id}`, {
         body: JSON.stringify({
+          canonicalUrl: canonicalUrl || null,
           contentBody,
           coverImageUrl: coverImageUrl || null,
           excerpt,
+          ogImageUrl: ogImageUrl || null,
+          seoDescription: seoDescription || null,
+          seoTitle: seoTitle || null,
           slug,
           title,
         }),
@@ -97,14 +143,14 @@
     saving = true
     await fetch(`/api/blog/${data.post.id}/publish`, { method: 'POST' })
     saving = false
-    goto(`/admin/blog/${data.post.id}/edit`, { replaceState: true })
+    await invalidateAll()
   }
 
   async function unpublish() {
     saving = true
     await fetch(`/api/blog/${data.post.id}/unpublish`, { method: 'POST' })
     saving = false
-    goto(`/admin/blog/${data.post.id}/edit`, { replaceState: true })
+    await invalidateAll()
   }
 
   async function archive() {
@@ -132,107 +178,178 @@
   <a href="/admin/blog" class="text-[13px] text-text-muted hover:text-text-primary">Back to list</a>
 </div>
 
-<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-4xl" novalidate>
+<form onsubmit={handleSubmit} class="mt-8" novalidate>
   {#if serverError}
-    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
+    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400 mb-6">{serverError}</p>
   {/if}
 
-  <div>
-    <label for="title" class="mb-2 block text-sm font-medium text-text-secondary">Title</label>
-    <input
-      id="title"
-      bind:value={title}
-      aria-invalid={errors.title ? 'true' : 'false'}
-      aria-describedby={errors.title ? 'title-error' : undefined}
-      class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-    />
-    {#if errors.title}
-      <p id="title-error" class="mt-1 text-[12px] text-red-400">{errors.title}</p>
-    {/if}
-  </div>
+  <div class="flex gap-6">
+    <!-- Main content area -->
+    <div class="flex-1 min-w-0 space-y-6">
+      <div>
+        <label for="title" class="mb-2 block text-sm font-medium text-text-secondary">Title</label>
+        <input
+          id="title"
+          bind:value={title}
+          aria-invalid={errors.title ? 'true' : 'false'}
+          aria-describedby={errors.title ? 'title-error' : undefined}
+          class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+        {#if errors.title}
+          <p id="title-error" class="mt-1 text-[12px] text-red-400">{errors.title}</p>
+        {/if}
+      </div>
 
-  <div>
-    <label for="slug" class="mb-2 block text-sm font-medium text-text-secondary">Slug</label>
-    <input
-      id="slug"
-      bind:value={slug}
-      aria-invalid={errors.slug ? 'true' : 'false'}
-      aria-describedby={errors.slug ? 'slug-error' : undefined}
-      class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-    />
-    {#if errors.slug}
-      <p id="slug-error" class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
-    {/if}
-  </div>
+      <div>
+        <label for="slug" class="mb-2 block text-sm font-medium text-text-secondary">Slug</label>
+        <input
+          id="slug"
+          bind:value={slug}
+          aria-invalid={errors.slug ? 'true' : 'false'}
+          aria-describedby={errors.slug ? 'slug-error' : undefined}
+          class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+        {#if errors.slug}
+          <p id="slug-error" class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
+        {/if}
+      </div>
 
-  <div>
-    <label for="excerpt" class="mb-2 block text-sm font-medium text-text-secondary">Excerpt</label>
-    <input
-      id="excerpt"
-      bind:value={excerpt}
-      aria-invalid={errors.excerpt ? 'true' : 'false'}
-      aria-describedby={errors.excerpt ? 'excerpt-error' : undefined}
-      class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-    />
-    {#if errors.excerpt}
-      <p id="excerpt-error" class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
-    {/if}
-  </div>
+      <div>
+        <label for="excerpt" class="mb-2 block text-sm font-medium text-text-secondary">Excerpt</label>
+        <input
+          id="excerpt"
+          bind:value={excerpt}
+          aria-invalid={errors.excerpt ? 'true' : 'false'}
+          aria-describedby={errors.excerpt ? 'excerpt-error' : undefined}
+          class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+        {#if errors.excerpt}
+          <p id="excerpt-error" class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
+        {/if}
+      </div>
 
-  <ImageUpload
-    currentUrl={coverImageUrl}
-    onUpload={(url) => (coverImageUrl = url)}
-    onRemove={() => (coverImageUrl = '')}
-  />
-  {#if errors.coverImageUrl}
-    <p id="cover-image-error" class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
-  {/if}
+      <ImageUpload
+        currentUrl={coverImageUrl}
+        onUpload={(url) => (coverImageUrl = url)}
+        onRemove={() => (coverImageUrl = '')}
+      />
+      {#if errors.coverImageUrl}
+        <p id="cover-image-error" class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
+      {/if}
 
-  <div>
-    <label class="mb-2 block text-sm font-medium text-text-secondary">Content</label>
-    <ArticleEditor content={parseContent(contentBody)} onUpdate={handleEditorUpdate} />
-    {#if errors.contentBody}
-      <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
-    {/if}
-  </div>
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium text-text-secondary">Content</label>
+          <button
+            type="button"
+            onclick={() => (showMediaLibrary = true)}
+            class="text-[12px] text-text-muted hover:text-brand transition-colors"
+          >
+            Media Library
+          </button>
+        </div>
+        <!-- svelte-ignore binding_property_non_reactive -->
+        <div bind:this={editorWrapperEl}>
+          <ArticleEditor
+            content={parseContent(contentBody)}
+            onUpdate={handleEditorUpdate}
+            onReady={handleEditorReady}
+          />
+        </div>
+        {#if errors.contentBody}
+          <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
+        {/if}
+      </div>
 
-  <div class="flex gap-3">
-    <button
-      type="submit"
-      disabled={saving}
-      class="rounded-lg bg-brand px-5 py-2.5 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover disabled:opacity-50"
-    >
-      {saving ? 'Saving...' : 'Save Changes'}
-    </button>
+      <div class="flex gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          class="rounded-lg bg-brand px-5 py-2.5 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
 
-    {#if data.post.status === 'draft' || data.post.status === 'archived'}
-      <button
-        type="button"
-        onclick={publish}
-        disabled={saving}
-        class="rounded-lg bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-50"
-      >
-        Publish
-      </button>
-    {/if}
+        {#if data.post.status === 'draft' || data.post.status === 'archived'}
+          <button
+            type="button"
+            onclick={publish}
+            disabled={saving}
+            class="rounded-lg bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-50"
+          >
+            Publish
+          </button>
+        {/if}
 
-    {#if data.post.status === 'published'}
-      <button
-        type="button"
-        onclick={unpublish}
-        disabled={saving}
-        class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
-      >
-        Unpublish
-      </button>
-    {/if}
+        {#if data.post.status === 'published'}
+          <button
+            type="button"
+            onclick={unpublish}
+            disabled={saving}
+            class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+          >
+            Unpublish
+          </button>
+        {/if}
 
-    <button
-      type="button"
-      onclick={archive}
-      class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
-    >
-      Archive
-    </button>
+        <button
+          type="button"
+          onclick={archive}
+          class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+        >
+          Archive
+        </button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="w-72 shrink-0">
+      <div class="sticky top-8 space-y-0">
+        <div class="flex border-b border-border mb-4">
+          <button
+            type="button"
+            onclick={() => (activeTab = 'toc')}
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors {activeTab === 'toc'
+              ? 'text-brand border-b-2 border-brand'
+              : 'text-text-muted hover:text-text-secondary'}"
+          >
+            Outline
+          </button>
+          <button
+            type="button"
+            onclick={() => (activeTab = 'seo')}
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors {activeTab === 'seo'
+              ? 'text-brand border-b-2 border-brand'
+              : 'text-text-muted hover:text-text-secondary'}"
+          >
+            SEO & Social
+          </button>
+        </div>
+
+        <div class="rounded-lg border border-border bg-surface-base p-4">
+          {#if activeTab === 'toc'}
+            <TocPanel {editor} />
+          {:else}
+            <SeoPanel
+              {seoTitle}
+              {seoDescription}
+              {canonicalUrl}
+              {ogImageUrl}
+              articleTitle={title}
+              siteOrigin={typeof window !== 'undefined' ? window.location.origin : ''}
+              onUpdate={handleSeoUpdate}
+            />
+          {/if}
+        </div>
+      </div>
+    </div>
   </div>
 </form>
+
+{#if showMediaLibrary && editor}
+  <MediaLibrary {editor} onClose={() => (showMediaLibrary = false)} />
+{/if}
+
+{#if showArticleSearch && editor}
+  <ArticleSearch {editor} onClose={() => (showArticleSearch = false)} />
+{/if}

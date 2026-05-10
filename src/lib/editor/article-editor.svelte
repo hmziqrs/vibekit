@@ -17,19 +17,19 @@
   import EditorToolbar from './editor-toolbar.svelte'
   import BubbleMenuContent from './bubble-menu.svelte'
   import FloatingMenuContent from './floating-menu.svelte'
-  import { FigureImage } from './extensions/figure-image'
+  import { FigureImage } from './extensions/figure-image.svelte'
   import { ImageDrop } from './extensions/image-drop'
-  import { EmbedBlock } from './extensions/embed-block'
-  import { PullQuote } from './extensions/pull-quote'
-  import { FactBox } from './extensions/fact-box'
-  import { RelatedArticle } from './extensions/related-article'
-  import { CorrectionNote } from './extensions/correction-note'
-  import { UpdateNote } from './extensions/update-note'
-  import { LinkPreviewCard } from './extensions/link-preview'
-  import { ArticleSectionEmbed } from './extensions/article-section-embed'
+  import { EmbedBlock } from './extensions/embed-block.svelte'
+  import { PullQuote } from './extensions/pull-quote.svelte'
+  import { FactBox } from './extensions/fact-box.svelte'
+  import { RelatedArticle } from './extensions/related-article.svelte'
+  import { CorrectionNote } from './extensions/correction-note.svelte'
+  import { UpdateNote } from './extensions/update-note.svelte'
+  import { LinkPreviewCard } from './extensions/link-preview.svelte'
+  import { ArticleSectionEmbed } from './extensions/article-section-embed.svelte'
   import { SlashCommand } from './extensions/slash-command'
-  import { SourceBlock } from './extensions/source-block'
-  import { TimelineBlock } from './extensions/timeline-block'
+  import { SourceBlock } from './extensions/source-block.svelte'
+  import { TimelineBlock } from './extensions/timeline-block.svelte'
   import { CleanPaste } from './utils/clean-paste'
   import { clearDraft, loadDraft, saveDraft } from './utils/draft-recovery'
 
@@ -46,6 +46,7 @@
     draftId?: string
     onUpdate?: (payload: UpdatePayload) => void
     onAutoSave?: (payload: { json: object }) => void
+    onReady?: (editor: Editor) => void
   }
 
   let {
@@ -55,6 +56,7 @@
     draftId,
     onUpdate,
     onAutoSave,
+    onReady,
   }: Props = $props()
 
   let editorEl = $state<HTMLDivElement>()
@@ -150,6 +152,7 @@
     })
 
     editor = instance
+    onReady?.(instance)
 
     return () => {
       if (autoSaveTimer) clearTimeout(autoSaveTimer)
@@ -235,13 +238,14 @@
 
   :global(.ProseMirror td),
   :global(.ProseMirror th) {
-    border: 1px solid var(--border);
-    padding: 0.5rem;
+    border: 1px solid var(--text-muted);
+    padding: 0.5rem 0.75rem;
   }
 
   :global(.ProseMirror th) {
     background: var(--muted);
     font-weight: 600;
+    text-align: left;
   }
 
   :global(.ProseMirror p.is-editor-empty:first-child::before) {
@@ -277,10 +281,21 @@
   }
 
   :global(.ProseMirror pre) {
-    background: var(--muted);
+    background: var(--surface-deep);
+    border: 1px solid var(--border);
     border-radius: 0.5rem;
     padding: 1rem;
     overflow-x: auto;
-    font-family: monospace;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  :global(.ProseMirror code) {
+    background: var(--muted);
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.875em;
+    padding: 0.125rem 0.375rem;
   }
 </style>

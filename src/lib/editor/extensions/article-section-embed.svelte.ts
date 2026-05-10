@@ -44,7 +44,7 @@ export const ArticleSectionEmbed = Node.create<ArticleSectionEmbedOptions>({
       const dom = document.createElement('div')
       dom.classList.add('article-section-embed-nodeview')
 
-      const props = {
+      const props = $state({
         articleId: node.attrs.articleId as string,
         articleSlug: node.attrs.articleSlug as string,
         articleTitle: node.attrs.articleTitle as string,
@@ -54,7 +54,7 @@ export const ArticleSectionEmbed = Node.create<ArticleSectionEmbedOptions>({
           if (pos === undefined) return
           editor.commands.updateAttributes('articleSectionEmbed', attrs)
         },
-      }
+      })
 
       const component = mount(ArticleSectionEmbedView, { props, target: dom })
 

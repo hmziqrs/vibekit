@@ -46,7 +46,7 @@ export const EmbedBlock = Node.create<EmbedBlockOptions>({
       const dom = document.createElement('div')
       dom.classList.add('embed-block-nodeview')
 
-      const props = {
+      const props = $state({
         caption: node.attrs.caption,
         embedId: node.attrs.embedId,
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
@@ -57,7 +57,7 @@ export const EmbedBlock = Node.create<EmbedBlockOptions>({
         provider: node.attrs.provider,
         sourceName: node.attrs.sourceName,
         url: node.attrs.url,
-      }
+      })
 
       const component = mount(EmbedBlockView, {
         props,

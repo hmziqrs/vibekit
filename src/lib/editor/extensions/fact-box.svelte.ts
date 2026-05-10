@@ -47,14 +47,14 @@ export const FactBox = Node.create<FactBoxOptions>({
       contentDOM.classList.add('fact-box-content')
       dom.appendChild(contentDOM)
 
-      const props = {
+      const props = $state({
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
           if (pos === undefined) return
           editor.commands.updateAttributes('factBox', attrs)
         },
         title: node.attrs.title,
-      }
+      })
 
       const component = mount(FactBoxHeaderView, {
         props,

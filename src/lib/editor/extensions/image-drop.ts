@@ -20,7 +20,7 @@ function uploadAndReplace(editor: Editor, file: File, alt: string) {
   uploadImage(file)
     .then(({ url }) => {
       URL.revokeObjectURL(blobUrl)
-      editor.commands.updateAttributes('figureImage', {
+      replaceBlobSrc(editor, blobUrl, {
         src: url,
         uploadProgress: 100,
         uploadState: 'done',
@@ -28,10 +28,28 @@ function uploadAndReplace(editor: Editor, file: File, alt: string) {
     })
     .catch(() => {
       URL.revokeObjectURL(blobUrl)
-      editor.commands.updateAttributes('figureImage', {
+      replaceBlobSrc(editor, blobUrl, {
         uploadState: 'error',
       })
     })
+}
+
+function replaceBlobSrc(
+  editor: Editor,
+  blobUrl: string,
+  attrs: Record<string, unknown>,
+) {
+  const { tr } = editor.state
+  let found = false
+  editor.state.doc.descendants((node, pos) => {
+    if (found) return false
+    if (node.type.name === 'figureImage' && node.attrs.src === blobUrl) {
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs })
+      found = true
+      return false
+    }
+  })
+  if (found) editor.view.dispatch(tr)
 }
 
 export const ImageDrop = Extension.create<ImageDropOptions>({

@@ -51,14 +51,14 @@ export const TimelineBlock = Node.create<TimelineBlockOptions>({
       const dom = document.createElement('div')
       dom.classList.add('timeline-block-nodeview')
 
-      const props = {
+      const props = $state({
         entries: node.attrs.entries,
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
           if (pos === undefined) return
           editor.commands.updateAttributes('timelineBlock', attrs)
         },
-      }
+      })
 
       const component = mount(TimelineView, { props, target: dom })
 

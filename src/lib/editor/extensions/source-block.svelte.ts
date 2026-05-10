@@ -38,7 +38,7 @@ export const SourceBlock = Node.create<SourceBlockOptions>({
       const dom = document.createElement('div')
       dom.classList.add('source-block-nodeview')
 
-      const props = {
+      const props = $state({
         label: node.attrs.label,
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
@@ -47,7 +47,7 @@ export const SourceBlock = Node.create<SourceBlockOptions>({
         },
         sourceName: node.attrs.sourceName,
         url: node.attrs.url,
-      }
+      })
 
       const component = mount(SourceBlockView, { props, target: dom })
 

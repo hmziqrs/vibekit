@@ -16,6 +16,8 @@ declare module '@tiptap/core' {
         caption?: string
         credit?: string
         sourceUrl?: string
+        uploadProgress?: number
+        uploadState?: string
       }) => ReturnType
     }
   }
@@ -48,7 +50,7 @@ export const FigureImage = Node.create<FigureImageOptions>({
       const dom = document.createElement('div')
       dom.classList.add('figure-image-nodeview')
 
-      const props = {
+      const props = $state({
         alt: node.attrs.alt,
         caption: node.attrs.caption,
         credit: node.attrs.credit,
@@ -61,7 +63,7 @@ export const FigureImage = Node.create<FigureImageOptions>({
         src: node.attrs.src,
         uploadProgress: node.attrs.uploadProgress as number,
         uploadState: node.attrs.uploadState as string,
-      }
+      })
 
       const component = mount(FigureImageView, {
         props,

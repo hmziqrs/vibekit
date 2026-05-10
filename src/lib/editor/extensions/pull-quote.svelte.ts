@@ -37,7 +37,7 @@ export const PullQuote = Node.create<PullQuoteOptions>({
       const dom = document.createElement('div')
       dom.classList.add('pull-quote-nodeview')
 
-      const props = {
+      const props = $state({
         attribution: node.attrs.attribution,
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
@@ -45,7 +45,7 @@ export const PullQuote = Node.create<PullQuoteOptions>({
           editor.commands.updateAttributes('pullQuote', attrs)
         },
         text: node.attrs.text,
-      }
+      })
 
       const component = mount(PullQuoteView, { props, target: dom })
 

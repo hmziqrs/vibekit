@@ -36,7 +36,7 @@ export const UpdateNote = Node.create<UpdateNoteOptions>({
       const dom = document.createElement('div')
       dom.classList.add('update-note-nodeview')
 
-      const props = {
+      const props = $state({
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
           if (pos === undefined) return
@@ -44,7 +44,7 @@ export const UpdateNote = Node.create<UpdateNoteOptions>({
         },
         text: node.attrs.text,
         type: 'update' as const,
-      }
+      })
 
       const component = mount(NoteBlockView, {
         props,
