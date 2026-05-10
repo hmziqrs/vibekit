@@ -29,6 +29,8 @@ export const FigureImage = Node.create<FigureImageOptions>({
       credit: { default: '' },
       sourceUrl: { default: '' },
       src: { default: null },
+      uploadProgress: { default: 0 },
+      uploadState: { default: 'none' },
     }
   },
 
@@ -57,6 +59,8 @@ export const FigureImage = Node.create<FigureImageOptions>({
         },
         sourceUrl: node.attrs.sourceUrl,
         src: node.attrs.src,
+        uploadProgress: node.attrs.uploadProgress as number,
+        uploadState: node.attrs.uploadState as string,
       }
 
       const component = mount(FigureImageView, {
@@ -76,6 +80,8 @@ export const FigureImage = Node.create<FigureImageOptions>({
           props.credit = updatedNode.attrs.credit
           props.sourceUrl = updatedNode.attrs.sourceUrl
           props.src = updatedNode.attrs.src
+          props.uploadProgress = updatedNode.attrs.uploadProgress
+          props.uploadState = updatedNode.attrs.uploadState
           return true
         },
       }

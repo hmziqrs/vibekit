@@ -95,7 +95,7 @@
     </div>
   {:else}
     <div
-      class="flex h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border transition-colors {dragOver
+      class="relative flex h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border transition-colors {dragOver
         ? 'border-brand bg-brand/5'
         : 'hover:border-text-muted'}"
       ondrop={onDrop}

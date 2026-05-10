@@ -24,10 +24,24 @@ export interface PutResult {
   contentType: string
 }
 
+export interface ListObjectSummary {
+  key: string
+  size: number
+  contentType?: string
+  lastModified?: string
+}
+
+export interface ListResult {
+  items: ListObjectSummary[]
+  nextCursor?: string
+  truncated: boolean
+}
+
 export interface StorageClient {
   put(key: string, body: ReadableStream | Uint8Array | Blob, opts?: PutOptions): Promise<PutResult>
   get(key: string): Promise<StoredObject | null>
   delete(key: string): Promise<void>
+  list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult>
 }
 
 export interface EmailMessage {

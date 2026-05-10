@@ -1,8 +1,37 @@
-import { Extension } from '@tiptap/core'
+import { type Editor, Extension } from '@tiptap/core'
 import { Plugin } from '@tiptap/pm/state'
+
+import { uploadImage } from '../utils/upload-image'
 
 export interface ImageDropOptions {
   HTMLAttributes: Record<string, unknown>
+}
+
+function uploadAndReplace(editor: Editor, file: File, alt: string) {
+  const blobUrl = URL.createObjectURL(file)
+  editor.commands.setFigureImage({
+    alt,
+    caption: '',
+    src: blobUrl,
+    uploadProgress: 0,
+    uploadState: 'uploading',
+  })
+
+  uploadImage(file)
+    .then(({ url }) => {
+      URL.revokeObjectURL(blobUrl)
+      editor.commands.updateAttributes('figureImage', {
+        src: url,
+        uploadProgress: 100,
+        uploadState: 'done',
+      })
+    })
+    .catch(() => {
+      URL.revokeObjectURL(blobUrl)
+      editor.commands.updateAttributes('figureImage', {
+        uploadState: 'error',
+      })
+    })
 }
 
 export const ImageDrop = Extension.create<ImageDropOptions>({
@@ -23,12 +52,7 @@ export const ImageDrop = Extension.create<ImageDropOptions>({
             event.preventDefault()
 
             for (const file of images) {
-              const url = URL.createObjectURL(file)
-              editor.commands.setFigureImage({
-                alt: file.name,
-                caption: '',
-                src: url,
-              })
+              uploadAndReplace(editor, file, file.name)
             }
 
             return true
@@ -50,12 +74,7 @@ export const ImageDrop = Extension.create<ImageDropOptions>({
                 continue
               }
 
-              const url = URL.createObjectURL(file)
-              editor.commands.setFigureImage({
-                alt: '',
-                caption: '',
-                src: url,
-              })
+              uploadAndReplace(editor, file, '')
             }
 
             return true

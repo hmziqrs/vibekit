@@ -12,7 +12,10 @@ declare module '@tiptap/core' {
     relatedArticle: {
       setRelatedArticle: (attrs: {
         articleId?: string
+        authorName?: string
+        coverImageUrl?: string
         excerpt?: string
+        publishedAt?: string
         slug?: string
         title?: string
       }) => ReturnType
@@ -24,7 +27,10 @@ export const RelatedArticle = Node.create<RelatedArticleOptions>({
   addAttributes() {
     return {
       articleId: { default: '' },
+      authorName: { default: '' },
+      coverImageUrl: { default: '' },
       excerpt: { default: '' },
+      publishedAt: { default: '' },
       slug: { default: '' },
       title: { default: '' },
     }
@@ -46,12 +52,15 @@ export const RelatedArticle = Node.create<RelatedArticleOptions>({
 
       const props = {
         articleId: node.attrs.articleId,
+        authorName: node.attrs.authorName,
+        coverImageUrl: node.attrs.coverImageUrl,
         excerpt: node.attrs.excerpt,
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
           if (pos === undefined) return
           editor.commands.updateAttributes('relatedArticle', attrs)
         },
+        publishedAt: node.attrs.publishedAt,
         slug: node.attrs.slug,
         title: node.attrs.title,
       }
@@ -69,7 +78,10 @@ export const RelatedArticle = Node.create<RelatedArticleOptions>({
         update(updatedNode) {
           if (updatedNode.type.name !== 'relatedArticle') return false
           props.articleId = updatedNode.attrs.articleId
+          props.authorName = updatedNode.attrs.authorName
+          props.coverImageUrl = updatedNode.attrs.coverImageUrl
           props.excerpt = updatedNode.attrs.excerpt
+          props.publishedAt = updatedNode.attrs.publishedAt
           props.slug = updatedNode.attrs.slug
           props.title = updatedNode.attrs.title
           return true

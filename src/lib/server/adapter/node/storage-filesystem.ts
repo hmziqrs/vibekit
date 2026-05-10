@@ -1,7 +1,21 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
+import { join, relative } from 'node:path'
 
-import type { PutOptions, PutResult, StorageClient, StoredObject } from '../../services/types'
+import type {
+  ListResult,
+  PutOptions,
+  PutResult,
+  StorageClient,
+  StoredObject,
+} from '../../services/types'
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? 'data/uploads'
 
@@ -55,6 +69,48 @@ export function createNodeStorage(): StorageClient {
         contentType,
         size: stat.size,
       }
+    },
+
+    async list(prefix?: string, _cursor?: string, limit = 100): Promise<ListResult> {
+      const items: ListResult['items'] = []
+
+      function walk(dir: string) {
+        if (items.length >= limit) return
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          if (items.length >= limit) break
+          const fullPath = join(dir, entry.name)
+          if (entry.isDirectory()) {
+            walk(fullPath)
+          } else if (entry.isFile() && !entry.name.endsWith('.meta.json')) {
+            const relKey = relative(UPLOAD_DIR, fullPath)
+            if (prefix && !relKey.startsWith(prefix)) {
+              // oxlint-disable-next-line no-continue
+              continue
+            }
+            const stat = statSync(fullPath)
+            let contentType: string | undefined
+            const metaPath = `${fullPath}.meta.json`
+            if (existsSync(metaPath)) {
+              try {
+                const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as Record<string, string>
+                // oxlint-disable-next-line prefer-destructuring
+                contentType = meta['contentType']
+              } catch {
+                // Ignore malformed metadata
+              }
+            }
+            items.push({
+              contentType,
+              key: relKey,
+              lastModified: stat.mtime.toISOString(),
+              size: stat.size,
+            })
+          }
+        }
+      }
+
+      walk(UPLOAD_DIR)
+      return { items, truncated: false }
     },
 
     async put(

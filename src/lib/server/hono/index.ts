@@ -1,6 +1,6 @@
 import { writeAuditLog } from '$lib/server/audit'
-import { blogPost, blogPostSlugHistory, item, user } from '$lib/server/db/schema'
-import { generateStorageKey, validateImageUpload } from '$lib/server/upload'
+import { blogPost, blogPostRevision, blogPostSlugHistory, item, user } from '$lib/server/db/schema'
+import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
   createItemSchema,
@@ -9,7 +9,7 @@ import {
   updatePostSchema,
 } from '$lib/validators'
 import { zValidator } from '@hono/zod-validator'
-import { and, desc, eq, isNotNull, isNull, like, lt, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
 import { z } from 'zod/v4'
@@ -192,6 +192,58 @@ const blogApp = new Hono<ProtectedEnv>().use('*', requireAdmin)
 
 const toNullable = (v: string | undefined | null) => v ?? null
 
+blogApp.get('/search', async (c) => {
+  const { db } = c.get('services')
+  const q = c.req.query('q')?.trim()
+  if (!q || q.length < 2) return c.json({ results: [] })
+
+  const results = await db
+    .select({
+      excerpt: blogPost.excerpt,
+      id: blogPost.id,
+      publishedAt: blogPost.publishedAt,
+      slug: blogPost.slug,
+      status: blogPost.status,
+      title: blogPost.title,
+    })
+    .from(blogPost)
+    .where(
+      and(
+        isNull(blogPost.deletedAt),
+        or(like(blogPost.title, `%${q}%`), like(blogPost.slug, `%${q}%`))
+      )
+    )
+    .orderBy(desc(blogPost.createdAt))
+    .limit(10)
+
+  return c.json({ results })
+})
+
+blogApp.get('/media', async (c) => {
+  const prefix = c.req.query('prefix') || undefined
+  const cursor = c.req.query('cursor') || undefined
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+
+  const result = await c.get('services').storage.list(prefix, cursor, limit)
+  return c.json(result)
+})
+
+blogApp.get('/:id/content', async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+
+  const post = await db
+    .select({ contentBody: blogPost.contentBody, id: blogPost.id, title: blogPost.title })
+    .from(blogPost)
+    .where(and(isNull(blogPost.deletedAt), or(eq(blogPost.id, id), eq(blogPost.slug, id))))
+    .get()
+  if (!post) {
+    return c.json({ error: 'Not found' }, 404)
+  }
+
+  return c.json({ post })
+})
+
 blogApp.get('/', async (c) => {
   const { db } = c.get('services')
   const rawStatus = c.req.query('status') ?? ''
@@ -311,6 +363,8 @@ blogApp.patch(
     if (data.seoTitle !== undefined) updates.seoTitle = data.seoTitle
     if (data.seoDescription !== undefined) updates.seoDescription = data.seoDescription
     if (data.status !== undefined) updates.status = data.status
+    if (data.canonicalUrl !== undefined) updates.canonicalUrl = data.canonicalUrl
+    if (data.ogImageUrl !== undefined) updates.ogImageUrl = data.ogImageUrl
 
     if (data.slug !== undefined && data.slug !== existing.slug) {
       await db
@@ -324,6 +378,18 @@ blogApp.patch(
     }
 
     await db.update(blogPost).set(updates).where(eq(blogPost.id, id))
+
+    if (data.contentBody !== undefined || data.title !== undefined) {
+      await db.insert(blogPostRevision).values({
+        authorId: c.get('user').id,
+        changeDescription: data.status === 'published' ? 'Published' : 'Draft save',
+        contentBody: (updates.contentBody as string | null) ?? existing.contentBody,
+        excerpt: (updates.excerpt as string | null) ?? existing.excerpt,
+        id: uuid(),
+        postId: id,
+        title: (updates.title as string) ?? existing.title,
+      })
+    }
 
     if (existing.status === 'published' || updates.status === 'published') {
       await c.get('services').cache.purgeBlog((updates.slug as string) ?? existing.slug)
@@ -443,6 +509,140 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
 
   return c.json({ success: true })
 })
+
+blogApp.get('/:id/revisions', async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+  const page = Math.max(1, Number(c.req.query('page') ?? 1))
+  const limit = 20
+  const offset = (page - 1) * limit
+
+  const revisions = await db
+    .select({
+      authorId: blogPostRevision.authorId,
+      changeDescription: blogPostRevision.changeDescription,
+      createdAt: blogPostRevision.createdAt,
+      id: blogPostRevision.id,
+      title: blogPostRevision.title,
+    })
+    .from(blogPostRevision)
+    .where(eq(blogPostRevision.postId, id))
+    .orderBy(desc(blogPostRevision.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+  return c.json({ revisions })
+})
+
+blogApp.post('/:id/revisions/:revId/restore', withRateLimit('blog-mutate'), async (c) => {
+  const { db } = c.get('services')
+  const postId = c.req.param('id')
+  const revId = c.req.param('revId')
+  const currentUser = c.get('user')
+
+  const revision = await db
+    .select()
+    .from(blogPostRevision)
+    .where(and(eq(blogPostRevision.id, revId), eq(blogPostRevision.postId, postId)))
+    .get()
+  if (!revision) {
+    return c.json({ error: 'Revision not found' }, 404)
+  }
+
+  const current = await db.select().from(blogPost).where(eq(blogPost.id, postId)).get()
+  if (!current) {
+    return c.json({ error: 'Post not found' }, 404)
+  }
+
+  await db.insert(blogPostRevision).values({
+    authorId: currentUser.id,
+    changeDescription: 'Auto-snapshot before restore',
+    contentBody: current.contentBody,
+    excerpt: current.excerpt,
+    id: uuid(),
+    postId,
+    title: current.title,
+  })
+
+  await db
+    .update(blogPost)
+    .set({
+      contentBody: revision.contentBody,
+      excerpt: revision.excerpt,
+      title: revision.title,
+      updatedAt: new Date(),
+    })
+    .where(eq(blogPost.id, postId))
+
+  await c.get('services').cache.purgeBlog(current.slug)
+
+  return c.json({ success: true })
+})
+
+blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (c) => {
+  const { url } = (await c.req.json()) as { url?: string }
+  if (!url || typeof url !== 'string') {
+    return c.json({ error: 'URL required' }, 400)
+  }
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
+      signal: AbortSignal.timeout(5000),
+    })
+    const html = await res.text()
+
+    const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
+    const ogDescription = extractMeta(html, 'og:description')
+    const ogImage = extractMeta(html, 'og:image')
+    const ogSiteName = extractMeta(html, 'og:site_name')
+
+    return c.json({
+      description: ogDescription,
+      image: ogImage,
+      siteName: ogSiteName,
+      title: ogTitle,
+    })
+  } catch {
+    return c.json({ error: 'Failed to fetch URL' }, 422)
+  }
+})
+
+function extractMeta(html: string, property: string): string | null {
+  const pattern = `<meta\\s+(?:property|name)=["']${property}["']\\s+content=["']([^"']*)["']`
+  const match = html.match(new RegExp(pattern, 'i'))
+  if (match?.[1]) return match[1]
+  const altPattern = `<meta\\s+content=["']([^"']*)["']\\s+(?:property|name)=["']${property}["']`
+  const altMatch = html.match(new RegExp(altPattern, 'i'))
+  return altMatch?.[1] ?? null
+}
+
+function extractTitle(html: string): string | null {
+  const match = html.match(/<title[^>]*>([^<]*)<\/title>/i)
+  return match?.[1]?.trim() ?? null
+}
+
+blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
+  const formData = await c.req.formData()
+  const file = formData.get('file')
+
+  if (!file || !(file instanceof File)) {
+    return c.json({ error: 'No file provided' }, 400)
+  }
+
+  const validationError = validateMediaUpload(file)
+  if (validationError) {
+    return c.json({ error: validationError }, 400)
+  }
+
+  const key = generateStorageKey(file.name)
+  const result = await c.get('services').storage.put(key, file.stream(), {
+    contentType: file.type,
+  })
+
+  return c.json({ key: result.key, url: result.url }, 201)
+})
+
 
 // ── Admin (admin only) ────────────────────────────────────────────────
 

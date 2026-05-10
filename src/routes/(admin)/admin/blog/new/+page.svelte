@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
+  import ArticleEditor from '$lib/editor/article-editor.svelte'
   import ImageUpload from '$lib/components/image-upload.svelte'
   import { createPostSchema } from '$lib/validators/blog'
 
@@ -17,6 +18,10 @@
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
+  }
+
+  function handleEditorUpdate(payload: { html: string; json: object; text: string }) {
+    contentBody = JSON.stringify(payload.json)
   }
 
   async function handleSubmit(e: SubmitEvent) {
@@ -62,6 +67,7 @@
       }
 
       const data = (await res.json()) as { id: string }
+      saving = false
       goto(`/admin/blog/${data.id}/edit`)
     } catch {
       serverError = 'Network error'
@@ -75,7 +81,7 @@
   <a href="/admin/blog" class="text-[13px] text-text-muted hover:text-text-primary">Back to list</a>
 </div>
 
-<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl" novalidate>
+<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-4xl" novalidate>
   {#if serverError}
     <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
   {/if}
@@ -133,15 +139,8 @@
   {/if}
 
   <div>
-    <label for="content" class="mb-2 block text-sm font-medium text-text-secondary">Content (Markdown)</label>
-    <textarea
-      id="content"
-      bind:value={contentBody}
-      rows="15"
-      aria-invalid={errors.contentBody ? 'true' : 'false'}
-      aria-describedby={errors.contentBody ? 'content-error' : undefined}
-      class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-    ></textarea>
+    <label class="mb-2 block text-sm font-medium text-text-secondary">Content</label>
+    <ArticleEditor onUpdate={handleEditorUpdate} />
     {#if errors.contentBody}
       <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
     {/if}

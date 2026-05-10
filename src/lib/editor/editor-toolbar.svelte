@@ -24,7 +24,11 @@
     Table,
     RemoveFormatting,
     Pilcrow,
+    FileDown,
+    FileUp,
   } from '@lucide/svelte'
+  import { exportToMarkdown } from './utils/markdown-export'
+  import { importMarkdown } from './utils/markdown-import'
 
   let { editor }: { editor: Editor | null } = $props()
 
@@ -44,16 +48,76 @@
 
   function handleImage() {
     if (!editor) return
-    const src = prompt('Enter image URL:')
-    if (!src) return
-    const alt = prompt('Alt text (optional):') || ''
-    const caption = prompt('Caption (optional):') || ''
-    editor.chain().focus().setFigureImage({ alt, caption, src }).run()
+    const input = document.createElement('input')
+    input.accept = 'image/*'
+    input.type = 'file'
+    input.addEventListener('change', () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const blobUrl = URL.createObjectURL(file)
+      editor.chain().focus().setFigureImage({
+        alt: file.name,
+        caption: '',
+        src: blobUrl,
+        uploadProgress: 0,
+        uploadState: 'uploading',
+      }).run()
+
+      const formData = new FormData()
+      formData.append('file', file)
+      fetch('/api/blog/upload', { body: formData, method: 'POST' })
+        .then((res) => {
+          if (!res.ok) throw new Error('Upload failed')
+          return res.json() as Promise<{ url: string }>
+        })
+        .then(({ url }) => {
+          URL.revokeObjectURL(blobUrl)
+          editor.commands.updateAttributes('figureImage', {
+            src: url,
+            uploadProgress: 100,
+            uploadState: 'done',
+          })
+        })
+        .catch(() => {
+          URL.revokeObjectURL(blobUrl)
+          editor.commands.updateAttributes('figureImage', {
+            uploadState: 'error',
+          })
+        })
+    })
+    input.click()
   }
 
   function handleTable() {
     if (!editor) return
     editor.chain().focus().insertTable({ cols: 3, rows: 3, withHeaderRow: true }).run()
+  }
+
+  function handleExportMd() {
+    if (!editor) return
+    const md = exportToMarkdown(editor.getHTML())
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.download = 'article.md'
+    a.href = url
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function handleImportMd() {
+    if (!editor) return
+    const input = document.createElement('input')
+    input.accept = '.md,.markdown,.txt'
+    input.type = 'file'
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const text = await file.text()
+      const html = await importMarkdown(text)
+      editor.commands.setContent(html)
+    })
+    input.click()
   }
 
   interface ToolbarAction {
@@ -135,6 +199,10 @@
     ],
     [
       { action: clearFormat, icon: RemoveFormatting, label: 'Clear Formatting' },
+    ],
+    [
+      { action: () => handleImportMd(), icon: FileUp, label: 'Import Markdown' },
+      { action: () => handleExportMd(), icon: FileDown, label: 'Export Markdown' },
     ],
   ]
 </script>

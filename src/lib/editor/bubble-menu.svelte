@@ -9,6 +9,7 @@
     Strikethrough,
     Link,
     Quote,
+    Eye,
   } from '@lucide/svelte'
   import type { Component } from 'svelte'
 
@@ -40,6 +41,19 @@
     editor.chain().focus().setLink({ href: url }).run()
   }
 
+  function fetchLinkPreview() {
+    if (!editor) return
+    const href = editor.getAttributes('link').href as string | undefined
+    if (!href) return
+    editor.chain().focus().setLinkPreviewCard({
+      description: '',
+      image: '',
+      siteName: '',
+      title: '',
+      url: href,
+    }).run()
+  }
+
   interface BubbleAction {
     icon: Component
     label: string
@@ -54,6 +68,7 @@
     { action: toggleStrike, icon: Strikethrough, isActive: isStrike, label: 'Strike' },
     { action: toggleBlockquote, icon: Quote, isActive: isBlockquote, label: 'Blockquote' },
     { action: () => handleLink(), icon: Link, isActive: isLink, label: 'Link' },
+    { action: () => fetchLinkPreview(), icon: Eye, label: 'Link Preview' },
   ]
 </script>
 

@@ -25,6 +25,8 @@
   import { RelatedArticle } from './extensions/related-article'
   import { CorrectionNote } from './extensions/correction-note'
   import { UpdateNote } from './extensions/update-note'
+  import { LinkPreviewCard } from './extensions/link-preview'
+  import { ArticleSectionEmbed } from './extensions/article-section-embed'
   import { SlashCommand } from './extensions/slash-command'
   import { SourceBlock } from './extensions/source-block'
   import { TimelineBlock } from './extensions/timeline-block'
@@ -102,8 +104,10 @@
       FactBox,
       FigureImage,
       ImageDrop,
+      LinkPreviewCard,
       PullQuote,
       RelatedArticle,
+      ArticleSectionEmbed,
       SlashCommand,
       SourceBlock,
       TimelineBlock,

@@ -43,6 +43,20 @@
       "when": 1776815791614,
       "tag": "0005_silky_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1778446869253,
+      "tag": "0006_curious_tusk",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1778446963945,
+      "tag": "0007_mighty_ricochet",
+      "breakpoints": true
     }
   ]
 }

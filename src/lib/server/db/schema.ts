@@ -21,6 +21,7 @@ export const blogPost = sqliteTable('blog_post', {
   authorId: text('author_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
+  canonicalUrl: text('canonical_url'),
   contentBody: text('content_body'),
   coverImageUrl: text('cover_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
@@ -31,6 +32,7 @@ export const blogPost = sqliteTable('blog_post', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => uuid()),
+  ogImageUrl: text('og_image_url'),
   publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
   seoDescription: text('seo_description'),
   seoTitle: text('seo_title'),
@@ -125,5 +127,30 @@ export const auditLog = sqliteTable('audit_log', {
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
 })
+
+export const blogPostRevision = sqliteTable(
+  'blog_post_revision',
+  {
+    authorId: text('author_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    changeDescription: text('change_description'),
+    contentBody: text('content_body'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    excerpt: text('excerpt'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    postId: text('post_id')
+      .notNull()
+      .references(() => blogPost.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+  },
+  (table) => ({
+    postIdIdx: index('blog_revision_post_id_idx').on(table.postId),
+  })
+)
 
 export * from './auth.schema'

@@ -67,11 +67,47 @@ function getSlashItems(_editor: Editor): SlashMenuItem[] {
     {
       aliases: ['image', 'photo', 'img'],
       command: (e) => {
-        const src = prompt('Enter image URL:')
-        if (!src) return
-        const alt = prompt('Alt text (optional):') || ''
-        const caption = prompt('Caption (optional):') || ''
-        e.chain().focus().setFigureImage({ alt, caption, src }).run()
+        const input = document.createElement('input')
+        input.accept = 'image/*'
+        input.type = 'file'
+        input.addEventListener('change', () => {
+          const file = input.files?.[0]
+          if (!file) return
+          const blobUrl = URL.createObjectURL(file)
+          e.chain()
+            .focus()
+            .setFigureImage({
+              alt: file.name,
+              caption: '',
+              src: blobUrl,
+              uploadProgress: 0,
+              uploadState: 'uploading',
+            })
+            .run()
+
+          const formData = new FormData()
+          formData.append('file', file)
+          fetch('/api/blog/upload', { body: formData, method: 'POST' })
+            .then((res) => {
+              if (!res.ok) throw new Error('Upload failed')
+              return res.json() as Promise<{ url: string }>
+            })
+            .then(({ url }) => {
+              URL.revokeObjectURL(blobUrl)
+              e.commands.updateAttributes('figureImage', {
+                src: url,
+                uploadProgress: 100,
+                uploadState: 'done',
+              })
+            })
+            .catch(() => {
+              URL.revokeObjectURL(blobUrl)
+              e.commands.updateAttributes('figureImage', {
+                uploadState: 'error',
+              })
+            })
+        })
+        input.click()
       },
       description: 'Image with caption and credit',
       label: 'Image',
@@ -87,14 +123,26 @@ function getSlashItems(_editor: Editor): SlashMenuItem[] {
       label: 'Embed',
     },
     {
-      aliases: ['related', 'link'],
+      aliases: ['related', 'link', 'article'],
       command: (e) => {
         const title = prompt('Article title:') || ''
         const slug = prompt('Article slug:') || ''
-        e.chain().focus().setRelatedArticle({ articleId: '', excerpt: '', slug, title }).run()
+        const excerpt = prompt('Excerpt (optional):') || ''
+        e.chain().focus().setRelatedArticle({ articleId: '', excerpt, slug, title }).run()
       },
       description: 'Related article card',
       label: 'Related Article',
+    },
+    {
+      aliases: ['embed-article', 'section'],
+      command: (e) => {
+        const articleTitle = prompt('Article title:') || ''
+        const articleSlug = prompt('Article slug:') || ''
+        const content = prompt('Content to embed:') || ''
+        e.chain().focus().setArticleSectionEmbed({ articleSlug, articleTitle, content }).run()
+      },
+      description: 'Embed a section from another article',
+      label: 'Article Section',
     },
     {
       aliases: ['correction', 'errata'],

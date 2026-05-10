@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
+  import ArticleEditor from '$lib/editor/article-editor.svelte'
   import ImageUpload from '$lib/components/image-upload.svelte'
   import { updatePostSchema } from '$lib/validators/blog'
 
@@ -28,6 +29,23 @@
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
   let serverError = $state('')
+
+  function parseContent(raw: string): object | string | null {
+    if (!raw) return null
+    const trimmed = raw.trim()
+    if (trimmed.startsWith('{')) {
+      try {
+        return JSON.parse(trimmed) as object
+      } catch {
+        return trimmed
+      }
+    }
+    return trimmed
+  }
+
+  function handleEditorUpdate(payload: { html: string; json: object; text: string }) {
+    contentBody = JSON.stringify(payload.json)
+  }
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
@@ -68,6 +86,7 @@
         saving = false
         return
       }
+      saving = false
     } catch {
       serverError = 'Network error'
       saving = false
@@ -89,7 +108,9 @@
   }
 
   async function archive() {
-    if (!confirm('Archive this post?')) {return}
+    if (!confirm('Archive this post?')) {
+      return
+    }
     await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
     goto('/admin/blog')
   }
@@ -111,7 +132,7 @@
   <a href="/admin/blog" class="text-[13px] text-text-muted hover:text-text-primary">Back to list</a>
 </div>
 
-<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-3xl" novalidate>
+<form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-4xl" novalidate>
   {#if serverError}
     <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
   {/if}
@@ -168,15 +189,8 @@
   {/if}
 
   <div>
-    <label for="content" class="mb-2 block text-sm font-medium text-text-secondary">Content (Markdown)</label>
-    <textarea
-      id="content"
-      bind:value={contentBody}
-      rows="15"
-      aria-invalid={errors.contentBody ? 'true' : 'false'}
-      aria-describedby={errors.contentBody ? 'content-error' : undefined}
-      class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] font-mono text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-    ></textarea>
+    <label class="mb-2 block text-sm font-medium text-text-secondary">Content</label>
+    <ArticleEditor content={parseContent(contentBody)} onUpdate={handleEditorUpdate} />
     {#if errors.contentBody}
       <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
     {/if}

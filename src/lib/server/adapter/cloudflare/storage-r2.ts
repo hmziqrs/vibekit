@@ -1,4 +1,10 @@
-import type { PutOptions, PutResult, StorageClient, StoredObject } from '../../services/types'
+import type {
+  ListResult,
+  PutOptions,
+  PutResult,
+  StorageClient,
+  StoredObject,
+} from '../../services/types'
 
 export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
   return {
@@ -15,6 +21,25 @@ export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
         contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
         etag: object.etag,
         size: object.size,
+      }
+    },
+
+    async list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult> {
+      const listed = await bucket.list({
+        cursor: cursor || undefined,
+        limit: limit ?? 100,
+        prefix: prefix || undefined,
+      })
+
+      return {
+        items: listed.objects.map((obj) => ({
+          contentType: obj.httpMetadata?.contentType ?? undefined,
+          key: obj.key,
+          lastModified: obj.uploaded.toISOString(),
+          size: obj.size,
+        })),
+        nextCursor: listed.truncated ? listed.cursor : undefined,
+        truncated: listed.truncated,
       }
     },
 
