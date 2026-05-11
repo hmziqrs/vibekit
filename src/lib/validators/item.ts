@@ -21,5 +21,4 @@ export const updateItemSchema = z.object({
   status: z.enum(['active', 'archived']).optional(),
 })
 
-export type CreateItemInput = z.infer<typeof createItemSchema>
 export type UpdateItemInput = z.infer<typeof updateItemSchema>

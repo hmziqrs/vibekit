@@ -12,5 +12,3 @@ export const contactSchema = z.object({
   name,
   subject: z.string().min(1, 'Subject is required').max(200, 'Subject is too long').trim(),
 })
-
-export type ContactInput = z.infer<typeof contactSchema>

@@ -5,9 +5,8 @@ import {
   withRateLimit,
 } from '$lib/server/hono/middleware'
 import type { Env, ProtectedEnv, Variables } from '$lib/server/hono/types'
-import { _reset } from '$lib/server/rate-limit'
 import { Hono } from 'hono'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 type TestUser = NonNullable<Variables['user']>
 type TestSession = NonNullable<Variables['session']>
@@ -119,13 +118,9 @@ describe(requireAdmin, () => {
 })
 
 describe(withRateLimit, () => {
-  beforeEach(() => {
-    _reset()
-  })
-
   it('allows requests within limit', async () => {
     const user = mockUser('user-1', 'user')
-    const limiter = withRateLimit('test', 5, 60_000)
+    const limiter = withRateLimit('test-middleware-allow', 5, 60_000)
 
     const app = new Hono<ProtectedEnv>()
       .use('*', async (c, next) => {

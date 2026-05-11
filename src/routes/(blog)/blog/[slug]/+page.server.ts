@@ -1,5 +1,5 @@
+import { renderAndSanitize } from '$lib/markdown'
 import { blogPost, blogPostSlugHistory } from '$lib/server/db/schema'
-import { renderAndSanitize } from '$lib/server/markdown'
 import { redirect } from '@sveltejs/kit'
 import { and, eq, isNull } from 'drizzle-orm'
 

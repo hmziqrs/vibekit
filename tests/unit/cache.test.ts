@@ -1,27 +1,5 @@
-import { blogCacheTags, purgeBlogCache, type CachePlatform } from '$lib/server/cache'
+import { purgeBlogCache, type CachePlatform } from '$lib/server/cache'
 import { describe, expect, it, vi } from 'vitest'
-
-describe(blogCacheTags, () => {
-  it('returns index tag only when no slug', () => {
-    expect(blogCacheTags()).toStrictEqual(['blog:index'])
-  })
-
-  it('includes slug tag when slug provided', () => {
-    expect(blogCacheTags('my-post')).toStrictEqual(['blog:index', 'blog:slug:my-post'])
-  })
-
-  it('includes tag tag when tag provided', () => {
-    expect(blogCacheTags(undefined, 'svelte')).toStrictEqual(['blog:index', 'blog:tag:svelte'])
-  })
-
-  it('includes all tags', () => {
-    expect(blogCacheTags('my-post', 'svelte')).toStrictEqual([
-      'blog:index',
-      'blog:slug:my-post',
-      'blog:tag:svelte',
-    ])
-  })
-})
 
 describe(purgeBlogCache, () => {
   it('does nothing when platform is undefined', async () => {

@@ -38,18 +38,3 @@ export async function initFirebase(configJson: string): Promise<boolean> {
     return false
   }
 }
-
-export async function trackEvent(
-  name: string,
-  params?: Record<string, string | number | boolean | undefined>
-) {
-  if (!analytics) {
-    return
-  }
-  const { logEvent } = await import('firebase/analytics')
-  logEvent(analytics, name, params)
-}
-
-export function isAnalyticsReady(): boolean {
-  return analytics !== null
-}

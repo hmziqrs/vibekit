@@ -1,4 +1,4 @@
-import { email, name, paginationSchema, password, slug } from '$lib/validators/common'
+import { email, name, password, slug } from '$lib/validators/common'
 import { describe, expect, it } from 'vitest'
 
 describe(email, () => {
@@ -60,32 +60,5 @@ describe(slug, () => {
 
   it('rejects trailing hyphens', () => {
     expect(slug.safeParse('hello-').success).toBeFalsy()
-  })
-})
-
-describe(paginationSchema, () => {
-  it('applies defaults for missing fields', () => {
-    const result = paginationSchema.parse({})
-    expect(result).toStrictEqual({ limit: 20, page: 1 })
-  })
-
-  it('coerces string inputs to numbers', () => {
-    const result = paginationSchema.parse({ limit: '50', page: '3' })
-    expect(result).toStrictEqual({ limit: 50, page: 3 })
-  })
-
-  it('clamps limit to max 100', () => {
-    const result = paginationSchema.safeParse({ limit: 200 })
-    expect(result.success).toBeFalsy()
-  })
-
-  it('clamps page to min 1', () => {
-    const result = paginationSchema.safeParse({ page: 0 })
-    expect(result.success).toBeFalsy()
-  })
-
-  it('clamps limit to min 1', () => {
-    const result = paginationSchema.safeParse({ limit: 0 })
-    expect(result.success).toBeFalsy()
   })
 })

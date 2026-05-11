@@ -26,10 +26,3 @@ export const displayName = z
   .trim()
   .optional()
   .nullable()
-
-export const paginationSchema = z.object({
-  limit: z.coerce.number().min(1).max(100).default(20),
-  page: z.coerce.number().min(1).default(1),
-})
-
-export type PaginationQuery = z.infer<typeof paginationSchema>

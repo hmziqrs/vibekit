@@ -1,4 +1,4 @@
-import { createPostSchema, publishPostSchema, updatePostSchema } from '$lib/validators/blog'
+import { createPostSchema, updatePostSchema } from '$lib/validators/blog'
 import { describe, expect, it } from 'vitest'
 
 describe(createPostSchema, () => {
@@ -58,18 +58,6 @@ describe(updatePostSchema, () => {
 
   it('rejects invalid slug', () => {
     const result = updatePostSchema.safeParse({ slug: 'INVALID' })
-    expect(result.success).toBeFalsy()
-  })
-})
-
-describe(publishPostSchema, () => {
-  it('validates valid input', () => {
-    const result = publishPostSchema.safeParse({ id: 'some-uuid' })
-    expect(result.success).toBeTruthy()
-  })
-
-  it('rejects empty id', () => {
-    const result = publishPostSchema.safeParse({ id: '' })
     expect(result.success).toBeFalsy()
   })
 })

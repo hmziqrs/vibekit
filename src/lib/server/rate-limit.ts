@@ -44,7 +44,3 @@ export function rateLimit(
 
   return { allowed: true, remaining: limit - entry.count }
 }
-
-export function _reset() {
-  store.clear()
-}

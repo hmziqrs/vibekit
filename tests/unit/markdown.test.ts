@@ -1,89 +1,57 @@
-import { renderAndSanitize, renderMarkdown, sanitizeHtml } from '$lib/server/markdown'
+import { renderAndSanitize } from '$lib/markdown'
 import { describe, expect, it } from 'vitest'
 
-describe(renderMarkdown, () => {
+describe(renderAndSanitize, () => {
   it('renders headings', () => {
-    const html = renderMarkdown('# Hello')
-    expect(html).toContain('<h1')
-    expect(html).toContain('Hello')
+    const result = renderAndSanitize('# Hello')
+    expect(result).toContain('<h1')
+    expect(result).toContain('Hello')
   })
 
   it('renders bold text', () => {
-    const html = renderMarkdown('**bold**')
-    expect(html).toContain('<strong>bold</strong>')
+    const result = renderAndSanitize('**bold**')
+    expect(result).toContain('<strong>bold</strong>')
   })
 
   it('renders italic text', () => {
-    const html = renderMarkdown('*italic*')
-    expect(html).toContain('<em>italic</em>')
+    const result = renderAndSanitize('*italic*')
+    expect(result).toContain('<em>italic</em>')
   })
 
   it('renders links', () => {
-    const html = renderMarkdown('[link](https://example.com)')
-    expect(html).toContain('<a href="https://example.com">link</a>')
+    const result = renderAndSanitize('[link](https://example.com)')
+    expect(result).toContain('<a href="https://example.com">link</a>')
   })
 
   it('renders code blocks', () => {
-    const html = renderMarkdown('```\ncode\n```')
-    expect(html).toContain('<pre><code>code\n</code></pre>')
+    const result = renderAndSanitize('```\ncode\n```')
+    expect(result).toContain('<pre><code>code\n</code></pre>')
   })
 
   it('renders inline code', () => {
-    const html = renderMarkdown('Use `code` here')
-    expect(html).toContain('<code>code</code>')
+    const result = renderAndSanitize('Use `code` here')
+    expect(result).toContain('<code>code</code>')
   })
 
   it('renders lists', () => {
-    const html = renderMarkdown('- item 1\n- item 2')
-    expect(html).toContain('<li>')
-    expect(html).toContain('item 1')
+    const result = renderAndSanitize('- item 1\n- item 2')
+    expect(result).toContain('<li>')
+    expect(result).toContain('item 1')
   })
 
   it('renders GFM tables', () => {
-    const html = renderMarkdown('| A | B |\n| --- | --- |\n| 1 | 2 |')
-    expect(html).toContain('<table>')
-    expect(html).toContain('<td>1</td>')
+    const result = renderAndSanitize('| A | B |\n| --- | --- |\n| 1 | 2 |')
+    expect(result).toContain('<table>')
+    expect(result).toContain('<td>1</td>')
   })
 
   it('renders GFM strikethrough', () => {
-    const html = renderMarkdown('~~deleted~~')
-    expect(html).toContain('<del>deleted</del>')
+    const result = renderAndSanitize('~~deleted~~')
+    expect(result).toContain('<del>deleted</del>')
   })
 
   it('returns empty string for empty input', () => {
-    expect(renderMarkdown('')).toBe('')
-  })
-})
-
-describe(sanitizeHtml, () => {
-  it('removes script tags', () => {
-    const result = sanitizeHtml('<p>Hello</p><script>alert("xss")</script>')
-    expect(result).not.toContain('<script')
-    expect(result).toContain('<p>Hello</p>')
-  })
-
-  it('removes event handlers', () => {
-    const result = sanitizeHtml('<p onclick="alert(1)">Hello</p>')
-    expect(result).not.toContain('onclick')
-  })
-
-  it('removes iframe tags', () => {
-    const result = sanitizeHtml('<iframe src="evil.com"></iframe><p>Safe</p>')
-    expect(result).not.toContain('<iframe')
-    expect(result).toContain('<p>Safe</p>')
-  })
-
-  it('preserves safe content', () => {
-    const html = '<h1>Title</h1><p>Paragraph with <a href="https://example.com">link</a></p>'
-    expect(sanitizeHtml(html)).toBe(html)
-  })
-})
-
-describe(renderAndSanitize, () => {
-  it('renders and sanitizes markdown', () => {
-    const result = renderAndSanitize('# Hello **world**')
-    expect(result).toContain('<h1')
-    expect(result).toContain('<strong>world</strong>')
+    expect(renderAndSanitize('')).toBe('')
   })
 
   it('sanitizes embedded scripts', () => {

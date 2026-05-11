@@ -1,7 +1,7 @@
 import { micromark } from 'micromark'
 import { gfm, gfmHtml } from 'micromark-extension-gfm'
 
-export function renderMarkdown(raw: string): string {
+function renderMarkdown(raw: string): string {
   if (!raw) {
     return ''
   }
@@ -12,7 +12,7 @@ export function renderMarkdown(raw: string): string {
   })
 }
 
-export function sanitizeHtml(html: string): string {
+function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')

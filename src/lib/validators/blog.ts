@@ -47,10 +47,5 @@ export const updatePostSchema = z.object({
   title: z.string().min(1).max(200).trim().optional(),
 })
 
-export const publishPostSchema = z.object({
-  id: z.string().min(1, 'Post ID is required'),
-})
-
 export type CreatePostInput = z.infer<typeof createPostSchema>
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
-export type PublishPostInput = z.infer<typeof publishPostSchema>
