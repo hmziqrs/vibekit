@@ -16,6 +16,10 @@ export const user = sqliteTable('user', {
   image: text('image'),
   lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
   name: text('name').notNull(),
+  onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' })
+    .default(false)
+    .notNull(),
+  onboardingStep: integer('onboarding_step').default(0),
   role: text({ enum: ['user', 'admin'] }).default('user'),
   status: text({ enum: ['active', 'suspended', 'deactivated'] }).default('active'),
   timezone: text('timezone'),

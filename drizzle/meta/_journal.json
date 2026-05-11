@@ -106,6 +106,13 @@
       "when": 1778531172496,
       "tag": "0014_eminent_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1778532701572,
+      "tag": "0015_free_xorn",
+      "breakpoints": true
     }
   ]
 }

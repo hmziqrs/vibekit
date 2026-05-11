@@ -113,6 +113,16 @@ export const authConfig = {
         required: false,
         type: 'date',
       },
+      onboardingCompleted: {
+        input: false,
+        required: false,
+        type: 'boolean',
+      },
+      onboardingStep: {
+        input: false,
+        required: false,
+        type: 'number',
+      },
       role: {
         defaultValue: 'user',
         input: false,

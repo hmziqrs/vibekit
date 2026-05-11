@@ -13,6 +13,8 @@ export interface AuthContext {
     id: string
     image?: string | null
     name: string
+    onboardingCompleted?: boolean
+    onboardingStep?: number | null
     role?: string
     status?: 'active' | 'suspended' | 'deactivated' | null
     timezone?: string | null

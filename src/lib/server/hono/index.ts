@@ -475,6 +475,46 @@ protectedApp.patch('/account/deactivate', async (c) => {
   return c.json({ success: true })
 })
 
+// ── Onboarding ───────────────────────────────────────────────────────
+
+protectedApp.get('/user/onboarding', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const [row] = await db
+    .select({
+      onboardingCompleted: user.onboardingCompleted,
+      onboardingStep: user.onboardingStep,
+    })
+    .from(user)
+    .where(eq(user.id, userId))
+
+  return c.json({
+    completed: row?.onboardingCompleted ?? false,
+    step: row?.onboardingStep ?? 0,
+  })
+})
+
+protectedApp.post('/user/onboarding', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const body = await c.req.json<{ completed?: boolean; step?: number }>()
+
+  const updates: Record<string, unknown> = {}
+  if (typeof body.step === 'number') {
+    updates.onboardingStep = Math.max(0, Math.min(3, body.step))
+  }
+  if (typeof body.completed === 'boolean') {
+    updates.onboardingCompleted = body.completed
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db.update(user).set(updates).where(eq(user.id, userId))
+  }
+
+  return c.json({ success: true })
+})
+
 // ── Public Account Reactivation ──────────────────────────────────────
 
 app.post('/api/account/reactivate', async (c) => {

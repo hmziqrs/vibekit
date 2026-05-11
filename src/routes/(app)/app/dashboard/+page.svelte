@@ -2,10 +2,12 @@
   import { getContext } from 'svelte'
   import type { AuthContext } from '$lib/auth.svelte'
   import { createQuery } from '@tanstack/svelte-query'
+  import { page } from '$app/state'
   import type { ItemData } from '$lib/types'
 
   const auth = getContext<AuthContext>('auth')
   const userName = $derived(auth.user?.name ?? 'User')
+  let showWelcomeBanner = $state(page.url.searchParams.get('onboarded') === 'true')
 
   const itemsQuery = createQuery(() => ({
     queryFn: async (): Promise<ItemData[]> => {
@@ -27,6 +29,25 @@
 </script>
 
 <div class="mx-auto max-w-5xl">
+  <!-- Onboarding Welcome Banner -->
+  {#if showWelcomeBanner}
+    <div class="mb-6 flex items-center justify-between rounded-xl border border-brand/20 bg-brand/5 px-5 py-3">
+      <p class="text-[14px] text-text-primary">
+        Your account is set up! Start by creating your first item.
+      </p>
+      <button
+        onclick={() => (showWelcomeBanner = false)}
+        class="ml-4 text-text-muted transition-colors hover:text-text-primary"
+        aria-label="Dismiss"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  {/if}
+
   <!-- Welcome -->
   <div class="mb-8">
     <h1 class="text-2xl font-semibold text-text-primary">

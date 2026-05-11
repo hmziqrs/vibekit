@@ -151,18 +151,20 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
         try {
           const resClone = response.clone()
           const resBody: Record<string, unknown> = await resClone.json()
-          const user = resBody.user as Record<string, unknown> | undefined
-          userId = typeof user?.id === 'string' ? user.id : undefined
+          const resUser = resBody.user as Record<string, unknown> | undefined
+          userId = typeof resUser?.id === 'string' ? resUser.id : undefined
         } catch {
-          // Response parsing failed — still log without userId
+          // Response parsing failed — skip security event without userId
         }
 
-        await writeSecurityEvent(services.db, {
-          eventType: 'login',
-          ipAddress: requestIP,
-          userAgent: requestUA ?? undefined,
-          userId,
-        })
+        if (userId) {
+          await writeSecurityEvent(services.db, {
+            eventType: 'login',
+            ipAddress: requestIP,
+            userAgent: requestUA ?? undefined,
+            userId,
+          })
+        }
 
         // New device detection — compare IP against known sessions
         if (userId) {
@@ -300,6 +302,18 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
     if (!user) {
       return new Response(null, {
         headers: { Location: `/login?next=${encodeURIComponent(pathname)}` },
+        status: 302,
+      })
+    }
+    // Redirect to onboarding if not completed (skip for admins and onboarding page itself)
+    if (
+      !user.onboardingCompleted &&
+      user.role !== 'admin' &&
+      pathname !== '/app/onboarding' &&
+      !pathname.startsWith('/api/')
+    ) {
+      return new Response(null, {
+        headers: { Location: '/app/onboarding' },
         status: 302,
       })
     }
