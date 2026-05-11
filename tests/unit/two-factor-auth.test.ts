@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { authConfig } from '$lib/server/auth'
 import { describe, expect, it } from 'vitest'
 
 describe('two-factor auth configuration', () => {
