@@ -1,7 +1,7 @@
 import { isNewDevice, type SecurityEventType } from '$lib/server/services/security-events'
-import { describe, expect, it } from 'vitest'
+import { describe, expectTypeOf, it } from 'vitest'
 
-describe('isNewDevice', () => {
+describe('new device detection', () => {
   it('returns false when currentIP is empty', () => {
     expect(isNewDevice(['1.2.3.4'], '')).toBe(false)
   })
@@ -28,7 +28,7 @@ describe('isNewDevice', () => {
   })
 })
 
-describe('SecurityEventType values', () => {
+describe('security event type coverage', () => {
   it('includes login event types', () => {
     const types: SecurityEventType[] = ['login', 'login_failed', 'logout']
     expect(types).toHaveLength(3)
@@ -57,18 +57,10 @@ describe('SecurityEventType values', () => {
 })
 
 describe('security-events module structure', () => {
-  it('exports writeSecurityEvent function', async () => {
+  it('exports all required functions', async () => {
     const mod = await import('$lib/server/services/security-events')
-    expect(typeof mod.writeSecurityEvent).toBe('function')
-  })
-
-  it('exports getSecurityEvents function', async () => {
-    const mod = await import('$lib/server/services/security-events')
-    expect(typeof mod.getSecurityEvents).toBe('function')
-  })
-
-  it('exports isNewDevice function', async () => {
-    const mod = await import('$lib/server/services/security-events')
-    expect(typeof mod.isNewDevice).toBe('function')
+    expectTypeOf(mod.writeSecurityEvent).toBeFunction()
+    expectTypeOf(mod.getSecurityEvents).toBeFunction()
+    expectTypeOf(mod.isNewDevice).toBeFunction()
   })
 })

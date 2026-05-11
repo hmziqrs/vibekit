@@ -197,14 +197,18 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   }
 
   // Track social login, 2FA, and password change events
-  const securityEventMap: Record<string, SecurityEventType> = {
-    'change-password': 'password_change',
-    'sign-in/social': 'login',
-    'two-factor/disable': 'two_factor_disabled',
-    'two-factor/enable': 'two_factor_enabled',
-  }
-  for (const [path, eventType] of Object.entries(securityEventMap)) {
-    if (pathname === `/api/auth/${path}` && event.request.method === 'POST') {
+  if (event.request.method === 'POST') {
+    const trackedPaths: Record<string, SecurityEventType> = {
+      'change-password': 'password_change',
+      'sign-in/social': 'login',
+      'two-factor/disable': 'two_factor_disabled',
+      'two-factor/enable': 'two_factor_enabled',
+    }
+    const matchedEntry = Object.entries(trackedPaths).find(
+      ([path]) => pathname === `/api/auth/${path}`
+    )
+    if (matchedEntry) {
+      const [, eventType] = matchedEntry
       const response = await svelteKitHandler({ auth, building, event, resolve })
       if (response.status < 400) {
         const userId = event.locals.user?.id
