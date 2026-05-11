@@ -441,13 +441,26 @@
     },
   }))
 
-  function handleDeleteAccount() {
-    if (deleteConfirmText !== 'DELETE') {return}
-    alert(
-      'Account deletion is not yet implemented. This would permanently delete your account and all data.'
-    )
-    showDeleteConfirm = false
-    deleteConfirmText = ''
+  let deleteLoading = $state(false)
+  let deleteError = $state('')
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'DELETE') return
+    deleteLoading = true
+    deleteError = ''
+    try {
+      const res = await fetch('/api/account', { method: 'DELETE' })
+      if (!res.ok) {
+        deleteError = 'Failed to delete account. Please try again.'
+        return
+      }
+      await authClient.signOut()
+      window.location.href = '/'
+    } catch {
+      deleteError = 'Something went wrong.'
+    } finally {
+      deleteLoading = false
+    }
   }
 </script>
 
@@ -972,6 +985,9 @@
         <p class="text-[13px] text-text-muted">
           Type <span class="font-mono font-medium text-text-primary">DELETE</span> to confirm.
         </p>
+        {#if deleteError}
+          <p class="text-[13px] text-destructive">{deleteError}</p>
+        {/if}
         <input
           type="text"
           bind:value={deleteConfirmText}
@@ -981,15 +997,16 @@
         <div class="flex gap-2">
           <button
             onclick={handleDeleteAccount}
-            disabled={deleteConfirmText !== 'DELETE'}
+            disabled={deleteConfirmText !== 'DELETE' || deleteLoading}
             class="rounded-lg bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition-colors hover:opacity-90 disabled:opacity-50"
           >
-            Confirm Delete
+            {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
           </button>
           <button
             onclick={() => {
               showDeleteConfirm = false
               deleteConfirmText = ''
+              deleteError = ''
             }}
             class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
           >

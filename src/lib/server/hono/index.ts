@@ -260,6 +260,57 @@ protectedApp.get('/security-events', async (c) => {
   return c.json({ events })
 })
 
+// ── Avatar Upload ─────────────────────────────────────────────────────
+
+const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024
+
+protectedApp.post('/upload-avatar', async (c) => {
+  const { storage } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const formData = await c.req.formData()
+  const file = formData.get('avatar')
+  if (!file || !(file instanceof File)) {
+    throw new BadRequestError('No file provided')
+  }
+
+  if (!AVATAR_TYPES.has(file.type)) {
+    throw new BadRequestError('Invalid file type. Allowed: JPEG, PNG, WebP.')
+  }
+  if (file.size > MAX_AVATAR_SIZE) {
+    throw new BadRequestError('File too large. Max: 2MB.')
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const key = `avatars/${userId}.${ext}`
+  const buffer = await file.arrayBuffer()
+
+  await storage.put(key, new Uint8Array(buffer), {
+    cacheControl: 'public, max-age=31536000',
+    contentType: file.type,
+  })
+
+  const imageUrl = `/cdn/blog/${key}`
+
+  // Update user image via direct DB update
+  const { db } = c.get('services')
+  await db.update(user).set({ image: imageUrl }).where(eq(user.id, userId))
+
+  return c.json({ image: imageUrl })
+})
+
+// ── Account Deletion ──────────────────────────────────────────────────
+
+protectedApp.delete('/account', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  await db.update(user).set({ deletedAt: new Date() }).where(eq(user.id, userId))
+
+  return c.json({ success: true })
+})
+
 // ── Blog (admin only) ────────────────────────────────────────────────
 
 const blogApp = new Hono<ProtectedEnv>().use('*', requireAdmin)

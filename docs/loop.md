@@ -103,7 +103,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Input sanitization & validation (DOMPurify for all HTML rendering, SQL injection prevention audit, XSS surface review, upload file type validation)
 
 #### Core User Features
-- [ ] User profile & settings (avatar upload, display name, bio, timezone, language preference, notification preferences, delete account flow)
+- [x] User profile & settings (avatar upload, display name, bio, timezone, language preference, notification preferences, delete account flow)
 - [ ] User account lifecycle (email verification flow, account deactivation vs deletion, data retention policy, re-enable flow, grace period before permanent deletion)
 - [ ] User banning system (temporary/permanent ban with reason, appeal flow, automatic content unpublish on ban, ban evasion detection via email/IP)
 - [ ] User data export / portability (one-click full data download as JSON/ZIP, GDPR compliance, scheduled exports for large datasets)

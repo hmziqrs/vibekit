@@ -6,17 +6,46 @@
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
   import { extractFormError } from '$lib/form-utils'
+  import { updateProfileSchema } from '$lib/validators/profile'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
-  const nameSchema = z.object({
-    name: z.string().min(1, 'Name is required').max(100, 'Name must be at most 100 characters').trim(),
-  })
-  type NameInput = z.infer<typeof nameSchema>
+  type ProfileInput = z.infer<typeof updateProfileSchema>
 
   const auth = getContext<AuthContext>('auth')
 
   let isEditing = $state(false)
   let successMessage = $state('')
+  let avatarUploading = $state(false)
+  let avatarError = $state('')
+
+  const commonTimezones = [
+    'UTC',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Toronto',
+    'America/Vancouver',
+    'America/Sao_Paulo',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Berlin',
+    'Europe/Madrid',
+    'Europe/Amsterdam',
+    'Europe/Rome',
+    'Europe/Stockholm',
+    'Europe/Warsaw',
+    'Asia/Tokyo',
+    'Asia/Shanghai',
+    'Asia/Hong_Kong',
+    'Asia/Singapore',
+    'Asia/Kolkata',
+    'Asia/Dubai',
+    'Asia/Seoul',
+    'Australia/Sydney',
+    'Australia/Melbourne',
+    'Pacific/Auckland',
+  ]
 
   function startEditing() {
     successMessage = ''
@@ -31,16 +60,24 @@
 
   const form = createForm(() => ({
     defaultValues: {
+      bio: (auth.user?.bio as string | null | undefined) ?? '',
+      displayName: (auth.user?.displayName as string | null | undefined) ?? '',
       name: auth.user?.name || '',
+      timezone: (auth.user?.timezone as string | null | undefined) ?? '',
     },
-    onSubmit: async ({ value }: { value: NameInput }) => {
+    onSubmit: async ({ value }: { value: ProfileInput }) => {
       try {
-        const res = await authClient.updateUser({ name: value.name.trim() })
+        const res = await authClient.updateUser({
+          bio: value.bio || null,
+          displayName: value.displayName || null,
+          name: value.name.trim(),
+          timezone: value.timezone || null,
+        })
         if (res.error) {
-          return { form: res.error.message || 'Failed to update name' }
+          return { form: res.error.message || 'Failed to update profile' }
         }
         await invalidate('app:auth')
-        successMessage = 'Name updated successfully'
+        successMessage = 'Profile updated successfully'
         isEditing = false
         return null
       } catch {
@@ -48,9 +85,35 @@
       }
     },
     validators: {
-      onSubmit: nameSchema,
+      onSubmit: updateProfileSchema,
     },
   }))
+
+  async function handleAvatarUpload(event: Event) {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    avatarError = ''
+    avatarUploading = true
+
+    try {
+      const formData = new FormData()
+      formData.append('avatar', file)
+      const res = await fetch('/api/upload-avatar', { body: formData, method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        avatarError = data.error?.message ?? 'Upload failed'
+        return
+      }
+      await invalidate('app:auth')
+    } catch {
+      avatarError = 'Failed to upload avatar'
+    } finally {
+      avatarUploading = false
+      input.value = ''
+    }
+  }
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -66,45 +129,73 @@
   <p class="mt-1 text-[14px] text-text-muted">Manage your account information.</p>
 
   <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
-    <!-- Avatar placeholder -->
+    <!-- Avatar -->
     <div class="mb-6 flex items-center gap-4">
-      <div
-        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/6 text-xl font-semibold text-text-secondary"
-      >
-        {auth.user?.name?.charAt(0)?.toUpperCase() || 'U'}
+      <div class="group relative">
+        {#if auth.user?.image}
+          <img
+            src={auth.user.image}
+            alt="Avatar"
+            class="h-16 w-16 rounded-full object-cover ring-2 ring-white/10"
+          />
+        {:else}
+          <div
+            class="flex h-16 w-16 items-center justify-center rounded-full bg-white/6 text-xl font-semibold text-text-secondary"
+          >
+            {auth.user?.name?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+        {/if}
+        <label
+          class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+        >
+          {#if avatarUploading}
+            <span class="text-[11px] text-white">...</span>
+          {:else}
+            <span class="text-[11px] text-white">Change</span>
+          {/if}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="hidden"
+            onchange={handleAvatarUpload}
+            disabled={avatarUploading}
+          />
+        </label>
       </div>
       <div>
         <p class="text-[15px] font-medium text-text-primary">
-          {auth.user?.name || 'User'}
+          {auth.user?.displayName || auth.user?.name || 'User'}
         </p>
         <p class="text-[13px] text-text-muted">{auth.user?.email || ''}</p>
       </div>
     </div>
 
-    <!-- Role -->
-    <div class="mb-6 rounded-lg border border-white/6 bg-surface-elevated p-4">
-      <p class="text-[11px] uppercase tracking-wider text-text-subtle">Role</p>
-      <p class="mt-1 text-[14px] font-medium text-text-primary">
-        {auth.user?.name ? 'Member' : 'User'}
-      </p>
+    {#if avatarError}
+      <p class="mb-4 text-[13px] text-destructive">{avatarError}</p>
+    {/if}
+
+    <!-- Role & Member Since (read-only) -->
+    <div class="mb-6 grid grid-cols-2 gap-4">
+      <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
+        <p class="text-[11px] uppercase tracking-wider text-text-subtle">Role</p>
+        <p class="mt-1 text-[14px] font-medium capitalize text-text-primary">
+          {auth.user?.role || 'user'}
+        </p>
+      </div>
+      <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
+        <p class="text-[11px] uppercase tracking-wider text-text-subtle">Member Since</p>
+        <p class="mt-1 text-[14px] font-medium text-text-primary">
+          {auth.user?.createdAt ? formatDate(String(auth.user.createdAt)) : 'N/A'}
+        </p>
+      </div>
     </div>
 
-    <!-- Member since -->
-    <div class="mb-6 rounded-lg border border-white/6 bg-surface-elevated p-4">
-      <p class="text-[11px] uppercase tracking-wider text-text-subtle">Member Since</p>
-      <p class="mt-1 text-[14px] font-medium text-text-primary">
-        {auth.user?.createdAt
-          ? formatDate(String(auth.user.createdAt))
-          : 'N/A'}
-      </p>
-    </div>
-
-    <!-- Name section -->
+    <!-- Profile editing -->
     <div class="border-t border-white/6 pt-6">
       <div class="mb-4 flex items-center justify-between">
         <div>
-          <h2 class="text-[15px] font-medium text-text-primary">Display Name</h2>
-          <p class="text-[13px] text-text-muted">This is your public display name.</p>
+          <h2 class="text-[15px] font-medium text-text-primary">Profile Details</h2>
+          <p class="text-[13px] text-text-muted">Your name, bio, and preferences.</p>
         </div>
         {#if !isEditing}
           <button
@@ -117,15 +208,81 @@
       </div>
 
       {#if isEditing}
-        <form onsubmit={form.handleSubmit} class="space-y-4" novalidate>
+        <form
+          onsubmit={(e: SubmitEvent) => {
+            e.preventDefault()
+            form.handleSubmit()
+          }}
+          class="space-y-4"
+          novalidate
+        >
           <form.Field name="name">
+            {#snippet children(field)}
+              <TanstackField {field} label="Name" maxlength={100} placeholder="Enter your name" />
+            {/snippet}
+          </form.Field>
+
+          <form.Field name="displayName">
             {#snippet children(field)}
               <TanstackField
                 {field}
-                label="Name"
+                label="Display Name"
                 maxlength={100}
-                placeholder="Enter your name"
+                placeholder="Public display name (optional)"
               />
+            {/snippet}
+          </form.Field>
+
+          <form.Field name="bio">
+            {#snippet children(field)}
+              <div>
+                <label
+                  for={field.name}
+                  class="mb-1.5 block text-[13px] font-medium text-text-secondary"
+                >
+                  Bio
+                </label>
+                <textarea
+                  id={field.name}
+                  name={field.name}
+                  maxlength={500}
+                  rows={3}
+                  placeholder="Tell us about yourself (optional)"
+                  value={field.state.value ?? ''}
+                  onblur={() => field.handleBlur()}
+                  oninput={(e) => field.handleChange((e.target as HTMLTextAreaElement).value)}
+                  class="w-full rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                ></textarea>
+                {#if field.state.meta.errors.length > 0}
+                  <p class="mt-1 text-[12px] text-destructive">{field.state.meta.errors[0]}</p>
+                {/if}
+              </div>
+            {/snippet}
+          </form.Field>
+
+          <form.Field name="timezone">
+            {#snippet children(field)}
+              <div>
+                <label
+                  for={field.name}
+                  class="mb-1.5 block text-[13px] font-medium text-text-secondary"
+                >
+                  Timezone
+                </label>
+                <select
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value ?? ''}
+                  onblur={() => field.handleBlur()}
+                  onchange={(e) => field.handleChange((e.target as HTMLSelectElement).value)}
+                  class="w-full rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                >
+                  <option value="">Select timezone (optional)</option>
+                  {#each commonTimezones as tz}
+                    <option value={tz}>{tz}</option>
+                  {/each}
+                </select>
+              </div>
             {/snippet}
           </form.Field>
 
@@ -163,7 +320,31 @@
           </form.Subscribe>
         </form>
       {:else}
-        <p class="text-[14px] text-text-primary">{auth.user?.name || 'No name set'}</p>
+        <!-- Read-only display -->
+        <div class="space-y-4">
+          <div>
+            <p class="text-[12px] uppercase tracking-wider text-text-subtle">Name</p>
+            <p class="mt-1 text-[14px] text-text-primary">{auth.user?.name || 'No name set'}</p>
+          </div>
+          <div>
+            <p class="text-[12px] uppercase tracking-wider text-text-subtle">Display Name</p>
+            <p class="mt-1 text-[14px] text-text-primary">
+              {auth.user?.displayName || 'Not set'}
+            </p>
+          </div>
+          <div>
+            <p class="text-[12px] uppercase tracking-wider text-text-subtle">Bio</p>
+            <p class="mt-1 text-[14px] text-text-primary">
+              {auth.user?.bio || 'Not set'}
+            </p>
+          </div>
+          <div>
+            <p class="text-[12px] uppercase tracking-wider text-text-subtle">Timezone</p>
+            <p class="mt-1 text-[14px] text-text-primary">
+              {auth.user?.timezone || 'Not set'}
+            </p>
+          </div>
+        </div>
       {/if}
     </div>
 

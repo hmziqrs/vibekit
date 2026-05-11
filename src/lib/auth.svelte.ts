@@ -3,12 +3,15 @@
 
 export interface AuthContext {
   user: {
-    id: string
-    name: string
-    email: string
-    role?: string
-    image?: string | null
+    bio?: string | null
     createdAt?: string
+    displayName?: string | null
+    email: string
+    id: string
+    image?: string | null
+    name: string
+    role?: string
+    timezone?: string | null
   } | null
   isPending: boolean
   isAdmin: boolean

@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const user = sqliteTable('user', {
+  bio: text('bio'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
@@ -15,6 +16,7 @@ export const user = sqliteTable('user', {
   name: text('name').notNull(),
   role: text({ enum: ['user', 'admin'] }).default('user'),
   status: text({ enum: ['active', 'suspended'] }).default('active'),
+  timezone: text('timezone'),
   twoFactorEnabled: integer('two_factor_enabled', { mode: 'boolean' }).default(false),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

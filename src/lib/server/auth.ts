@@ -83,13 +83,18 @@ export const authConfig = {
   },
   user: {
     additionalFields: {
+      bio: {
+        input: true,
+        required: false,
+        type: 'string',
+      },
       deletedAt: {
         input: false,
         required: false,
         type: 'date',
       },
       displayName: {
-        input: false,
+        input: true,
         required: false,
         type: 'string',
       },
@@ -109,6 +114,11 @@ export const authConfig = {
         input: false,
         required: false,
         type: ['active', 'suspended'],
+      },
+      timezone: {
+        input: true,
+        required: false,
+        type: 'string',
       },
     },
   },
