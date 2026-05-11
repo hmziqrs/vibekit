@@ -445,6 +445,8 @@
   let deleteError = $state('')
   let deactivateLoading = $state(false)
   let deactivateError = $state('')
+  let exportLoading = $state(false)
+  let exportError = $state('')
 
   async function handleDeleteAccount() {
     if (deleteConfirmText !== 'DELETE') return
@@ -462,6 +464,34 @@
       deleteError = 'Something went wrong.'
     } finally {
       deleteLoading = false
+    }
+  }
+
+  async function handleExportData() {
+    exportLoading = true
+    exportError = ''
+    try {
+      const res = await fetch('/api/account/export')
+      if (!res.ok) {
+        exportError =
+          res.status === 429
+            ? 'Please wait before requesting another export.'
+            : 'Failed to export data. Please try again.'
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = disposition.match(/filename="(.+)"/)
+      a.download = match?.[1] ?? 'vibekit-export.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      exportError = 'Something went wrong.'
+    } finally {
+      exportLoading = false
     }
   }
 
@@ -984,6 +1014,24 @@
         {passkeyLoading ? 'Registering...' : 'Add Passkey'}
       </button>
     </div>
+  </div>
+
+  <!-- Export Data -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Export Your Data</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Download a copy of your personal data including profile, sessions, items, and activity log.
+    </p>
+    {#if exportError}
+      <p class="mt-2 text-[13px] text-destructive">{exportError}</p>
+    {/if}
+    <button
+      onclick={handleExportData}
+      disabled={exportLoading}
+      class="mt-4 rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+    >
+      {exportLoading ? 'Preparing export...' : 'Download My Data'}
+    </button>
   </div>
 
   <!-- Deactivate Account -->

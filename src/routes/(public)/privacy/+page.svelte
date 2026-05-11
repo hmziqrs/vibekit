@@ -52,6 +52,15 @@
         out via the project's GitHub repository or contact the maintainers directly.
       </p>
 
+      <h2 class="text-text-primary">Data Portability</h2>
+      <p>
+        You have the right to download a copy of all personal data we hold about you. This includes
+        your profile information, connected accounts, session history, items, and activity logs.
+        You can export your data at any time from
+        <a href="/app/settings" class="text-brand hover:underline">Account Settings</a>.
+        The export is provided as a JSON file and is rate-limited to one download per hour.
+      </p>
+
       <h2 class="text-text-primary">Data Retention</h2>
       <p>
         When you delete your account, your data is soft-deleted and retained for a 30-day grace

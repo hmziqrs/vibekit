@@ -1,5 +1,9 @@
 import { writeAuditLog } from '$lib/server/audit'
-import { account as accountTable, session as sessionTable } from '$lib/server/db/auth.schema'
+import {
+  account as accountTable,
+  passkey,
+  session as sessionTable,
+} from '$lib/server/db/auth.schema'
 import {
   blogPost,
   blogPostRevision,
@@ -8,6 +12,7 @@ import {
   blogTag,
   contactSubmission,
   item,
+  auditLog,
   securityEvent,
   user,
 } from '$lib/server/db/schema'
@@ -321,6 +326,129 @@ protectedApp.post('/upload-avatar', async (c) => {
   await db.update(user).set({ image: imageUrl }).where(eq(user.id, userId))
 
   return c.json({ image: imageUrl })
+})
+
+// ── Account Data Export ────────────────────────────────────────────────
+
+protectedApp.get('/account/export', withRateLimit('data-export', 1, 3_600_000), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId, email } = c.get('user')
+
+  const [userData, accounts, sessions, passkeys, items, auditLogs, securityEvents, submissions] =
+    await Promise.all([
+      db
+        .select({
+          bio: user.bio,
+          createdAt: user.createdAt,
+          displayName: user.displayName,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          id: user.id,
+          image: user.image,
+          name: user.name,
+          role: user.role,
+          status: user.status,
+          timezone: user.timezone,
+          updatedAt: user.updatedAt,
+        })
+        .from(user)
+        .where(eq(user.id, userId))
+        .get(),
+      db
+        .select({
+          accountId: accountTable.accountId,
+          createdAt: accountTable.createdAt,
+          providerId: accountTable.providerId,
+        })
+        .from(accountTable)
+        .where(eq(accountTable.userId, userId)),
+      db
+        .select({
+          createdAt: sessionTable.createdAt,
+          expiresAt: sessionTable.expiresAt,
+          ipAddress: sessionTable.ipAddress,
+          userAgent: sessionTable.userAgent,
+        })
+        .from(sessionTable)
+        .where(eq(sessionTable.userId, userId)),
+      db
+        .select({
+          backedUp: passkey.backedUp,
+          createdAt: passkey.createdAt,
+          deviceType: passkey.deviceType,
+          name: passkey.name,
+        })
+        .from(passkey)
+        .where(eq(passkey.userId, userId)),
+      db
+        .select({
+          createdAt: item.createdAt,
+          description: item.description,
+          id: item.id,
+          name: item.name,
+          status: item.status,
+          updatedAt: item.updatedAt,
+        })
+        .from(item)
+        .where(and(eq(item.userId, userId), isNull(item.deletedAt))),
+      db
+        .select({
+          action: auditLog.action,
+          createdAt: auditLog.createdAt,
+          entityId: auditLog.entityId,
+          entityType: auditLog.entityType,
+          metadata: auditLog.metadata,
+        })
+        .from(auditLog)
+        .where(eq(auditLog.userId, userId))
+        .orderBy(desc(auditLog.createdAt))
+        .limit(500),
+      db
+        .select({
+          createdAt: securityEvent.createdAt,
+          eventType: securityEvent.eventType,
+          ipAddress: securityEvent.ipAddress,
+          metadata: securityEvent.metadata,
+        })
+        .from(securityEvent)
+        .where(eq(securityEvent.userId, userId))
+        .orderBy(desc(securityEvent.createdAt))
+        .limit(500),
+      db
+        .select({
+          createdAt: contactSubmission.createdAt,
+          message: contactSubmission.message,
+          name: contactSubmission.name,
+          subject: contactSubmission.subject,
+          type: contactSubmission.type,
+        })
+        .from(contactSubmission)
+        .where(eq(contactSubmission.email, email ?? '')),
+    ])
+
+  const exportData = {
+    accounts,
+    auditLog: auditLogs,
+    contactSubmissions: submissions,
+    exportedAt: new Date().toISOString(),
+    items,
+    passkeys,
+    securityEvents,
+    sessions,
+    user: userData,
+    version: '1.0',
+  }
+
+  await writeAuditLog(db, {
+    action: 'account.export',
+    entityId: userId,
+    entityType: 'user',
+    userId,
+  })
+
+  return c.json(exportData, 200, {
+    'Content-Disposition': `attachment; filename="vibekit-export-${new Date().toISOString().split('T')[0]}.json"`,
+  })
 })
 
 // ── Account Deletion ──────────────────────────────────────────────────
