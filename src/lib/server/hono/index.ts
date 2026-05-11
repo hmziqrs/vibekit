@@ -35,8 +35,10 @@ import { zValidator } from '@hono/zod-validator'
 import {
   and,
   asc,
+  count,
   desc,
   eq,
+  gte,
   inArray,
   isNotNull,
   isNull,
@@ -199,6 +201,14 @@ protectedApp.post('/items', validate(createItemSchema), async (c) => {
     })
     .get()
 
+  await writeAuditLog(db, {
+    action: 'item.create',
+    entityId: created.id,
+    entityType: 'item',
+    metadata: { name: created.name },
+    userId: currentUser.id,
+  })
+
   return c.json({ item: created }, 201)
 })
 
@@ -243,6 +253,14 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
     .where(and(eq(item.id, id), eq(item.userId, currentUser.id), isNull(item.deletedAt)))
     .get()
 
+  await writeAuditLog(db, {
+    action: 'item.update',
+    entityId: id,
+    entityType: 'item',
+    metadata: { name: updated!.name, status: updated!.status },
+    userId: currentUser.id,
+  })
+
   return c.json({
     item: {
       createdAt: updated!.createdAt,
@@ -268,6 +286,14 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
     })
     .where(eq(item.id, id))
 
+  await writeAuditLog(db, {
+    action: 'item.delete',
+    entityId: id,
+    entityType: 'item',
+    metadata: { name: existing.name },
+    userId: c.get('user').id,
+  })
+
   return new Response(null, { status: 204 })
 })
 
@@ -286,6 +312,59 @@ protectedApp.get('/security-events', async (c) => {
     .limit(limit)
 
   return c.json({ events })
+})
+
+// ── Audit Log ──────────────────────────────────────────────────────────
+
+protectedApp.get('/audit-log', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+
+  const entries = await db
+    .select({
+      action: auditLog.action,
+      createdAt: auditLog.createdAt,
+      entityId: auditLog.entityId,
+      entityType: auditLog.entityType,
+      id: auditLog.id,
+      metadata: auditLog.metadata,
+    })
+    .from(auditLog)
+    .where(eq(auditLog.userId, userId))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(limit)
+
+  return c.json({ entries })
+})
+
+// ── Dashboard Stats ────────────────────────────────────────────────────
+
+protectedApp.get('/stats', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const [activeResult] = await db
+    .select({ count: count() })
+    .from(item)
+    .where(and(eq(item.userId, userId), eq(item.status, 'active'), isNull(item.deletedAt)))
+
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(item)
+    .where(and(eq(item.userId, userId), isNull(item.deletedAt)))
+
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const [weekResult] = await db
+    .select({ count: count() })
+    .from(item)
+    .where(and(eq(item.userId, userId), isNull(item.deletedAt), gte(item.createdAt, oneWeekAgo)))
+
+  return c.json({
+    activeItems: activeResult?.count ?? 0,
+    itemsThisWeek: weekResult?.count ?? 0,
+    totalItems: totalResult?.count ?? 0,
+  })
 })
 
 // ── Avatar Upload ─────────────────────────────────────────────────────
