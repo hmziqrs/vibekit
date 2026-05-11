@@ -6,6 +6,9 @@ export const password = z
   .string()
   .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password must be at most 128 characters')
+  .refine((val) => /[A-Z]/.test(val), 'Include at least one uppercase letter')
+  .refine((val) => /[a-z]/.test(val), 'Include at least one lowercase letter')
+  .refine((val) => /[0-9]/.test(val), 'Include at least one number')
 
 export const name = z
   .string()

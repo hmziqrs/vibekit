@@ -3,16 +3,15 @@
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
   import { extractFormError } from '$lib/form-utils'
+  import { password } from '$lib/validators/common'
+  import PasswordStrength from '$lib/components/password-strength.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   const changePasswordSchema = z
     .object({
       confirmPassword: z.string().min(1, 'Please confirm your new password'),
       currentPassword: z.string().min(1, 'Current password is required'),
-      newPassword: z
-        .string()
-        .min(8, 'Password must be at least 8 characters')
-        .max(128, 'Password must be at most 128 characters'),
+      newPassword: password,
     })
     .refine((data) => data.newPassword === data.confirmPassword, {
       message: 'Passwords do not match',
@@ -91,6 +90,7 @@
             type="password"
             placeholder="Enter new password"
           />
+          <PasswordStrength password={field.state.value} />
         {/snippet}
       </form.Field>
 

@@ -3,6 +3,7 @@
   import { page } from '$app/state'
   import { signUp, useSession } from '$lib/auth-client'
   import { registerSchema, type RegisterInput } from '$lib/validators/auth'
+  import PasswordStrength from '$lib/components/password-strength.svelte'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
   import { createForm } from '@tanstack/svelte-form'
@@ -93,6 +94,7 @@
               placeholder="Create a password"
               autocomplete="new-password"
             />
+            <PasswordStrength password={field.state.value} />
           {/snippet}
         </form.Field>
 

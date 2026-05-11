@@ -25,10 +25,10 @@ describe(loginSchema, () => {
 
 describe(registerSchema, () => {
   const validInput = {
-    confirmPassword: 'securepassword',
+    confirmPassword: 'Securepassword1',
     email: 'john@example.com',
     name: 'John',
-    password: 'securepassword',
+    password: 'Securepassword1',
   }
 
   it('validates a valid registration', () => {
@@ -71,8 +71,8 @@ describe(forgotPasswordSchema, () => {
 
 describe(resetPasswordSchema, () => {
   const validInput = {
-    confirmPassword: 'newpassword123',
-    password: 'newpassword123',
+    confirmPassword: 'Newpassword123',
+    password: 'Newpassword123',
     token: 'reset-token-abc',
   }
 

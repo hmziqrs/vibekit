@@ -15,12 +15,12 @@ describe(email, () => {
 
 describe(password, () => {
   it('accepts valid passwords', () => {
-    expect(password.safeParse('12345678').success).toBeTruthy()
-    expect(password.safeParse('a'.repeat(128)).success).toBeTruthy()
+    expect(password.safeParse('Password1').success).toBeTruthy()
+    expect(password.safeParse(`Aa1${'b'.repeat(125)}`).success).toBeTruthy()
   })
 
   it('rejects short passwords', () => {
-    expect(password.safeParse('1234567').success).toBeFalsy()
+    expect(password.safeParse('Pass1').success).toBeFalsy()
   })
 
   it('rejects overly long passwords', () => {
