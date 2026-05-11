@@ -360,6 +360,37 @@ export const impersonationSession = sqliteTable(
   ]
 )
 
+export const contentReport = sqliteTable(
+  'content_report',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    description: text('description'),
+    entityId: text('entity_id').notNull(),
+    entityType: text('entity_type', {
+      enum: ['blogPost', 'contactSubmission', 'item', 'organization', 'team', 'user'],
+    }).notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    reason: text('reason', {
+      enum: ['harassment', 'inappropriate', 'misinformation', 'other', 'spam'],
+    }).notNull(),
+    reporterId: text('reporter_id').references(() => user.id, { onDelete: 'set null' }),
+    resolutionNote: text('resolution_note'),
+    resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
+    resolvedBy: text('resolved_by').references(() => user.id, { onDelete: 'set null' }),
+    status: text('status', { enum: ['dismissed', 'pending', 'resolved', 'reviewing'] })
+      .default('pending')
+      .notNull(),
+  },
+  (table) => [
+    index('content_report_entity_idx').on(table.entityType, table.entityId),
+    index('content_report_status_created_idx').on(table.status, table.createdAt),
+  ]
+)
+
 export const teamActivity = sqliteTable(
   'team_activity',
   {
@@ -457,6 +488,19 @@ export const impersonationSessionRelations = relations(impersonationSession, ({ 
     fields: [impersonationSession.targetUserId],
     references: [user.id],
     relationName: 'impersonationTarget',
+  }),
+}))
+
+export const contentReportRelations = relations(contentReport, ({ one }) => ({
+  reporter: one(user, {
+    fields: [contentReport.reporterId],
+    references: [user.id],
+    relationName: 'contentReportReporter',
+  }),
+  resolver: one(user, {
+    fields: [contentReport.resolvedBy],
+    references: [user.id],
+    relationName: 'contentReportResolver',
   }),
 }))
 

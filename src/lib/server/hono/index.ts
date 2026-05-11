@@ -11,6 +11,7 @@ import {
   blogPostTag,
   blogTag,
   contactSubmission,
+  contentReport,
   impersonationSession,
   item,
   auditLog,
@@ -36,9 +37,11 @@ import {
   createItemSchema,
   createOrganizationSchema,
   createPostSchema,
+  createReportSchema,
   createTeamSchema,
   addTeamMemberSchema,
   inviteMemberSchema,
+  resolveReportSchema,
   transferOwnershipSchema,
   updateItemSchema,
   updateMemberRoleSchema,
@@ -167,6 +170,43 @@ app.post('/api/appeal', async (c) => {
 // ── Items (auth required) ────────────────────────────────────────────
 
 const protectedApp = new Hono<ProtectedEnv>().use('*', requireUser)
+
+// ── Content Reports (auth required) ───────────────────────────────────
+
+protectedApp.post(
+  '/reports',
+  withRateLimit('report', 10, 60_000),
+  validate(createReportSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+
+    const id = uuid()
+    await db.insert(contentReport).values({
+      description: parsed.description ?? null,
+      entityId: parsed.entityId,
+      entityType: parsed.entityType,
+      id,
+      reason: parsed.reason,
+      reporterId: currentUser.id,
+    })
+
+    await writeAuditLog(db, {
+      action: 'content.report',
+      entityId: id,
+      entityType: 'content_report',
+      metadata: {
+        reason: parsed.reason,
+        reportedEntityId: parsed.entityId,
+        reportedEntityType: parsed.entityType,
+      },
+      userId: currentUser.id,
+    })
+
+    return c.json({ id }, 201)
+  }
+)
 
 protectedApp.get('/items', async (c) => {
   const { db } = c.get('services')
@@ -1739,6 +1779,156 @@ adminApp.post('/users/:id/stop-impersonate', async (c) => {
     entityId: impSession.id,
     entityType: 'impersonation_session',
     metadata: { targetUserId: impSession.targetUserId },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
+// ── Admin Content Moderation ─────────────────────────────────────────
+
+adminApp.get('/reports', async (c) => {
+  const { db } = c.get('services')
+  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const offset = (page - 1) * limit
+  const statusFilter = c.req.query('status')
+  const entityTypeFilter = c.req.query('entityType')
+
+  const conditions: SQL[] = []
+  if (
+    statusFilter === 'pending' ||
+    statusFilter === 'reviewing' ||
+    statusFilter === 'resolved' ||
+    statusFilter === 'dismissed'
+  ) {
+    conditions.push(eq(contentReport.status, statusFilter))
+  }
+
+  if (
+    entityTypeFilter === 'blogPost' ||
+    entityTypeFilter === 'contactSubmission' ||
+    entityTypeFilter === 'item' ||
+    entityTypeFilter === 'organization' ||
+    entityTypeFilter === 'team' ||
+    entityTypeFilter === 'user'
+  ) {
+    conditions.push(eq(contentReport.entityType, entityTypeFilter))
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+  const [countResult, reports] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(contentReport)
+      .where(whereClause),
+    db
+      .select({
+        createdAt: contentReport.createdAt,
+        description: contentReport.description,
+        entityId: contentReport.entityId,
+        entityType: contentReport.entityType,
+        id: contentReport.id,
+        reason: contentReport.reason,
+        reporterEmail: user.email,
+        reporterName: user.name,
+        resolutionNote: contentReport.resolutionNote,
+        resolvedAt: contentReport.resolvedAt,
+        resolverEmail: sql<string | null>`resolver.email`,
+        resolverName: sql<string | null>`resolver.name`,
+        status: contentReport.status,
+      })
+      .from(contentReport)
+      .leftJoin(user, eq(contentReport.reporterId, user.id))
+      .leftJoin(
+        sql`(SELECT id as id, name as name, email as email FROM "user") as resolver`,
+        sql`resolver.id = ${contentReport.resolvedBy}`
+      )
+      .where(whereClause)
+      .orderBy(desc(contentReport.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ])
+
+  return c.json({ limit, page, reports, total: countResult[0]?.count ?? 0 })
+})
+
+adminApp.get('/reports/stats', async (c) => {
+  const { db } = c.get('services')
+
+  const [pending, reviewing, resolved, dismissed, total] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(contentReport)
+      .where(eq(contentReport.status, 'pending'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(contentReport)
+      .where(eq(contentReport.status, 'reviewing'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(contentReport)
+      .where(eq(contentReport.status, 'resolved'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(contentReport)
+      .where(eq(contentReport.status, 'dismissed'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(contentReport)
+      .get(),
+  ])
+
+  return c.json({
+    dismissed: dismissed?.count ?? 0,
+    pending: pending?.count ?? 0,
+    resolved: resolved?.count ?? 0,
+    reviewing: reviewing?.count ?? 0,
+    total: total?.count ?? 0,
+  })
+})
+
+adminApp.patch('/reports/:id', validate(resolveReportSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const currentUser = c.get('user')
+  const reportId = c.req.param('id')
+  const { db } = c.get('services')
+
+  const [existing] = await db.select().from(contentReport).where(eq(contentReport.id, reportId))
+
+  if (!existing) {
+    throw new NotFoundError('Report not found')
+  }
+
+  if (existing.status === 'resolved' || existing.status === 'dismissed') {
+    throw new BadRequestError('Report is already resolved')
+  }
+
+  await db
+    .update(contentReport)
+    .set({
+      resolutionNote: parsed.resolutionNote,
+      resolvedAt: new Date(),
+      resolvedBy: currentUser.id,
+      status: parsed.status,
+    })
+    .where(eq(contentReport.id, reportId))
+
+  await writeAuditLog(db, {
+    action: `content.report_${parsed.status}`,
+    entityId: reportId,
+    entityType: 'content_report',
+    metadata: {
+      reportedEntityId: existing.entityId,
+      reportedEntityType: existing.entityType,
+      resolutionNote: parsed.resolutionNote,
+      status: parsed.status,
+    },
     userId: currentUser.id,
   })
 

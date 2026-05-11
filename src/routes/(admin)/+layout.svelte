@@ -18,6 +18,7 @@
     { href: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { href: '/admin/users', icon: 'users', label: 'Users' },
     { href: '/admin/blog', icon: 'blog', label: 'Blog' },
+    { href: '/admin/moderation', icon: 'moderation', label: 'Moderation' },
     { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
   ]
 
@@ -126,6 +127,10 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                   <polyline points="12 6 12 12 16 14" />
+                </svg>
+              {:else if item.icon === 'moderation'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               {/if}
             </span>

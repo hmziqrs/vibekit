@@ -114,14 +114,14 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Organizations & teams (org CRUD, member management, role assignment, team-scoped resources, org settings, transfer ownership)
 - [x] RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance in org hierarchy)
 - [ ] Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)
-- [ ] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)
+- [x] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)
 
 #### Admin & Moderation
 - [x] Admin dashboard (system health, user growth metrics, revenue overview, active sessions, error rates, search/filter capabilities)
 - [x] Admin user management (user list with search/filter, user detail view, impersonation, manual actions, bulk operations)
-- [ ] Admin sudo / impersonation mode (admin acts on behalf of user with full audit trail, time-limited sessions, explicit reason logging)
+- [x] Admin sudo / impersonation mode (admin acts on behalf of user with full audit trail, time-limited sessions, explicit reason logging)
 - [x] User audit log & activity tracking (dispute resolution, security reviews, compliance trails, immutable log entries, export for compliance)
-- [ ] Content moderation tools (flagged content queue, automated rules, moderator actions, appeal system, moderation log)
+- [x] Content moderation tools (flagged content queue, automated rules, moderator actions, appeal system, moderation log)
 - [ ] System configuration management (feature flags UI, maintenance mode toggle, email template editor, system announcements)
 - [ ] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices, user notification, auto-enable/disable)
 
