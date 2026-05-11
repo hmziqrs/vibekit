@@ -85,6 +85,13 @@
       "when": 1778521215818,
       "tag": "0011_condemned_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1778525203513,
+      "tag": "0012_adorable_warbird",
+      "breakpoints": true
     }
   ]
 }

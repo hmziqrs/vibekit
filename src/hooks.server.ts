@@ -3,11 +3,18 @@ import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
 import { checkLockout, recordFailedAttempt, resetAttempts } from '$lib/server/auth-lockout'
+import { session as sessionTable } from '$lib/server/db/schema'
 import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
+import {
+  isNewDevice,
+  writeSecurityEvent,
+  type SecurityEventType,
+} from '$lib/server/services/security-events'
 import { error, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
+import { eq } from 'drizzle-orm'
 
 const handleParaglide: Handle = ({ event, resolve }) =>
   paraglideMiddleware(event.request as Request, ({ request, locale }) => {
@@ -80,6 +87,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
   // Account lockout: check before sign-in, record result after
   const { pathname } = event.url
+  const requestIP = event.request.headers.get('cf-connecting-ip') ?? event.getClientAddress()
+  const requestUA = event.request.headers.get('user-agent') ?? null
+
   if (pathname === '/api/auth/sign-in/email' && event.request.method === 'POST') {
     const cloned = event.request.clone()
     let email = ''
@@ -91,8 +101,14 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
     }
 
     if (email) {
-      const { locked } = await checkLockout(services.db, email)
+      const { locked, remainingAttempts } = await checkLockout(services.db, email)
       if (locked) {
+        await writeSecurityEvent(services.db, {
+          eventType: 'account_locked',
+          ipAddress: requestIP,
+          metadata: { email },
+          userAgent: requestUA ?? undefined,
+        })
         return Response.json(
           {
             code: 'ACCOUNT_LOCKED',
@@ -106,28 +122,116 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
       if (response.status < 400) {
         await resetAttempts(services.db, email)
+
+        // Parse response to get userId for security event
+        let userId: string | undefined
+        try {
+          const resClone = response.clone()
+          const resBody: Record<string, unknown> = await resClone.json()
+          const user = resBody.user as Record<string, unknown> | undefined
+          userId = typeof user?.id === 'string' ? user.id : undefined
+        } catch {
+          // Response parsing failed — still log without userId
+        }
+
+        await writeSecurityEvent(services.db, {
+          eventType: 'login',
+          ipAddress: requestIP,
+          userAgent: requestUA ?? undefined,
+          userId,
+        })
+
+        // New device detection — compare IP against known sessions
+        if (userId) {
+          try {
+            const knownSessions = await services.db
+              .select()
+              .from(sessionTable)
+              .where(eq(sessionTable.userId, userId))
+            const knownIPs = knownSessions
+              .map((s) => s.ipAddress)
+              .filter((ip): ip is string => ip !== null)
+            if (isNewDevice(knownIPs, requestIP ?? '')) {
+              await writeSecurityEvent(services.db, {
+                eventType: 'new_device',
+                ipAddress: requestIP,
+                metadata: { knownIPCount: knownIPs.length },
+                userAgent: requestUA ?? undefined,
+                userId,
+              })
+            }
+          } catch {
+            // New device detection failed — non-critical, don't block login
+          }
+        }
+
         console.info(
           JSON.stringify({
             email,
             event: 'auth.login',
-            ip: event.request.headers.get('cf-connecting-ip') ?? event.getClientAddress(),
-            userAgent: event.request.headers.get('user-agent'),
+            ip: requestIP,
+            userAgent: requestUA,
           })
         )
       } else {
-        await recordFailedAttempt(services.db, email)
+        const result = await recordFailedAttempt(services.db, email)
+        await writeSecurityEvent(services.db, {
+          eventType: 'login_failed',
+          ipAddress: requestIP,
+          metadata: { attemptCount: result.attemptCount, email },
+          userAgent: requestUA ?? undefined,
+        })
         console.warn(
           JSON.stringify({
             email,
             event: 'auth.login_failed',
-            ip: event.request.headers.get('cf-connecting-ip') ?? event.getClientAddress(),
-            userAgent: event.request.headers.get('user-agent'),
+            ip: requestIP,
+            remainingAttempts,
+            userAgent: requestUA,
           })
         )
       }
 
       return response
     }
+  }
+
+  // Track social login, 2FA, and password change events
+  const securityEventMap: Record<string, SecurityEventType> = {
+    'change-password': 'password_change',
+    'sign-in/social': 'login',
+    'two-factor/disable': 'two_factor_disabled',
+    'two-factor/enable': 'two_factor_enabled',
+  }
+  for (const [path, eventType] of Object.entries(securityEventMap)) {
+    if (pathname === `/api/auth/${path}` && event.request.method === 'POST') {
+      const response = await svelteKitHandler({ auth, building, event, resolve })
+      if (response.status < 400) {
+        const userId = event.locals.user?.id
+        await writeSecurityEvent(services.db, {
+          eventType,
+          ipAddress: requestIP,
+          userAgent: requestUA ?? undefined,
+          userId,
+        })
+      }
+      return response
+    }
+  }
+
+  // Track sign-out events
+  if (pathname === '/api/auth/sign-out' && event.request.method === 'POST') {
+    const userId = event.locals.user?.id
+    const response = await svelteKitHandler({ auth, building, event, resolve })
+    if (response.status < 400 && userId) {
+      await writeSecurityEvent(services.db, {
+        eventType: 'logout',
+        ipAddress: requestIP,
+        userAgent: requestUA ?? undefined,
+        userId,
+      })
+    }
+    return response
   }
 
   return svelteKitHandler({ auth, building, event, resolve })

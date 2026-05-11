@@ -42,6 +42,58 @@
   let deletePasskeyId = $state('')
   let passkeyName = $state('')
 
+  // Security events state
+  interface SecurityEventEntry {
+    createdAt: string | null
+    eventType: string
+    id: string
+    ipAddress: string | null
+    metadata: string | null
+    userAgent: string | null
+  }
+  let securityEvents = $state<SecurityEventEntry[]>([])
+  let securityEventsLoading = $state(true)
+
+  async function loadSecurityEvents() {
+    try {
+      const res = await fetch('/api/security-events')
+      if (res.ok) {
+        const data = await res.json()
+        securityEvents = data.events ?? []
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      securityEventsLoading = false
+    }
+  }
+
+  function formatEventType(type: string): string {
+    const map: Record<string, string> = {
+      account_locked: 'Account Locked',
+      account_unlocked: 'Account Unlocked',
+      login: 'Sign In',
+      login_failed: 'Failed Sign In',
+      logout: 'Sign Out',
+      new_device: 'New Device',
+      passkey_added: 'Passkey Added',
+      passkey_removed: 'Passkey Removed',
+      password_change: 'Password Changed',
+      social_account_linked: 'Account Linked',
+      social_account_unlinked: 'Account Unlinked',
+      suspicious_login: 'Suspicious Login',
+      two_factor_disabled: '2FA Disabled',
+      two_factor_enabled: '2FA Enabled',
+    }
+    return map[type] ?? type
+  }
+
+  function eventSeverity(type: string): 'info' | 'warn' | 'danger' {
+    if (type === 'login_failed' || type === 'account_locked' || type === 'suspicious_login') return 'danger'
+    if (type === 'new_device' || type === 'password_change' || type === 'two_factor_disabled') return 'warn'
+    return 'info'
+  }
+
   async function loadPasskeys() {
     try {
       const res = await authClient.passkey.listUserPasskeys()
@@ -355,6 +407,11 @@
   // Load sessions on mount
   $effect(() => {
     loadSessions()
+  })
+
+  // Load security events on mount
+  $effect(() => {
+    loadSecurityEvents()
   })
 
   const form = createForm(() => ({
@@ -778,6 +835,48 @@
         </div>
       {/each}
     </div>
+  </div>
+
+  <!-- Security Activity -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Security Activity</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Recent security events for your account.
+    </p>
+
+    {#if securityEventsLoading}
+      <div class="mt-4 space-y-2">
+        {#each Array(3) as _}
+          <div class="h-10 animate-pulse rounded-lg bg-white/[0.04]"></div>
+        {/each}
+      </div>
+    {:else if securityEvents.length === 0}
+      <p class="mt-4 text-[13px] text-text-subtle">No security events recorded yet.</p>
+    {:else}
+      <div class="mt-4 space-y-2">
+        {#each securityEvents as evt}
+          {@const severity = eventSeverity(evt.eventType)}
+          {@const ua = parseUserAgent(evt.userAgent)}
+          <div class="flex items-center justify-between rounded-lg border border-white/6 bg-surface-elevated px-4 py-3">
+            <div class="flex items-center gap-3">
+              <span class="flex size-2 rounded-full {severity === 'danger' ? 'bg-red-400' : severity === 'warn' ? 'bg-yellow-400' : 'bg-green-400'}"></span>
+              <div>
+                <p class="text-[13px] font-medium text-text-primary">{formatEventType(evt.eventType)}</p>
+                <p class="text-[11px] text-text-subtle">
+                  {ua.browser} on {ua.os}
+                  {#if evt.ipAddress}
+                    &middot; {evt.ipAddress}
+                  {/if}
+                  {#if evt.createdAt}
+                    &middot; {new Date(evt.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {/if}
+                </p>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   <!-- Passkeys -->

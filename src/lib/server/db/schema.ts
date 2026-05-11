@@ -160,6 +160,27 @@ export const loginAttempt = sqliteTable('login_attempt', {
   lockedUntil: integer('locked_until', { mode: 'timestamp' }),
 })
 
+export const securityEvent = sqliteTable(
+  'security_event',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    eventType: text('event_type').notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    ipAddress: text('ip_address'),
+    metadata: text('metadata'),
+    userAgent: text('user_agent'),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('security_event_type_created_idx').on(table.eventType, table.createdAt),
+    index('security_event_user_id_idx').on(table.userId),
+  ]
+)
+
 export const blogPostRevision = sqliteTable(
   'blog_post_revision',
   {
@@ -215,6 +236,10 @@ export const itemRelations = relations(item, ({ one }) => ({
 
 export const auditLogRelations = relations(auditLog, ({ one }) => ({
   user: one(user, { fields: [auditLog.userId], references: [user.id] }),
+}))
+
+export const securityEventRelations = relations(securityEvent, ({ one }) => ({
+  user: one(user, { fields: [securityEvent.userId], references: [user.id] }),
 }))
 
 export * from './auth.schema'

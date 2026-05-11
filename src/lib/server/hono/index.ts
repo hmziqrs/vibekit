@@ -7,6 +7,7 @@ import {
   blogPostTag,
   blogTag,
   item,
+  securityEvent,
   user,
 } from '$lib/server/db/schema'
 import {
@@ -240,6 +241,23 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
     .where(eq(item.id, id))
 
   return new Response(null, { status: 204 })
+})
+
+// ── Security Events ──────────────────────────────────────────────────
+
+protectedApp.get('/security-events', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+
+  const events = await db
+    .select()
+    .from(securityEvent)
+    .where(eq(securityEvent.userId, userId))
+    .orderBy(desc(securityEvent.createdAt))
+    .limit(limit)
+
+  return c.json({ events })
 })
 
 // ── Blog (admin only) ────────────────────────────────────────────────
