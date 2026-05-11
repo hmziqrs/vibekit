@@ -91,7 +91,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Error pages (custom 400/403/404/500/503 pages, brand-consistent design, helpful recovery actions, no raw stack traces in production)
 
 #### Auth & Security
-- [ ] Auth security hardening (session fixation, CSRF tokens, cookie flags, token rotation, brute-force protection on login/register)
+- [x] Auth security hardening (session fixation, CSRF tokens, cookie flags, token rotation, brute-force protection on login/register)
 - [ ] Password security (breached password check via HaveIBeenPwned API, password strength estimator, forced rotation policy, passwordless login options)
 - [ ] Two-factor authentication (TOTP apps, backup/recovery codes, remember device, 2FA enforcement per-role/per-org)
 - [ ] Passkey / WebAuthn support (platform authenticators, cross-device auth, credential management UI)

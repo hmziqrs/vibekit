@@ -9,8 +9,17 @@ import type { AppDb } from './services/types'
 
 export const authConfig = {
   advanced: {
+    // CSRF protection is enabled by default (disableCSRFCheck: false,
+    // DisableOriginCheck: false). Better Auth validates the Origin header
+    // Against baseURL for all mutation requests.
     database: {
       generateId: () => uuidv7(),
+    },
+    // Cookie security — Better Auth auto-detects HTTPS for Secure flag
+    defaultCookieAttributes: {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax' as const,
     },
   },
   baseURL: env.ORIGIN,
@@ -27,6 +36,20 @@ export const authConfig = {
       // TODO: Wire to real email service (Resend, SendGrid, etc.)
       console.log(`[dev] Email verification for ${user.email}: ${url}`)
     },
+  },
+  rateLimit: {
+    customRules: {
+      '/forget-password': { max: 3, window: 600 },
+      '/reset-password': { max: 5, window: 600 },
+      '/sign-in/email': { max: 5, window: 60 },
+      '/sign-up/email': { max: 3, window: 60 },
+    },
+    enabled: true,
+    max: 20,
+    // TODO: Switch to "database" storage after adding rateLimit model to Drizzle schema.
+    // Memory storage works for dev/single-instance but doesn't persist across Workers isolates.
+    storage: 'memory' as const,
+    window: 60,
   },
   secret: env.BETTER_AUTH_SECRET,
   user: {

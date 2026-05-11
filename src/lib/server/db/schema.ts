@@ -153,6 +153,13 @@ export const auditLog = sqliteTable(
   (table) => [index('audit_log_action_created_idx').on(table.action, table.createdAt)]
 )
 
+export const loginAttempt = sqliteTable('login_attempt', {
+  attemptCount: integer('attempt_count').notNull().default(0),
+  id: text('id').primaryKey(),
+  lastAttemptAt: integer('last_attempt_at', { mode: 'timestamp_ms' }).notNull(),
+  lockedUntil: integer('locked_until', { mode: 'timestamp' }),
+})
+
 export const blogPostRevision = sqliteTable(
   'blog_post_revision',
   {

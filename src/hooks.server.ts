@@ -2,6 +2,7 @@ import { building } from '$app/environment'
 import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
+import { checkLockout, recordFailedAttempt, resetAttempts } from '$lib/server/auth-lockout'
 import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
 import { error, type Handle, type HandleServerError } from '@sveltejs/kit'
@@ -67,8 +68,67 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   const session = await auth.api.getSession({ headers: event.request.headers })
 
   if (session) {
-    event.locals.session = session.session
-    event.locals.user = session.user
+    // Enforce suspended user status — immediately revoke access
+    if (session.user.status === 'suspended') {
+      await auth.api.signOut({ headers: event.request.headers })
+      event.locals.session = undefined
+      event.locals.user = undefined
+    } else {
+      event.locals.session = session.session
+      event.locals.user = session.user
+    }
+  }
+
+  // Account lockout: check before sign-in, record result after
+  const { pathname } = event.url
+  if (pathname === '/api/auth/sign-in/email' && event.request.method === 'POST') {
+    const cloned = event.request.clone()
+    let email = ''
+    try {
+      const body: Record<string, unknown> = await cloned.json()
+      email = typeof body.email === 'string' ? body.email.toLowerCase().trim() : ''
+    } catch {
+      // Invalid body — let the auth handler deal with it
+    }
+
+    if (email) {
+      const { locked } = await checkLockout(services.db, email)
+      if (locked) {
+        return Response.json(
+          {
+            code: 'ACCOUNT_LOCKED',
+            message: 'Too many failed attempts. Try again in 15 minutes.',
+          },
+          { status: 429 }
+        )
+      }
+
+      const response = await svelteKitHandler({ auth, building, event, resolve })
+
+      if (response.status < 400) {
+        await resetAttempts(services.db, email)
+        console.info(
+          JSON.stringify({
+            email,
+            event: 'auth.login',
+            ip: event.request.headers.get('cf-connecting-ip') ?? event.getClientAddress(),
+            userAgent: event.request.headers.get('user-agent'),
+          })
+        )
+      } else {
+        await recordFailedAttempt(services.db, email)
+        console.warn(
+          JSON.stringify({
+            email,
+            event: 'auth.login_failed',
+            ip: event.request.headers.get('cf-connecting-ip') ?? event.getClientAddress(),
+            userAgent: event.request.headers.get('user-agent'),
+          })
+        )
+      }
+
+      return response
+    }
   }
 
   return svelteKitHandler({ auth, building, event, resolve })

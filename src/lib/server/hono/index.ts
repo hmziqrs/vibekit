@@ -1,4 +1,5 @@
 import { writeAuditLog } from '$lib/server/audit'
+import { session as sessionTable } from '$lib/server/db/auth.schema'
 import {
   blogPost,
   blogPostRevision,
@@ -943,6 +944,11 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
     metadata: auditMetadata,
     userId: currentUser.id,
   })
+
+  // Revoke all sessions when user is suspended
+  if (updates.status === 'suspended') {
+    await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
+  }
 
   return c.json({ user: updated })
 })
