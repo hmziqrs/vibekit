@@ -13,6 +13,9 @@ import {
   contactSubmission,
   item,
   auditLog,
+  organization,
+  organizationInvitation,
+  organizationMember,
   securityEvent,
   user,
 } from '$lib/server/db/schema'
@@ -27,8 +30,13 @@ import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$l
 import { uuid } from '$lib/server/uuid'
 import {
   createItemSchema,
+  createOrganizationSchema,
   createPostSchema,
+  inviteMemberSchema,
+  transferOwnershipSchema,
   updateItemSchema,
+  updateMemberRoleSchema,
+  updateOrganizationSchema,
   updatePostSchema,
 } from '$lib/validators'
 import { zValidator } from '@hono/zod-validator'
@@ -38,6 +46,7 @@ import {
   count,
   desc,
   eq,
+  gt,
   gte,
   inArray,
   isNotNull,
@@ -54,6 +63,9 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod/v4'
 
 import {
+  requireOrgAdmin,
+  requireOrgOwner,
+  withOrgMembership,
   withOwnedItem,
   withRateLimit,
   requireAdmin,
@@ -61,7 +73,7 @@ import {
   withServices,
   withSession,
 } from './middleware'
-import type { ProtectedEnv } from './types'
+import type { OrgEnv, ProtectedEnv } from './types'
 
 const validate = <T extends z.ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
@@ -413,97 +425,116 @@ protectedApp.get('/account/export', withRateLimit('data-export', 1, 3_600_000), 
   const { db } = c.get('services')
   const { id: userId, email } = c.get('user')
 
-  const [userData, accounts, sessions, passkeys, items, auditLogs, securityEvents, submissions] =
-    await Promise.all([
-      db
-        .select({
-          bio: user.bio,
-          createdAt: user.createdAt,
-          displayName: user.displayName,
-          email: user.email,
-          emailVerified: user.emailVerified,
-          id: user.id,
-          image: user.image,
-          name: user.name,
-          role: user.role,
-          status: user.status,
-          timezone: user.timezone,
-          updatedAt: user.updatedAt,
-        })
-        .from(user)
-        .where(eq(user.id, userId))
-        .get(),
-      db
-        .select({
-          accountId: accountTable.accountId,
-          createdAt: accountTable.createdAt,
-          providerId: accountTable.providerId,
-        })
-        .from(accountTable)
-        .where(eq(accountTable.userId, userId)),
-      db
-        .select({
-          createdAt: sessionTable.createdAt,
-          expiresAt: sessionTable.expiresAt,
-          ipAddress: sessionTable.ipAddress,
-          userAgent: sessionTable.userAgent,
-        })
-        .from(sessionTable)
-        .where(eq(sessionTable.userId, userId)),
-      db
-        .select({
-          backedUp: passkey.backedUp,
-          createdAt: passkey.createdAt,
-          deviceType: passkey.deviceType,
-          name: passkey.name,
-        })
-        .from(passkey)
-        .where(eq(passkey.userId, userId)),
-      db
-        .select({
-          createdAt: item.createdAt,
-          description: item.description,
-          id: item.id,
-          name: item.name,
-          status: item.status,
-          updatedAt: item.updatedAt,
-        })
-        .from(item)
-        .where(and(eq(item.userId, userId), isNull(item.deletedAt))),
-      db
-        .select({
-          action: auditLog.action,
-          createdAt: auditLog.createdAt,
-          entityId: auditLog.entityId,
-          entityType: auditLog.entityType,
-          metadata: auditLog.metadata,
-        })
-        .from(auditLog)
-        .where(eq(auditLog.userId, userId))
-        .orderBy(desc(auditLog.createdAt))
-        .limit(500),
-      db
-        .select({
-          createdAt: securityEvent.createdAt,
-          eventType: securityEvent.eventType,
-          ipAddress: securityEvent.ipAddress,
-          metadata: securityEvent.metadata,
-        })
-        .from(securityEvent)
-        .where(eq(securityEvent.userId, userId))
-        .orderBy(desc(securityEvent.createdAt))
-        .limit(500),
-      db
-        .select({
-          createdAt: contactSubmission.createdAt,
-          message: contactSubmission.message,
-          name: contactSubmission.name,
-          subject: contactSubmission.subject,
-          type: contactSubmission.type,
-        })
-        .from(contactSubmission)
-        .where(eq(contactSubmission.email, email ?? '')),
-    ])
+  const [
+    userData,
+    accounts,
+    sessions,
+    passkeys,
+    items,
+    auditLogs,
+    securityEvents,
+    submissions,
+    orgMemberships,
+  ] = await Promise.all([
+    db
+      .select({
+        bio: user.bio,
+        createdAt: user.createdAt,
+        displayName: user.displayName,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        id: user.id,
+        image: user.image,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+        timezone: user.timezone,
+        updatedAt: user.updatedAt,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .get(),
+    db
+      .select({
+        accountId: accountTable.accountId,
+        createdAt: accountTable.createdAt,
+        providerId: accountTable.providerId,
+      })
+      .from(accountTable)
+      .where(eq(accountTable.userId, userId)),
+    db
+      .select({
+        createdAt: sessionTable.createdAt,
+        expiresAt: sessionTable.expiresAt,
+        ipAddress: sessionTable.ipAddress,
+        userAgent: sessionTable.userAgent,
+      })
+      .from(sessionTable)
+      .where(eq(sessionTable.userId, userId)),
+    db
+      .select({
+        backedUp: passkey.backedUp,
+        createdAt: passkey.createdAt,
+        deviceType: passkey.deviceType,
+        name: passkey.name,
+      })
+      .from(passkey)
+      .where(eq(passkey.userId, userId)),
+    db
+      .select({
+        createdAt: item.createdAt,
+        description: item.description,
+        id: item.id,
+        name: item.name,
+        status: item.status,
+        updatedAt: item.updatedAt,
+      })
+      .from(item)
+      .where(and(eq(item.userId, userId), isNull(item.deletedAt))),
+    db
+      .select({
+        action: auditLog.action,
+        createdAt: auditLog.createdAt,
+        entityId: auditLog.entityId,
+        entityType: auditLog.entityType,
+        metadata: auditLog.metadata,
+      })
+      .from(auditLog)
+      .where(eq(auditLog.userId, userId))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(500),
+    db
+      .select({
+        createdAt: securityEvent.createdAt,
+        eventType: securityEvent.eventType,
+        ipAddress: securityEvent.ipAddress,
+        metadata: securityEvent.metadata,
+      })
+      .from(securityEvent)
+      .where(eq(securityEvent.userId, userId))
+      .orderBy(desc(securityEvent.createdAt))
+      .limit(500),
+    db
+      .select({
+        createdAt: contactSubmission.createdAt,
+        message: contactSubmission.message,
+        name: contactSubmission.name,
+        subject: contactSubmission.subject,
+        type: contactSubmission.type,
+      })
+      .from(contactSubmission)
+      .where(eq(contactSubmission.email, email ?? '')),
+    db
+      .select({
+        joinedAt: organizationMember.joinedAt,
+        organizationId: organizationMember.organizationId,
+        organizationName: organization.name,
+        role: organizationMember.role,
+      })
+      .from(organizationMember)
+      .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
+      .where(and(eq(organizationMember.userId, userId), isNull(organization.deletedAt))),
+  ])
 
   const exportData = {
     accounts,
@@ -511,6 +542,7 @@ protectedApp.get('/account/export', withRateLimit('data-export', 1, 3_600_000), 
     contactSubmissions: submissions,
     exportedAt: new Date().toISOString(),
     items,
+    organizationMemberships: orgMemberships,
     passkeys,
     securityEvents,
     sessions,
@@ -1532,6 +1564,11 @@ app.post('/api/admin/cleanup', async (c) => {
     .where(and(isNotNull(user.deletedAt), lt(user.deletedAt, cutoff)))
     .returning({ id: user.id })
 
+  const deletedOrgs = await db
+    .delete(organization)
+    .where(and(isNotNull(organization.deletedAt), lt(organization.deletedAt, cutoff)))
+    .returning({ id: organization.id })
+
   // Auto-expire temporary bans
   const expiredBans = await db
     .update(user)
@@ -1560,8 +1597,558 @@ app.post('/api/admin/cleanup', async (c) => {
   return c.json({
     cutoff: cutoff.toISOString(),
     expiredBans: expiredBans.length,
-    purged: { items: deletedItems.length, posts: deletedPosts.length, users: deletedUsers.length },
+    purged: {
+      items: deletedItems.length,
+      organizations: deletedOrgs.length,
+      posts: deletedPosts.length,
+      users: deletedUsers.length,
+    },
   })
+})
+
+// ── Organizations (auth required) ─────────────────────────────────────
+
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+const orgApp = new Hono<OrgEnv>().use('*', requireUser)
+
+// List user's organizations
+orgApp.get('/', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const memberships = await db
+    .select({
+      description: organization.description,
+      id: organization.id,
+      name: organization.name,
+      ownerId: organization.ownerId,
+      role: organizationMember.role,
+      slug: organization.slug,
+    })
+    .from(organizationMember)
+    .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
+    .where(and(eq(organizationMember.userId, userId), isNull(organization.deletedAt)))
+    .orderBy(desc(organization.createdAt))
+
+  return c.json({ organizations: memberships })
+})
+
+// Create organization
+orgApp.post('/', validate(createOrganizationSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+
+  const slug = generateSlug(parsed.name)
+
+  const existing = await db
+    .select({ id: organization.id })
+    .from(organization)
+    .where(and(eq(organization.slug, slug), isNull(organization.deletedAt)))
+    .get()
+
+  if (existing) {
+    throw new ConflictError('Organization slug already exists')
+  }
+
+  const id = uuid()
+  await db.insert(organization).values({
+    description: parsed.description ?? null,
+    id,
+    name: parsed.name,
+    ownerId: currentUser.id,
+    slug,
+  })
+
+  await db.insert(organizationMember).values({
+    joinedAt: new Date(),
+    organizationId: id,
+    role: 'owner',
+    userId: currentUser.id,
+  })
+
+  await writeAuditLog(db, {
+    action: 'organization.create',
+    entityId: id,
+    entityType: 'organization',
+    metadata: { name: parsed.name, slug },
+    userId: currentUser.id,
+  })
+
+  return c.json({ id, name: parsed.name, slug }, 201)
+})
+
+// Get org details
+orgApp.get('/:orgId', withOrgMembership, async (c) => {
+  const org = c.get('organization' as never) as typeof organization.$inferSelect
+  const membership = c.get('membership' as never) as typeof organizationMember.$inferSelect
+
+  return c.json({
+    membership: {
+      id: membership.id,
+      joinedAt: membership.joinedAt,
+      role: membership.role,
+    },
+    organization: {
+      createdAt: org.createdAt,
+      description: org.description,
+      id: org.id,
+      name: org.name,
+      ownerId: org.ownerId,
+      slug: org.slug,
+      updatedAt: org.updatedAt,
+    },
+  })
+})
+
+// Update org
+orgApp.patch(
+  '/:orgId',
+  withOrgMembership,
+  requireOrgAdmin,
+  validate(updateOrganizationSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+
+    const newSlug = generateSlug(parsed.name)
+    if (newSlug !== org.slug) {
+      const existing = await db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(and(eq(organization.slug, newSlug), isNull(organization.deletedAt)))
+        .get()
+      if (existing) {
+        throw new ConflictError('Organization slug already exists')
+      }
+    }
+
+    await db
+      .update(organization)
+      .set({
+        description: parsed.description ?? null,
+        name: parsed.name,
+        slug: newSlug,
+        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      })
+      .where(eq(organization.id, org.id))
+
+    await writeAuditLog(db, {
+      action: 'organization.update',
+      entityId: org.id,
+      entityType: 'organization',
+      metadata: { name: parsed.name, slug: newSlug },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+// Soft-delete org
+orgApp.delete('/:orgId', withOrgMembership, requireOrgOwner, async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const org = c.get('organization' as never) as typeof organization.$inferSelect
+
+  await db
+    .update(organization)
+    .set({
+      deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+    })
+    .where(eq(organization.id, org.id))
+
+  await writeAuditLog(db, {
+    action: 'organization.delete',
+    entityId: org.id,
+    entityType: 'organization',
+    metadata: { name: org.name },
+    userId: currentUser.id,
+  })
+
+  return new Response(null, { status: 204 })
+})
+
+// List members
+orgApp.get('/:orgId/members', withOrgMembership, async (c) => {
+  const { db } = c.get('services')
+  const org = c.get('organization' as never) as typeof organization.$inferSelect
+
+  const members = await db
+    .select({
+      email: user.email,
+      id: organizationMember.id,
+      image: user.image,
+      joinedAt: organizationMember.joinedAt,
+      name: user.name,
+      role: organizationMember.role,
+      userId: user.id,
+    })
+    .from(organizationMember)
+    .innerJoin(user, eq(organizationMember.userId, user.id))
+    .where(and(eq(organizationMember.organizationId, org.id), isNull(user.deletedAt)))
+    .orderBy(asc(organizationMember.joinedAt))
+
+  return c.json({ members })
+})
+
+// Change member role
+orgApp.patch(
+  '/:orgId/members/:memberId',
+  withOrgMembership,
+  requireOrgAdmin,
+  validate(updateMemberRoleSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const memberId = c.req.param('memberId')
+
+    const [targetMember] = await db
+      .select()
+      .from(organizationMember)
+      .where(
+        and(eq(organizationMember.id, memberId), eq(organizationMember.organizationId, org.id))
+      )
+
+    if (!targetMember) {
+      throw new NotFoundError('Member not found')
+    }
+
+    if (targetMember.role === 'owner') {
+      throw new ForbiddenError('Cannot change owner role. Use ownership transfer instead.')
+    }
+
+    if (parsed.role === 'owner') {
+      throw new ForbiddenError('Cannot assign owner role. Use ownership transfer instead.')
+    }
+
+    await db
+      .update(organizationMember)
+      .set({ role: parsed.role })
+      .where(eq(organizationMember.id, memberId))
+
+    await writeAuditLog(db, {
+      action: 'organization.member.update_role',
+      entityId: memberId,
+      entityType: 'organization_member',
+      metadata: { newRole: parsed.role, oldRole: targetMember.role, organizationId: org.id },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+// Remove member
+orgApp.delete('/:orgId/members/:memberId', withOrgMembership, requireOrgAdmin, async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const org = c.get('organization' as never) as typeof organization.$inferSelect
+  const memberId = c.req.param('memberId')
+
+  const [targetMember] = await db
+    .select()
+    .from(organizationMember)
+    .where(and(eq(organizationMember.id, memberId), eq(organizationMember.organizationId, org.id)))
+
+  if (!targetMember) {
+    throw new NotFoundError('Member not found')
+  }
+
+  if (targetMember.role === 'owner') {
+    throw new ForbiddenError('Cannot remove the organization owner')
+  }
+
+  if (targetMember.userId === currentUser.id) {
+    throw new BadRequestError('Cannot remove yourself. Leave the organization instead.')
+  }
+
+  await db.delete(organizationMember).where(eq(organizationMember.id, memberId))
+
+  await writeAuditLog(db, {
+    action: 'organization.member.remove',
+    entityId: memberId,
+    entityType: 'organization_member',
+    metadata: { organizationId: org.id, removedUserId: targetMember.userId },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
+// Invite member
+orgApp.post(
+  '/:orgId/members/invite',
+  withOrgMembership,
+  requireOrgAdmin,
+  validate(inviteMemberSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+
+    const [existingMember] = await db
+      .select({ id: organizationMember.id })
+      .from(organizationMember)
+      .innerJoin(user, eq(organizationMember.userId, user.id))
+      .where(
+        and(
+          eq(organizationMember.organizationId, org.id),
+          eq(user.email, parsed.email),
+          isNull(user.deletedAt)
+        )
+      )
+
+    if (existingMember) {
+      throw new ConflictError('User is already a member of this organization')
+    }
+
+    const pendingInvite = await db
+      .select({ id: organizationInvitation.id })
+      .from(organizationInvitation)
+      .where(
+        and(
+          eq(organizationInvitation.organizationId, org.id),
+          eq(organizationInvitation.email, parsed.email),
+          isNull(organizationInvitation.acceptedAt),
+          gt(organizationInvitation.expiresAt, new Date())
+        )
+      )
+      .get()
+
+    if (pendingInvite) {
+      throw new ConflictError('An active invitation already exists for this email')
+    }
+
+    const token = uuid()
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+    await db.insert(organizationInvitation).values({
+      email: parsed.email,
+      expiresAt,
+      invitedBy: currentUser.id,
+      organizationId: org.id,
+      role: parsed.role,
+      token,
+    })
+
+    await writeAuditLog(db, {
+      action: 'organization.invite',
+      entityId: token,
+      entityType: 'organization_invitation',
+      metadata: { email: parsed.email, organizationId: org.id, role: parsed.role },
+      userId: currentUser.id,
+    })
+
+    return c.json({ expiresAt, token }, 201)
+  }
+)
+
+// Transfer ownership
+orgApp.post(
+  '/:orgId/transfer-ownership',
+  withOrgMembership,
+  requireOrgOwner,
+  validate(transferOwnershipSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+
+    const [newOwnerMember] = await db
+      .select()
+      .from(organizationMember)
+      .where(
+        and(
+          eq(organizationMember.userId, parsed.newOwnerId),
+          eq(organizationMember.organizationId, org.id)
+        )
+      )
+
+    if (!newOwnerMember) {
+      throw new NotFoundError('Target user is not a member of this organization')
+    }
+
+    if (newOwnerMember.userId === currentUser.id) {
+      throw new BadRequestError('Cannot transfer ownership to yourself')
+    }
+
+    await db
+      .update(organizationMember)
+      .set({ role: 'admin' })
+      .where(
+        and(
+          eq(organizationMember.userId, currentUser.id),
+          eq(organizationMember.organizationId, org.id)
+        )
+      )
+
+    await db
+      .update(organizationMember)
+      .set({ role: 'owner' })
+      .where(eq(organizationMember.id, newOwnerMember.id))
+
+    await db
+      .update(organization)
+      .set({
+        ownerId: parsed.newOwnerId,
+        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      })
+      .where(eq(organization.id, org.id))
+
+    await writeAuditLog(db, {
+      action: 'organization.transfer_ownership',
+      entityId: org.id,
+      entityType: 'organization',
+      metadata: { newOwnerId: parsed.newOwnerId, previousOwnerId: currentUser.id },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+// ── Invitations (auth required, no org context) ──────────────────────
+
+protectedApp.get('/invitations', async (c) => {
+  const { db } = c.get('services')
+  const { email } = c.get('user')
+
+  if (!email) return c.json({ invitations: [] })
+
+  const invitations = await db
+    .select({
+      createdAt: organizationInvitation.createdAt,
+      email: organizationInvitation.email,
+      expiresAt: organizationInvitation.expiresAt,
+      id: organizationInvitation.id,
+      organizationId: organizationInvitation.organizationId,
+      organizationName: organization.name,
+      organizationSlug: organization.slug,
+      role: organizationInvitation.role,
+      token: organizationInvitation.token,
+    })
+    .from(organizationInvitation)
+    .innerJoin(organization, eq(organizationInvitation.organizationId, organization.id))
+    .where(
+      and(
+        eq(organizationInvitation.email, email),
+        isNull(organizationInvitation.acceptedAt),
+        gt(organizationInvitation.expiresAt, new Date()),
+        isNull(organization.deletedAt)
+      )
+    )
+    .orderBy(desc(organizationInvitation.createdAt))
+
+  return c.json({ invitations })
+})
+
+protectedApp.post('/invitations/:token/accept', async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const token = c.req.param('token')
+
+  const [invitation] = await db
+    .select()
+    .from(organizationInvitation)
+    .where(eq(organizationInvitation.token, token))
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found')
+  }
+
+  if (invitation.acceptedAt) {
+    throw new ConflictError('Invitation already accepted')
+  }
+
+  if (invitation.expiresAt < new Date()) {
+    throw new BadRequestError('Invitation has expired')
+  }
+
+  if (invitation.email !== currentUser.email) {
+    throw new ForbiddenError('This invitation is not for your email address')
+  }
+
+  const existingMember = await db
+    .select({ id: organizationMember.id })
+    .from(organizationMember)
+    .where(
+      and(
+        eq(organizationMember.organizationId, invitation.organizationId),
+        eq(organizationMember.userId, currentUser.id)
+      )
+    )
+    .get()
+
+  if (existingMember) {
+    throw new ConflictError('You are already a member of this organization')
+  }
+
+  await db.insert(organizationMember).values({
+    joinedAt: new Date(),
+    organizationId: invitation.organizationId,
+    role: invitation.role,
+    userId: currentUser.id,
+  })
+
+  await db
+    .update(organizationInvitation)
+    .set({ acceptedAt: new Date() })
+    .where(eq(organizationInvitation.id, invitation.id))
+
+  await writeAuditLog(db, {
+    action: 'organization.accept_invitation',
+    entityId: invitation.id,
+    entityType: 'organization_invitation',
+    metadata: { organizationId: invitation.organizationId, role: invitation.role },
+    userId: currentUser.id,
+  })
+
+  return c.json({ organizationId: invitation.organizationId, success: true })
+})
+
+protectedApp.post('/invitations/:token/decline', async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const token = c.req.param('token')
+
+  const [invitation] = await db
+    .select()
+    .from(organizationInvitation)
+    .where(eq(organizationInvitation.token, token))
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found')
+  }
+
+  if (invitation.acceptedAt) {
+    throw new ConflictError('Invitation already accepted')
+  }
+
+  if (invitation.email !== currentUser.email) {
+    throw new ForbiddenError('This invitation is not for your email address')
+  }
+
+  await db
+    .update(organizationInvitation)
+    .set({ acceptedAt: new Date() })
+    .where(eq(organizationInvitation.id, invitation.id))
+
+  return c.json({ success: true })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
@@ -1570,6 +2157,7 @@ const routes = app
   .route('/api', protectedApp)
   .route('/api/blog', blogApp)
   .route('/api/admin', adminApp)
+  .route('/api/orgs', orgApp)
 
 export type AppType = typeof routes
 export { app }

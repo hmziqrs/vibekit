@@ -1,5 +1,5 @@
 import { createAuthForHono } from '$lib/server/auth-hono'
-import { item } from '$lib/server/db/schema'
+import { item, organization, organizationMember } from '$lib/server/db/schema'
 import {
   ForbiddenError,
   NotFoundError,
@@ -12,7 +12,7 @@ import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createMiddleware } from 'hono/factory'
 
-import type { Env, ProtectedEnv } from './types'
+import type { Env, OrgEnv, ProtectedEnv } from './types'
 
 export const withServices = createMiddleware<Env>(async (c, next) => {
   const injected = c.env.__services
@@ -91,5 +91,47 @@ export const withOwnedItem = createMiddleware<ProtectedEnv>(async (c, next) => {
 
   if (!resource) throw new NotFoundError()
   c.set('resource', resource as never)
+  await next()
+})
+
+export const withOrgMembership = createMiddleware<OrgEnv>(async (c, next) => {
+  const { db } = c.get('services')
+  const userId = c.get('user').id
+  const orgId = c.req.param('orgId') ?? ''
+
+  const org = await db
+    .select()
+    .from(organization)
+    .where(and(eq(organization.id, orgId), isNull(organization.deletedAt)))
+    .get()
+
+  if (!org) throw new NotFoundError()
+
+  const membership = await db
+    .select()
+    .from(organizationMember)
+    .where(and(eq(organizationMember.organizationId, orgId), eq(organizationMember.userId, userId)))
+    .get()
+
+  if (!membership) throw new ForbiddenError('Not a member of this organization')
+
+  c.set('membership' as never, membership as never)
+  c.set('organization' as never, org as never)
+  await next()
+})
+
+export const requireOrgAdmin = createMiddleware<OrgEnv>(async (c, next) => {
+  const membership = c.get('membership' as never) as { role: string }
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    throw new ForbiddenError('Admin access required')
+  }
+  await next()
+})
+
+export const requireOrgOwner = createMiddleware<OrgEnv>(async (c, next) => {
+  const membership = c.get('membership' as never) as { role: string }
+  if (membership.role !== 'owner') {
+    throw new ForbiddenError('Owner access required')
+  }
   await next()
 })

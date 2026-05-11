@@ -106,12 +106,12 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] User profile & settings (avatar upload, display name, bio, timezone, language preference, notification preferences, delete account flow)
 - [x] User account lifecycle (email verification flow, account deactivation vs deletion, data retention policy, re-enable flow, grace period before permanent deletion)
 - [x] User banning system (temporary/permanent ban with reason, appeal flow, automatic content unpublish on ban, ban evasion detection via email/IP)
-- [ ] User data export / portability (one-click full data download as JSON/ZIP, GDPR compliance, scheduled exports for large datasets)
-- [ ] Onboarding flow (guided setup wizard, feature discovery tooltips, progressive disclosure, skip/resume capability, role-based onboarding paths)
-- [ ] Dashboard (activity feed, quick actions, usage metrics, recent items, workspace overview, customizable widgets)
+- [x] User data export / portability (one-click full data download as JSON/ZIP, GDPR compliance, scheduled exports for large datasets)
+- [x] Onboarding flow (guided setup wizard, feature discovery tooltips, progressive disclosure, skip/resume capability, role-based onboarding paths)
+- [x] Dashboard (activity feed, quick actions, usage metrics, recent items, workspace overview, customizable widgets)
 
 #### Organizations & Teams
-- [ ] Organizations & teams (org CRUD, member management, role assignment, team-scoped resources, org settings, transfer ownership)
+- [x] Organizations & teams (org CRUD, member management, role assignment, team-scoped resources, org settings, transfer ownership)
 - [ ] RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance in org hierarchy)
 - [ ] Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)
 - [ ] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)

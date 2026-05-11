@@ -205,6 +205,88 @@ export const blogPostRevision = sqliteTable(
   (table) => [index('blog_revision_post_id_idx').on(table.postId)]
 )
 
+export const organization = sqliteTable(
+  'organization',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
+    description: text('description'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    name: text('name').notNull(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    slug: text('slug').notNull().unique(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('organization_owner_id_idx').on(table.ownerId),
+    index('organization_slug_deleted_idx').on(table.slug, table.deletedAt),
+  ]
+)
+
+export const organizationMember = sqliteTable(
+  'organization_member',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['owner', 'admin', 'member', 'viewer'] })
+      .default('member')
+      .notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('org_member_org_id_idx').on(table.organizationId),
+    index('org_member_user_id_idx').on(table.userId),
+  ]
+)
+
+export const organizationInvitation = sqliteTable(
+  'organization_invitation',
+  {
+    acceptedAt: integer('accepted_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    email: text('email').notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    invitedBy: text('invited_by')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['admin', 'member', 'viewer'] })
+      .default('member')
+      .notNull(),
+    token: text('token').notNull().unique(),
+  },
+  (table) => [
+    index('org_invitation_email_idx').on(table.email),
+    index('org_invitation_org_id_idx').on(table.organizationId),
+    index('org_invitation_token_idx').on(table.token),
+  ]
+)
+
 // Drizzle relations for app tables
 export const blogPostRelations = relations(blogPost, ({ many, one }) => ({
   author: one(user, { fields: [blogPost.authorId], references: [user.id] }),
@@ -241,6 +323,36 @@ export const auditLogRelations = relations(auditLog, ({ one }) => ({
 
 export const securityEventRelations = relations(securityEvent, ({ one }) => ({
   user: one(user, { fields: [securityEvent.userId], references: [user.id] }),
+}))
+
+export const organizationRelations = relations(organization, ({ many, one }) => ({
+  invitations: many(organizationInvitation),
+  members: many(organizationMember),
+  owner: one(user, { fields: [organization.ownerId], references: [user.id] }),
+}))
+
+export const organizationMemberRelations = relations(organizationMember, ({ one }) => ({
+  organization: one(organization, {
+    fields: [organizationMember.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, { fields: [organizationMember.userId], references: [user.id] }),
+}))
+
+export const userOrgMemberRelations = relations(user, ({ many }) => ({
+  organizationInvitations: many(organizationInvitation),
+  organizationMemberships: many(organizationMember),
+}))
+
+export const organizationInvitationRelations = relations(organizationInvitation, ({ one }) => ({
+  inviter: one(user, {
+    fields: [organizationInvitation.invitedBy],
+    references: [user.id],
+  }),
+  organization: one(organization, {
+    fields: [organizationInvitation.organizationId],
+    references: [organization.id],
+  }),
 }))
 
 export * from './auth.schema'

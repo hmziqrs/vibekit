@@ -32,3 +32,30 @@ export interface ProtectedEnv {
   Bindings: Bindings
   Variables: ProtectedVariables
 }
+
+export interface OrgMemberContext {
+  membership: {
+    id: string
+    joinedAt: Date
+    organizationId: string
+    role: string
+    userId: string
+  }
+  organization: {
+    createdAt: Date
+    deletedAt: Date | null
+    description: string | null
+    id: string
+    name: string
+    ownerId: string
+    slug: string
+    updatedAt: Date
+  }
+}
+
+export type OrgEnvVariables = ProtectedVariables & OrgMemberContext
+
+export interface OrgEnv {
+  Bindings: Bindings
+  Variables: OrgEnvVariables
+}
