@@ -294,8 +294,8 @@
       const res = await authClient.listSessions()
       if (res.data) {
         // Sort by updatedAt descending and show the 10 most recent
-        activeSessions = [...res.data]
-          .sort((a, b) => {
+        activeSessions = res.data
+          .toSorted((a, b) => {
             const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
             const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
             return bTime - aTime
