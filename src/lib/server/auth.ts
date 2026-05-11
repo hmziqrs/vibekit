@@ -1,5 +1,6 @@
 import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
+import { passkey } from '@better-auth/passkey'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
 import { twoFactor } from 'better-auth/plugins'
@@ -91,6 +92,11 @@ export const createAuth = (db: AppDb) =>
     ...authConfig,
     database: drizzleAdapter(db, { provider: 'sqlite' }),
     plugins: [
+      passkey({
+        origin: env.ORIGIN,
+        rpID: new URL(env.ORIGIN).hostname,
+        rpName: 'Vibekit',
+      }),
       twoFactor({
         issuer: 'Vibekit',
         totpOptions: {

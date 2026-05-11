@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
-  import { signIn, useSession } from '$lib/auth-client'
+  import { authClient, signIn, useSession } from '$lib/auth-client'
   import { loginSchema, type LoginInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
@@ -11,6 +11,8 @@
 
   const session = useSession()
 
+  let passkeyError = $state('')
+
   // Redirect already-authenticated users away from login page
   $effect(() => {
     const user = $session.data?.user ?? page.data.user
@@ -19,6 +21,21 @@
       goto(next, { replaceState: true })
     }
   })
+
+  async function handlePasskeySignIn() {
+    passkeyError = ''
+    try {
+      const result = await authClient.signIn.passkey()
+      if (result.error) {
+        passkeyError = result.error.message ?? 'Passkey sign-in failed'
+        return
+      }
+      const next = page.url.searchParams.get('next') ?? '/app'
+      goto(next, { replaceState: true })
+    } catch (error) {
+      passkeyError = error instanceof Error ? error.message : 'Passkey sign-in failed'
+    }
+  }
 
   const form = createForm(() => ({
     defaultValues: {
@@ -112,6 +129,25 @@
           {/snippet}
         </form.Subscribe>
       </form>
+
+      <div class="relative my-4">
+        <div class="absolute inset-0 flex items-center">
+          <span class="w-full border-t border-border"></span>
+        </div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-background px-2 text-text-muted">or</span>
+        </div>
+      </div>
+
+      {#if passkeyError}
+        <p class="mb-3 text-sm text-red-400">{passkeyError}</p>
+      {/if}
+      <Button type="button" variant="outline" class="w-full" onclick={handlePasskeySignIn}>
+        <svg class="mr-2 size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z" /><circle cx="16.5" cy="7.5" r=".5" />
+        </svg>
+        Sign in with Passkey
+      </Button>
     </Card.Content>
 
     <Card.Footer class="justify-center">

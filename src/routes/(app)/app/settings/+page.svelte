@@ -35,6 +35,63 @@
   let enablePassword = $state('')
   let showEnableConfirm = $state(false)
 
+  // Passkey state
+  let passkeyLoading = $state(false)
+  let passkeyError = $state('')
+  let userPasskeys = $state<{ createdAt: Date | null; id: string; name: string | undefined }[]>([])
+  let deletePasskeyId = $state('')
+  let passkeyName = $state('')
+
+  async function loadPasskeys() {
+    try {
+      const res = await authClient.passkey.listUserPasskeys()
+      if (res.data) {
+        userPasskeys = res.data
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
+  async function addPasskey() {
+    passkeyLoading = true
+    passkeyError = ''
+    try {
+      const res = await authClient.passkey.addPasskey({
+        name: passkeyName || undefined,
+      })
+      if (res.error) {
+        passkeyError = res.error.message ?? 'Failed to register passkey'
+        return
+      }
+      passkeyName = ''
+      await loadPasskeys()
+    } catch (error) {
+      passkeyError = error instanceof Error ? error.message : 'Failed to register passkey'
+    } finally {
+      passkeyLoading = false
+    }
+  }
+
+  async function removePasskey() {
+    if (!deletePasskeyId) return
+    passkeyLoading = true
+    passkeyError = ''
+    try {
+      const res = await authClient.passkey.deletePasskey({ id: deletePasskeyId })
+      if (res.error) {
+        passkeyError = res.error.message ?? 'Failed to remove passkey'
+        return
+      }
+      deletePasskeyId = ''
+      await loadPasskeys()
+    } catch (error) {
+      passkeyError = error instanceof Error ? error.message : 'Failed to remove passkey'
+    } finally {
+      passkeyLoading = false
+    }
+  }
+
   async function enableTwoFactor() {
     if (!enablePassword.trim()) {
       twoFactorError = 'Enter your password to enable 2FA'
@@ -126,6 +183,11 @@
       twoFactorLoading = false
     }
   }
+
+  // Load passkeys on mount
+  $effect(() => {
+    loadPasskeys()
+  })
 
   const form = createForm(() => ({
     defaultValues: {
@@ -427,6 +489,80 @@
         </div>
       </div>
     {/if}
+  </div>
+
+  <!-- Passkeys -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Passkeys</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Use biometrics or a security key to sign in quickly and securely.
+    </p>
+
+    {#if passkeyError}
+      <p class="mt-2 text-[13px] text-destructive">{passkeyError}</p>
+    {/if}
+
+    {#if userPasskeys.length > 0}
+      <div class="mt-4 space-y-2">
+        {#each userPasskeys as pk}
+          <div class="flex items-center justify-between rounded-lg border border-white/6 bg-surface-elevated px-4 py-3">
+            <div class="flex items-center gap-3">
+              <svg class="size-5 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z" /><circle cx="16.5" cy="7.5" r=".5" />
+              </svg>
+              <div>
+                <p class="text-[13px] font-medium text-text-primary">{pk.name || 'Unnamed passkey'}</p>
+                {#if pk.createdAt}
+                  <p class="text-[11px] text-text-subtle">Added {new Date(pk.createdAt).toLocaleDateString()}</p>
+                {/if}
+              </div>
+            </div>
+            {#if deletePasskeyId === pk.id}
+              <div class="flex items-center gap-2">
+                <button
+                  onclick={() => removePasskey()}
+                  disabled={passkeyLoading}
+                  class="rounded-lg bg-destructive px-3 py-1 text-[12px] font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  Confirm
+                </button>
+                <button
+                  onclick={() => (deletePasskeyId = '')}
+                  class="rounded-lg px-3 py-1 text-[12px] font-medium text-text-muted hover:text-text-primary"
+                >
+                  Cancel
+                </button>
+              </div>
+            {:else}
+              <button
+                onclick={() => (deletePasskeyId = pk.id)}
+                class="rounded-lg px-3 py-1 text-[12px] font-medium text-text-muted transition-colors hover:text-destructive"
+              >
+                Remove
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+
+    <div class="mt-4 flex items-end gap-2">
+      <div class="flex-1">
+        <input
+          type="text"
+          bind:value={passkeyName}
+          placeholder="Passkey name (optional)"
+          class="w-full rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+      </div>
+      <button
+        onclick={addPasskey}
+        disabled={passkeyLoading}
+        class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+      >
+        {passkeyLoading ? 'Registering...' : 'Add Passkey'}
+      </button>
+    </div>
   </div>
 
   <!-- Delete Account -->
