@@ -5,6 +5,7 @@
   import { loginSchema, type LoginInput } from '$lib/validators/auth'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
+  import SocialLoginButtons from '$lib/components/social-login-buttons.svelte'
   import { createForm } from '@tanstack/svelte-form'
   import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
@@ -13,12 +14,13 @@
 
   let passkeyError = $state('')
 
+  const callbackURL = $derived(page.url.searchParams.get('next') ?? '/app')
+
   // Redirect already-authenticated users away from login page
   $effect(() => {
     const user = $session.data?.user ?? page.data.user
     if (user) {
-      const next = page.url.searchParams.get('next') ?? '/app'
-      goto(next, { replaceState: true })
+      goto(callbackURL, { replaceState: true })
     }
   })
 
@@ -30,8 +32,7 @@
         passkeyError = result.error.message ?? 'Passkey sign-in failed'
         return
       }
-      const next = page.url.searchParams.get('next') ?? '/app'
-      goto(next, { replaceState: true })
+      goto(callbackURL, { replaceState: true })
     } catch (error) {
       passkeyError = error instanceof Error ? error.message : 'Passkey sign-in failed'
     }
@@ -43,17 +44,14 @@
       password: '',
     },
     onSubmit: async ({ value }: { value: LoginInput }) => {
-      console.log("submit")
       try {
-        console.log('value', value)
         const res = await signIn.email(value)
         if (res?.error) {
           return {
             form: res.error.message ?? 'Invalid email or password',
           }
         }
-        const next = page.url.searchParams.get('next') ?? '/app'
-        goto(next, { replaceState: true })
+        goto(callbackURL, { replaceState: true })
         return null
       } catch (error) {
         return {
@@ -75,6 +73,17 @@
     </Card.Header>
 
     <Card.Content>
+      <SocialLoginButtons {callbackURL} />
+
+      <div class="relative my-4">
+        <div class="absolute inset-0 flex items-center">
+          <span class="w-full border-t border-border"></span>
+        </div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-background px-2 text-text-muted">or</span>
+        </div>
+      </div>
+
       <form
         onsubmit={form.handleSubmit}
         class="space-y-4"

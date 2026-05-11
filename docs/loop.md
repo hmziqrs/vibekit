@@ -95,7 +95,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Password security (breached password check via HaveIBeenPwned API, password strength estimator, password strength UI component, enhanced password validator)
 - [x] Two-factor authentication (TOTP apps, backup/recovery codes, remember device, 2FA enforcement per-role/per-org)
 - [x] Passkey / WebAuthn support (platform authenticators, cross-device auth, credential management UI)
-- [ ] OAuth & social login hardening (PKCE flow verification, state parameter validation, account linking conflicts, provider-specific edge cases)
+- [x] OAuth & social login hardening (PKCE flow verification, state parameter validation, account linking conflicts, provider-specific edge cases)
 - [ ] Session & device management (list active sessions, remote logout, device fingerprinting, session IP/user-agent tracking, concurrent session limits)
 - [ ] Security alerts & anomaly detection (new device/IP notification, password/2FA change alerts, suspicious login location, failed login thresholds)
 - [x] Security headers & CSP (Content-Security-Policy with nonce-based script-src, HSTS preload, X-Frame-Options, COOP, CORP, referrer policy, permissions policy)

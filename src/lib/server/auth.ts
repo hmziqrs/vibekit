@@ -10,6 +10,14 @@ import { uuidv7 } from 'uuidv7'
 import type { AppDb } from './services/types'
 
 export const authConfig = {
+  account: {
+    accountLinking: {
+      allowDifferentEmails: false,
+      enabled: true,
+      trustedProviders: ['google', 'github', 'email-password'] as const,
+    },
+    encryptOAuthTokens: true,
+  },
   advanced: {
     // CSRF protection is enabled by default (disableCSRFCheck: false,
     // DisableOriginCheck: false). Better Auth validates the Origin header
@@ -54,6 +62,25 @@ export const authConfig = {
     window: 60,
   },
   secret: env.BETTER_AUTH_SECRET,
+  socialProviders: {
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+            prompt: 'select_account' as const,
+          },
+        }
+      : {}),
+    ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
+      ? {
+          github: {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+          },
+        }
+      : {}),
+  },
   user: {
     additionalFields: {
       deletedAt: {

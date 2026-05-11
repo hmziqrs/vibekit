@@ -6,6 +6,7 @@
   import PasswordStrength from '$lib/components/password-strength.svelte'
   import { Button } from '$lib/components/ui/button'
   import * as Card from '$lib/components/ui/card'
+  import SocialLoginButtons from '$lib/components/social-login-buttons.svelte'
   import { createForm } from '@tanstack/svelte-form'
   import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
@@ -57,6 +58,17 @@
     </Card.Header>
 
     <Card.Content>
+      <SocialLoginButtons callbackURL="/app" />
+
+      <div class="relative my-4">
+        <div class="absolute inset-0 flex items-center">
+          <span class="w-full border-t border-border"></span>
+        </div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-background px-2 text-text-muted">or</span>
+        </div>
+      </div>
+
       <form
         onsubmit={form.handleSubmit}
         class="space-y-4"
