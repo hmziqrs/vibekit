@@ -23,7 +23,7 @@
 
   onMount(async () => {
     try {
-      const id = data.post.id
+      const {id} = data.post
       const res = await fetch(`/api/blog/${id}`)
       if (!res.ok) throw new Error('Failed to fetch post')
       const post = (await res.json()) as Post
@@ -51,8 +51,8 @@
       } else if (post.contentHtml) {
         renderedHtml = post.contentHtml
       }
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to load preview'
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to load preview'
     } finally {
       loading = false
     }

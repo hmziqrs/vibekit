@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Editor } from '@tiptap/core'
-  import { goto } from '$app/navigation'
-  import { invalidateAll } from '$app/navigation'
+  import { goto, invalidateAll } from '$app/navigation'
   import ArticleEditor from '$lib/editor/article-editor.svelte'
   import ImageUpload from '$lib/components/image-upload.svelte'
   import SeoPanel from '$lib/components/seo-panel.svelte'

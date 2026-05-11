@@ -23,15 +23,25 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
   }
 
   if (tagSlug) {
-    const tag = await db.select({ id: blogTag.id }).from(blogTag).where(eq(blogTag.slug, tagSlug)).get()
+    const tag = await db
+      .select({ id: blogTag.id })
+      .from(blogTag)
+      .where(eq(blogTag.slug, tagSlug))
+      .get()
     if (tag) {
-      const taggedIds = await db.select({ postId: blogPostTag.postId }).from(blogPostTag).where(eq(blogPostTag.tagId, tag.id))
+      const taggedIds = await db
+        .select({ postId: blogPostTag.postId })
+        .from(blogPostTag)
+        .where(eq(blogPostTag.tagId, tag.id))
       const idSet = new Set(taggedIds.map((t) => t.postId))
       if (idSet.size > 0) {
         // Drizzle doesn't support inArray with a set directly in and(), so filter after
         const whereClause = and(...conditions)
-        const [countResult, allPosts] = await Promise.all([
-          db.select({ value: sql<number>`count(*)` }).from(blogPost).where(whereClause),
+        const [_countResult, allPosts] = await Promise.all([
+          db
+            .select({ value: sql<number>`count(*)` })
+            .from(blogPost)
+            .where(whereClause),
           db
             .select({
               coverImageUrl: blogPost.coverImageUrl,
@@ -50,20 +60,29 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
         const total = filtered.length
         const posts = filtered.slice(offset, offset + limit)
 
-        const tags = await db.select({ name: blogTag.name, slug: blogTag.slug }).from(blogTag).orderBy(blogTag.name)
+        const tags = await db
+          .select({ name: blogTag.name, slug: blogTag.slug })
+          .from(blogTag)
+          .orderBy(blogTag.name)
 
         return { page, posts, q: q || null, tag: tagSlug, tags, total }
       }
     }
     // Tag not found or no posts with that tag
-    const tags = await db.select({ name: blogTag.name, slug: blogTag.slug }).from(blogTag).orderBy(blogTag.name)
+    const tags = await db
+      .select({ name: blogTag.name, slug: blogTag.slug })
+      .from(blogTag)
+      .orderBy(blogTag.name)
     return { page, posts: [], q: q || null, tag: tagSlug, tags, total: 0 }
   }
 
   const whereClause = and(...conditions)
 
   const [countResult, posts] = await Promise.all([
-    db.select({ value: sql<number>`count(*)` }).from(blogPost).where(whereClause),
+    db
+      .select({ value: sql<number>`count(*)` })
+      .from(blogPost)
+      .where(whereClause),
     db
       .select({
         coverImageUrl: blogPost.coverImageUrl,
@@ -81,7 +100,17 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
       .offset(offset),
   ])
 
-  const tags = await db.select({ name: blogTag.name, slug: blogTag.slug }).from(blogTag).orderBy(blogTag.name)
+  const tags = await db
+    .select({ name: blogTag.name, slug: blogTag.slug })
+    .from(blogTag)
+    .orderBy(blogTag.name)
 
-  return { page, posts, q: q || null, tag: tagSlug || null, tags, total: countResult[0]?.value ?? 0 }
+  return {
+    page,
+    posts,
+    q: q || null,
+    tag: tagSlug || null,
+    tags,
+    total: countResult[0]?.value ?? 0,
+  }
 }

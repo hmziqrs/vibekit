@@ -7,9 +7,15 @@
 
   const { data } = $props()
 
+  const pageTitle = $derived.by(() => {
+    if (data.page > 1) return `Blog — Page ${data.page}`
+    if (data.q) return `Search: ${data.q}`
+    return 'Blog'
+  })
+
   const meta = $derived(seo({
     description: 'Articles about SvelteKit, Cloudflare, and building SaaS products.',
-    title: data.page > 1 ? `Blog — Page ${data.page}` : data.q ? `Search: ${data.q}` : 'Blog',
+    title: pageTitle,
   }))
 
   const limit = 10

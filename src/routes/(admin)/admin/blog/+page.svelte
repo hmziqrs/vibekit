@@ -54,7 +54,7 @@
   })
 
   $effect(() => {
-    statusFilter
+    void statusFilter
     selectedIds = new Set()
     bulkError = ''
   })
@@ -85,7 +85,8 @@
 
   function formatDate(val: string | null): string {
     if (!val) return '—'
-    return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return new Date(val).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+
   }
 
   async function deletePost() {

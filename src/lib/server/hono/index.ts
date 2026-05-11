@@ -1,5 +1,13 @@
 import { writeAuditLog } from '$lib/server/audit'
-import { blogPost, blogPostRevision, blogPostSlugHistory, blogPostTag, blogTag, item, user } from '$lib/server/db/schema'
+import {
+  blogPost,
+  blogPostRevision,
+  blogPostSlugHistory,
+  blogPostTag,
+  blogTag,
+  item,
+  user,
+} from '$lib/server/db/schema'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
@@ -9,7 +17,20 @@ import {
   updatePostSchema,
 } from '$lib/validators'
 import { zValidator } from '@hono/zod-validator'
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
 import { z } from 'zod/v4'
@@ -280,14 +301,17 @@ blogApp.get('/', async (c) => {
   const sortMap: Record<string, Record<string, ReturnType<typeof desc>>> = {
     createdAt: { asc: asc(blogPost.createdAt), desc: desc(blogPost.createdAt) },
     publishedAt: { asc: asc(blogPost.publishedAt), desc: desc(blogPost.publishedAt) },
-    title: { asc: asc(blogPost.title), desc: desc(blogPost.title) },
     slug: { asc: asc(blogPost.slug), desc: desc(blogPost.slug) },
     status: { asc: asc(blogPost.status), desc: desc(blogPost.status) },
+    title: { asc: asc(blogPost.title), desc: desc(blogPost.title) },
   }
   const orderBy = sortMap[sortField]?.[sortDir] ?? desc(blogPost.createdAt)
 
   const [countResult, posts] = await Promise.all([
-    db.select({ value: sql<number>`count(*)` }).from(blogPost).where(whereClause),
+    db
+      .select({ value: sql<number>`count(*)` })
+      .from(blogPost)
+      .where(whereClause),
     db
       .select({
         coverImageUrl: blogPost.coverImageUrl,
@@ -585,8 +609,7 @@ blogApp.get('/tags', async (c) => {
     .select({
       id: blogTag.id,
       name: blogTag.name,
-      postCount:
-        sql<number>`(select count(*) from ${blogPostTag} where ${blogPostTag.tagId} = ${blogTag.id})`,
+      postCount: sql<number>`(select count(*) from ${blogPostTag} where ${blogPostTag.tagId} = ${blogTag.id})`,
       slug: blogTag.slug,
     })
     .from(blogTag)
@@ -604,7 +627,11 @@ blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
     .replace(/^-|-$/g, '')
   const { db } = c.get('services')
 
-  const existing = await db.select({ id: blogTag.id }).from(blogTag).where(eq(blogTag.slug, slug)).get()
+  const existing = await db
+    .select({ id: blogTag.id })
+    .from(blogTag)
+    .where(eq(blogTag.slug, slug))
+    .get()
   if (existing) return c.json({ error: 'Tag already exists' }, 409)
 
   const id = uuid()
@@ -759,7 +786,6 @@ blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
 
   return c.json({ key: result.key, url: result.url }, 201)
 })
-
 
 // ── Admin (admin only) ────────────────────────────────────────────────
 

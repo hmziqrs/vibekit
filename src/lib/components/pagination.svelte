@@ -18,7 +18,7 @@
   function getPageNumbers(current: number, total: number): (number | '...')[] {
     if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
 
-    const pages: (number | '...')[] = [1]
+    const result: (number | '...')[] = [1]
 
     let start = Math.max(2, current - 1)
     let end = Math.min(total - 1, current + 1)
@@ -31,12 +31,12 @@
       end = total - 1
     }
 
-    if (start > 2) pages.push('...')
-    for (let i = start; i <= end; i++) pages.push(i)
-    if (end < total - 1) pages.push('...')
+    if (start > 2) result.push('...')
+    for (let i = start; i <= end; i++) result.push(i)
+    if (end < total - 1) result.push('...')
 
-    pages.push(total)
-    return pages
+    result.push(total)
+    return result
   }
 </script>
 

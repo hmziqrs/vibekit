@@ -58,10 +58,14 @@
       result = result.filter((i) => {
         const ct = i.contentType ?? ''
         switch (fileTypeFilter) {
-          case 'image': return ct.startsWith('image/')
-          case 'video': return ct.startsWith('video/')
-          case 'audio': return ct.startsWith('audio/')
-          case 'document': return !ct.startsWith('image/') && !ct.startsWith('video/') && !ct.startsWith('audio/')
+          case 'image': { return ct.startsWith('image/')
+          }
+          case 'video': { return ct.startsWith('video/')
+          }
+          case 'audio': { return ct.startsWith('audio/')
+          }
+          case 'document': { return !ct.startsWith('image/') && !ct.startsWith('video/') && !ct.startsWith('audio/')
+          }
         }
       })
     }
@@ -85,9 +89,9 @@
       if (append) {
         items = [...items, ...data.items]
       } else {
-        items = data.items
+        ({ items } = data)
       }
-      nextCursor = data.nextCursor
+      ({ nextCursor } = data)
       hasMore = data.truncated ?? false
     } catch {
       error = 'Failed to load media'
@@ -110,7 +114,7 @@
       const res = await fetch('/api/blog/upload', { body: formData, method: 'POST' })
       if (!res.ok) throw new Error('Upload failed')
       const { key } = (await res.json()) as { key: string; url: string }
-      items = [{ contentType: file.type, key, size: file.size, lastModified: new Date().toISOString() }, ...items]
+      items = [{ contentType: file.type, key, lastModified: new Date().toISOString(), size: file.size }, ...items]
     } catch {
       uploadError = 'Upload failed'
     } finally {

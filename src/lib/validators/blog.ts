@@ -8,13 +8,13 @@ const urlOrPath = z
     (v) => {
       if (v.startsWith('/')) return true
       try {
-        new URL(v)
+        const _ = new URL(v)
         return true
       } catch {
         return false
       }
     },
-    { message: 'Invalid URL' },
+    { message: 'Invalid URL' }
   )
   .optional()
   .nullable()
