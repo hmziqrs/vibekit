@@ -2,12 +2,29 @@ import { z } from 'zod/v4'
 
 import { slug } from './common'
 
+const urlOrPath = z
+  .string()
+  .refine(
+    (v) => {
+      if (v.startsWith('/')) return true
+      try {
+        new URL(v)
+        return true
+      } catch {
+        return false
+      }
+    },
+    { message: 'Invalid URL' },
+  )
+  .optional()
+  .nullable()
+
 export const createPostSchema = z.object({
   canonicalUrl: z.string().url('Invalid URL').optional().nullable(),
   contentBody: z.string().max(100_000, 'Content is too long').optional().nullable(),
-  coverImageUrl: z.string().url('Invalid URL').optional().nullable(),
+  coverImageUrl: urlOrPath,
   excerpt: z.string().max(500, 'Excerpt is too long').trim().optional().nullable(),
-  ogImageUrl: z.string().url('Invalid URL').optional().nullable(),
+  ogImageUrl: urlOrPath,
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
   slug,
@@ -19,9 +36,9 @@ export const createPostSchema = z.object({
 export const updatePostSchema = z.object({
   canonicalUrl: z.string().url().optional().nullable(),
   contentBody: z.string().max(100_000).optional().nullable(),
-  coverImageUrl: z.string().url().optional().nullable(),
+  coverImageUrl: urlOrPath,
   excerpt: z.string().max(500).trim().optional().nullable(),
-  ogImageUrl: z.string().url().optional().nullable(),
+  ogImageUrl: urlOrPath,
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
   slug: slug.optional(),

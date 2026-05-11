@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import type { AppServices } from '../../services/types'
 import { createNodeCache } from './cache'
 import { createNodeDb } from './db'

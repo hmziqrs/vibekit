@@ -1,0 +1,37 @@
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: vibekit-rustfs
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9000/ > /dev/null 2>&1; exit 0"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 3s
+
+  createbucket:
+    image: minio/mc:latest
+    container_name: vibekit-mc-init
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://rustfs:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/vibekit-media &&
+      echo 'Bucket vibekit-media ready'
+      "
+
+volumes:
+  rustfs-data:

@@ -14,31 +14,31 @@ import type {
   StoredObject,
 } from '../../services/types'
 
-const S3_ENDPOINT = process.env.S3_ENDPOINT ?? ''
-const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY ?? ''
-const S3_SECRET_KEY = process.env.S3_SECRET_KEY ?? ''
-const S3_BUCKET = process.env.S3_BUCKET ?? 'vibekit-media'
-const S3_REGION = process.env.S3_REGION ?? 'auto'
-
 export function createS3Storage(): StorageClient {
+  const endpoint = process.env.S3_ENDPOINT ?? ''
+  const accessKey = process.env.S3_ACCESS_KEY ?? ''
+  const secretKey = process.env.S3_SECRET_KEY ?? ''
+  const bucket = process.env.S3_BUCKET ?? 'vibekit-media'
+  const region = process.env.S3_REGION ?? 'auto'
+
   const client = new S3Client({
     credentials: {
-      accessKeyId: S3_ACCESS_KEY,
-      secretAccessKey: S3_SECRET_KEY,
+      accessKeyId: accessKey,
+      secretAccessKey: secretKey,
     },
-    endpoint: S3_ENDPOINT,
+    endpoint,
     forcePathStyle: true,
-    region: S3_REGION,
+    region,
   })
 
   return {
     async delete(key: string): Promise<void> {
-      await client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }))
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
     },
 
     async get(key: string): Promise<StoredObject | null> {
       try {
-        const result = await client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }))
+        const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
         if (!result.Body) return null
         return {
           body: result.Body.transformToWebStream(),
@@ -55,11 +55,11 @@ export function createS3Storage(): StorageClient {
     async list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult> {
       const result = await client.send(
         new ListObjectsV2Command({
-          Bucket: S3_BUCKET,
+          Bucket: bucket,
           ContinuationToken: cursor || undefined,
           MaxKeys: limit ?? 100,
           Prefix: prefix || undefined,
-        })
+        }),
       )
 
       const items =
@@ -80,7 +80,7 @@ export function createS3Storage(): StorageClient {
     async put(
       key: string,
       body: ReadableStream | Uint8Array | Blob,
-      opts?: PutOptions
+      opts?: PutOptions,
     ): Promise<PutResult> {
       let bytes: Uint8Array
       if (body instanceof Uint8Array) {
@@ -111,12 +111,12 @@ export function createS3Storage(): StorageClient {
       await client.send(
         new PutObjectCommand({
           Body: bytes,
-          Bucket: S3_BUCKET,
+          Bucket: bucket,
           CacheControl: opts?.cacheControl,
           ContentType: opts?.contentType,
           Key: key,
           Metadata: opts?.metadata,
-        })
+        }),
       )
 
       return {
