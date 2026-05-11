@@ -1243,6 +1243,93 @@ const updateSchema = z.object({
   status: z.enum(['active', 'suspended']).optional(),
 })
 
+// Admin stats
+adminApp.get('/stats', async (c) => {
+  const { db } = c.get('services')
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+  const [
+    totalUsers,
+    activeUsers,
+    suspendedUsers,
+    newUsersThisWeek,
+    totalPosts,
+    publishedPosts,
+    draftPosts,
+    totalItems,
+    activeItems,
+    recentAuditLogs,
+  ] = await Promise.all([
+    db.select({ count: count() }).from(user).where(isNull(user.deletedAt)).get(),
+    db
+      .select({ count: count() })
+      .from(user)
+      .where(and(isNull(user.deletedAt), eq(user.status, 'active')))
+      .get(),
+    db
+      .select({ count: count() })
+      .from(user)
+      .where(and(isNull(user.deletedAt), eq(user.status, 'suspended')))
+      .get(),
+    db
+      .select({ count: count() })
+      .from(user)
+      .where(and(isNull(user.deletedAt), gte(user.createdAt, oneWeekAgo)))
+      .get(),
+    db.select({ count: count() }).from(blogPost).get(),
+    db.select({ count: count() }).from(blogPost).where(eq(blogPost.status, 'published')).get(),
+    db.select({ count: count() }).from(blogPost).where(eq(blogPost.status, 'draft')).get(),
+    db.select({ count: count() }).from(item).where(isNull(item.deletedAt)).get(),
+    db
+      .select({ count: count() })
+      .from(item)
+      .where(and(eq(item.status, 'active'), isNull(item.deletedAt)))
+      .get(),
+    db
+      .select({
+        action: auditLog.action,
+        createdAt: auditLog.createdAt,
+        entityId: auditLog.entityId,
+        entityType: auditLog.entityType,
+        id: auditLog.id,
+        metadata: auditLog.metadata,
+        userId: auditLog.userId,
+        userName: user.name,
+      })
+      .from(auditLog)
+      .leftJoin(user, eq(auditLog.userId, user.id))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(10),
+  ])
+
+  return c.json({
+    audit: recentAuditLogs.map((log) => ({
+      action: log.action,
+      createdAt: log.createdAt,
+      entityId: log.entityId,
+      entityType: log.entityType,
+      id: log.id,
+      metadata: log.metadata,
+      userName: log.userName ?? 'Unknown',
+    })),
+    items: {
+      active: activeItems?.count ?? 0,
+      total: totalItems?.count ?? 0,
+    },
+    posts: {
+      draft: draftPosts?.count ?? 0,
+      published: publishedPosts?.count ?? 0,
+      total: totalPosts?.count ?? 0,
+    },
+    users: {
+      active: activeUsers?.count ?? 0,
+      newThisWeek: newUsersThisWeek?.count ?? 0,
+      suspended: suspendedUsers?.count ?? 0,
+      total: totalUsers?.count ?? 0,
+    },
+  })
+})
+
 adminApp.get('/users', async (c) => {
   const { db } = c.get('services')
   const statusParam = c.req.query('status')

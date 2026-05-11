@@ -117,7 +117,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)
 
 #### Admin & Moderation
-- [ ] Admin dashboard (system health, user growth metrics, revenue overview, active sessions, error rates, search/filter capabilities)
+- [x] Admin dashboard (system health, user growth metrics, revenue overview, active sessions, error rates, search/filter capabilities)
 - [ ] Admin user management (user list with search/filter, user detail view, impersonation, manual actions, bulk operations)
 - [ ] Admin sudo / impersonation mode (admin acts on behalf of user with full audit trail, time-limited sessions, explicit reason logging)
 - [ ] User audit log & activity tracking (dispute resolution, security reviews, compliance trails, immutable log entries, export for compliance)
