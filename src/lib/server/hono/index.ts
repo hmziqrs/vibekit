@@ -8,6 +8,13 @@ import {
   item,
   user,
 } from '$lib/server/db/schema'
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  isAppError,
+  NotFoundError,
+} from '$lib/server/errors'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
@@ -33,6 +40,7 @@ import {
 } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod/v4'
 
 import {
@@ -45,12 +53,38 @@ import {
 } from './middleware'
 import type { ProtectedEnv } from './types'
 
+const validate = <T extends z.ZodType>(schema: T) =>
+  zValidator('json', schema, (result, c) => {
+    if (!result.success) {
+      return c.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            details: result.error.issues.map((i) => ({
+              message: i.message,
+              path: i.path.map(String).join('.'),
+            })),
+            message: 'Validation failed',
+            status: 400,
+          },
+        },
+        400
+      )
+    }
+  })
+
 const app = new Hono()
   .use('*', secureHeaders(), withServices, withSession)
   .on(['POST', 'GET'], '/api/auth/*', (c) => c.get('auth').handler(c.req.raw))
   .onError((err, c) => {
+    if (isAppError(err)) {
+      return c.json(err.toJSON(), err.status as ContentfulStatusCode)
+    }
     console.error(err)
-    return c.json({ error: 'Internal Server Error' }, 500)
+    return c.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
+      500
+    )
   })
 
 // ── Health ───────────────────────────────────────────────────────────
@@ -113,7 +147,7 @@ protectedApp.get('/items', async (c) => {
   return c.json({ items })
 })
 
-protectedApp.post('/items', zValidator('json', createItemSchema), async (c) => {
+protectedApp.post('/items', validate(createItemSchema), async (c) => {
   const parsed = c.req.valid('json')
   const { db } = c.get('services')
   const currentUser = c.get('user')
@@ -153,7 +187,7 @@ protectedApp.get('/items/:id', withOwnedItem, async (c) => {
   })
 })
 
-protectedApp.patch('/items/:id', withOwnedItem, zValidator('json', updateItemSchema), async (c) => {
+protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), async (c) => {
   const parsed = c.req.valid('json')
   const { db } = c.get('services')
   const currentUser = c.get('user')
@@ -259,7 +293,7 @@ blogApp.get('/:id/content', async (c) => {
     .where(and(isNull(blogPost.deletedAt), or(eq(blogPost.id, id), eq(blogPost.slug, id))))
     .get()
   if (!post) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
 
   return c.json({ post })
@@ -335,53 +369,48 @@ blogApp.get('/', async (c) => {
   return c.json({ limit, page, posts, total: countResult[0]?.value ?? 0 })
 })
 
-blogApp.post(
-  '/',
-  withRateLimit('blog-mutate', 50),
-  zValidator('json', createPostSchema),
-  async (c) => {
-    const parsed = c.req.valid('json')
-    const { db } = c.get('services')
-    const currentUser = c.get('user')
+blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
 
-    const existing = await db
-      .select({ id: blogPost.id })
-      .from(blogPost)
-      .where(eq(blogPost.slug, parsed.slug))
-      .get()
+  const existing = await db
+    .select({ id: blogPost.id })
+    .from(blogPost)
+    .where(eq(blogPost.slug, parsed.slug))
+    .get()
 
-    if (existing) {
-      return c.json({ error: 'Slug already exists' }, 409)
-    }
-
-    const id = uuid()
-    const { title, slug, excerpt, contentBody, coverImageUrl, seoTitle, seoDescription, status } =
-      parsed
-    await db.insert(blogPost).values({
-      authorId: currentUser.id,
-      contentBody: toNullable(contentBody),
-      coverImageUrl: toNullable(coverImageUrl),
-      excerpt: toNullable(excerpt),
-      id,
-      publishedAt: status === 'published' ? new Date() : null,
-      seoDescription: toNullable(seoDescription),
-      seoTitle: toNullable(seoTitle),
-      slug,
-      status,
-      title,
-    })
-
-    if (status === 'published') {
-      await c.get('services').cache.purgeBlog(slug)
-    }
-
-    if (parsed.tagIds?.length) {
-      await db.insert(blogPostTag).values(parsed.tagIds.map((tagId) => ({ postId: id, tagId })))
-    }
-
-    return c.json({ id }, 201)
+  if (existing) {
+    throw new ConflictError('Slug already exists')
   }
-)
+
+  const id = uuid()
+  const { title, slug, excerpt, contentBody, coverImageUrl, seoTitle, seoDescription, status } =
+    parsed
+  await db.insert(blogPost).values({
+    authorId: currentUser.id,
+    contentBody: toNullable(contentBody),
+    coverImageUrl: toNullable(coverImageUrl),
+    excerpt: toNullable(excerpt),
+    id,
+    publishedAt: status === 'published' ? new Date() : null,
+    seoDescription: toNullable(seoDescription),
+    seoTitle: toNullable(seoTitle),
+    slug,
+    status,
+    title,
+  })
+
+  if (status === 'published') {
+    await c.get('services').cache.purgeBlog(slug)
+  }
+
+  if (parsed.tagIds?.length) {
+    await db.insert(blogPostTag).values(parsed.tagIds.map((tagId) => ({ postId: id, tagId })))
+  }
+
+  return c.json({ id }, 201)
+})
 
 blogApp.get('/:id', async (c) => {
   const { db } = c.get('services')
@@ -389,76 +418,69 @@ blogApp.get('/:id', async (c) => {
 
   const post = await db.select().from(blogPost).where(eq(blogPost.id, id)).get()
   if (!post) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
   return c.json({ post })
 })
 
-blogApp.patch(
-  '/:id',
-  withRateLimit('blog-mutate'),
-  zValidator('json', updatePostSchema),
-  async (c) => {
-    const parsed = c.req.valid('json')
-    const { db } = c.get('services')
-    const id = c.req.param('id')
+blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+  const id = c.req.param('id')
 
-    const existing = await db.select().from(blogPost).where(eq(blogPost.id, id)).get()
-    if (!existing) {
-      return c.json({ error: 'Not found' }, 404)
-    }
-
-    const data = parsed
-    const updates: Partial<typeof blogPost.$inferInsert> = { updatedAt: new Date() }
-    if (data.title !== undefined) updates.title = data.title
-    if (data.excerpt !== undefined) updates.excerpt = data.excerpt
-    if (data.contentBody !== undefined) updates.contentBody = data.contentBody
-    if (data.coverImageUrl !== undefined) updates.coverImageUrl = data.coverImageUrl
-    if (data.seoTitle !== undefined) updates.seoTitle = data.seoTitle
-    if (data.seoDescription !== undefined) updates.seoDescription = data.seoDescription
-    if (data.status !== undefined) updates.status = data.status
-    if (data.canonicalUrl !== undefined) updates.canonicalUrl = data.canonicalUrl
-    if (data.ogImageUrl !== undefined) updates.ogImageUrl = data.ogImageUrl
-
-    if (data.slug !== undefined && data.slug !== existing.slug) {
-      await db
-        .insert(blogPostSlugHistory)
-        .values({ id: uuid(), oldSlug: existing.slug, postId: id })
-      updates.slug = data.slug
-    }
-
-    if (data.status === 'published' && !existing.publishedAt) {
-      updates.publishedAt = new Date()
-    }
-
-    await db.update(blogPost).set(updates).where(eq(blogPost.id, id))
-
-    if (data.contentBody !== undefined || data.title !== undefined) {
-      await db.insert(blogPostRevision).values({
-        authorId: c.get('user').id,
-        changeDescription: data.status === 'published' ? 'Published' : 'Draft save',
-        contentBody: (updates.contentBody as string | null) ?? existing.contentBody,
-        excerpt: (updates.excerpt as string | null) ?? existing.excerpt,
-        id: uuid(),
-        postId: id,
-        title: (updates.title as string) ?? existing.title,
-      })
-    }
-
-    if (existing.status === 'published' || updates.status === 'published') {
-      await c.get('services').cache.purgeBlog((updates.slug as string) ?? existing.slug)
-    }
-
-    if (data.tagIds !== undefined) {
-      await db.delete(blogPostTag).where(eq(blogPostTag.postId, id))
-      if (data.tagIds.length > 0) {
-        await db.insert(blogPostTag).values(data.tagIds.map((tagId) => ({ postId: id, tagId })))
-      }
-    }
-
-    return c.json({ success: true })
+  const existing = await db.select().from(blogPost).where(eq(blogPost.id, id)).get()
+  if (!existing) {
+    throw new NotFoundError()
   }
-)
+
+  const data = parsed
+  const updates: Partial<typeof blogPost.$inferInsert> = { updatedAt: new Date() }
+  if (data.title !== undefined) updates.title = data.title
+  if (data.excerpt !== undefined) updates.excerpt = data.excerpt
+  if (data.contentBody !== undefined) updates.contentBody = data.contentBody
+  if (data.coverImageUrl !== undefined) updates.coverImageUrl = data.coverImageUrl
+  if (data.seoTitle !== undefined) updates.seoTitle = data.seoTitle
+  if (data.seoDescription !== undefined) updates.seoDescription = data.seoDescription
+  if (data.status !== undefined) updates.status = data.status
+  if (data.canonicalUrl !== undefined) updates.canonicalUrl = data.canonicalUrl
+  if (data.ogImageUrl !== undefined) updates.ogImageUrl = data.ogImageUrl
+
+  if (data.slug !== undefined && data.slug !== existing.slug) {
+    await db.insert(blogPostSlugHistory).values({ id: uuid(), oldSlug: existing.slug, postId: id })
+    updates.slug = data.slug
+  }
+
+  if (data.status === 'published' && !existing.publishedAt) {
+    updates.publishedAt = new Date()
+  }
+
+  await db.update(blogPost).set(updates).where(eq(blogPost.id, id))
+
+  if (data.contentBody !== undefined || data.title !== undefined) {
+    await db.insert(blogPostRevision).values({
+      authorId: c.get('user').id,
+      changeDescription: data.status === 'published' ? 'Published' : 'Draft save',
+      contentBody: (updates.contentBody as string | null) ?? existing.contentBody,
+      excerpt: (updates.excerpt as string | null) ?? existing.excerpt,
+      id: uuid(),
+      postId: id,
+      title: (updates.title as string) ?? existing.title,
+    })
+  }
+
+  if (existing.status === 'published' || updates.status === 'published') {
+    await c.get('services').cache.purgeBlog((updates.slug as string) ?? existing.slug)
+  }
+
+  if (data.tagIds !== undefined) {
+    await db.delete(blogPostTag).where(eq(blogPostTag.postId, id))
+    if (data.tagIds.length > 0) {
+      await db.insert(blogPostTag).values(data.tagIds.map((tagId) => ({ postId: id, tagId })))
+    }
+  }
+
+  return c.json({ success: true })
+})
 
 blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
@@ -466,7 +488,7 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
 
   const existing = await db.select().from(blogPost).where(eq(blogPost.id, id)).get()
   if (!existing) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
 
   await db
@@ -489,7 +511,7 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
     .get()
   if (!existing) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
 
   await db
@@ -512,7 +534,7 @@ blogApp.post('/:id/unpublish', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
     .get()
   if (!existing) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
 
   await db
@@ -535,7 +557,7 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
     .get()
   if (!existing) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
 
   await db
@@ -558,7 +580,7 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
     .get()
   if (!existing) {
-    return c.json({ error: 'Not found' }, 404)
+    throw new NotFoundError()
   }
 
   await db
@@ -575,7 +597,7 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
 
 blogApp.post('/bulk-delete', withRateLimit('blog-mutate'), async (c) => {
   const { ids } = (await c.req.json()) as { ids?: string[] }
-  if (!ids?.length) return c.json({ error: 'No IDs provided' }, 400)
+  if (!ids?.length) throw new BadRequestError('No IDs provided')
 
   const { db } = c.get('services')
   await db
@@ -589,7 +611,7 @@ blogApp.post('/bulk-delete', withRateLimit('blog-mutate'), async (c) => {
 
 blogApp.post('/bulk-archive', withRateLimit('blog-mutate'), async (c) => {
   const { ids } = (await c.req.json()) as { ids?: string[] }
-  if (!ids?.length) return c.json({ error: 'No IDs provided' }, 400)
+  if (!ids?.length) throw new BadRequestError('No IDs provided')
 
   const { db } = c.get('services')
   await db
@@ -619,7 +641,7 @@ blogApp.get('/tags', async (c) => {
 
 blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
   const { name } = (await c.req.json()) as { name?: string }
-  if (!name?.trim()) return c.json({ error: 'Name is required' }, 400)
+  if (!name?.trim()) throw new BadRequestError('Name is required')
 
   const slug = name
     .toLowerCase()
@@ -632,7 +654,7 @@ blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
     .from(blogTag)
     .where(eq(blogTag.slug, slug))
     .get()
-  if (existing) return c.json({ error: 'Tag already exists' }, 409)
+  if (existing) throw new ConflictError('Tag already exists')
 
   const id = uuid()
   await db.insert(blogTag).values({ id, name: name.trim(), slug })
@@ -690,12 +712,12 @@ blogApp.post('/:id/revisions/:revId/restore', withRateLimit('blog-mutate'), asyn
     .where(and(eq(blogPostRevision.id, revId), eq(blogPostRevision.postId, postId)))
     .get()
   if (!revision) {
-    return c.json({ error: 'Revision not found' }, 404)
+    throw new NotFoundError('Revision not found')
   }
 
   const current = await db.select().from(blogPost).where(eq(blogPost.id, postId)).get()
   if (!current) {
-    return c.json({ error: 'Post not found' }, 404)
+    throw new NotFoundError('Post not found')
   }
 
   await db.insert(blogPostRevision).values({
@@ -726,7 +748,7 @@ blogApp.post('/:id/revisions/:revId/restore', withRateLimit('blog-mutate'), asyn
 blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (c) => {
   const { url } = (await c.req.json()) as { url?: string }
   if (!url || typeof url !== 'string') {
-    return c.json({ error: 'URL required' }, 400)
+    throw new BadRequestError('URL required')
   }
 
   try {
@@ -748,7 +770,7 @@ blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (
       title: ogTitle,
     })
   } catch {
-    return c.json({ error: 'Failed to fetch URL' }, 422)
+    throw new BadRequestError('Failed to fetch URL')
   }
 })
 
@@ -771,12 +793,12 @@ blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
   const file = formData.get('file')
 
   if (!file || !(file instanceof File)) {
-    return c.json({ error: 'No file provided' }, 400)
+    throw new BadRequestError('No file provided')
   }
 
   const validationError = validateMediaUpload(file)
   if (validationError) {
-    return c.json({ error: validationError }, 400)
+    throw new BadRequestError(validationError)
   }
 
   const key = generateStorageKey(file.name)
@@ -846,96 +868,91 @@ adminApp.get('/users', async (c) => {
   return c.json({ total: countResult[0].count, users })
 })
 
-adminApp.patch(
-  '/users/:id',
-  withRateLimit('users-mutate'),
-  zValidator('json', updateSchema),
-  async (c) => {
-    const parsed = c.req.valid('json')
-    const currentUser = c.get('user')
-    const targetId = c.req.param('id')
+adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const currentUser = c.get('user')
+  const targetId = c.req.param('id')
 
-    const { db } = c.get('services')
+  const { db } = c.get('services')
 
-    const [existing] = await db
-      .select()
-      .from(user)
-      .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+  const [existing] = await db
+    .select()
+    .from(user)
+    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
 
-    if (!existing) {
-      return c.json({ error: 'User not found' }, 404)
-    }
-
-    type UserUpdate = Partial<Pick<typeof user.$inferInsert, 'role' | 'status' | 'displayName'>> & {
-      updatedAt?: SQL
-    }
-    interface AuditMetadata {
-      oldRole?: string | null
-      newRole?: string | null
-      oldStatus?: string | null
-      newStatus?: string | null
-      oldDisplayName?: string | null
-      newDisplayName?: string | null
-    }
-    const updates: UserUpdate = {}
-    const auditMetadata: AuditMetadata = {}
-
-    if (parsed.role !== undefined && parsed.role !== existing.role) {
-      updates.role = parsed.role
-      auditMetadata.oldRole = existing.role
-      auditMetadata.newRole = parsed.role
-    }
-
-    if (parsed.status !== undefined && parsed.status !== existing.status) {
-      updates.status = parsed.status
-      auditMetadata.oldStatus = existing.status
-      auditMetadata.newStatus = parsed.status
-    }
-
-    if (parsed.displayName !== undefined) {
-      updates.displayName = parsed.displayName
-      auditMetadata.oldDisplayName = existing.displayName
-      auditMetadata.newDisplayName = parsed.displayName
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return c.json({ error: 'No changes provided' }, 400)
-    }
-
-    updates.updatedAt = sql`(cast(unixepoch('subsecond') * 1000 as integer))`
-
-    const [updated] = await db.update(user).set(updates).where(eq(user.id, targetId)).returning({
-      createdAt: user.createdAt,
-      displayName: user.displayName,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      id: user.id,
-      image: user.image,
-      lastLoginAt: user.lastLoginAt,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-      updatedAt: user.updatedAt,
-    })
-
-    await writeAuditLog(db, {
-      action: 'user.update',
-      entityId: targetId,
-      entityType: 'user',
-      metadata: auditMetadata,
-      userId: currentUser.id,
-    })
-
-    return c.json({ user: updated })
+  if (!existing) {
+    throw new NotFoundError('User not found')
   }
-)
+
+  type UserUpdate = Partial<Pick<typeof user.$inferInsert, 'role' | 'status' | 'displayName'>> & {
+    updatedAt?: SQL
+  }
+  interface AuditMetadata {
+    oldRole?: string | null
+    newRole?: string | null
+    oldStatus?: string | null
+    newStatus?: string | null
+    oldDisplayName?: string | null
+    newDisplayName?: string | null
+  }
+  const updates: UserUpdate = {}
+  const auditMetadata: AuditMetadata = {}
+
+  if (parsed.role !== undefined && parsed.role !== existing.role) {
+    updates.role = parsed.role
+    auditMetadata.oldRole = existing.role
+    auditMetadata.newRole = parsed.role
+  }
+
+  if (parsed.status !== undefined && parsed.status !== existing.status) {
+    updates.status = parsed.status
+    auditMetadata.oldStatus = existing.status
+    auditMetadata.newStatus = parsed.status
+  }
+
+  if (parsed.displayName !== undefined) {
+    updates.displayName = parsed.displayName
+    auditMetadata.oldDisplayName = existing.displayName
+    auditMetadata.newDisplayName = parsed.displayName
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new BadRequestError('No changes provided')
+  }
+
+  updates.updatedAt = sql`(cast(unixepoch('subsecond') * 1000 as integer))`
+
+  const [updated] = await db.update(user).set(updates).where(eq(user.id, targetId)).returning({
+    createdAt: user.createdAt,
+    displayName: user.displayName,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    id: user.id,
+    image: user.image,
+    lastLoginAt: user.lastLoginAt,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+    updatedAt: user.updatedAt,
+  })
+
+  await writeAuditLog(db, {
+    action: 'user.update',
+    entityId: targetId,
+    entityType: 'user',
+    metadata: auditMetadata,
+    userId: currentUser.id,
+  })
+
+  return c.json({ user: updated })
+})
 
 adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
   const currentUser = c.get('user')
   const targetId = c.req.param('id')
 
   if (targetId === currentUser.id) {
-    return c.json({ error: 'Cannot delete yourself' }, 400)
+    throw new BadRequestError('Cannot delete yourself')
   }
 
   const { db } = c.get('services')
@@ -946,7 +963,7 @@ adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
     .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
 
   if (!existing) {
-    return c.json({ error: 'User not found' }, 404)
+    throw new NotFoundError('User not found')
   }
 
   await db
@@ -972,12 +989,12 @@ adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
   const file = formData.get('file')
 
   if (!file || !(file instanceof File)) {
-    return c.json({ error: 'No file provided' }, 400)
+    throw new BadRequestError('No file provided')
   }
 
   const validationError = validateImageUpload(file)
   if (validationError) {
-    return c.json({ error: validationError }, 400)
+    throw new BadRequestError(validationError)
   }
 
   const key = generateStorageKey(file.name)
@@ -998,7 +1015,7 @@ app.post('/api/admin/cleanup', async (c) => {
   const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
 
   if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
-    return c.json({ error: 'Forbidden' }, 403)
+    throw new ForbiddenError()
   }
 
   const { db } = c.get('services')

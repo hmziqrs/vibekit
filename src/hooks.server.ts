@@ -4,7 +4,7 @@ import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
 import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
-import { error, type Handle } from '@sveltejs/kit'
+import { error, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
@@ -142,3 +142,15 @@ export const handle: Handle = sequence(
   handleHono,
   handleRouteGuards
 )
+
+export const handleError: HandleServerError = async ({ error, event, status }) => {
+  console.error(
+    JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+      method: event.request.method,
+      stack: error instanceof Error ? error.stack : undefined,
+      status,
+      url: event.url.pathname,
+    })
+  )
+}

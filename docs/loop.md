@@ -87,7 +87,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Dev environment & DX (hot reload reliability, wrangler dev stability, env setup script, seed data, type generation pipeline)
 - [x] Database schema review & normalization (index coverage, constraint gaps, migration safety, foreign key integrity, cascade rules)
 - [x] Dead code cleanup (unused exports, orphan routes, unreachable branches, stale types, dead CSS)
-- [ ] Error handling framework (global error boundary, API error standardization, ProblemDetails RFC 7807, error code registry, user-facing error messages)
+- [x] Error handling framework (global error boundary, API error standardization, ProblemDetails RFC 7807, error code registry, user-facing error messages)
 - [ ] Error pages (custom 400/403/404/500/503 pages, brand-consistent design, helpful recovery actions, no raw stack traces in production)
 
 #### Auth & Security

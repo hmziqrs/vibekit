@@ -1,3 +1,4 @@
+import { isAppError } from '$lib/server/errors'
 import {
   requireAdmin,
   requireUser,
@@ -29,35 +30,53 @@ function mockServices(): TestServices {
   return {} as unknown as TestServices
 }
 
+function withErrorHandler(app: Hono<Env | ProtectedEnv>) {
+  return app.onError((err, c) => {
+    if (isAppError(err)) {
+      return c.json(err.toJSON(), err.status)
+    }
+    return c.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
+      500
+    )
+  })
+}
+
 describe(requireUser, () => {
   it('returns 401 when user is null', async () => {
-    const app = new Hono<Env>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', null)
-        c.set('session', null)
-        await next()
-      })
-      .get('/test', requireUser, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<Env>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', null)
+          c.set('session', null)
+          await next()
+        })
+        .get('/test', requireUser, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/test')
     expect(res.status).toBe(401)
     const body = await res.json()
-    expect(body).toStrictEqual({ error: 'Unauthorized' })
+    expect(body).toStrictEqual({
+      error: { code: 'UNAUTHORIZED', message: 'Unauthorized', status: 401 },
+    })
   })
 
   it('allows through when user is set', async () => {
     const user = mockUser('user-1', 'user')
-    const app = new Hono<Env>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/test', requireUser, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<Env>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/test', requireUser, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/test')
     expect(res.status).toBe(200)
@@ -68,15 +87,17 @@ describe(requireUser, () => {
 
 describe(requireAdmin, () => {
   it('returns 401 when user is null', async () => {
-    const app = new Hono<Env>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', null)
-        c.set('session', null)
-        await next()
-      })
-      .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<Env>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', null)
+          c.set('session', null)
+          await next()
+        })
+        .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/test')
     expect(res.status).toBe(401)
@@ -84,33 +105,39 @@ describe(requireAdmin, () => {
 
   it('returns 403 when user is not admin', async () => {
     const user = mockUser('user-1', 'user')
-    const app = new Hono<Env>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<Env>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/test')
     expect(res.status).toBe(403)
     const body = await res.json()
-    expect(body).toStrictEqual({ error: 'Forbidden' })
+    expect(body).toStrictEqual({
+      error: { code: 'FORBIDDEN', message: 'Forbidden', status: 403 },
+    })
   })
 
   it('allows through when user is admin', async () => {
     const user = mockUser('admin-1', 'admin')
-    const app = new Hono<Env>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<Env>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/test')
     expect(res.status).toBe(200)
@@ -122,15 +149,17 @@ describe(withRateLimit, () => {
     const user = mockUser('user-1', 'user')
     const limiter = withRateLimit('test-middleware-allow', 5, 60_000)
 
-    const app = new Hono<ProtectedEnv>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/test', limiter, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<ProtectedEnv>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/test', limiter, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/test')
     expect(res.status).toBe(200)
@@ -140,15 +169,17 @@ describe(withRateLimit, () => {
     const user = mockUser('user-2', 'user')
     const limiter = withRateLimit('test-overlimit', 2, 60_000)
 
-    const app = new Hono<ProtectedEnv>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/test', limiter, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<ProtectedEnv>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/test', limiter, (c) => c.json({ ok: true }))
+    )
 
     // First two should succeed
     await app.request('/test')
@@ -157,7 +188,9 @@ describe(withRateLimit, () => {
     const res = await app.request('/test')
     expect(res.status).toBe(429)
     const body = await res.json()
-    expect(body).toStrictEqual({ error: 'Too many requests' })
+    expect(body).toStrictEqual({
+      error: { code: 'RATE_LIMITED', message: 'Too many requests', status: 429 },
+    })
   })
 
   it('tracks rate limits independently per prefix', async () => {
@@ -165,16 +198,18 @@ describe(withRateLimit, () => {
     const limiterA = withRateLimit('prefix-a', 1, 60_000)
     const limiterB = withRateLimit('prefix-b', 1, 60_000)
 
-    const app = new Hono<ProtectedEnv>()
-      .use('*', async (c, next) => {
-        c.set('services', mockServices())
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/a', limiterA, (c) => c.json({ ok: true }))
-      .get('/b', limiterB, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<ProtectedEnv>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/a', limiterA, (c) => c.json({ ok: true }))
+        .get('/b', limiterB, (c) => c.json({ ok: true }))
+    )
 
     // Exhaust prefix-a
     await app.request('/a')
@@ -197,20 +232,24 @@ describe(withOwnedItem, () => {
       where: vi.fn<() => void>().mockReturnThis(),
     }
 
-    const app = new Hono<ProtectedEnv>()
-      .use('*', async (c, next) => {
-        c.set('services', { db: mockDb } as unknown as TestServices)
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/items/:id', withOwnedItem, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<ProtectedEnv>()
+        .use('*', async (c, next) => {
+          c.set('services', { db: mockDb } as unknown as TestServices)
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/items/:id', withOwnedItem, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/items/nonexistent-id')
     expect(res.status).toBe(404)
     const body = await res.json()
-    expect(body).toStrictEqual({ error: 'Not found' })
+    expect(body).toStrictEqual({
+      error: { code: 'NOT_FOUND', message: 'Not found', status: 404 },
+    })
   })
 
   it('sets resource and continues when item is found', async () => {
@@ -223,15 +262,17 @@ describe(withOwnedItem, () => {
       where: vi.fn<() => void>().mockReturnThis(),
     }
 
-    const app = new Hono<ProtectedEnv>()
-      .use('*', async (c, next) => {
-        c.set('services', { db: mockDb } as unknown as TestServices)
-        c.set('auth', mockAuth())
-        c.set('user', user)
-        c.set('session', mockSession('sess-1'))
-        await next()
-      })
-      .get('/items/:id', withOwnedItem, (c) => c.json({ ok: true }))
+    const app = withErrorHandler(
+      new Hono<ProtectedEnv>()
+        .use('*', async (c, next) => {
+          c.set('services', { db: mockDb } as unknown as TestServices)
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/items/:id', withOwnedItem, (c) => c.json({ ok: true }))
+    )
 
     const res = await app.request('/items/item-1')
     expect(res.status).toBe(200)

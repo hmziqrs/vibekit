@@ -1,5 +1,12 @@
 import { createAuthForHono } from '$lib/server/auth-hono'
 import { item } from '$lib/server/db/schema'
+import {
+  ForbiddenError,
+  NotFoundError,
+  RateLimitError,
+  ServiceUnavailableError,
+  UnauthorizedError,
+} from '$lib/server/errors'
 import { rateLimit } from '$lib/server/rate-limit'
 import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -8,7 +15,6 @@ import { createMiddleware } from 'hono/factory'
 import type { Env, ProtectedEnv } from './types'
 
 export const withServices = createMiddleware<Env>(async (c, next) => {
-  // Prefer services injected by SvelteKit hooks (handleHono passes them via env)
   const injected = c.env.__services
   if (injected) {
     c.set('services', injected)
@@ -19,16 +25,14 @@ export const withServices = createMiddleware<Env>(async (c, next) => {
     return
   }
 
-  // Fallback: create services directly (Cloudflare Workers standalone mode)
   const services = await createServices({ platform: { env: c.env } })
-  if (!services) return c.json({ error: 'Service unavailable' }, 503)
+  if (!services) throw new ServiceUnavailableError()
   c.set('services', services)
   c.set('auth', createAuthForHono(services.db))
   await next()
 })
 
 export const withSession = createMiddleware<Env>(async (c, next) => {
-  // Skip session lookup if already injected by SvelteKit
   if (c.env.__user !== undefined) {
     await next()
     return
@@ -40,21 +44,21 @@ export const withSession = createMiddleware<Env>(async (c, next) => {
 })
 
 export const requireUser = createMiddleware<Env>(async (c, next) => {
-  if (!c.get('user')) return c.json({ error: 'Unauthorized' }, 401)
+  if (!c.get('user')) throw new UnauthorizedError()
   await next()
 })
 
 export const requireAdmin = createMiddleware<Env>(async (c, next) => {
   const user = c.get('user')
-  if (!user) return c.json({ error: 'Unauthorized' }, 401)
-  if (user.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+  if (!user) throw new UnauthorizedError()
+  if (user.role !== 'admin') throw new ForbiddenError()
   await next()
 })
 
 export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
   createMiddleware<ProtectedEnv>(async (c, next) => {
     const { allowed } = rateLimit(`${prefix}:${c.get('user').id}`, limit, windowMs)
-    if (!allowed) return c.json({ error: 'Too many requests' }, 429)
+    if (!allowed) throw new RateLimitError()
     await next()
   })
 
@@ -69,7 +73,7 @@ export const withOwnedItem = createMiddleware<ProtectedEnv>(async (c, next) => {
     .where(and(eq(item.id, id), eq(item.userId, userId), isNull(item.deletedAt)))
     .get()
 
-  if (!resource) return c.json({ error: 'Not found' }, 404)
+  if (!resource) throw new NotFoundError()
   c.set('resource', resource as never)
   await next()
 })
