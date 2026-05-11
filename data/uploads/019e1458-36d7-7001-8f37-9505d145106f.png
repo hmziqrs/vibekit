@@ -1,0 +1,11 @@
+
+    <body>
+      <h1>403 Restricted</h1>
+      <p>The request id &quot;/Users/hmziq/os/vibekit/test-upload.png&quot; is outside of Vite serving allow list.<br/><br/>- /Users/hmziq/os/vibekit/src/lib<br/>- /Users/hmziq/os/vibekit/src/routes<br/>- /Users/hmziq/os/vibekit/.svelte-kit<br/>- /Users/hmziq/os/vibekit/src<br/>- /Users/hmziq/os/vibekit/node_modules<br/><br/>Refer to docs https://vite.dev/config/server-options.html#server-fs-allow for configurations and more details.</p>
+      <style>
+        body {
+          padding: 1em 2em;
+        }
+      </style>
+    </body>
+  
