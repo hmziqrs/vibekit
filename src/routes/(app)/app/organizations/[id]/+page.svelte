@@ -2,8 +2,7 @@
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
-  import { hasPermission } from '$lib/permissions'
-  import type { OrgRole } from '$lib/permissions'
+  import { hasPermission, type OrgRole } from '$lib/permissions'
 
   interface OrgDetail {
     membership: { id: string; joinedAt: string; role: string }
