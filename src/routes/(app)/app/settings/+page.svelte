@@ -22,6 +22,111 @@
   let showDeleteConfirm = $state(false)
   let deleteConfirmText = $state('')
 
+  // 2FA state
+  let twoFactorState = $state<'idle' | 'enabling' | 'enabled'>('idle')
+  let twoFactorError = $state('')
+  let twoFactorLoading = $state(false)
+  let totpUri = $state('')
+  let backupCodes = $state<string[]>([])
+  let verifyCode = $state('')
+  let disablePassword = $state('')
+  let showDisableConfirm = $state(false)
+  let showBackupCodes = $state(false)
+  let enablePassword = $state('')
+  let showEnableConfirm = $state(false)
+
+  async function enableTwoFactor() {
+    if (!enablePassword.trim()) {
+      twoFactorError = 'Enter your password to enable 2FA'
+      return
+    }
+    twoFactorLoading = true
+    twoFactorError = ''
+    try {
+      const res = await authClient.twoFactor.enable({ password: enablePassword })
+      if (res?.error) {
+        twoFactorError = res.error.message ?? 'Failed to enable 2FA'
+        return
+      }
+      if (res.data) {
+        totpUri = res.data.totpURI ?? ''
+        backupCodes = res.data.backupCodes ?? []
+        twoFactorState = 'enabling'
+        showEnableConfirm = false
+        enablePassword = ''
+      }
+    } catch (error) {
+      twoFactorError = error instanceof Error ? error.message : 'Failed to enable 2FA'
+    } finally {
+      twoFactorLoading = false
+    }
+  }
+
+  async function verifyAndEnable() {
+    if (!verifyCode.trim()) {
+      twoFactorError = 'Enter the code from your authenticator app'
+      return
+    }
+    twoFactorLoading = true
+    twoFactorError = ''
+    try {
+      const res = await authClient.twoFactor.verifyTotp({ code: verifyCode.trim() })
+      if (res?.error) {
+        twoFactorError = res.error.message ?? 'Invalid code'
+        return
+      }
+      twoFactorState = 'enabled'
+      verifyCode = ''
+    } catch (error) {
+      twoFactorError = error instanceof Error ? error.message : 'Verification failed'
+    } finally {
+      twoFactorLoading = false
+    }
+  }
+
+  async function disableTwoFactor() {
+    if (!disablePassword.trim()) {
+      twoFactorError = 'Enter your password to disable 2FA'
+      return
+    }
+    twoFactorLoading = true
+    twoFactorError = ''
+    try {
+      const res = await authClient.twoFactor.disable({ password: disablePassword })
+      if (res?.error) {
+        twoFactorError = res.error.message ?? 'Failed to disable 2FA'
+        return
+      }
+      twoFactorState = 'idle'
+      showDisableConfirm = false
+      disablePassword = ''
+    } catch (error) {
+      twoFactorError = error instanceof Error ? error.message : 'Failed to disable 2FA'
+    } finally {
+      twoFactorLoading = false
+    }
+  }
+
+  async function regenerateBackupCodes() {
+    twoFactorLoading = true
+    twoFactorError = ''
+    try {
+      const res = await authClient.twoFactor.generateBackupCodes({ password: disablePassword || '' })
+      if (res?.error) {
+        twoFactorError = res.error.message ?? 'Failed to regenerate codes'
+        return
+      }
+      if (res.data) {
+        backupCodes = res.data.backupCodes ?? []
+        showBackupCodes = true
+      }
+    } catch (error) {
+      twoFactorError = error instanceof Error ? error.message : 'Failed to regenerate codes'
+    } finally {
+      twoFactorLoading = false
+    }
+  }
+
   const form = createForm(() => ({
     defaultValues: {
       confirmPassword: '',
@@ -125,6 +230,203 @@
         {/snippet}
       </form.Subscribe>
     </form>
+  </div>
+
+  <!-- Two-Factor Authentication -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Two-Factor Authentication</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Add an extra layer of security to your account using an authenticator app.
+    </p>
+
+    {#if twoFactorError}
+      <p class="mt-2 text-[13px] text-destructive">{twoFactorError}</p>
+    {/if}
+
+    {#if twoFactorState === 'idle' && !showDisableConfirm}
+      {#if !showEnableConfirm}
+        <button
+          onclick={() => (showEnableConfirm = true)}
+          class="mt-4 rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
+        >
+          Enable 2FA
+        </button>
+      {:else}
+        <div class="mt-4 space-y-3">
+          <p class="text-[13px] text-text-muted">Enter your password to begin setup.</p>
+          <input
+            type="password"
+            bind:value={enablePassword}
+            placeholder="Your password"
+            class="w-full max-w-xs rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+          <div class="flex gap-2">
+            <button
+              onclick={enableTwoFactor}
+              disabled={twoFactorLoading}
+              class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+            >
+              {twoFactorLoading ? 'Loading...' : 'Continue'}
+            </button>
+            <button
+              onclick={() => {
+                showEnableConfirm = false
+                enablePassword = ''
+                twoFactorError = ''
+              }}
+              class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      {/if}
+
+    {:else if twoFactorState === 'enabling'}
+      <div class="mt-4 space-y-4">
+        <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
+          <p class="text-[13px] font-medium text-text-primary">Step 1: Scan QR code</p>
+          <p class="mt-1 text-[12px] text-text-muted">
+            Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+          </p>
+          <div class="mt-3 flex flex-col items-center gap-2">
+            <div class="rounded-lg bg-white p-3">
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encodeURIComponent(totpUri)}"
+                alt="TOTP QR Code"
+                width="200"
+                height="200"
+                class="h-[200px] w-[200px]"
+              />
+            </div>
+            <details class="w-full">
+              <summary class="cursor-pointer text-[12px] text-text-muted hover:text-text-primary">
+                Can't scan? Enter manually
+              </summary>
+              <p class="mt-1 break-all rounded bg-surface p-2 font-mono text-[11px] text-text-secondary">
+                {totpUri}
+              </p>
+            </details>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
+          <p class="text-[13px] font-medium text-text-primary">Step 2: Save backup codes</p>
+          <p class="mt-1 text-[12px] text-text-muted">
+            Store these codes in a safe place. Each can only be used once.
+          </p>
+          <div class="mt-2 grid grid-cols-2 gap-1">
+            {#each backupCodes as code}
+              <p class="font-mono text-[12px] text-text-secondary">{code}</p>
+            {/each}
+          </div>
+        </div>
+
+        <div>
+          <p class="text-[13px] font-medium text-text-primary">Step 3: Verify setup</p>
+          <p class="mt-1 text-[12px] text-text-muted">
+            Enter the 6-digit code from your authenticator app to complete setup.
+          </p>
+          <div class="mt-2 flex gap-2">
+            <input
+              type="text"
+              bind:value={verifyCode}
+              placeholder="000000"
+              autocomplete="one-time-code"
+              class="w-40 rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 font-mono text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+            <button
+              onclick={verifyAndEnable}
+              disabled={twoFactorLoading}
+              class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+            >
+              {twoFactorLoading ? 'Verifying...' : 'Verify'}
+            </button>
+          </div>
+        </div>
+
+        <button
+          onclick={() => {
+            twoFactorState = 'idle'
+            verifyCode = ''
+            twoFactorError = ''
+          }}
+          class="text-[13px] text-text-muted transition-colors hover:text-text-primary"
+        >
+          Cancel setup
+        </button>
+      </div>
+
+    {:else if twoFactorState === 'enabled'}
+      <div class="mt-4 space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+          <p class="text-[13px] text-green-400">Two-factor authentication is enabled</p>
+        </div>
+
+        {#if showBackupCodes && backupCodes.length > 0}
+          <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
+            <p class="text-[13px] font-medium text-text-primary">New backup codes</p>
+            <div class="mt-2 grid grid-cols-2 gap-1">
+              {#each backupCodes as code}
+                <p class="font-mono text-[12px] text-text-secondary">{code}</p>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <div class="flex gap-2">
+          <button
+            onclick={regenerateBackupCodes}
+            disabled={twoFactorLoading}
+            class="rounded-lg border border-white/6 px-4 py-2 text-[13px] font-medium text-text-primary transition-colors hover:bg-white/4 disabled:opacity-50"
+          >
+            Regenerate backup codes
+          </button>
+          <button
+            onclick={() => {
+              showDisableConfirm = true
+              twoFactorError = ''
+            }}
+            class="rounded-lg border border-destructive/30 px-4 py-2 text-[13px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+          >
+            Disable 2FA
+          </button>
+        </div>
+      </div>
+
+    {/if}
+
+    {#if showDisableConfirm}
+      <div class="mt-4 space-y-3">
+        <p class="text-[13px] text-text-muted">Enter your password to disable two-factor authentication.</p>
+        <input
+          type="password"
+          bind:value={disablePassword}
+          placeholder="Your password"
+          class="w-full max-w-xs rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
+        />
+        <div class="flex gap-2">
+          <button
+            onclick={disableTwoFactor}
+            disabled={twoFactorLoading}
+            class="rounded-lg bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+          >
+            {twoFactorLoading ? 'Disabling...' : 'Confirm Disable'}
+          </button>
+          <button
+            onclick={() => {
+              showDisableConfirm = false
+              disablePassword = ''
+              twoFactorError = ''
+            }}
+            class="rounded-lg px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <!-- Delete Account -->

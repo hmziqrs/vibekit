@@ -2,6 +2,7 @@ import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
+import { twoFactor } from 'better-auth/plugins'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { uuidv7 } from 'uuidv7'
 
@@ -90,6 +91,13 @@ export const createAuth = (db: AppDb) =>
     ...authConfig,
     database: drizzleAdapter(db, { provider: 'sqlite' }),
     plugins: [
+      twoFactor({
+        issuer: 'Vibekit',
+        totpOptions: {
+          digits: 6,
+          period: 30,
+        },
+      }),
       sveltekitCookies(getRequestEvent), // Make sure this is the last plugin in the array
     ],
   })
