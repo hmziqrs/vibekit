@@ -270,6 +270,15 @@
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
 
+        <a
+          href="/admin/blog/{data.post.id}/preview"
+          target="_blank"
+          rel="noopener"
+          class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+        >
+          Preview
+        </a>
+
         {#if data.post.status === 'draft' || data.post.status === 'archived'}
           <button
             type="button"

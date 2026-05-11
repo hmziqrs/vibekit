@@ -1,5 +1,5 @@
 import { writeAuditLog } from '$lib/server/audit'
-import { blogPost, blogPostRevision, blogPostSlugHistory, item, user } from '$lib/server/db/schema'
+import { blogPost, blogPostRevision, blogPostSlugHistory, blogPostTag, blogTag, item, user } from '$lib/server/db/schema'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
@@ -9,7 +9,7 @@ import {
   updatePostSchema,
 } from '$lib/validators'
 import { zValidator } from '@hono/zod-validator'
-import { and, desc, eq, isNotNull, isNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
 import { z } from 'zod/v4'
@@ -250,39 +250,65 @@ blogApp.get('/', async (c) => {
   const page = Math.max(1, Number(c.req.query('page') || '1'))
   const limit = 20
   const offset = (page - 1) * limit
+  const q = c.req.query('q')?.trim()
+  const rawSort = c.req.query('sort') ?? 'createdAt:desc'
+
   const validStatuses = ['draft', 'published', 'archived'] as const
   const isTrash = rawStatus === 'trash'
   const filterStatus = validStatuses.includes(rawStatus as (typeof validStatuses)[number])
     ? (rawStatus as (typeof validStatuses)[number])
     : null
 
-  let whereClause: ReturnType<typeof isNull>
+  const conditions: SQL[] = []
   if (isTrash) {
-    whereClause = isNotNull(blogPost.deletedAt)
+    conditions.push(isNotNull(blogPost.deletedAt))
   } else if (filterStatus) {
-    whereClause = and(eq(blogPost.status, filterStatus), isNull(blogPost.deletedAt))!
+    conditions.push(eq(blogPost.status, filterStatus), isNull(blogPost.deletedAt))
   } else {
-    whereClause = isNull(blogPost.deletedAt)
+    conditions.push(isNull(blogPost.deletedAt))
   }
 
-  const posts = await db
-    .select({
-      createdAt: blogPost.createdAt,
-      deletedAt: blogPost.deletedAt,
-      id: blogPost.id,
-      publishedAt: blogPost.publishedAt,
-      slug: blogPost.slug,
-      status: blogPost.status,
-      title: blogPost.title,
-      updatedAt: blogPost.updatedAt,
-    })
-    .from(blogPost)
-    .where(whereClause)
-    .orderBy(desc(blogPost.createdAt))
-    .limit(limit)
-    .offset(offset)
+  if (q && q.length >= 2) {
+    conditions.push(or(like(blogPost.title, `%${q}%`), like(blogPost.slug, `%${q}%`))!)
+  }
 
-  return c.json({ posts })
+  const whereClause = and(...conditions)!
+
+  const sortParts = rawSort.split(':')
+  const sortField = sortParts[0] ?? 'createdAt'
+  const sortDir = sortParts[1] === 'asc' ? 'asc' : 'desc'
+  const sortMap: Record<string, Record<string, ReturnType<typeof desc>>> = {
+    createdAt: { asc: asc(blogPost.createdAt), desc: desc(blogPost.createdAt) },
+    publishedAt: { asc: asc(blogPost.publishedAt), desc: desc(blogPost.publishedAt) },
+    title: { asc: asc(blogPost.title), desc: desc(blogPost.title) },
+    slug: { asc: asc(blogPost.slug), desc: desc(blogPost.slug) },
+    status: { asc: asc(blogPost.status), desc: desc(blogPost.status) },
+  }
+  const orderBy = sortMap[sortField]?.[sortDir] ?? desc(blogPost.createdAt)
+
+  const [countResult, posts] = await Promise.all([
+    db.select({ value: sql<number>`count(*)` }).from(blogPost).where(whereClause),
+    db
+      .select({
+        coverImageUrl: blogPost.coverImageUrl,
+        createdAt: blogPost.createdAt,
+        deletedAt: blogPost.deletedAt,
+        excerpt: blogPost.excerpt,
+        id: blogPost.id,
+        publishedAt: blogPost.publishedAt,
+        slug: blogPost.slug,
+        status: blogPost.status,
+        title: blogPost.title,
+        updatedAt: blogPost.updatedAt,
+      })
+      .from(blogPost)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset),
+  ])
+
+  return c.json({ limit, page, posts, total: countResult[0]?.value ?? 0 })
 })
 
 blogApp.post(
@@ -323,6 +349,10 @@ blogApp.post(
 
     if (status === 'published') {
       await c.get('services').cache.purgeBlog(slug)
+    }
+
+    if (parsed.tagIds?.length) {
+      await db.insert(blogPostTag).values(parsed.tagIds.map((tagId) => ({ postId: id, tagId })))
     }
 
     return c.json({ id }, 201)
@@ -393,6 +423,13 @@ blogApp.patch(
 
     if (existing.status === 'published' || updates.status === 'published') {
       await c.get('services').cache.purgeBlog((updates.slug as string) ?? existing.slug)
+    }
+
+    if (data.tagIds !== undefined) {
+      await db.delete(blogPostTag).where(eq(blogPostTag.postId, id))
+      if (data.tagIds.length > 0) {
+        await db.insert(blogPostTag).values(data.tagIds.map((tagId) => ({ postId: id, tagId })))
+      }
     }
 
     return c.json({ success: true })
@@ -507,6 +544,86 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
 
   await c.get('services').cache.purgeBlog()
 
+  return c.json({ success: true })
+})
+
+// ── Bulk actions ────────────────────────────────────────────────────
+
+blogApp.post('/bulk-delete', withRateLimit('blog-mutate'), async (c) => {
+  const { ids } = (await c.req.json()) as { ids?: string[] }
+  if (!ids?.length) return c.json({ error: 'No IDs provided' }, 400)
+
+  const { db } = c.get('services')
+  await db
+    .update(blogPost)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(inArray(blogPost.id, ids))
+
+  await c.get('services').cache.purgeBlog()
+  return c.json({ deleted: ids.length, success: true })
+})
+
+blogApp.post('/bulk-archive', withRateLimit('blog-mutate'), async (c) => {
+  const { ids } = (await c.req.json()) as { ids?: string[] }
+  if (!ids?.length) return c.json({ error: 'No IDs provided' }, 400)
+
+  const { db } = c.get('services')
+  await db
+    .update(blogPost)
+    .set({ status: 'archived', updatedAt: new Date() })
+    .where(inArray(blogPost.id, ids))
+
+  await c.get('services').cache.purgeBlog()
+  return c.json({ archived: ids.length, success: true })
+})
+
+// ── Tags ────────────────────────────────────────────────────────────
+
+blogApp.get('/tags', async (c) => {
+  const { db } = c.get('services')
+  const tags = await db
+    .select({
+      id: blogTag.id,
+      name: blogTag.name,
+      postCount:
+        sql<number>`(select count(*) from ${blogPostTag} where ${blogPostTag.tagId} = ${blogTag.id})`,
+      slug: blogTag.slug,
+    })
+    .from(blogTag)
+    .orderBy(blogTag.name)
+  return c.json({ tags })
+})
+
+blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
+  const { name } = (await c.req.json()) as { name?: string }
+  if (!name?.trim()) return c.json({ error: 'Name is required' }, 400)
+
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  const { db } = c.get('services')
+
+  const existing = await db.select({ id: blogTag.id }).from(blogTag).where(eq(blogTag.slug, slug)).get()
+  if (existing) return c.json({ error: 'Tag already exists' }, 409)
+
+  const id = uuid()
+  await db.insert(blogTag).values({ id, name: name.trim(), slug })
+  return c.json({ id, name: name.trim(), slug }, 201)
+})
+
+blogApp.delete('/tags/:id', withRateLimit('blog-mutate'), async (c) => {
+  const { db } = c.get('services')
+  await db.delete(blogPostTag).where(eq(blogPostTag.tagId, c.req.param('id')))
+  await db.delete(blogTag).where(eq(blogTag.id, c.req.param('id')))
+  return c.json({ success: true })
+})
+
+// ── Media ───────────────────────────────────────────────────────────
+
+blogApp.delete('/media/:key', withRateLimit('blog-mutate'), async (c) => {
+  const key = decodeURIComponent(c.req.param('key'))
+  await c.get('services').storage.delete(key)
   return c.json({ success: true })
 })
 

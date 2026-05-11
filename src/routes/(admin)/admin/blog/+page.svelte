@@ -1,24 +1,38 @@
 <script lang="ts">
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
+  import DataTable from '$lib/components/data-table.svelte'
   import FilterTabs from '$lib/components/filter-tabs.svelte'
+  import Pagination from '$lib/components/pagination.svelte'
   import SearchInput from '$lib/components/search-input.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
   import { createQuery } from '@tanstack/svelte-query'
 
   interface PostRow {
-    id: string
-    title: string
-    slug: string
-    status: string
-    publishedAt: string | null
+    coverImageUrl: string | null
     createdAt: string
     deletedAt: string | null
+    excerpt: string | null
+    id: string
+    publishedAt: string | null
+    slug: string
+    status: string
+    title: string
+    updatedAt: string
   }
 
   let statusFilter = $state('all')
   let search = $state('')
+  let searchDebounced = $state('')
+  let currentPage = $state(1)
+  let sortKey = $state('createdAt')
+  let sortDir = $state<'asc' | 'desc'>('desc')
+  let selectedIds = $state<Set<string>>(new Set())
   let deleteTarget = $state<PostRow | null>(null)
   let showConfirmDialog = $state(false)
+  let bulkAction = $state<'delete' | 'archive' | null>(null)
+  let bulkError = $state('')
+
+  const pageSize = 20
 
   const statusColors: Record<string, string> = {
     archived: 'bg-red-500/15 text-red-400',
@@ -28,26 +42,54 @@
     trash: 'bg-white/[0.06] text-text-muted',
   }
 
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  $effect(() => {
+    const q = search
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      searchDebounced = q
+      currentPage = 1
+    }, 300)
+    return () => { if (debounceTimer) clearTimeout(debounceTimer) }
+  })
+
+  $effect(() => {
+    statusFilter
+    selectedIds = new Set()
+    bulkError = ''
+  })
+
   const postsQuery = createQuery(() => ({
     queryFn: async () => {
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (searchDebounced) params.set('q', searchDebounced)
+      params.set('page', String(currentPage))
+      params.set('sort', `${sortKey}:${sortDir}`)
       const res = await fetch(`/api/blog?${params}`)
       if (!res.ok) throw new Error('Failed to fetch posts')
-      const json: { posts?: PostRow[] } = await res.json()
-      let posts = json.posts ?? []
-      if (search) {
-        const q = search.toLowerCase()
-        posts = posts.filter((p) => p.title.toLowerCase().includes(q))
-      }
-      return { posts }
+      return (await res.json()) as { limit: number; page: number; posts: PostRow[]; total: number }
     },
-    queryKey: ['admin', 'posts', { search, status: statusFilter }],
+    queryKey: ['admin', 'posts', { page: currentPage, q: searchDebounced, sort: `${sortKey}:${sortDir}`, status: statusFilter }],
     retry: 1,
   }))
 
+  const columns = [
+    { class: 'min-w-[200px]', key: 'title', label: 'Title', sortable: true },
+    { class: 'min-w-[140px]', key: 'slug', label: 'Slug', sortable: true },
+    { class: 'w-[100px]', key: 'status', label: 'Status', sortable: true },
+    { class: 'w-[120px]', key: 'publishedAt', label: 'Published', sortable: true },
+    { class: 'w-[120px]', key: 'createdAt', label: 'Created', sortable: true },
+    { class: 'w-[160px]', key: 'actions', label: '' },
+  ]
+
+  function formatDate(val: string | null): string {
+    if (!val) return '—'
+    return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
   async function deletePost() {
-    if (!deleteTarget) {return}
+    if (!deleteTarget) return
     const res = await fetch(`/api/blog/${deleteTarget.id}`, { method: 'DELETE' })
     if (res.ok) {
       deleteTarget = null
@@ -58,7 +100,37 @@
 
   async function restorePost(id: string) {
     const res = await fetch(`/api/blog/${id}/restore`, { method: 'POST' })
-    if (res.ok) {postsQuery.refetch()}
+    if (res.ok) postsQuery.refetch()
+  }
+
+  async function executeBulkAction() {
+    if (!bulkAction || selectedIds.size === 0) return
+    bulkError = ''
+    const endpoint = bulkAction === 'delete' ? '/api/blog/bulk-delete' : '/api/blog/bulk-archive'
+    const res = await fetch(endpoint, {
+      body: JSON.stringify({ ids: [...selectedIds] }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+    if (res.ok) {
+      selectedIds = new Set()
+      bulkAction = null
+      showConfirmDialog = false
+      postsQuery.refetch()
+    } else {
+      bulkError = 'Bulk action failed'
+    }
+  }
+
+  function handleSort(key: string, dir: 'asc' | 'desc') {
+    sortKey = key
+    sortDir = dir
+    currentPage = 1
+  }
+
+  function handlePageChange(page: number) {
+    currentPage = page
+    selectedIds = new Set()
   }
 
   const tabs = [
@@ -72,11 +144,13 @@
 
 <ConfirmDialog
   bind:open={showConfirmDialog}
-  title="Delete Post"
-  message="Move this post to trash? It can be restored within 30 days."
-  confirmLabel="Delete"
+  title={bulkAction ? `Bulk ${bulkAction === 'delete' ? 'Delete' : 'Archive'}` : 'Delete Post'}
+  message={bulkAction
+    ? `${bulkAction === 'delete' ? 'Move' : 'Archive'} ${selectedIds.size} selected post${selectedIds.size > 1 ? 's' : ''}?`
+    : 'Move this post to trash? It can be restored.'}
+  confirmLabel={bulkAction ? 'Confirm' : 'Delete'}
   variant="danger"
-  onConfirm={deletePost}
+  onConfirm={bulkAction ? executeBulkAction : deletePost}
 />
 
 <div class="flex items-center justify-between">
@@ -89,7 +163,6 @@
   </a>
 </div>
 
-<!-- Filters -->
 <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
   <FilterTabs tabs={tabs} bind:active={statusFilter} />
   <div class="sm:max-w-xs sm:flex-1">
@@ -97,67 +170,100 @@
   </div>
 </div>
 
-<!-- Post list -->
-<div class="mt-6">
-  {#if postsQuery.isPending}
-    <div class="space-y-3">
-      {#each Array(4) as _}
-        <div class="h-16 w-full animate-pulse rounded-xl bg-surface border border-white/[0.06]"></div>
-      {/each}
-    </div>
-  {:else if postsQuery.error}
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
-      <p class="text-[13px] text-red-400">Failed to load posts.</p>
-      <button class="mt-3 text-[13px] text-brand hover:underline" onclick={() => postsQuery.refetch()}>Retry</button>
-    </div>
-  {:else if !postsQuery.data?.posts.length}
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
-      <p class="text-[13px] text-text-muted">
-        {statusFilter === 'trash' ? 'No trashed posts.' : 'No posts yet. Create your first post!'}
-      </p>
-    </div>
-  {:else}
-    <div class="space-y-3">
-      {#each postsQuery.data.posts as post (post.id)}
-        <div class="flex items-center justify-between rounded-xl border border-white/[0.06] bg-surface px-5 py-4 transition-colors hover:bg-white/[0.02]">
-          <div class="min-w-0 flex-1">
-            <h3 class="truncate text-[15px] font-medium text-text-primary">{post.title}</h3>
-            <div class="mt-1 flex items-center gap-3 text-[12px] text-text-subtle">
-              <span>/blog/{post.slug}</span>
-              <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-          <div class="ml-4 flex items-center gap-3">
-            <StatusBadge
-              status={statusFilter === 'trash' ? 'deleted' : post.status}
-              colorMap={statusColors}
-            />
-            <div class="flex items-center gap-2">
-              {#if statusFilter === 'trash'}
-                <button
-                  class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
-                  onclick={() => restorePost(post.id)}
-                >
-                  Restore
-                </button>
-              {:else}
-                <a
-                  href="/admin/blog/{post.id}/edit"
-                  class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
-                >
-                  Edit
-                </a>
-                <button
-                  class="rounded-lg border border-red-500/30 px-3 py-1.5 text-[12px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                  onclick={() => { deleteTarget = post; showConfirmDialog = true }}
-                >
-                  Delete
-                </button>
-              {/if}
-            </div>
-          </div>
+{#if selectedIds.size > 0}
+  <div class="mt-4 flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2.5">
+    <span class="text-[12px] text-text-muted">{selectedIds.size} selected</span>
+    <button
+      onclick={() => { bulkAction = 'delete'; showConfirmDialog = true }}
+      class="rounded-lg border border-red-500/30 px-3 py-1 text-[12px] font-medium text-red-400 hover:bg-red-500/10"
+    >
+      Delete
+    </button>
+    <button
+      onclick={() => { bulkAction = 'archive'; showConfirmDialog = true }}
+      class="rounded-lg border border-white/[0.1] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
+    >
+      Archive
+    </button>
+    <button
+      onclick={() => selectedIds = new Set()}
+      class="ml-auto text-[12px] text-text-muted hover:text-text-primary"
+    >
+      Clear
+    </button>
+  </div>
+{/if}
+
+{#if bulkError}
+  <p class="mt-2 text-[12px] text-red-400">{bulkError}</p>
+{/if}
+
+<div class="mt-4">
+  <DataTable
+    {columns}
+    rows={postsQuery.data?.posts ?? []}
+    loading={postsQuery.isPending}
+    selectable
+    {selectedIds}
+    onSelectionChange={(ids) => selectedIds = ids}
+    {sortKey}
+    {sortDir}
+    onSort={handleSort}
+    error={postsQuery.error ? 'Failed to load posts.' : ''}
+    onRetry={() => postsQuery.refetch()}
+    emptyMessage={statusFilter === 'trash' ? 'No trashed posts.' : 'No posts yet. Create your first post!'}
+  >
+    {#snippet children({ row, columnKey })}
+      {#if columnKey === 'title'}
+        <span class="truncate font-medium">{row.title}</span>
+      {:else if columnKey === 'slug'}
+        <span class="text-text-muted">/blog/{row.slug}</span>
+      {:else if columnKey === 'status'}
+        <StatusBadge
+          status={statusFilter === 'trash' ? 'deleted' : (row.status as string)}
+          colorMap={statusColors}
+        />
+      {:else if columnKey === 'publishedAt'}
+        <span class="text-text-muted">{formatDate(row.publishedAt as string | null)}</span>
+      {:else if columnKey === 'createdAt'}
+        <span class="text-text-muted">{formatDate(row.createdAt as string)}</span>
+      {:else if columnKey === 'actions'}
+        <div class="flex items-center gap-2">
+          {#if statusFilter === 'trash'}
+            <button
+              class="rounded-lg border border-white/[0.06] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
+              onclick={() => restorePost(row.id as string)}
+            >
+              Restore
+            </button>
+          {:else}
+            <a
+              href="/admin/blog/{row.id}/edit"
+              class="rounded-lg border border-white/[0.06] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
+            >
+              Edit
+            </a>
+            <button
+              class="rounded-lg border border-red-500/30 px-3 py-1 text-[12px] font-medium text-red-400 hover:bg-red-500/10"
+              onclick={() => { deleteTarget = row as PostRow; bulkAction = null; showConfirmDialog = true }}
+            >
+              Delete
+            </button>
+          {/if}
         </div>
-      {/each}
-    </div>
-  {/if}
+      {/if}
+    {/snippet}
+  </DataTable>
 </div>
+
+{#if postsQuery.data && postsQuery.data.total > pageSize}
+  <div class="mt-4">
+    <Pagination
+      currentPage={currentPage}
+      pageSize={pageSize}
+      totalItems={postsQuery.data.total}
+      totalPages={Math.ceil(postsQuery.data.total / pageSize)}
+      onPageChange={handlePageChange}
+    />
+  </div>
+{/if}
