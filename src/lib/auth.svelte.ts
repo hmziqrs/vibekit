@@ -3,6 +3,8 @@
 
 export interface AuthContext {
   user: {
+    banExpiresAt?: string | null
+    banReason?: string | null
     bio?: string | null
     createdAt?: string
     deletedAt?: string | null

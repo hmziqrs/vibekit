@@ -83,6 +83,16 @@ export const authConfig = {
   },
   user: {
     additionalFields: {
+      banExpiresAt: {
+        input: false,
+        required: false,
+        type: 'date',
+      },
+      banReason: {
+        input: false,
+        required: false,
+        type: 'string',
+      },
       bio: {
         input: true,
         required: false,

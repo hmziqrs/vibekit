@@ -6,6 +6,7 @@ import {
   blogPostSlugHistory,
   blogPostTag,
   blogTag,
+  contactSubmission,
   item,
   securityEvent,
   user,
@@ -111,6 +112,28 @@ app.get('/api/health', async (c) => {
     responseTime: Date.now() - start,
     time: new Date().toISOString(),
   })
+})
+
+// ── Appeal (public, rate-limited) ────────────────────────────────────
+
+app.post('/api/appeal', async (c) => {
+  const body = await c.req.json<{ email?: string; message?: string; name?: string }>()
+  if (!body.email?.trim() || !body.message?.trim() || !body.name?.trim()) {
+    throw new BadRequestError('Name, email, and message are required')
+  }
+
+  const { db } = c.get('services')
+  const appealId = uuid()
+  await db.insert(contactSubmission).values({
+    email: body.email.trim(),
+    id: appealId,
+    message: body.message.trim(),
+    name: body.name.trim(),
+    subject: 'Ban Appeal',
+    type: 'ban_appeal',
+  })
+
+  return c.json({ success: true })
 })
 
 // ── Items (auth required) ────────────────────────────────────────────
@@ -1075,6 +1098,102 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
   return c.json({ user: updated })
 })
 
+// ── Admin Ban/Unban ──────────────────────────────────────────────────
+
+adminApp.post('/users/:id/ban', withRateLimit('users-mutate'), async (c) => {
+  const currentUser = c.get('user')
+  const targetId = c.req.param('id')
+  const body = await c.req.json<{ reason?: string; durationDays?: number }>()
+
+  if (!body.reason?.trim()) {
+    throw new BadRequestError('Ban reason is required')
+  }
+
+  const { db } = c.get('services')
+  const [target] = await db
+    .select()
+    .from(user)
+    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+
+  if (!target) {
+    throw new NotFoundError('User not found')
+  }
+  if (target.id === currentUser.id) {
+    throw new BadRequestError('Cannot ban yourself')
+  }
+  if (target.status === 'suspended') {
+    throw new BadRequestError('User is already suspended')
+  }
+
+  const banExpiresAt = body.durationDays
+    ? new Date(Date.now() + body.durationDays * 24 * 60 * 60 * 1000)
+    : null
+
+  await db
+    .update(user)
+    .set({
+      banExpiresAt,
+      banReason: body.reason.trim(),
+      status: 'suspended',
+    })
+    .where(eq(user.id, targetId))
+
+  await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
+
+  await writeAuditLog(db, {
+    action: 'user.ban',
+    entityId: targetId,
+    entityType: 'user',
+    metadata: {
+      banExpiresAt: banExpiresAt?.toISOString() ?? null,
+      durationDays: body.durationDays ?? null,
+      reason: body.reason.trim(),
+      targetEmail: target.email,
+      targetName: target.name,
+    },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
+adminApp.post('/users/:id/unban', withRateLimit('users-mutate'), async (c) => {
+  const currentUser = c.get('user')
+  const targetId = c.req.param('id')
+
+  const { db } = c.get('services')
+  const [target] = await db
+    .select()
+    .from(user)
+    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+
+  if (!target) {
+    throw new NotFoundError('User not found')
+  }
+  if (target.status !== 'suspended') {
+    throw new BadRequestError('User is not suspended')
+  }
+
+  await db
+    .update(user)
+    .set({
+      banExpiresAt: null,
+      banReason: null,
+      status: 'active',
+    })
+    .where(eq(user.id, targetId))
+
+  await writeAuditLog(db, {
+    action: 'user.unban',
+    entityId: targetId,
+    entityType: 'user',
+    metadata: { targetEmail: target.email, targetName: target.name },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
 adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
   const currentUser = c.get('user')
   const targetId = c.req.param('id')
@@ -1166,8 +1285,34 @@ app.post('/api/admin/cleanup', async (c) => {
     .where(and(isNotNull(user.deletedAt), lt(user.deletedAt, cutoff)))
     .returning({ id: user.id })
 
+  // Auto-expire temporary bans
+  const expiredBans = await db
+    .update(user)
+    .set({ banExpiresAt: null, banReason: null, status: 'active' })
+    .where(
+      and(
+        eq(user.status, 'suspended'),
+        isNotNull(user.banExpiresAt),
+        lt(user.banExpiresAt, new Date())
+      )
+    )
+    .returning({ id: user.id, name: user.name })
+
+  await Promise.all(
+    expiredBans.map((unbanned) =>
+      writeAuditLog(db, {
+        action: 'user.unban',
+        entityId: unbanned.id,
+        entityType: 'user',
+        metadata: { reason: 'auto_expired' },
+        userId: 'system',
+      })
+    )
+  )
+
   return c.json({
     cutoff: cutoff.toISOString(),
+    expiredBans: expiredBans.length,
     purged: { items: deletedItems.length, posts: deletedPosts.length, users: deletedUsers.length },
   })
 })

@@ -17,6 +17,7 @@ export const contactSubmission = sqliteTable(
     message: text('message').notNull(),
     name: text('name').notNull(),
     subject: text('subject').notNull(),
+    type: text('type').default('general'),
   },
   (table) => [index('contact_submission_created_idx').on(table.createdAt)]
 )

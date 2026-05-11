@@ -118,6 +118,29 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
         )
       }
 
+      // Check if user is suspended (banned) — block sign-in
+      {
+        const { user: userTable } = await import('$lib/server/db/auth.schema')
+        const [foundUser] = await services.db
+          .select({
+            banExpiresAt: userTable.banExpiresAt,
+            banReason: userTable.banReason,
+            status: userTable.status,
+          })
+          .from(userTable)
+          .where(eq(userTable.email, email))
+        if (foundUser?.status === 'suspended') {
+          return Response.json(
+            {
+              code: 'ACCOUNT_BANNED',
+              message: 'This account has been suspended.',
+              reason: foundUser.banReason ?? null,
+            },
+            { status: 403 }
+          )
+        }
+      }
+
       const response = await svelteKitHandler({ auth, building, event, resolve })
 
       if (response.status < 400) {
