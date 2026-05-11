@@ -1,22 +1,16 @@
-import {
-  getTeamPermissions,
-  hasTeamPermission,
-  TEAM_ACTIONS,
-  type OrgRole,
-  type TeamRole,
-} from '$lib/permissions'
+import { getTeamPermissions, hasTeamPermission, TEAM_ACTIONS } from '$lib/permissions'
 import { describe, expect, it } from 'vitest'
 
-const ORG_ROLES: OrgRole[] = ['owner', 'admin', 'member', 'viewer']
-const TEAM_ROLES: TeamRole[] = ['lead', 'member']
-
 describe('team permission matrix', () => {
-  it('owner has all team actions via org role', () => {
+  it('owner has core team actions via org role', () => {
     expect(hasTeamPermission('owner', null, 'team.create')).toBe(true)
     expect(hasTeamPermission('owner', null, 'team.delete')).toBe(true)
     expect(hasTeamPermission('owner', null, 'team.update')).toBe(true)
     expect(hasTeamPermission('owner', null, 'team.read')).toBe(true)
     expect(hasTeamPermission('owner', null, 'team.members.read')).toBe(true)
+  })
+
+  it('owner has team management actions via org role', () => {
     expect(hasTeamPermission('owner', null, 'team.members.add')).toBe(true)
     expect(hasTeamPermission('owner', null, 'team.members.manage')).toBe(true)
     expect(hasTeamPermission('owner', null, 'team.settings.read')).toBe(true)
@@ -79,7 +73,7 @@ describe('team lead permissions', () => {
   })
 })
 
-describe('team member permissions', () => {
+describe('team member role permissions', () => {
   it('member role adds no extra permissions beyond org role', () => {
     const memberOrgOnly = getTeamPermissions('member', null)
     const memberWithTeamMember = getTeamPermissions('member', 'member')
@@ -92,7 +86,7 @@ describe('team member permissions', () => {
   })
 })
 
-describe('getTeamPermissions', () => {
+describe('getTeamPermissions function', () => {
   it('returns array of actions', () => {
     const perms = getTeamPermissions('owner', 'lead')
     expect(perms.length).toBeGreaterThan(0)

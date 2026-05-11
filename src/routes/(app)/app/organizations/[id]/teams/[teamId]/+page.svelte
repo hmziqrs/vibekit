@@ -92,21 +92,7 @@
     queryKey: ['team-activity', orgId, teamId],
   }))
 
-  const orgRole = $derived(
-    teamQuery.data ? (document.cookie.includes('role=admin') ? 'admin' as OrgRole : 'member' as OrgRole) : null
-  )
-
-  // Derive permissions from org role + team role
-  const currentOrgRole = $derived(
-    teamQuery.data
-      ? (() => {
-          // We need org membership role — fetch from orgQuery context
-          return 'member' as OrgRole
-        })()
-      : null
-  )
-
-  // Actually we need the org membership role. Let's get it from orgQuery
+  // Fetch org data for role-based permissions
   const orgQuery = createQuery(() => ({
     queryFn: async () => {
       const res = await fetch(`/api/orgs/${orgId}`)
