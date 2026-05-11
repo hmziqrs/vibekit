@@ -3,7 +3,7 @@ import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
 import { checkLockout, recordFailedAttempt, resetAttempts } from '$lib/server/auth-lockout'
-import { session as sessionTable } from '$lib/server/db/schema'
+import { session as sessionTable, systemConfig } from '$lib/server/db/schema'
 import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
 import {
@@ -266,6 +266,55 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   return svelteKitHandler({ auth, building, event, resolve })
 }
 
+const MAINTENANCE_WHITELIST = ['/api/health', '/api/announcements']
+
+const handleMaintenance: Handle = async ({ event, resolve }) => {
+  if (building) return resolve(event)
+
+  const { pathname } = event.url
+
+  // Skip for whitelisted paths (health check, announcements)
+  if (MAINTENANCE_WHITELIST.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+    return resolve(event)
+  }
+
+  // Admin users bypass maintenance mode
+  if (event.locals.user?.role === 'admin') {
+    return resolve(event)
+  }
+
+  // Check maintenance mode
+  const services = event.locals.services
+  if (services) {
+    try {
+      const [row] = await services.db
+        .select({ value: systemConfig.value })
+        .from(systemConfig)
+        .where(eq(systemConfig.key, 'maintenance_mode'))
+        .limit(1)
+
+      if (row?.value === 'true') {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'MAINTENANCE_MODE',
+              message: 'System is under maintenance. Please try again later.',
+            },
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 503,
+          }
+        )
+      }
+    } catch {
+      // Config table may not exist yet (migration pending) — allow through
+    }
+  }
+
+  return resolve(event)
+}
+
 const handleRouteGuards: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url
   const { user } = event.locals
@@ -343,6 +392,7 @@ export const handle: Handle = sequence(
   handleParaglide,
   handleSecurityHeaders,
   handleBetterAuth,
+  handleMaintenance,
   handleHono,
   handleRouteGuards
 )

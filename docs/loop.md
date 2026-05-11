@@ -122,7 +122,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Admin sudo / impersonation mode (admin acts on behalf of user with full audit trail, time-limited sessions, explicit reason logging)
 - [x] User audit log & activity tracking (dispute resolution, security reviews, compliance trails, immutable log entries, export for compliance)
 - [x] Content moderation tools (flagged content queue, automated rules, moderator actions, appeal system, moderation log)
-- [ ] System configuration management (feature flags UI, maintenance mode toggle, email template editor, system announcements)
+- [x] System configuration management (feature flags UI, maintenance mode toggle, email template editor, system announcements)
 - [ ] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices, user notification, auto-enable/disable)
 
 #### Blog Platform

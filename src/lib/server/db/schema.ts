@@ -391,6 +391,51 @@ export const contentReport = sqliteTable(
   ]
 )
 
+export const systemConfig = sqliteTable('system_config', {
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  description: text('description'),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  key: text('key').notNull().unique(),
+  type: text('type', { enum: ['boolean', 'json', 'string'] })
+    .default('string')
+    .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => new Date())
+    .notNull(),
+  updatedBy: text('updated_by').references(() => user.id, { onDelete: 'set null' }),
+  value: text('value').notNull(),
+})
+
+export const announcement = sqliteTable(
+  'announcement',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    endsAt: integer('ends_at', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
+    message: text('message').notNull(),
+    startsAt: integer('starts_at', { mode: 'timestamp_ms' }),
+    type: text('type', { enum: ['critical', 'info', 'warning'] })
+      .default('info')
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index('announcement_active_idx').on(table.isActive)]
+)
+
 export const teamActivity = sqliteTable(
   'team_activity',
   {
@@ -488,6 +533,22 @@ export const impersonationSessionRelations = relations(impersonationSession, ({ 
     fields: [impersonationSession.targetUserId],
     references: [user.id],
     relationName: 'impersonationTarget',
+  }),
+}))
+
+export const systemConfigRelations = relations(systemConfig, ({ one }) => ({
+  updater: one(user, {
+    fields: [systemConfig.updatedBy],
+    references: [user.id],
+    relationName: 'configUpdater',
+  }),
+}))
+
+export const announcementRelations = relations(announcement, ({ one }) => ({
+  creator: one(user, {
+    fields: [announcement.createdBy],
+    references: [user.id],
+    relationName: 'announcementCreator',
   }),
 }))
 

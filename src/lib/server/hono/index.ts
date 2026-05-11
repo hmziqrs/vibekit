@@ -5,6 +5,7 @@ import {
   session as sessionTable,
 } from '$lib/server/db/auth.schema'
 import {
+  announcement,
   blogPost,
   blogPostRevision,
   blogPostSlugHistory,
@@ -19,6 +20,7 @@ import {
   organizationInvitation,
   organizationMember,
   securityEvent,
+  systemConfig,
   team,
   teamActivity,
   teamMember,
@@ -34,6 +36,7 @@ import {
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
+  createAnnouncementSchema,
   createItemSchema,
   createOrganizationSchema,
   createPostSchema,
@@ -43,6 +46,8 @@ import {
   inviteMemberSchema,
   resolveReportSchema,
   transferOwnershipSchema,
+  updateAnnouncementSchema,
+  updateConfigSchema,
   updateItemSchema,
   updateMemberRoleSchema,
   updateOrganizationSchema,
@@ -2958,6 +2963,275 @@ protectedApp.post('/invitations/:token/decline', async (c) => {
     .update(organizationInvitation)
     .set({ acceptedAt: new Date() })
     .where(eq(organizationInvitation.id, invitation.id))
+
+  return c.json({ success: true })
+})
+
+// ── System Configuration ────────────────────────────────────────────
+
+/* eslint-disable sort-keys */
+const CONFIG_DEFAULTS: Record<
+  string,
+  { description: string; type: 'boolean' | 'json' | 'string'; value: string }
+> = {
+  blog_comments_enabled: {
+    description: 'Enable commenting on blog posts',
+    type: 'boolean',
+    value: 'false',
+  },
+  file_upload_max_mb: {
+    description: 'Maximum file upload size in MB',
+    type: 'string',
+    value: '10',
+  },
+  maintenance_mode: {
+    description: 'Enable maintenance mode (blocks non-admin access)',
+    type: 'boolean',
+    value: 'false',
+  },
+  maintenance_message: {
+    description: 'Message displayed during maintenance mode',
+    type: 'string',
+    value: 'We are performing scheduled maintenance. Please check back soon.',
+  },
+  registration_enabled: {
+    description: 'Allow new user registration',
+    type: 'boolean',
+    value: 'true',
+  },
+}
+/* eslint-enable sort-keys */
+
+// Public: active announcements
+app.get('/api/announcements', async (c) => {
+  const services = c.get('services')
+  if (!services) return c.json([])
+  const { db } = services
+
+  const rows = await db
+    .select({
+      createdAt: announcement.createdAt,
+      endsAt: announcement.endsAt,
+      id: announcement.id,
+      message: announcement.message,
+      startsAt: announcement.startsAt,
+      type: announcement.type,
+    })
+    .from(announcement)
+    .where(
+      and(
+        eq(announcement.isActive, true),
+        sql`(starts_at IS NULL OR starts_at <= unixepoch('subsecond') * 1000)`,
+        sql`(ends_at IS NULL OR ends_at >= unixepoch('subsecond') * 1000)`
+      )
+    )
+    .orderBy(desc(announcement.createdAt))
+
+  return c.json(rows)
+})
+
+// Admin: list all config entries
+adminApp.get('/config', async (c) => {
+  const { db } = c.get('services')
+  const rows = await db.select().from(systemConfig)
+
+  const configMap = new Map(rows.map((r) => [r.key, r]))
+  const allConfigs = Object.entries(CONFIG_DEFAULTS).map(([key, def]) => {
+    const row = configMap.get(key)
+    return {
+      createdAt: row?.createdAt ?? null,
+      description: row?.description ?? def.description,
+      id: row?.id ?? key,
+      key,
+      type: row?.type ?? def.type,
+      updatedAt: row?.updatedAt ?? null,
+      value: row?.value ?? def.value,
+    }
+  })
+
+  return c.json(allConfigs)
+})
+
+// Admin: update config value
+adminApp.patch(
+  '/config/:key',
+  withRateLimit('config', 20, 60_000),
+  validate(updateConfigSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const configKey = c.req.param('key')
+    const currentUser = c.get('user')
+    const { db } = c.get('services')
+
+    const def = CONFIG_DEFAULTS[configKey]
+    if (!def) {
+      throw new BadRequestError(`Unknown config key: ${configKey}`)
+    }
+
+    // Validate value matches type
+    if (def.type === 'boolean' && parsed.value !== 'true' && parsed.value !== 'false') {
+      throw new BadRequestError('Boolean config requires "true" or "false"')
+    }
+
+    const existing = await db
+      .select({ id: systemConfig.id })
+      .from(systemConfig)
+      .where(eq(systemConfig.key, configKey))
+
+    if (existing.length > 0) {
+      await db
+        .update(systemConfig)
+        .set({ updatedBy: currentUser.id, value: parsed.value })
+        .where(eq(systemConfig.key, configKey))
+    } else {
+      // eslint-disable-next-line unicorn/prefer-ternary
+      await db.insert(systemConfig).values({
+        description: def.description,
+        id: uuid(),
+        key: configKey,
+        type: def.type,
+        updatedBy: currentUser.id,
+        value: parsed.value,
+      })
+    }
+
+    await writeAuditLog(db, {
+      action: 'config.update',
+      entityId: configKey,
+      entityType: 'system_config',
+      metadata: { key: configKey, newValue: parsed.value },
+      userId: currentUser.id,
+    })
+
+    return c.json({ key: configKey, value: parsed.value })
+  }
+)
+
+// Admin: list announcements
+adminApp.get('/announcements', async (c) => {
+  const { db } = c.get('services')
+  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const limit = 20
+  const offset = (page - 1) * limit
+
+  const [countResult, rows] = await Promise.all([
+    db.select({ count: count() }).from(announcement),
+    db
+      .select({
+        createdAt: announcement.createdAt,
+        createdBy: announcement.createdBy,
+        endsAt: announcement.endsAt,
+        id: announcement.id,
+        isActive: announcement.isActive,
+        message: announcement.message,
+        startsAt: announcement.startsAt,
+        type: announcement.type,
+        updatedAt: announcement.updatedAt,
+      })
+      .from(announcement)
+      .orderBy(desc(announcement.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ])
+
+  return c.json({ announcements: rows, limit, page, total: countResult[0]?.count ?? 0 })
+})
+
+// Admin: create announcement
+adminApp.post(
+  '/announcements',
+  withRateLimit('announcement', 10, 60_000),
+  validate(createAnnouncementSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const currentUser = c.get('user')
+    const { db } = c.get('services')
+    const id = uuid()
+
+    await db.insert(announcement).values({
+      createdBy: currentUser.id,
+      endsAt: parsed.endsAt ? new Date(parsed.endsAt) : null,
+      id,
+      isActive: parsed.isActive ?? true,
+      message: parsed.message,
+      startsAt: parsed.startsAt ? new Date(parsed.startsAt) : null,
+      type: parsed.type,
+    })
+
+    await writeAuditLog(db, {
+      action: 'announcement.create',
+      entityId: id,
+      entityType: 'announcement',
+      metadata: { message: parsed.message.slice(0, 100), type: parsed.type },
+      userId: currentUser.id,
+    })
+
+    return c.json({ id }, 201)
+  }
+)
+
+// Admin: update announcement
+adminApp.patch(
+  '/announcements/:id',
+  withRateLimit('announcement', 20, 60_000),
+  validate(updateAnnouncementSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const announcementId = c.req.param('id')
+    const currentUser = c.get('user')
+    const { db } = c.get('services')
+
+    const [existing] = await db
+      .select({ id: announcement.id })
+      .from(announcement)
+      .where(eq(announcement.id, announcementId))
+    if (!existing) throw new NotFoundError('Announcement not found')
+
+    const updates: Record<string, unknown> = {}
+    if (parsed.message !== undefined) updates.message = parsed.message
+    if (parsed.type !== undefined) updates.type = parsed.type
+    if (parsed.isActive !== undefined) updates.isActive = parsed.isActive
+    if (parsed.startsAt !== undefined) {
+      updates.startsAt = parsed.startsAt ? new Date(parsed.startsAt) : null
+    }
+    if (parsed.endsAt !== undefined) {
+      updates.endsAt = parsed.endsAt ? new Date(parsed.endsAt) : null
+    }
+
+    await db.update(announcement).set(updates).where(eq(announcement.id, announcementId))
+
+    await writeAuditLog(db, {
+      action: 'announcement.update',
+      entityId: announcementId,
+      entityType: 'announcement',
+      metadata: { isActive: parsed.isActive, updates: Object.keys(updates) },
+      userId: currentUser.id,
+    })
+
+    return c.json({ id: announcementId })
+  }
+)
+
+// Admin: delete announcement
+adminApp.delete('/announcements/:id', withRateLimit('announcement', 10, 60_000), async (c) => {
+  const announcementId = c.req.param('id')
+  const currentUser = c.get('user')
+  const { db } = c.get('services')
+
+  const [existing] = await db
+    .select({ id: announcement.id })
+    .from(announcement)
+    .where(eq(announcement.id, announcementId))
+  if (!existing) throw new NotFoundError('Announcement not found')
+
+  await db.delete(announcement).where(eq(announcement.id, announcementId))
+
+  await writeAuditLog(db, {
+    action: 'announcement.delete',
+    entityId: announcementId,
+    entityType: 'announcement',
+    userId: currentUser.id,
+  })
 
   return c.json({ success: true })
 })

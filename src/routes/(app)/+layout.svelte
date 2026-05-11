@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext } from 'svelte'
   import type { AuthContext } from '$lib/auth.svelte'
+  import AnnouncementBanner from '$lib/components/announcement-banner.svelte'
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
@@ -168,6 +169,7 @@
 
     <!-- Main content -->
     <div class="flex min-w-0 flex-1 flex-col">
+      <AnnouncementBanner />
       <header class="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
         <button
           class="rounded-lg p-1 text-text-muted hover:bg-white/[0.04] hover:text-text-primary md:hidden"
