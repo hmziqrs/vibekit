@@ -233,6 +233,68 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Terms of service (versioned ToS, acceptance tracking, change notification, enforce re-acceptance on major updates)
 - [ ] Audit compliance logging (immutable audit trail, data access logging, export for compliance audits, retention policy for logs)
 
+## Task Completion Protocol
+
+EVERY task MUST complete this full sequence before moving to the next task. No exceptions.
+
+### Step 1: Implement the feature/fix
+- Write the code for the current task
+- Follow all Rules & Standards from Part 1
+
+### Step 2: Run existing test suite
+- Run `bun run test` and confirm ALL existing tests pass
+- If any pre-existing tests break, fix them before proceeding — never leave a broken test suite
+- Run `bun run check` + `bun run lint` + `bun run format:check` — all must pass clean
+
+### Step 3: Browser agent E2E verification
+For the feature just implemented, use the Playwright browser agent to manually walk through the workflow:
+1. Start dev server (`bun run dev`) if not already running
+2. Open the relevant page via `browser_navigate`
+3. Walk through the **entire user workflow** step by step:
+   - Fill forms, click buttons, navigate between pages
+   - Test the happy path AND at least one error/edge case
+   - Verify the feature works end-to-end as a real user would experience it
+4. Take screenshots at key points via `browser_take_screenshot`
+5. Analyze screenshots via `mcp__4_5v_mcp__analyze_image` for visual issues
+6. If anything is broken or looks wrong, fix it and re-test
+
+### Step 4: Write E2E test
+Based on the browser walkthrough from Step 3, write a Playwright E2E test that covers:
+- The full user workflow verified in Step 3
+- Happy path + at least one failure/edge case
+- All assertions that confirm correct behavior
+- Place test in `tests/e2e/` following existing naming patterns
+
+### Step 5: Write unit tests
+Write Vitest unit tests for:
+- All new functions, utilities, and business logic
+- All new API route handlers
+- All new server-side logic
+- Place tests alongside source files (e.g., `foo.ts` → `foo.test.ts`)
+- Run `bun run test` to confirm new + all existing tests pass
+
+### Step 6: Final validation gate
+Run the full quality suite in order — ALL must pass:
+```bash
+bun run test           # All tests (unit + integration) pass
+bun run check          # Type checking passes
+bun run lint           # Lint passes
+bun run format:check   # Formatting passes
+```
+If any check fails, fix it and re-run from the top. Do not proceed until all four are green.
+
+### Step 7: Commit
+Once all checks pass:
+1. `git add` only the files changed for this task (no unrelated changes)
+2. Commit with a descriptive message referencing what was done
+3. Commit message format: `<type>: <description>` (e.g., `feat: add 2FA TOTP setup flow`, `fix: session fixation on password change`)
+4. Do NOT push — just commit locally
+
+### Step 8: Mark task complete and move on
+- Mark the task as `[x]` in ROADMAP.md
+- Move to the next unchecked task
+- Start again from Step 1
+
 ## Loop Behavior
 
 Each cycle:
@@ -243,16 +305,18 @@ Each cycle:
    - Agent 2: Find gaps, TODOs, unused code, missing error handling. Use `mcp__web_reader__webReader` to read any referenced external docs
    - Agent 3: Research using `WebSearch` → `mcp__web_reader__webReader` for deep reads → `mcp__plugin_context7_context7__query-docs` for library-specific patterns. Use `mcp__4_5v_mcp__analyze_image` if analyzing screenshots/mockups
 4. Expand that phase into actionable sub-bullets — still no code, just what needs to happen
-5. Mark phase as [x] when all sub-bullets are grounded in actual codebase findings
-6. When all phases are [x], stop the loop
+5. For each sub-bullet, execute the full Task Completion Protocol (Steps 1–8 above)
+6. Mark phase as `[x]` when all sub-bullets are implemented, tested, and committed
+7. When all phases are `[x]`, stop the loop
 
 ### Visual Verification (when applicable)
-For phases involving UI/UX work, after expanding sub-bullets:
+During Step 3 of the Task Completion Protocol, for UI/UX work:
 1. Start dev server: `bun run dev`
 2. Navigate to relevant pages using `mcp__plugin_playwright_playwright__browser_navigate`
-3. Take screenshot: `mcp__plugin_playwright_playwright__browser_take_screenshot`
-4. Analyze: `mcp__4_5v_mcp__analyze_image` to identify visual gaps
-5. Document findings in ROADMAP.md sub-bullets
+3. Walk through the full workflow as a real user
+4. Take screenshots at key moments: `mcp__plugin_playwright_playwright__browser_take_screenshot`
+5. Analyze for visual/accessibility issues: `mcp__4_5v_mcp__analyze_image`
+6. Test responsive layouts at 320px, 768px, 1024px, 1440px using `browser_resize`
 
 Start with auth security hardening — it's the most blocking gap.
 ```
