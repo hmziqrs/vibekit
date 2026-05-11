@@ -10,7 +10,7 @@ Copy the block below into a new Claude Code session to start the loop:
 
 ---
 
-```
+````
 /loop
 
 Build and refine ROADMAP.md — a planning document for this SvelteKit/Cloudflare Workers project.
@@ -84,7 +84,7 @@ ROADMAP.md has two parts:
 Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Foundation & DX
-- [ ] Dev environment & DX (hot reload reliability, wrangler dev stability, env setup script, seed data, type generation pipeline)
+- [x] Dev environment & DX (hot reload reliability, wrangler dev stability, env setup script, seed data, type generation pipeline)
 - [ ] Database schema review & normalization (index coverage, constraint gaps, migration safety, foreign key integrity, cascade rules)
 - [ ] Dead code cleanup (unused exports, orphan routes, unreachable branches, stale types, dead CSS)
 - [ ] Error handling framework (global error boundary, API error standardization, ProblemDetails RFC 7807, error code registry, user-facing error messages)
@@ -280,17 +280,21 @@ bun run test           # All tests (unit + integration) pass
 bun run check          # Type checking passes
 bun run lint           # Lint passes
 bun run format:check   # Formatting passes
-```
+````
+
 If any check fails, fix it and re-run from the top. Do not proceed until all four are green.
 
 ### Step 7: Commit
+
 Once all checks pass:
+
 1. `git add` only the files changed for this task (no unrelated changes)
 2. Commit with a descriptive message referencing what was done
 3. Commit message format: `<type>: <description>` (e.g., `feat: add 2FA TOTP setup flow`, `fix: session fixation on password change`)
 4. Do NOT push — just commit locally
 
 ### Step 8: Mark task complete and move on
+
 - Mark the task as `[x]` in ROADMAP.md
 - Move to the next unchecked task
 - Start again from Step 1
@@ -298,6 +302,7 @@ Once all checks pass:
 ## Loop Behavior
 
 Each cycle:
+
 1. Read ROADMAP.md current state
 2. Pick the next unchecked phase
 3. Launch 2-3 Explore subagents (Sonnet) to investigate:
@@ -310,7 +315,9 @@ Each cycle:
 7. When all phases are `[x]`, stop the loop
 
 ### Visual Verification (when applicable)
+
 During Step 3 of the Task Completion Protocol, for UI/UX work:
+
 1. Start dev server: `bun run dev`
 2. Navigate to relevant pages using `mcp__plugin_playwright_playwright__browser_navigate`
 3. Walk through the full workflow as a real user
@@ -319,7 +326,8 @@ During Step 3 of the Task Completion Protocol, for UI/UX work:
 6. Test responsive layouts at 320px, 768px, 1024px, 1440px using `browser_resize`
 
 Start with auth security hardening — it's the most blocking gap.
-```
+
+````
 
 ## Verification
 
@@ -329,3 +337,4 @@ Start with auth security hardening — it's the most blocking gap.
 4. The loop creates `ROADMAP.md` and iterates through each phase
 5. Each cycle discovers real gaps from the codebase — nothing is pre-filled
 6. MCP tools are used throughout for research, documentation lookup, and visual verification
+````

@@ -1,5 +1,23 @@
 {
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
   "files.associations": {
     "*.css": "tailwindcss"
-  }
+  },
+  "search.exclude": {
+    "**/.svelte-kit": true,
+    "**/build": true,
+    "**/node_modules": true,
+    "**/.wrangler": true,
+    "**/.claude": true,
+    "**/package-lock.json": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib"
 }
