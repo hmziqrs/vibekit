@@ -61,7 +61,7 @@ describe('auth security config', () => {
     })
   })
 
-  describe('CSRF protection', () => {
+  describe('csrf protection', () => {
     it('documents CSRF is handled by Better Auth', () => {
       const authPath = resolve(root, 'src/lib/server/auth.ts')
       const content = readFileSync(authPath, 'utf8')

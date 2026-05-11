@@ -15,6 +15,19 @@ const config = {
   },
   kit: {
     adapter,
+    csp: {
+      directives: {
+        'base-uri': ['self'],
+        'default-src': ['self'],
+        'form-action': ['self'],
+        'frame-ancestors': ['none'],
+        'img-src': ['self', 'data:', 'blob:', 'https:'],
+        'object-src': ['none'],
+        'script-src': ['self', 'https://static.cloudflareinsights.com'],
+        'style-src': ['self', 'unsafe-inline'],
+      },
+      mode: 'auto',
+    },
     experimental: {
       handleRenderingErrors: true,
     },

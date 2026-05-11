@@ -32,10 +32,9 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  response.headers.set(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';"
-  )
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
+  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
 
   // Only set HSTS in production
   if (event.url.protocol === 'https:') {
@@ -203,12 +202,12 @@ export const handle: Handle = sequence(
   handleRouteGuards
 )
 
-export const handleError: HandleServerError = async ({ error, event, status }) => {
+export const handleError: HandleServerError = async ({ error: err, event, status }) => {
   console.error(
     JSON.stringify({
-      error: error instanceof Error ? error.message : String(error),
+      error: err instanceof Error ? err.message : String(err),
       method: event.request.method,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: err instanceof Error ? err.stack : undefined,
       status,
       url: event.url.pathname,
     })

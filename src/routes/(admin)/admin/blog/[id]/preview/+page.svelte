@@ -19,7 +19,7 @@
 
   let renderedHtml = $state('')
   let loading = $state(true)
-  let error = $state('')
+  let errorMsg = $state('')
 
   onMount(async () => {
     try {
@@ -51,8 +51,8 @@
       } else if (post.contentHtml) {
         renderedHtml = post.contentHtml
       }
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load preview'
+    } catch (error) {
+      errorMsg = error instanceof Error ? error.message : 'Failed to load preview'
     } finally {
       loading = false
     }
@@ -86,9 +86,9 @@
       </div>
     </div>
   </div>
-{:else if error}
+{:else if errorMsg}
   <div class="px-6 py-24 text-center">
-    <p class="text-red-400">{error}</p>
+    <p class="text-red-400">{errorMsg}</p>
   </div>
 {:else}
   <article class="px-6 py-24">

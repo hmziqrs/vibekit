@@ -132,6 +132,7 @@ describe(isAppError, () => {
     class CustomError extends AppError {
       constructor() {
         super(500, 'CUSTOM', 'custom')
+        this.name = 'CustomError'
       }
     }
     expect(isAppError(new CustomError())).toBe(true)

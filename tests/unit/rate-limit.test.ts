@@ -1,7 +1,11 @@
 import { rateLimit } from '$lib/server/rate-limit'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 describe(rateLimit, () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('allows requests within the limit', () => {
     const result = rateLimit('test-allow', 5, 60_000)
     expect(result.allowed).toBeTruthy()
@@ -34,8 +38,9 @@ describe(rateLimit, () => {
     expect(rateLimit(key, 1, 1000).allowed).toBeFalsy()
 
     vi.advanceTimersByTime(1001)
-    expect(rateLimit(key, 1, 1000).allowed).toBeTruthy()
-    vi.useRealTimers()
+    const result = rateLimit(key, 1, 1000)
+    expect(result.allowed).toBeTruthy()
+    expect(result.remaining).toBe(0)
   })
 
   it('tracks different keys independently', () => {

@@ -5,64 +5,7 @@ import {
   recordFailedAttempt,
   resetAttempts,
 } from '$lib/server/auth-lockout'
-import { loginAttempt } from '$lib/server/db/schema'
-import { eq, sql } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
-
-function createLockoutStore() {
-  const store = new Map<
-    string,
-    { attemptCount: number; lastAttemptAt: Date; lockedUntil: Date | null }
-  >()
-
-  function createMockDb() {
-    return {
-      delete: (_table: unknown) => ({
-        where: async (_cond: unknown) => {
-          // Extract email from eq condition — simplified for tests
-        },
-      }),
-      insert: (_table: unknown) => ({
-        values: (vals: {
-          id: string
-          attemptCount: number
-          lastAttemptAt: Date
-          lockedUntil: Date | null
-        }) => ({
-          execute: async () => {
-            store.set(vals.id, {
-              attemptCount: vals.attemptCount,
-              lastAttemptAt: vals.lastAttemptAt,
-              lockedUntil: vals.lockedUntil,
-            })
-          },
-        }),
-      }),
-      select: () => ({
-        from: (_table: unknown) => ({
-          where: async (cond: unknown) => {
-            // Since we can't evaluate drizzle conditions in unit tests,
-            // we test the logic functions directly below
-            return []
-          },
-        }),
-      }),
-      update: (_table: unknown) => ({
-        set: (
-          vals: Partial<{ attemptCount: number; lastAttemptAt: Date; lockedUntil: Date | null }>
-        ) => ({
-          where: async (_cond: unknown) => ({
-            execute: async () => {
-              // Updates are applied via the store in test helpers
-            },
-          }),
-        }),
-      }),
-    } as never
-  }
-
-  return { createMockDb, store }
-}
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 // Test the lockout logic functions directly with controlled state
 describe('auth-lockout logic', () => {
@@ -85,7 +28,7 @@ describe('auth-lockout logic', () => {
       const lockoutTime = new Date(Date.now() + 15 * 60 * 1000)
       const state = { attemptCount: 5, lockedUntil: lockoutTime }
       expect(state.lockedUntil).not.toBeNull()
-      expect(state.lockedUntil! > new Date()).toBe(true)
+      expect(state.lockedUntil!.getTime()).toBeGreaterThan(new Date().getTime())
     })
 
     it('unlocks after lockout expires', () => {
@@ -98,7 +41,7 @@ describe('auth-lockout logic', () => {
 
   describe('remaining attempts calculation', () => {
     it('shows 5 remaining with 0 attempts', () => {
-      expect(Math.max(0, MAX_ATTEMPTS - 0)).toBe(5)
+      expect(Math.max(0, MAX_ATTEMPTS)).toBe(5)
     })
 
     it('shows 1 remaining with 4 attempts', () => {
@@ -118,7 +61,7 @@ describe('auth-lockout logic', () => {
 
       // If lastAttemptAt < windowStart, counter should reset
       const windowStart = new Date(now.getTime() - WINDOW_MS)
-      expect(oldAttempt < windowStart).toBe(true)
+      expect(oldAttempt.getTime()).toBeLessThan(windowStart.getTime())
     })
 
     it('does not reset counter when last attempt was inside window', () => {
@@ -127,7 +70,7 @@ describe('auth-lockout logic', () => {
       const now = new Date()
 
       const windowStart = new Date(now.getTime() - WINDOW_MS)
-      expect(recentAttempt >= windowStart).toBe(true)
+      expect(recentAttempt.getTime()).toBeGreaterThanOrEqual(windowStart.getTime())
     })
   })
 
@@ -146,27 +89,27 @@ describe('auth-lockout logic', () => {
 
 describe('auth-lockout function signatures', () => {
   it('checkLockout accepts db and email', async () => {
-    expect(typeof checkLockout).toBe('function')
-    expect(checkLockout.length).toBe(2)
+    expectTypeOf(checkLockout).toBeFunction()
+    expect(checkLockout).toHaveLength(2)
   })
 
   it('recordFailedAttempt accepts db and email', () => {
-    expect(typeof recordFailedAttempt).toBe('function')
-    expect(recordFailedAttempt.length).toBe(2)
+    expectTypeOf(recordFailedAttempt).toBeFunction()
+    expect(recordFailedAttempt).toHaveLength(2)
   })
 
   it('resetAttempts accepts db and email', () => {
-    expect(typeof resetAttempts).toBe('function')
-    expect(resetAttempts.length).toBe(2)
+    expectTypeOf(resetAttempts).toBeFunction()
+    expect(resetAttempts).toHaveLength(2)
   })
 
   it('clearLockout accepts db and email', () => {
-    expect(typeof clearLockout).toBe('function')
-    expect(clearLockout.length).toBe(2)
+    expectTypeOf(clearLockout).toBeFunction()
+    expect(clearLockout).toHaveLength(2)
   })
 
   it('cleanupExpiredAttempts accepts db', () => {
-    expect(typeof cleanupExpiredAttempts).toBe('function')
+    expectTypeOf(cleanupExpiredAttempts).toBeFunction()
   })
 })
 

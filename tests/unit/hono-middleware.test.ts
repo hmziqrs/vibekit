@@ -7,7 +7,7 @@ import {
 } from '$lib/server/hono/middleware'
 import type { Env, ProtectedEnv, Variables } from '$lib/server/hono/types'
 import { Hono } from 'hono'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 type TestUser = NonNullable<Variables['user']>
 type TestSession = NonNullable<Variables['session']>

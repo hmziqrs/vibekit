@@ -14,7 +14,7 @@
 
 	const config = $derived.by(() => {
 		switch (status) {
-			case 400:
+			case 400: {
 				return {
 					description: 'The server could not understand your request. Please check the URL and try again.',
 					icon: CircleAlert,
@@ -22,7 +22,8 @@
 					secondary: { action: 'back' as const, label: 'Go back' },
 					title: 'Bad Request',
 				}
-			case 401:
+			}
+			case 401: {
 				return {
 					description: 'You need to sign in to access this page.',
 					icon: Lock,
@@ -30,7 +31,8 @@
 					secondary: { action: 'back' as const, label: 'Go back' },
 					title: 'Unauthorized',
 				}
-			case 403:
+			}
+			case 403: {
 				return {
 					description:
 						"You don't have permission to access this resource. Contact the administrator if you believe this is an error.",
@@ -39,7 +41,8 @@
 					secondary: { action: 'back' as const, label: 'Go back' },
 					title: 'Forbidden',
 				}
-			case 404:
+			}
+			case 404: {
 				return {
 					description:
 						"The page you're looking for doesn't exist or has been moved. Check the URL or go back home.",
@@ -48,7 +51,8 @@
 					secondary: { action: 'back' as const, label: 'Go back' },
 					title: 'Not Found',
 				}
-			case 429:
+			}
+			case 429: {
 				return {
 					description: "You've made too many requests. Please wait a moment and try again.",
 					icon: Timer,
@@ -56,7 +60,8 @@
 					secondary: { action: 'reload' as const, label: 'Try again' },
 					title: 'Too Many Requests',
 				}
-			case 500:
+			}
+			case 500: {
 				return {
 					description:
 						'Something went wrong on our end. We are working to fix it. Please try again later.',
@@ -65,7 +70,8 @@
 					secondary: { href: '/', label: 'Go back home' },
 					title: 'Internal Server Error',
 				}
-			case 503:
+			}
+			case 503: {
 				return {
 					description:
 						'The service is temporarily unavailable. This is usually brief — please try again in a moment.',
@@ -74,7 +80,8 @@
 					secondary: { href: '/', label: 'Go back home' },
 					title: 'Service Unavailable',
 				}
-			default:
+			}
+			default: {
 				return {
 					description: page.error?.message ?? 'An unexpected error occurred. Please try again.',
 					icon: TriangleAlert,
@@ -82,6 +89,7 @@
 					secondary: { action: 'back' as const, label: 'Go back' },
 					title: 'Something Went Wrong',
 				}
+			}
 		}
 	})
 

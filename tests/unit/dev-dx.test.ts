@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const root = resolve(import.meta.dirname, '../..')
 
-describe('Dev Environment & DX', () => {
+describe('developer environment & DX', () => {
   describe('.editorconfig', () => {
     const editorconfigPath = resolve(root, '.editorconfig')
 
@@ -14,35 +14,35 @@ describe('Dev Environment & DX', () => {
     })
 
     it('has root = true', () => {
-      const content = readFileSync(editorconfigPath, 'utf-8')
+      const content = readFileSync(editorconfigPath, 'utf8')
       expect(content).toContain('root = true')
     })
 
     it('uses spaces with indent_size = 2', () => {
-      const content = readFileSync(editorconfigPath, 'utf-8')
+      const content = readFileSync(editorconfigPath, 'utf8')
       expect(content).toContain('indent_style = space')
       expect(content).toContain('indent_size = 2')
     })
 
     it('uses lf line endings', () => {
-      const content = readFileSync(editorconfigPath, 'utf-8')
+      const content = readFileSync(editorconfigPath, 'utf8')
       expect(content).toContain('end_of_line = lf')
     })
 
     it('uses utf-8 charset', () => {
-      const content = readFileSync(editorconfigPath, 'utf-8')
+      const content = readFileSync(editorconfigPath, 'utf8')
       expect(content).toContain('charset = utf-8')
     })
 
     it('trims trailing whitespace except in markdown', () => {
-      const content = readFileSync(editorconfigPath, 'utf-8')
+      const content = readFileSync(editorconfigPath, 'utf8')
       expect(content).toContain('trim_trailing_whitespace = true')
       expect(content).toMatch(/\[.*\.md\][\s\S]*trim_trailing_whitespace = false/)
     })
   })
 
   describe('package.json scripts', () => {
-    const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8'))
+    const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 
     it('has deploy script with cloudflare adapter', () => {
       expect(pkg.scripts.deploy).toBe('ADAPTER=cloudflare wrangler deploy')
@@ -78,23 +78,23 @@ describe('Dev Environment & DX', () => {
     })
 
     it('has ORIGIN with localhost default', () => {
-      const content = readFileSync(envExamplePath, 'utf-8')
+      const content = readFileSync(envExamplePath, 'utf8')
       expect(content).toContain('ORIGIN="http://localhost:5173"')
     })
 
     it('has BETTER_AUTH_SECRET with dev default', () => {
-      const content = readFileSync(envExamplePath, 'utf-8')
+      const content = readFileSync(envExamplePath, 'utf8')
       expect(content).toMatch(/BETTER_AUTH_SECRET="[^"]+"/)
       expect(content).toContain('dev-secret')
     })
 
     it('documents generation command for production secret', () => {
-      const content = readFileSync(envExamplePath, 'utf-8')
+      const content = readFileSync(envExamplePath, 'utf8')
       expect(content).toContain('randomBytes')
     })
 
     it('includes PUBLIC_FIREBASE_CONFIG', () => {
-      const content = readFileSync(envExamplePath, 'utf-8')
+      const content = readFileSync(envExamplePath, 'utf8')
       expect(content).toContain('PUBLIC_FIREBASE_CONFIG')
     })
   })
@@ -103,26 +103,26 @@ describe('Dev Environment & DX', () => {
     const gitignorePath = resolve(root, '.gitignore')
 
     it('excludes package-lock.json', () => {
-      const content = readFileSync(gitignorePath, 'utf-8')
+      const content = readFileSync(gitignorePath, 'utf8')
       expect(content).toContain('package-lock.json')
     })
 
     it('preserves .env.test negation', () => {
-      const content = readFileSync(gitignorePath, 'utf-8')
+      const content = readFileSync(gitignorePath, 'utf8')
       expect(content).toContain('!.env.test')
     })
   })
 
-  describe('VS Code config', () => {
+  describe('vs code config', () => {
     it('has recommended extensions including playwright and editorconfig', () => {
-      const extensions = JSON.parse(readFileSync(resolve(root, '.vscode/extensions.json'), 'utf-8'))
+      const extensions = JSON.parse(readFileSync(resolve(root, '.vscode/extensions.json'), 'utf8'))
       expect(extensions.recommendations).toContain('ms-playwright.playwright')
       expect(extensions.recommendations).toContain('editorconfig.editorconfig')
       expect(extensions.recommendations).toContain('svelte.svelte-vscode')
     })
 
     it('has workspace settings for editor config', () => {
-      const settings = JSON.parse(readFileSync(resolve(root, '.vscode/settings.json'), 'utf-8'))
+      const settings = JSON.parse(readFileSync(resolve(root, '.vscode/settings.json'), 'utf8'))
       expect(settings['editor.tabSize']).toBe(2)
       expect(settings['files.eol']).toBe('\n')
       expect(settings['files.insertFinalNewline']).toBe(true)
@@ -144,7 +144,7 @@ describe('Dev Environment & DX', () => {
     it('has pre-commit hook installed', () => {
       const hookPath = resolve(root, '.git/hooks/pre-commit')
       expect(existsSync(hookPath)).toBe(true)
-      const content = readFileSync(hookPath, 'utf-8')
+      const content = readFileSync(hookPath, 'utf8')
       expect(content).toContain('format:check')
       expect(content).toContain('lint')
     })
