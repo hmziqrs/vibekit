@@ -11,6 +11,7 @@ import {
   blogPostTag,
   blogTag,
   contactSubmission,
+  impersonationSession,
   item,
   auditLog,
   organization,
@@ -1626,6 +1627,122 @@ adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
   })
 
   return c.json({ key: result.key, url: result.url }, 201)
+})
+
+// ── Admin Impersonation ──────────────────────────────────────────────
+
+adminApp.post('/users/:id/impersonate', withRateLimit('impersonate', 5, 60_000), async (c) => {
+  const currentUser = c.get('user')
+  const targetId = c.req.param('id')
+  const body = await c.req.json<{ reason?: string }>()
+
+  if (!body.reason?.trim()) {
+    throw new BadRequestError('Reason is required for impersonation')
+  }
+
+  const { db } = c.get('services')
+
+  const [target] = await db
+    .select()
+    .from(user)
+    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+
+  if (!target) {
+    throw new NotFoundError('User not found')
+  }
+
+  if (target.id === currentUser.id) {
+    throw new BadRequestError('Cannot impersonate yourself')
+  }
+
+  if (target.role === 'admin') {
+    throw new ForbiddenError('Cannot impersonate other admins')
+  }
+
+  const sessionToken = uuid()
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour max
+
+  await db.insert(sessionTable).values({
+    expiresAt,
+    id: uuid(),
+    token: sessionToken,
+    userId: target.id,
+  })
+
+  const impersonationId = uuid()
+  await db.insert(impersonationSession).values({
+    adminUserId: currentUser.id,
+    id: impersonationId,
+    reason: body.reason.trim(),
+    sessionToken,
+    targetUserId: target.id,
+  })
+
+  await writeAuditLog(db, {
+    action: 'user.impersonate_start',
+    entityId: impersonationId,
+    entityType: 'impersonation_session',
+    metadata: {
+      impersonationId,
+      reason: body.reason.trim(),
+      targetEmail: target.email,
+      targetName: target.name,
+      targetUserId: target.id,
+    },
+    userId: currentUser.id,
+  })
+
+  return c.json({
+    sessionToken,
+    targetUser: {
+      email: target.email,
+      id: target.id,
+      name: target.name,
+    },
+  })
+})
+
+adminApp.post('/users/:id/stop-impersonate', async (c) => {
+  const currentUser = c.get('user')
+  const body = await c.req.json<{ sessionToken?: string }>()
+
+  if (!body.sessionToken) {
+    throw new BadRequestError('Session token is required')
+  }
+
+  const { db } = c.get('services')
+
+  const [impSession] = await db
+    .select()
+    .from(impersonationSession)
+    .where(
+      and(
+        eq(impersonationSession.sessionToken, body.sessionToken),
+        eq(impersonationSession.adminUserId, currentUser.id),
+        isNull(impersonationSession.endedAt)
+      )
+    )
+
+  if (!impSession) {
+    throw new NotFoundError('Active impersonation session not found')
+  }
+
+  await db
+    .update(impersonationSession)
+    .set({ endedAt: new Date() })
+    .where(eq(impersonationSession.id, impSession.id))
+
+  await db.delete(sessionTable).where(eq(sessionTable.token, body.sessionToken))
+
+  await writeAuditLog(db, {
+    action: 'user.impersonate_stop',
+    entityId: impSession.id,
+    entityType: 'impersonation_session',
+    metadata: { targetUserId: impSession.targetUserId },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
 })
 
 // ── Admin Cleanup ────────────────────────────────────────────────────

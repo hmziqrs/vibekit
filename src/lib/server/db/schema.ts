@@ -335,6 +335,31 @@ export const teamMember = sqliteTable(
   ]
 )
 
+export const impersonationSession = sqliteTable(
+  'impersonation_session',
+  {
+    adminUserId: text('admin_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    reason: text('reason'),
+    sessionToken: text('session_token').notNull(),
+    targetUserId: text('target_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('impersonation_admin_idx').on(table.adminUserId),
+    index('impersonation_session_token_idx').on(table.sessionToken),
+  ]
+)
+
 export const teamActivity = sqliteTable(
   'team_activity',
   {
@@ -420,6 +445,19 @@ export const teamMemberRelations = relations(teamMember, ({ one }) => ({
 export const teamActivityRelations = relations(teamActivity, ({ one }) => ({
   actor: one(user, { fields: [teamActivity.actorId], references: [user.id] }),
   team: one(team, { fields: [teamActivity.teamId], references: [team.id] }),
+}))
+
+export const impersonationSessionRelations = relations(impersonationSession, ({ one }) => ({
+  adminUser: one(user, {
+    fields: [impersonationSession.adminUserId],
+    references: [user.id],
+    relationName: 'impersonationAdmin',
+  }),
+  targetUser: one(user, {
+    fields: [impersonationSession.targetUserId],
+    references: [user.id],
+    relationName: 'impersonationTarget',
+  }),
 }))
 
 export const organizationMemberRelations = relations(organizationMember, ({ one }) => ({

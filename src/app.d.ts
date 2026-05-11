@@ -17,6 +17,7 @@ declare global {
     }
 
     interface Locals {
+      impersonatedBy?: { email: string; id: string; name: string }
       services: AppServices
       user?: AuthUser
       session?: AuthSession

@@ -127,6 +127,13 @@
       "when": 1778539272609,
       "tag": "0017_confused_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1778540532992,
+      "tag": "0018_clammy_medusa",
+      "breakpoints": true
     }
   ]
 }
