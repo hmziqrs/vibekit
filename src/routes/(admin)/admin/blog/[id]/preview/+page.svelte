@@ -1,4 +1,5 @@
 <script lang="ts">
+  import purify from 'isomorphic-dompurify'
   import { renderAndSanitize } from '$lib/markdown'
   import { onMount } from 'svelte'
 
@@ -21,9 +22,16 @@
   let loading = $state(true)
   let errorMsg = $state('')
 
+  const PURIFY_OPTS = {
+    ADD_ATTR: ['target'],
+    ALLOW_DATA_ATTR: false,
+    FORBID_ATTR: ['formaction', 'xlink:href', 'data', 'dynsrc', 'lowsrc', 'style'],
+    FORBID_TAGS: ['button', 'form', 'input', 'select', 'style', 'textarea'],
+  }
+
   onMount(async () => {
     try {
-      const {id} = data.post
+      const { id } = data.post
       const res = await fetch(`/api/blog/${id}`)
       if (!res.ok) throw new Error('Failed to fetch post')
       const post = (await res.json()) as Post
@@ -31,17 +39,18 @@
       if (post.contentBody) {
         const trimmed = post.contentBody.trim()
         if (trimmed.startsWith('{')) {
-          // TipTap JSON — render via dynamic import
+          // TipTap JSON — render via dynamic import, then sanitize
           try {
             const { generateHTML } = await import('@tiptap/html')
             const { default: StarterKit } = await import('@tiptap/starter-kit')
             const { default: Image } = await import('@tiptap/extension-image')
             const { FigureImage } = await import('$lib/editor/extensions/figure-image.svelte')
-            renderedHtml = generateHTML(JSON.parse(trimmed) as Record<string, unknown>, [
+            const raw = generateHTML(JSON.parse(trimmed) as Record<string, unknown>, [
               StarterKit,
               Image,
               FigureImage,
             ])
+            renderedHtml = purify.sanitize(raw, PURIFY_OPTS)
           } catch {
             renderedHtml = renderAndSanitize(trimmed)
           }
@@ -49,7 +58,7 @@
           renderedHtml = renderAndSanitize(trimmed)
         }
       } else if (post.contentHtml) {
-        renderedHtml = post.contentHtml
+        renderedHtml = purify.sanitize(post.contentHtml, PURIFY_OPTS)
       }
     } catch (error) {
       errorMsg = error instanceof Error ? error.message : 'Failed to load preview'

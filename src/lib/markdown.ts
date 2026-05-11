@@ -1,3 +1,4 @@
+import purify from 'isomorphic-dompurify'
 import { micromark } from 'micromark'
 import { gfm, gfmHtml } from 'micromark-extension-gfm'
 
@@ -13,11 +14,12 @@ function renderMarkdown(raw: string): string {
 }
 
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi, '')
+  return purify.sanitize(html, {
+    ADD_ATTR: ['target'],
+    ALLOW_DATA_ATTR: false,
+    FORBID_ATTR: ['style', 'formaction', 'xlink:href', 'data', 'dynsrc', 'lowsrc'],
+    FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'button'],
+  })
 }
 
 export function renderAndSanitize(raw: string): string {
