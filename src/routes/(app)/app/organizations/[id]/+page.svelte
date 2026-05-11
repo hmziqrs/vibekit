@@ -2,6 +2,9 @@
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
+  import { hasPermission } from '$lib/permissions'
+  import type { OrgRole } from '$lib/permissions'
+
   interface OrgDetail {
     membership: { id: string; joinedAt: string; role: string }
     organization: {
@@ -55,8 +58,11 @@
     queryKey: ['organization-members', orgId],
   }))
 
-  const isAdmin = $derived(
-    orgQuery.data?.membership.role === 'owner' || orgQuery.data?.membership.role === 'admin'
+  const canInvite = $derived(
+    Boolean(orgQuery.data && hasPermission(orgQuery.data.membership.role as OrgRole, 'org.members.invite'))
+  )
+  const canManageMembers = $derived(
+    Boolean(orgQuery.data && hasPermission(orgQuery.data.membership.role as OrgRole, 'org.members.manage'))
   )
 
   async function inviteMember() {
@@ -154,7 +160,7 @@
         <p class="mt-1 text-xs text-text-subtle">/{org.slug} &middot; Created {formatDate(org.createdAt)}</p>
       </div>
       <div class="flex gap-2">
-        {#if membership.role === 'owner'}
+        {#if hasPermission(membership.role as OrgRole, 'org.settings.read')}
           <a
             href="/app/organizations/{org.id}/settings"
             class="rounded-lg border border-white/[0.06] px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.04]"
@@ -172,7 +178,7 @@
       </div>
 
       <!-- Invite Form -->
-      {#if isAdmin}
+      {#if canInvite}
         <form
           class="border-b border-white/[0.06] px-6 py-4"
           onsubmit={(e) => { e.preventDefault(); inviteMember() }}
@@ -242,7 +248,7 @@
                 </div>
               </div>
               <div class="flex items-center gap-3">
-                {#if member.role !== 'owner' && isAdmin}
+                {#if member.role !== 'owner' && canManageMembers}
                   <select
                     value={member.role}
                     onchange={(e) => changeRole(member.id, (e.target as HTMLSelectElement).value)}

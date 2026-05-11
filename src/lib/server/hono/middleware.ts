@@ -1,3 +1,4 @@
+import type { OrgAction, OrgRole } from '$lib/permissions'
 import { createAuthForHono } from '$lib/server/auth-hono'
 import { item, organization, organizationMember } from '$lib/server/db/schema'
 import {
@@ -7,6 +8,7 @@ import {
   ServiceUnavailableError,
   UnauthorizedError,
 } from '$lib/server/errors'
+import { hasPermission } from '$lib/server/permissions'
 import { rateLimit } from '$lib/server/rate-limit'
 import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -135,3 +137,12 @@ export const requireOrgOwner = createMiddleware<OrgEnv>(async (c, next) => {
   }
   await next()
 })
+
+export const requirePermission = (action: OrgAction) =>
+  createMiddleware<OrgEnv>(async (c, next) => {
+    const membership = c.get('membership' as never) as { role: OrgRole }
+    if (!hasPermission(membership.role, action)) {
+      throw new ForbiddenError(`Missing permission: ${action}`)
+    }
+    await next()
+  })

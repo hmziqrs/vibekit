@@ -112,7 +112,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Organizations & Teams
 - [x] Organizations & teams (org CRUD, member management, role assignment, team-scoped resources, org settings, transfer ownership)
-- [ ] RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance in org hierarchy)
+- [x] RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance in org hierarchy)
 - [ ] Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)
 - [ ] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)
 

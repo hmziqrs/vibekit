@@ -63,8 +63,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod/v4'
 
 import {
-  requireOrgAdmin,
-  requireOrgOwner,
+  requirePermission,
   withOrgMembership,
   withOwnedItem,
   withRateLimit,
@@ -1686,7 +1685,7 @@ orgApp.post('/', validate(createOrganizationSchema), async (c) => {
 })
 
 // Get org details
-orgApp.get('/:orgId', withOrgMembership, async (c) => {
+orgApp.get('/:orgId', withOrgMembership, requirePermission('org.read'), async (c) => {
   const org = c.get('organization' as never) as typeof organization.$inferSelect
   const membership = c.get('membership' as never) as typeof organizationMember.$inferSelect
 
@@ -1712,7 +1711,7 @@ orgApp.get('/:orgId', withOrgMembership, async (c) => {
 orgApp.patch(
   '/:orgId',
   withOrgMembership,
-  requireOrgAdmin,
+  requirePermission('org.update'),
   validate(updateOrganizationSchema),
   async (c) => {
     const parsed = c.req.valid('json')
@@ -1755,7 +1754,7 @@ orgApp.patch(
 )
 
 // Soft-delete org
-orgApp.delete('/:orgId', withOrgMembership, requireOrgOwner, async (c) => {
+orgApp.delete('/:orgId', withOrgMembership, requirePermission('org.delete'), async (c) => {
   const { db } = c.get('services')
   const currentUser = c.get('user')
   const org = c.get('organization' as never) as typeof organization.$inferSelect
@@ -1780,33 +1779,38 @@ orgApp.delete('/:orgId', withOrgMembership, requireOrgOwner, async (c) => {
 })
 
 // List members
-orgApp.get('/:orgId/members', withOrgMembership, async (c) => {
-  const { db } = c.get('services')
-  const org = c.get('organization' as never) as typeof organization.$inferSelect
+orgApp.get(
+  '/:orgId/members',
+  withOrgMembership,
+  requirePermission('org.members.read'),
+  async (c) => {
+    const { db } = c.get('services')
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
 
-  const members = await db
-    .select({
-      email: user.email,
-      id: organizationMember.id,
-      image: user.image,
-      joinedAt: organizationMember.joinedAt,
-      name: user.name,
-      role: organizationMember.role,
-      userId: user.id,
-    })
-    .from(organizationMember)
-    .innerJoin(user, eq(organizationMember.userId, user.id))
-    .where(and(eq(organizationMember.organizationId, org.id), isNull(user.deletedAt)))
-    .orderBy(asc(organizationMember.joinedAt))
+    const members = await db
+      .select({
+        email: user.email,
+        id: organizationMember.id,
+        image: user.image,
+        joinedAt: organizationMember.joinedAt,
+        name: user.name,
+        role: organizationMember.role,
+        userId: user.id,
+      })
+      .from(organizationMember)
+      .innerJoin(user, eq(organizationMember.userId, user.id))
+      .where(and(eq(organizationMember.organizationId, org.id), isNull(user.deletedAt)))
+      .orderBy(asc(organizationMember.joinedAt))
 
-  return c.json({ members })
-})
+    return c.json({ members })
+  }
+)
 
 // Change member role
 orgApp.patch(
   '/:orgId/members/:memberId',
   withOrgMembership,
-  requireOrgAdmin,
+  requirePermission('org.members.manage'),
   validate(updateMemberRoleSchema),
   async (c) => {
     const parsed = c.req.valid('json')
@@ -1852,47 +1856,54 @@ orgApp.patch(
 )
 
 // Remove member
-orgApp.delete('/:orgId/members/:memberId', withOrgMembership, requireOrgAdmin, async (c) => {
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const org = c.get('organization' as never) as typeof organization.$inferSelect
-  const memberId = c.req.param('memberId')
+orgApp.delete(
+  '/:orgId/members/:memberId',
+  withOrgMembership,
+  requirePermission('org.members.remove'),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const memberId = c.req.param('memberId')
 
-  const [targetMember] = await db
-    .select()
-    .from(organizationMember)
-    .where(and(eq(organizationMember.id, memberId), eq(organizationMember.organizationId, org.id)))
+    const [targetMember] = await db
+      .select()
+      .from(organizationMember)
+      .where(
+        and(eq(organizationMember.id, memberId), eq(organizationMember.organizationId, org.id))
+      )
 
-  if (!targetMember) {
-    throw new NotFoundError('Member not found')
+    if (!targetMember) {
+      throw new NotFoundError('Member not found')
+    }
+
+    if (targetMember.role === 'owner') {
+      throw new ForbiddenError('Cannot remove the organization owner')
+    }
+
+    if (targetMember.userId === currentUser.id) {
+      throw new BadRequestError('Cannot remove yourself. Leave the organization instead.')
+    }
+
+    await db.delete(organizationMember).where(eq(organizationMember.id, memberId))
+
+    await writeAuditLog(db, {
+      action: 'organization.member.remove',
+      entityId: memberId,
+      entityType: 'organization_member',
+      metadata: { organizationId: org.id, removedUserId: targetMember.userId },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
   }
-
-  if (targetMember.role === 'owner') {
-    throw new ForbiddenError('Cannot remove the organization owner')
-  }
-
-  if (targetMember.userId === currentUser.id) {
-    throw new BadRequestError('Cannot remove yourself. Leave the organization instead.')
-  }
-
-  await db.delete(organizationMember).where(eq(organizationMember.id, memberId))
-
-  await writeAuditLog(db, {
-    action: 'organization.member.remove',
-    entityId: memberId,
-    entityType: 'organization_member',
-    metadata: { organizationId: org.id, removedUserId: targetMember.userId },
-    userId: currentUser.id,
-  })
-
-  return c.json({ success: true })
-})
+)
 
 // Invite member
 orgApp.post(
   '/:orgId/members/invite',
   withOrgMembership,
-  requireOrgAdmin,
+  requirePermission('org.members.invite'),
   validate(inviteMemberSchema),
   async (c) => {
     const parsed = c.req.valid('json')
@@ -1961,7 +1972,7 @@ orgApp.post(
 orgApp.post(
   '/:orgId/transfer-ownership',
   withOrgMembership,
-  requireOrgOwner,
+  requirePermission('org.transfer'),
   validate(transferOwnershipSchema),
   async (c) => {
     const parsed = c.req.valid('json')

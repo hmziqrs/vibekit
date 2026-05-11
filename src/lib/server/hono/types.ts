@@ -1,3 +1,4 @@
+import type { OrgRole } from '$lib/permissions'
 import type { createAuthForHono } from '$lib/server/auth-hono'
 import type { AppServices } from '$lib/server/services/types'
 
@@ -38,7 +39,7 @@ export interface OrgMemberContext {
     id: string
     joinedAt: Date
     organizationId: string
-    role: string
+    role: OrgRole
     userId: string
   }
   organization: {
