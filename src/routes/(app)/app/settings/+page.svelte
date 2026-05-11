@@ -248,6 +248,115 @@
     loadAccounts()
   })
 
+  // Session management state
+  let activeSessions = $state<
+    {
+      createdAt: Date | null
+      currentUserAgent: boolean
+      expiresAt: Date | null
+      id: string
+      ipAddress: string | null
+      token: string
+      updatedAt: Date | null
+      userAgent: string | null
+      userId: string
+    }[]
+  >([])
+  let sessionsLoading = $state(false)
+  let sessionsError = $state('')
+  let currentSessionId = $state('')
+
+  function parseUserAgent(ua: string | null): { browser: string; os: string } {
+    if (!ua) return { browser: 'Unknown', os: 'Unknown' }
+    let browser = 'Unknown'
+    let os = 'Unknown'
+
+    if (ua.includes('Firefox/')) browser = 'Firefox'
+    else if (ua.includes('Edg/')) browser = 'Edge'
+    else if (ua.includes('Chrome/')) browser = 'Chrome'
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari'
+
+    if (ua.includes('Mac OS X')) os = 'macOS'
+    else if (ua.includes('Windows')) os = 'Windows'
+    else if (ua.includes('Linux')) os = 'Linux'
+    else if (ua.includes('Android')) os = 'Android'
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
+
+    return { browser, os }
+  }
+
+  async function loadSessions() {
+    try {
+      const sessionRes = await authClient.getSession()
+      if (sessionRes.data?.session) {
+        currentSessionId = sessionRes.data.session.id
+      }
+      const res = await authClient.listSessions()
+      if (res.data) {
+        // Sort by updatedAt descending and show the 10 most recent
+        activeSessions = [...res.data]
+          .sort((a, b) => {
+            const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+            const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
+            return bTime - aTime
+          })
+          .slice(0, 10)
+        // Ensure current session is in the list
+        const hasCurrent = activeSessions.some((s) => s.id === currentSessionId)
+        if (!hasCurrent && sessionRes.data?.session) {
+          activeSessions.unshift({
+            createdAt: sessionRes.data.session.createdAt ?? null,
+            currentUserAgent: false,
+            expiresAt: sessionRes.data.session.expiresAt ?? null,
+            id: sessionRes.data.session.id,
+            ipAddress: sessionRes.data.session.ipAddress ?? null,
+            token: sessionRes.data.session.token,
+            updatedAt: sessionRes.data.session.updatedAt ?? null,
+            userAgent: sessionRes.data.session.userAgent ?? null,
+            userId: sessionRes.data.session.userId,
+          })
+        }
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
+  async function revokeSession(token: string) {
+    sessionsLoading = true
+    sessionsError = ''
+    try {
+      const res = await authClient.revokeSession({ token })
+      if (res.error) {
+        sessionsError = res.error.message ?? 'Failed to sign out device'
+      }
+      await loadSessions()
+    } catch (error) {
+      sessionsError = error instanceof Error ? error.message : 'Failed to sign out device'
+    }
+    sessionsLoading = false
+  }
+
+  async function revokeOtherSessions() {
+    sessionsLoading = true
+    sessionsError = ''
+    try {
+      const res = await authClient.revokeOtherSessions()
+      if (res.error) {
+        sessionsError = res.error.message ?? 'Failed to sign out other devices'
+      }
+      await loadSessions()
+    } catch (error) {
+      sessionsError = error instanceof Error ? error.message : 'Failed to sign out other devices'
+    }
+    sessionsLoading = false
+  }
+
+  // Load sessions on mount
+  $effect(() => {
+    loadSessions()
+  })
+
   const form = createForm(() => ({
     defaultValues: {
       confirmPassword: '',
@@ -602,6 +711,68 @@
               class="rounded-lg bg-brand px-3 py-1 text-[12px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
             >
               Connect
+            </button>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <!-- Active Sessions -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-[15px] font-medium text-text-primary">Active Sessions</h2>
+        <p class="mt-1 text-[13px] text-text-muted">
+          Devices currently signed in to your account.
+        </p>
+      </div>
+      {#if activeSessions.length > 1}
+        <button
+          onclick={revokeOtherSessions}
+          disabled={sessionsLoading}
+          class="rounded-lg px-3 py-1 text-[12px] font-medium text-text-muted transition-colors hover:text-destructive disabled:opacity-50"
+        >
+          Sign out all others
+        </button>
+      {/if}
+    </div>
+
+    {#if sessionsError}
+      <p class="mt-2 text-[13px] text-destructive">{sessionsError}</p>
+    {/if}
+
+    <div class="mt-4 space-y-2">
+      {#each activeSessions as session}
+        {@const isCurrent = session.id === currentSessionId}
+        {@const ua = parseUserAgent(session.userAgent)}
+        <div class="flex items-center justify-between rounded-lg border border-white/6 bg-surface-elevated px-4 py-3">
+          <div class="flex items-center gap-3">
+            <svg class="size-5 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            <div>
+              <p class="text-[13px] font-medium text-text-primary">
+                {ua.browser} on {ua.os}
+                {#if isCurrent}
+                  <span class="ml-1 rounded bg-brand/20 px-1.5 py-0.5 text-[10px] font-medium text-brand">This device</span>
+                {/if}
+              </p>
+              <p class="text-[11px] text-text-subtle">
+                {session.ipAddress ?? 'Unknown IP'}
+                {#if session.updatedAt}
+                  &middot; Last active {new Date(session.updatedAt).toLocaleDateString()}
+                {/if}
+              </p>
+            </div>
+          </div>
+          {#if !isCurrent}
+            <button
+              onclick={() => revokeSession(session.token)}
+              disabled={sessionsLoading}
+              class="rounded-lg px-3 py-1 text-[12px] font-medium text-text-muted transition-colors hover:text-destructive disabled:opacity-50"
+            >
+              Sign out
             </button>
           {/if}
         </div>
