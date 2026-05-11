@@ -1,5 +1,5 @@
 import { writeAuditLog } from '$lib/server/audit'
-import { session as sessionTable } from '$lib/server/db/auth.schema'
+import { account as accountTable, session as sessionTable } from '$lib/server/db/auth.schema'
 import {
   blogPost,
   blogPostRevision,
@@ -307,6 +307,59 @@ protectedApp.delete('/account', async (c) => {
   const { id: userId } = c.get('user')
 
   await db.update(user).set({ deletedAt: new Date() }).where(eq(user.id, userId))
+  await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
+
+  return c.json({ success: true })
+})
+
+// ── Account Deactivation ──────────────────────────────────────────────
+
+protectedApp.patch('/account/deactivate', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  await db.update(user).set({ status: 'deactivated' }).where(eq(user.id, userId))
+  await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
+
+  return c.json({ success: true })
+})
+
+// ── Public Account Reactivation ──────────────────────────────────────
+
+app.post('/api/account/reactivate', async (c) => {
+  const body = await c.req.json<{ email?: string; password?: string }>()
+  if (!body.email || !body.password) {
+    throw new BadRequestError('Email and password are required')
+  }
+
+  const { db } = c.get('services')
+  const [found] = await db.select().from(user).where(eq(user.email, body.email))
+
+  if (!found || !found.deletedAt) {
+    throw new BadRequestError('No deleted account found with this email')
+  }
+
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000
+  if (Date.now() - found.deletedAt.getTime() > thirtyDays) {
+    throw new BadRequestError('Account is past the 30-day reactivation window')
+  }
+
+  const [acct] = await db
+    .select({ password: accountTable.password })
+    .from(accountTable)
+    .where(and(eq(accountTable.userId, found.id), eq(accountTable.providerId, 'credential')))
+
+  if (!acct?.password) {
+    throw new BadRequestError('No password set for this account')
+  }
+
+  const { verifyPassword } = await import('better-auth/crypto')
+  const valid = await verifyPassword({ hash: acct.password, password: body.password })
+  if (!valid) {
+    throw new BadRequestError('Invalid password')
+  }
+
+  await db.update(user).set({ deletedAt: null, status: 'active' }).where(eq(user.id, found.id))
 
   return c.json({ success: true })
 })
@@ -1045,6 +1098,8 @@ adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
     .update(user)
     .set({ deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))` })
     .where(eq(user.id, targetId))
+
+  await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
 
   await writeAuditLog(db, {
     action: 'user.delete',

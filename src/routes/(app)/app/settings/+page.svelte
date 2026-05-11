@@ -443,6 +443,8 @@
 
   let deleteLoading = $state(false)
   let deleteError = $state('')
+  let deactivateLoading = $state(false)
+  let deactivateError = $state('')
 
   async function handleDeleteAccount() {
     if (deleteConfirmText !== 'DELETE') return
@@ -460,6 +462,24 @@
       deleteError = 'Something went wrong.'
     } finally {
       deleteLoading = false
+    }
+  }
+
+  async function handleDeactivateAccount() {
+    deactivateLoading = true
+    deactivateError = ''
+    try {
+      const res = await fetch('/api/account/deactivate', { method: 'PATCH' })
+      if (!res.ok) {
+        deactivateError = 'Failed to deactivate account. Please try again.'
+        return
+      }
+      await authClient.signOut()
+      window.location.href = '/'
+    } catch {
+      deactivateError = 'Something went wrong.'
+    } finally {
+      deactivateLoading = false
     }
   }
 </script>
@@ -966,11 +986,31 @@
     </div>
   </div>
 
+  <!-- Deactivate Account -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Deactivate Account</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Temporarily disable your account. You can sign back in to reactivate at any time.
+    </p>
+    {#if deactivateError}
+      <p class="mt-2 text-[13px] text-destructive">{deactivateError}</p>
+    {/if}
+    <button
+      onclick={handleDeactivateAccount}
+      disabled={deactivateLoading}
+      class="mt-4 rounded-lg border border-white/10 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-white/4 hover:text-text-primary disabled:opacity-50"
+    >
+      {deactivateLoading ? 'Deactivating...' : 'Deactivate Account'}
+    </button>
+  </div>
+
   <!-- Delete Account -->
   <div class="mt-6 rounded-xl border border-destructive/20 bg-surface p-6">
     <h2 class="text-[15px] font-medium text-destructive">Delete Account</h2>
     <p class="mt-1 text-[13px] text-text-muted">
-      Permanently delete your account and all associated data. This action cannot be undone.
+      Your account will be scheduled for deletion and permanently removed after 30 days. You can
+      <a href="/reactivate" class="text-brand hover:underline">reactivate it</a>
+      during this period.
     </p>
 
     {#if !showDeleteConfirm}

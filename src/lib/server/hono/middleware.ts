@@ -38,6 +38,22 @@ export const withSession = createMiddleware<Env>(async (c, next) => {
     return
   }
   const session = await c.get('auth').api.getSession({ headers: c.req.raw.headers })
+  if (session?.user) {
+    const userData = session.user as typeof session.user & {
+      deletedAt?: Date | null
+      status?: string | null
+    }
+    if (
+      userData.deletedAt ||
+      userData.status === 'suspended' ||
+      userData.status === 'deactivated'
+    ) {
+      c.set('user', null)
+      c.set('session', null)
+      await next()
+      return
+    }
+  }
   c.set('user', session?.user ?? null)
   c.set('session', session?.session ?? null)
   await next()

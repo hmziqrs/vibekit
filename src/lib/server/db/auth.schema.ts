@@ -15,7 +15,7 @@ export const user = sqliteTable('user', {
   lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
   name: text('name').notNull(),
   role: text({ enum: ['user', 'admin'] }).default('user'),
-  status: text({ enum: ['active', 'suspended'] }).default('active'),
+  status: text({ enum: ['active', 'suspended', 'deactivated'] }).default('active'),
   timezone: text('timezone'),
   twoFactorEnabled: integer('two_factor_enabled', { mode: 'boolean' }).default(false),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' })

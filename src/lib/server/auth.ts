@@ -113,7 +113,7 @@ export const authConfig = {
         defaultValue: 'active',
         input: false,
         required: false,
-        type: ['active', 'suspended'],
+        type: ['active', 'suspended', 'deactivated'],
       },
       timezone: {
         input: true,

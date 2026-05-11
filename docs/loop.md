@@ -104,7 +104,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Core User Features
 - [x] User profile & settings (avatar upload, display name, bio, timezone, language preference, notification preferences, delete account flow)
-- [ ] User account lifecycle (email verification flow, account deactivation vs deletion, data retention policy, re-enable flow, grace period before permanent deletion)
+- [x] User account lifecycle (email verification flow, account deactivation vs deletion, data retention policy, re-enable flow, grace period before permanent deletion)
 - [ ] User banning system (temporary/permanent ban with reason, appeal flow, automatic content unpublish on ban, ban evasion detection via email/IP)
 - [ ] User data export / portability (one-click full data download as JSON/ZIP, GDPR compliance, scheduled exports for large datasets)
 - [ ] Onboarding flow (guided setup wizard, feature discovery tooltips, progressive disclosure, skip/resume capability, role-based onboarding paths)

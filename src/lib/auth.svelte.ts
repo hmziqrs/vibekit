@@ -5,12 +5,14 @@ export interface AuthContext {
   user: {
     bio?: string | null
     createdAt?: string
+    deletedAt?: string | null
     displayName?: string | null
     email: string
     id: string
     image?: string | null
     name: string
     role?: string
+    status?: 'active' | 'suspended' | 'deactivated' | null
     timezone?: string | null
   } | null
   isPending: boolean

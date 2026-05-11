@@ -104,9 +104,8 @@ describe('suspended user enforcement', () => {
   it('imports session table from auth schema', () => {
     const honoPath = resolve(root, 'src/lib/server/hono/index.ts')
     const content = readFileSync(honoPath, 'utf8')
-    expect(content).toContain(
-      "import { session as sessionTable } from '$lib/server/db/auth.schema'"
-    )
+    expect(content).toContain('session as sessionTable')
+    expect(content).toContain("'$lib/server/db/auth.schema'")
   })
 })
 

@@ -51,6 +51,19 @@
         If you have questions about this privacy policy or how your data is handled, please reach
         out via the project's GitHub repository or contact the maintainers directly.
       </p>
+
+      <h2 class="text-text-primary">Data Retention</h2>
+      <p>
+        When you delete your account, your data is soft-deleted and retained for a 30-day grace
+        period. During this time, you can
+        <a href="/reactivate" class="text-brand hover:underline">reactivate your account</a>
+        to restore all your data. After 30 days, your account and associated data are permanently
+        deleted and cannot be recovered.
+      </p>
+      <p>
+        If you deactivate your account instead, your data is preserved indefinitely. You can sign
+        back in at any time to reactivate. Deactivated accounts do not count toward any user limits.
+      </p>
     </div>
   </div>
 </section>
