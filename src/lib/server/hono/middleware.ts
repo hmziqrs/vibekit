@@ -1,6 +1,6 @@
-import type { OrgAction, OrgRole } from '$lib/permissions'
+import type { OrgAction, OrgRole, TeamAction, TeamRole } from '$lib/permissions'
 import { createAuthForHono } from '$lib/server/auth-hono'
-import { item, organization, organizationMember } from '$lib/server/db/schema'
+import { item, organization, organizationMember, team, teamMember } from '$lib/server/db/schema'
 import {
   ForbiddenError,
   NotFoundError,
@@ -8,13 +8,13 @@ import {
   ServiceUnavailableError,
   UnauthorizedError,
 } from '$lib/server/errors'
-import { hasPermission } from '$lib/server/permissions'
+import { hasPermission, hasTeamPermission } from '$lib/server/permissions'
 import { rateLimit } from '$lib/server/rate-limit'
 import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createMiddleware } from 'hono/factory'
 
-import type { Env, OrgEnv, ProtectedEnv } from './types'
+import type { Env, OrgEnv, ProtectedEnv, TeamEnv } from './types'
 
 export const withServices = createMiddleware<Env>(async (c, next) => {
   const injected = c.env.__services
@@ -142,6 +142,48 @@ export const requirePermission = (action: OrgAction) =>
   createMiddleware<OrgEnv>(async (c, next) => {
     const membership = c.get('membership' as never) as { role: OrgRole }
     if (!hasPermission(membership.role, action)) {
+      throw new ForbiddenError(`Missing permission: ${action}`)
+    }
+    await next()
+  })
+
+export const withTeamMembership = createMiddleware<TeamEnv>(async (c, next) => {
+  const { db } = c.get('services')
+  const userId = c.get('user').id
+  const teamId = c.req.param('teamId') ?? ''
+
+  const teamRow = await db
+    .select()
+    .from(team)
+    .where(and(eq(team.id, teamId), isNull(team.deletedAt)))
+    .get()
+
+  if (!teamRow) throw new NotFoundError()
+
+  const orgId = (c.get('organization' as never) as { id: string }).id
+  if (teamRow.organizationId !== orgId) {
+    throw new ForbiddenError('Team does not belong to this organization')
+  }
+
+  const membership = await db
+    .select()
+    .from(teamMember)
+    .where(and(eq(teamMember.teamId, teamId), eq(teamMember.userId, userId)))
+    .get()
+
+  c.set('team' as never, teamRow as never)
+  c.set('teamMembership' as never, (membership ?? null) as never)
+  await next()
+})
+
+export const requireTeamPermission = (action: TeamAction) =>
+  createMiddleware<TeamEnv>(async (c, next) => {
+    const orgRole = (c.get('membership' as never) as { role: OrgRole }).role
+    const teamMembership = c.get('teamMembership' as never) as {
+      role: TeamRole
+    } | null
+    const teamRole = teamMembership?.role ?? null
+    if (!hasTeamPermission(orgRole, teamRole, action)) {
       throw new ForbiddenError(`Missing permission: ${action}`)
     }
     await next()

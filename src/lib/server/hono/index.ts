@@ -17,6 +17,9 @@ import {
   organizationInvitation,
   organizationMember,
   securityEvent,
+  team,
+  teamActivity,
+  teamMember,
   user,
 } from '$lib/server/db/schema'
 import {
@@ -32,12 +35,16 @@ import {
   createItemSchema,
   createOrganizationSchema,
   createPostSchema,
+  createTeamSchema,
+  addTeamMemberSchema,
   inviteMemberSchema,
   transferOwnershipSchema,
   updateItemSchema,
   updateMemberRoleSchema,
   updateOrganizationSchema,
   updatePostSchema,
+  updateTeamMemberRoleSchema,
+  updateTeamSchema,
 } from '$lib/validators'
 import { zValidator } from '@hono/zod-validator'
 import {
@@ -64,6 +71,7 @@ import { z } from 'zod/v4'
 
 import {
   requirePermission,
+  requireTeamPermission,
   withOrgMembership,
   withOwnedItem,
   withRateLimit,
@@ -71,8 +79,9 @@ import {
   requireUser,
   withServices,
   withSession,
+  withTeamMembership,
 } from './middleware'
-import type { OrgEnv, ProtectedEnv } from './types'
+import type { OrgEnv, ProtectedEnv, TeamEnv } from './types'
 
 const validate = <T extends z.ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
@@ -2120,6 +2129,374 @@ orgApp.post(
   }
 )
 
+// ── Teams (within organizations) ──────────────────────────────────────
+
+const teamApp = new Hono<TeamEnv>().use('*', requireUser)
+
+// List teams in org
+teamApp.get('/', withOrgMembership, requirePermission('org.read'), async (c) => {
+  const { db } = c.get('services')
+  const org = c.get('organization' as never) as { id: string }
+
+  const teams = await db
+    .select({
+      createdAt: team.createdAt,
+      description: team.description,
+      id: team.id,
+      name: team.name,
+      updatedAt: team.updatedAt,
+    })
+    .from(team)
+    .where(and(eq(team.organizationId, org.id), isNull(team.deletedAt)))
+    .orderBy(desc(team.createdAt))
+
+  return c.json({ teams })
+})
+
+// Create team
+teamApp.post(
+  '/',
+  withOrgMembership,
+  requirePermission('org.update'),
+  withRateLimit('team-mutate', 20),
+  validate(createTeamSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization' as never) as { id: string }
+
+    const id = uuid()
+    await db.insert(team).values({
+      description: parsed.description ?? null,
+      id,
+      name: parsed.name,
+      organizationId: org.id,
+    })
+
+    await db.insert(teamMember).values({
+      role: 'lead',
+      teamId: id,
+      userId: currentUser.id,
+    })
+
+    await writeAuditLog(db, {
+      action: 'team.create',
+      entityId: id,
+      entityType: 'team',
+      metadata: { name: parsed.name, organizationId: org.id },
+      userId: currentUser.id,
+    })
+
+    return c.json({ id, name: parsed.name }, 201)
+  }
+)
+
+// Get team details
+teamApp.get(
+  '/:teamId',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.read'),
+  async (c) => {
+    const teamRow = c.get('team' as never) as typeof team.$inferSelect
+    const teamMembershipRow = c.get('teamMembership' as never) as {
+      id: string
+      joinedAt: Date
+      role: string
+      teamId: string
+      userId: string
+    } | null
+
+    return c.json({
+      team: {
+        createdAt: teamRow.createdAt,
+        description: teamRow.description,
+        id: teamRow.id,
+        name: teamRow.name,
+        organizationId: teamRow.organizationId,
+        updatedAt: teamRow.updatedAt,
+      },
+      teamMembership: teamMembershipRow
+        ? {
+            id: teamMembershipRow.id,
+            joinedAt: teamMembershipRow.joinedAt,
+            role: teamMembershipRow.role,
+          }
+        : null,
+    })
+  }
+)
+
+// Update team
+teamApp.patch(
+  '/:teamId',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.update'),
+  withRateLimit('team-mutate'),
+  validate(updateTeamSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const teamRow = c.get('team' as never) as { id: string }
+
+    await db
+      .update(team)
+      .set({
+        description: parsed.description ?? null,
+        name: parsed.name,
+        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      })
+      .where(eq(team.id, teamRow.id))
+
+    await writeAuditLog(db, {
+      action: 'team.update',
+      entityId: teamRow.id,
+      entityType: 'team',
+      metadata: { name: parsed.name },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+// Soft-delete team
+teamApp.delete(
+  '/:teamId',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.delete'),
+  withRateLimit('team-mutate'),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const teamRow = c.get('team' as never) as { id: string; name: string }
+
+    await db
+      .update(team)
+      .set({
+        deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      })
+      .where(eq(team.id, teamRow.id))
+
+    await writeAuditLog(db, {
+      action: 'team.delete',
+      entityId: teamRow.id,
+      entityType: 'team',
+      metadata: { name: teamRow.name },
+      userId: currentUser.id,
+    })
+
+    return new Response(null, { status: 204 })
+  }
+)
+
+// List team members
+teamApp.get(
+  '/:teamId/members',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.members.read'),
+  async (c) => {
+    const { db } = c.get('services')
+    const teamRow = c.get('team' as never) as { id: string }
+
+    const members = await db
+      .select({
+        email: user.email,
+        id: teamMember.id,
+        joinedAt: teamMember.joinedAt,
+        name: user.name,
+        role: teamMember.role,
+        userId: user.id,
+      })
+      .from(teamMember)
+      .innerJoin(user, eq(teamMember.userId, user.id))
+      .where(and(eq(teamMember.teamId, teamRow.id), isNull(user.deletedAt)))
+      .orderBy(asc(teamMember.joinedAt))
+
+    return c.json({ members })
+  }
+)
+
+// Add member to team
+teamApp.post(
+  '/:teamId/members',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.members.add'),
+  withRateLimit('team-mutate'),
+  validate(addTeamMemberSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const teamRow = c.get('team' as never) as { id: string }
+    const org = c.get('organization' as never) as { id: string }
+
+    const [existingMember] = await db
+      .select({ id: organizationMember.id })
+      .from(organizationMember)
+      .where(
+        and(
+          eq(organizationMember.userId, parsed.userId),
+          eq(organizationMember.organizationId, org.id)
+        )
+      )
+
+    if (!existingMember) {
+      throw new ForbiddenError('User is not a member of this organization')
+    }
+
+    const existingTeamMember = await db
+      .select({ id: teamMember.id })
+      .from(teamMember)
+      .where(and(eq(teamMember.teamId, teamRow.id), eq(teamMember.userId, parsed.userId)))
+      .get()
+
+    if (existingTeamMember) {
+      throw new ConflictError('User is already a member of this team')
+    }
+
+    const id = uuid()
+    await db.insert(teamMember).values({
+      id,
+      role: parsed.role,
+      teamId: teamRow.id,
+      userId: parsed.userId,
+    })
+
+    await writeAuditLog(db, {
+      action: 'team.member.add',
+      entityId: id,
+      entityType: 'team_member',
+      metadata: { teamId: teamRow.id, teamRole: parsed.role, userId: parsed.userId },
+      userId: currentUser.id,
+    })
+
+    return c.json({ id }, 201)
+  }
+)
+
+// Change team member role
+teamApp.patch(
+  '/:teamId/members/:memberId',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.members.manage'),
+  validate(updateTeamMemberRoleSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const teamRow = c.get('team' as never) as { id: string }
+    const memberId = c.req.param('memberId')
+
+    const [targetMember] = await db
+      .select()
+      .from(teamMember)
+      .where(and(eq(teamMember.id, memberId), eq(teamMember.teamId, teamRow.id)))
+
+    if (!targetMember) {
+      throw new NotFoundError('Team member not found')
+    }
+
+    await db.update(teamMember).set({ role: parsed.role }).where(eq(teamMember.id, memberId))
+
+    await writeAuditLog(db, {
+      action: 'team.member.update_role',
+      entityId: memberId,
+      entityType: 'team_member',
+      metadata: { newRole: parsed.role, oldRole: targetMember.role, teamId: teamRow.id },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+// Remove team member
+teamApp.delete(
+  '/:teamId/members/:memberId',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.members.manage'),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const teamRow = c.get('team' as never) as { id: string }
+    const memberId = c.req.param('memberId')
+
+    const [targetMember] = await db
+      .select()
+      .from(teamMember)
+      .where(and(eq(teamMember.id, memberId), eq(teamMember.teamId, teamRow.id)))
+
+    if (!targetMember) {
+      throw new NotFoundError('Team member not found')
+    }
+
+    if (targetMember.userId === currentUser.id) {
+      throw new BadRequestError('Cannot remove yourself from the team')
+    }
+
+    await db.delete(teamMember).where(eq(teamMember.id, memberId))
+
+    await writeAuditLog(db, {
+      action: 'team.member.remove',
+      entityId: memberId,
+      entityType: 'team_member',
+      metadata: { removedUserId: targetMember.userId, teamId: teamRow.id },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+// Team activity feed
+teamApp.get(
+  '/:teamId/activity',
+  withOrgMembership,
+  withTeamMembership,
+  requireTeamPermission('team.read'),
+  async (c) => {
+    const { db } = c.get('services')
+    const teamRow = c.get('team' as never) as { id: string }
+    const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+    const limit = 50
+    const offset = (page - 1) * limit
+
+    const [activities, totalResult] = await Promise.all([
+      db
+        .select({
+          action: teamActivity.action,
+          actorName: user.name,
+          createdAt: teamActivity.createdAt,
+          entityId: teamActivity.entityId,
+          entityType: teamActivity.entityType,
+          id: teamActivity.id,
+          metadata: teamActivity.metadata,
+        })
+        .from(teamActivity)
+        .leftJoin(user, eq(teamActivity.actorId, user.id))
+        .where(eq(teamActivity.teamId, teamRow.id))
+        .orderBy(desc(teamActivity.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(teamActivity).where(eq(teamActivity.teamId, teamRow.id)),
+    ])
+
+    const totalPages = Math.ceil((totalResult[0]?.count ?? 0) / limit)
+
+    return c.json({ activities, page, totalPages })
+  }
+)
+
 // ── Invitations (auth required, no org context) ──────────────────────
 
 protectedApp.get('/invitations', async (c) => {
@@ -2256,6 +2633,7 @@ const routes = app
   .route('/api/blog', blogApp)
   .route('/api/admin', adminApp)
   .route('/api/orgs', orgApp)
+  .route('/api/orgs/:orgId/teams', teamApp)
 
 export type AppType = typeof routes
 export { app }

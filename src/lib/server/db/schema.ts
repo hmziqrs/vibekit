@@ -287,6 +287,77 @@ export const organizationInvitation = sqliteTable(
   ]
 )
 
+export const team = sqliteTable(
+  'team',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
+    description: text('description'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    name: text('name').notNull(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index('team_organization_id_idx').on(table.organizationId)]
+)
+
+export const teamMember = sqliteTable(
+  'team_member',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    role: text('role', { enum: ['lead', 'member'] })
+      .default('member')
+      .notNull(),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('team_member_team_id_idx').on(table.teamId),
+    index('team_member_user_id_idx').on(table.userId),
+  ]
+)
+
+export const teamActivity = sqliteTable(
+  'team_activity',
+  {
+    action: text('action').notNull(),
+    actorId: text('actor_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    entityId: text('entity_id'),
+    entityType: text('entity_type'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    metadata: text('metadata'),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+  },
+  (table) => [index('team_activity_team_created_idx').on(table.teamId, table.createdAt)]
+)
+
 // Drizzle relations for app tables
 export const blogPostRelations = relations(blogPost, ({ many, one }) => ({
   author: one(user, { fields: [blogPost.authorId], references: [user.id] }),
@@ -329,6 +400,26 @@ export const organizationRelations = relations(organization, ({ many, one }) => 
   invitations: many(organizationInvitation),
   members: many(organizationMember),
   owner: one(user, { fields: [organization.ownerId], references: [user.id] }),
+  teams: many(team),
+}))
+
+export const teamRelations = relations(team, ({ many, one }) => ({
+  activities: many(teamActivity),
+  members: many(teamMember),
+  organization: one(organization, {
+    fields: [team.organizationId],
+    references: [organization.id],
+  }),
+}))
+
+export const teamMemberRelations = relations(teamMember, ({ one }) => ({
+  team: one(team, { fields: [teamMember.teamId], references: [team.id] }),
+  user: one(user, { fields: [teamMember.userId], references: [user.id] }),
+}))
+
+export const teamActivityRelations = relations(teamActivity, ({ one }) => ({
+  actor: one(user, { fields: [teamActivity.actorId], references: [user.id] }),
+  team: one(team, { fields: [teamActivity.teamId], references: [team.id] }),
 }))
 
 export const organizationMemberRelations = relations(organizationMember, ({ one }) => ({
@@ -342,6 +433,7 @@ export const organizationMemberRelations = relations(organizationMember, ({ one 
 export const userOrgMemberRelations = relations(user, ({ many }) => ({
   organizationInvitations: many(organizationInvitation),
   organizationMemberships: many(organizationMember),
+  teamMemberships: many(teamMember),
 }))
 
 export const organizationInvitationRelations = relations(organizationInvitation, ({ one }) => ({

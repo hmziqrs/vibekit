@@ -53,3 +53,62 @@ const ROLE_LEVELS: Record<OrgRole, number> = {
 export function getRoleLevel(role: OrgRole): number {
   return ROLE_LEVELS[role]
 }
+
+// Team-level permissions
+export const TEAM_ACTIONS = [
+  'team.create',
+  'team.delete',
+  'team.members.add',
+  'team.members.manage',
+  'team.members.read',
+  'team.read',
+  'team.settings.read',
+  'team.settings.update',
+  'team.update',
+] as const
+
+export type TeamAction = (typeof TEAM_ACTIONS)[number]
+
+export type TeamRole = 'lead' | 'member'
+
+const ALL_TEAM_ACTIONS = new Set<TeamAction>(TEAM_ACTIONS)
+
+const ORG_TEAM_PERMISSIONS: Record<OrgRole, Set<TeamAction>> = {
+  admin: ALL_TEAM_ACTIONS,
+  member: new Set(['team.create', 'team.members.read', 'team.read']),
+  owner: ALL_TEAM_ACTIONS,
+  viewer: new Set(['team.members.read', 'team.read']),
+}
+
+const TEAM_ROLE_PERMISSIONS: Record<TeamRole, Set<TeamAction>> = {
+  lead: new Set([
+    'team.members.add',
+    'team.members.manage',
+    'team.members.read',
+    'team.read',
+    'team.settings.read',
+    'team.settings.update',
+    'team.update',
+  ]),
+  member: new Set(['team.members.read', 'team.read']),
+}
+
+export function hasTeamPermission(
+  orgRole: OrgRole,
+  teamRole: TeamRole | null,
+  action: TeamAction
+): boolean {
+  if (ORG_TEAM_PERMISSIONS[orgRole].has(action)) return true
+  if (teamRole && TEAM_ROLE_PERMISSIONS[teamRole].has(action)) return true
+  return false
+}
+
+export function getTeamPermissions(orgRole: OrgRole, teamRole: TeamRole | null): TeamAction[] {
+  const orgPerms = ORG_TEAM_PERMISSIONS[orgRole]
+  if (!teamRole) return [...orgPerms]
+  const combined = new Set<TeamAction>(orgPerms)
+  for (const action of TEAM_ROLE_PERMISSIONS[teamRole]) {
+    combined.add(action)
+  }
+  return [...combined]
+}

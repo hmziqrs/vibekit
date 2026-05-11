@@ -1,4 +1,4 @@
-import type { OrgRole } from '$lib/permissions'
+import type { OrgRole, TeamRole } from '$lib/permissions'
 import type { createAuthForHono } from '$lib/server/auth-hono'
 import type { AppServices } from '$lib/server/services/types'
 
@@ -59,4 +59,30 @@ export type OrgEnvVariables = ProtectedVariables & OrgMemberContext
 export interface OrgEnv {
   Bindings: Bindings
   Variables: OrgEnvVariables
+}
+
+export interface TeamMemberContext {
+  team: {
+    createdAt: Date
+    deletedAt: Date | null
+    description: string | null
+    id: string
+    name: string
+    organizationId: string
+    updatedAt: Date
+  }
+  teamMembership: {
+    id: string
+    joinedAt: Date
+    role: TeamRole
+    teamId: string
+    userId: string
+  } | null
+}
+
+export type TeamEnvVariables = OrgEnvVariables & TeamMemberContext
+
+export interface TeamEnv {
+  Bindings: Bindings
+  Variables: TeamEnvVariables
 }

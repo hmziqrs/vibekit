@@ -120,6 +120,13 @@
       "when": 1778535808881,
       "tag": "0016_lethal_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1778539272609,
+      "tag": "0017_confused_shaman",
+      "breakpoints": true
     }
   ]
 }
