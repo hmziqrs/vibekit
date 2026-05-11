@@ -1835,23 +1835,52 @@ adminApp.get('/reports', async (c) => {
         reporterName: user.name,
         resolutionNote: contentReport.resolutionNote,
         resolvedAt: contentReport.resolvedAt,
-        resolverEmail: sql<string | null>`resolver.email`,
-        resolverName: sql<string | null>`resolver.name`,
+        resolvedBy: contentReport.resolvedBy,
         status: contentReport.status,
       })
       .from(contentReport)
       .leftJoin(user, eq(contentReport.reporterId, user.id))
-      .leftJoin(
-        sql`(SELECT id as id, name as name, email as email FROM "user") as resolver`,
-        sql`resolver.id = ${contentReport.resolvedBy}`
-      )
       .where(whereClause)
       .orderBy(desc(contentReport.createdAt))
       .limit(limit)
       .offset(offset),
   ])
 
-  return c.json({ limit, page, reports, total: countResult[0]?.count ?? 0 })
+  // Resolve resolver names for resolved reports
+  const resolvedBy = reports.map((r) => r.resolvedBy).filter((id): id is string => id !== null)
+  const resolverIds = [...new Set(resolvedBy)]
+
+  const resolverMap = new Map<string, { email: string | null; name: string | null }>()
+  if (resolverIds.length > 0) {
+    const resolvers = await db
+      .select({ email: user.email, id: user.id, name: user.name })
+      .from(user)
+      .where(inArray(user.id, resolverIds))
+    for (const r of resolvers) {
+      resolverMap.set(r.id, { email: r.email, name: r.name })
+    }
+  }
+
+  const enrichedReports = reports.map((r) => {
+    const resolver = r.resolvedBy ? resolverMap.get(r.resolvedBy) : null
+    return {
+      createdAt: r.createdAt,
+      description: r.description,
+      entityId: r.entityId,
+      entityType: r.entityType,
+      id: r.id,
+      reason: r.reason,
+      reporterEmail: r.reporterEmail,
+      reporterName: r.reporterName,
+      resolutionNote: r.resolutionNote,
+      resolvedAt: r.resolvedAt,
+      resolverEmail: resolver?.email ?? null,
+      resolverName: resolver?.name ?? null,
+      status: r.status,
+    }
+  })
+
+  return c.json({ limit, page, reports: enrichedReports, total: countResult[0]?.count ?? 0 })
 })
 
 adminApp.get('/reports/stats', async (c) => {
