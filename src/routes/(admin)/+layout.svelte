@@ -132,6 +132,21 @@
             {item.label}
           </a>
         {/each}
+
+        <div class="my-3 border-t border-white/[0.06]"></div>
+        <a
+          href="/app/dashboard"
+          class={cn(
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+            'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
+          )}
+          onclick={closeMobile}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+          Back to App
+        </a>
       </nav>
 
       <!-- Sidebar footer: user info + logout -->

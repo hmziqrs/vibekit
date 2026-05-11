@@ -114,6 +114,20 @@
             {item.label}
           </a>
         {/each}
+
+        {#if auth.user?.role === 'admin'}
+          <div class="my-3 border-t border-white/[0.06]"></div>
+          <a
+            href="/admin/dashboard"
+            onclick={closeMobileMenu}
+            class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Admin Panel
+          </a>
+        {/if}
       </nav>
 
       <!-- User section -->

@@ -140,6 +140,24 @@
     { label: 'Archived', value: 'archived' },
     { label: 'Trash', value: 'trash' },
   ]
+
+  const sortOptions = [
+    { label: 'Newest first', value: 'createdAt:desc' },
+    { label: 'Oldest first', value: 'createdAt:asc' },
+    { label: 'Title A-Z', value: 'title:asc' },
+    { label: 'Title Z-A', value: 'title:desc' },
+    { label: 'Published newest', value: 'publishedAt:desc' },
+    { label: 'Status', value: 'status:asc' },
+  ]
+
+  let sortValue = $derived(`${sortKey}:${sortDir}`)
+
+  function handleSortChange(value: string) {
+    const [key, dir] = value.split(':')
+    sortKey = key
+    sortDir = dir as 'asc' | 'desc'
+    currentPage = 1
+  }
 </script>
 
 <ConfirmDialog
@@ -165,8 +183,19 @@
 
 <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
   <FilterTabs tabs={tabs} bind:active={statusFilter} />
-  <div class="sm:max-w-xs sm:flex-1">
-    <SearchInput bind:value={search} placeholder="Search posts..." />
+  <div class="flex items-center gap-2 sm:max-w-xs sm:flex-1">
+    <div class="flex-1">
+      <SearchInput bind:value={search} placeholder="Search posts..." />
+    </div>
+    <select
+      value={sortValue}
+      onchange={(e) => handleSortChange((e.target as HTMLSelectElement).value)}
+      class="rounded-lg border border-border bg-input px-3 py-2 text-[12px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+    >
+      {#each sortOptions as opt (opt.value)}
+        <option value={opt.value}>{opt.label}</option>
+      {/each}
+    </select>
   </div>
 </div>
 

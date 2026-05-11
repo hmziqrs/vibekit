@@ -86,6 +86,15 @@
 							>
 								Settings
 							</a>
+							{#if auth.user?.role === 'admin'}
+								<a
+									href="/admin/dashboard"
+									onclick={closeDropdown}
+									class="block px-4 py-2 text-[13px] font-medium text-text-muted transition-colors hover:text-text-primary hover:bg-surface-elevated"
+								>
+									Admin Panel
+								</a>
+							{/if}
 							<div class="my-1 border-t border-white/[0.06]"></div>
 							<button
 								type="button"

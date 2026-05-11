@@ -2,7 +2,7 @@
   import type { Editor } from '@tiptap/core'
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import { cn } from '$lib/utils'
-  import { FileText, Image, LayoutGrid, List, Music, Search, Trash2, Upload, X } from 'lucide-svelte'
+  import { FileText, Image, LayoutGrid, List, Music, Search, Trash2, Upload, X } from '@lucide/svelte'
 
   interface MediaItem {
     contentType?: string
@@ -324,8 +324,8 @@
               {#if item.contentType?.startsWith('image/')}
                 <img src={`/cdn/blog/${item.key}`} alt={item.key} class="size-full object-cover" loading="lazy" />
               {:else}
+                {@const Icon = fileIcon(item.contentType)}
                 <div class="flex size-full items-center justify-center">
-                  {#const Icon = fileIcon(item.contentType)}
                   <Icon class="size-4 text-text-faint" />
                 </div>
               {/if}
