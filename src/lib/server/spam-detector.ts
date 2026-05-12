@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 
-import type { AppDb } from './db'
 import { comment } from './db/schema'
+import type { AppDb } from './services/types'
 
 interface SpamCheckInput {
   content: string
