@@ -6033,6 +6033,67 @@ adminApp.get('/experiments/:key/variants', async (c) => {
   return c.json({ variants })
 })
 
+// ── Admin Media Library ──────────────────────────────────────────────
+
+adminApp.get('/media', async (c) => {
+  const services = c.get('services')
+  const prefix = c.req.query('prefix') || undefined
+  const cursor = c.req.query('cursor') || undefined
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+  const type = c.req.query('type') // image, video, audio, document
+
+  const result = await services.storage.list(prefix, cursor, limit)
+
+  if (type) {
+    const mimeMap: Record<string, string[]> = {
+      audio: ['audio/'],
+      document: ['application/pdf', 'text/', 'application/msword', 'application/vnd.'],
+      image: ['image/'],
+      video: ['video/'],
+    }
+    const prefixes = mimeMap[type] ?? []
+    result.items = result.items.filter(
+      (item: { contentType?: string }) =>
+        item.contentType && prefixes.some((p) => item.contentType!.startsWith(p))
+    )
+  }
+
+  return c.json(result)
+})
+
+adminApp.post('/media/upload', withRateLimit('upload', 10, 60_000), async (c) => {
+  const services = c.get('services')
+  const formData = await c.req.formData()
+  const file = formData.get('file') as File | null
+  if (!file) throw new BadRequestError('No file provided')
+
+  const validationError = validateMediaUpload(file)
+  if (validationError) throw new BadRequestError(validationError)
+
+  const key = generateStorageKey(file.name)
+  const arrayBuffer = await file.arrayBuffer()
+  const body = new Uint8Array(arrayBuffer)
+
+  const result = await services.storage.put(key, body, {
+    cacheControl: 'public, max-age=31536000',
+    contentType: file.type,
+  })
+
+  return c.json(result, 201)
+})
+
+adminApp.post('/media/bulk-delete', async (c) => {
+  const services = c.get('services')
+  const { keys } = await c.req.json<{ keys: string[] }>()
+  if (!Array.isArray(keys) || keys.length === 0 || keys.length > 100) {
+    throw new BadRequestError('Must provide 1-100 keys')
+  }
+  for (const key of keys) {
+    await services.storage.delete(key)
+  }
+  return c.json({ deleted: keys.length })
+})
+
 // ── Mount sub-apps ───────────────────────────────────────────────────
 
 const routes = app

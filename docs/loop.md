@@ -182,7 +182,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### File Storage & Media
 - [x] File upload pipeline (chunked uploads for large files, progress tracking, upload resumption, file type validation, virus scanning)
-- [ ] Media library (file browser, thumbnail generation, metadata extraction, search/filter, folder organization, bulk operations)
+- [x] Media library (file browser, thumbnail generation, metadata extraction, search/filter, folder organization, bulk operations)
 - [ ] Image processing (resize/crop on upload, format conversion to WebP/AVIF, responsive image srcset generation, CDN URL generation)
 - [ ] Storage adapter abstraction (R2 primary, S3-compatible fallback, local dev storage, presigned URLs for direct upload)
 

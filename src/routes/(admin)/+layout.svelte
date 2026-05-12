@@ -18,6 +18,7 @@
     { href: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { href: '/admin/users', icon: 'users', label: 'Users' },
     { href: '/admin/blog', icon: 'blog', label: 'Blog' },
+    { href: '/admin/media', icon: 'media', label: 'Media' },
     { href: '/admin/moderation', icon: 'moderation', label: 'Moderation' },
     { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
     { href: '/admin/integrations', icon: 'webhooks', label: 'Integrations' },
@@ -127,6 +128,12 @@
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
                   <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+              {:else if item.icon === 'media'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
                 </svg>
               {:else if item.icon === 'audit'}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
