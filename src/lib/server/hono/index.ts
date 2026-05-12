@@ -308,7 +308,7 @@ const app = new Hono()
 app.post('/api/config/resolve', async (c) => {
   const services = c.get('services')
   if (!services) return c.json({})
-  const body = await c.req.json<{ keys: string[] }>()
+  const body = await c.req.json<{ keys: string[] }>().catch(() => ({ keys: [] }))
   const resolved = await resolveConfig(services.db, body.keys)
   return c.json(resolved)
 })
@@ -431,8 +431,10 @@ app.get('/api/comments/:postId', async (c) => {
 
 // ── Appeal (public, rate-limited) ────────────────────────────────────
 
-app.post('/api/appeal', async (c) => {
-  const body = await c.req.json<{ email?: string; message?: string; name?: string }>()
+app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
+  const body = await c.req
+    .json<{ email?: string; message?: string; name?: string }>()
+    .catch(() => ({}))
   if (!body.email?.trim() || !body.message?.trim() || !body.name?.trim()) {
     throw new BadRequestError('Name, email, and message are required')
   }
@@ -671,7 +673,7 @@ app.post('/api/newsletter/unsubscribe', async (c) => {
 // ── Analytics (public) ─────────────────────────────────────────────────
 
 app.post('/api/analytics/view', withRateLimit('analytics-view', 30, 60_000), async (c) => {
-  const body = await c.req.json<{ postId?: string; referrer?: string }>()
+  const body = await c.req.json<{ postId?: string; referrer?: string }>().catch(() => ({}))
   const parsed = recordViewSchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ error: { message: parsed.error.issues.map((i) => i.message).join(', ') } }, 400)
@@ -747,7 +749,9 @@ app.post('/api/analytics/view', withRateLimit('analytics-view', 30, 60_000), asy
 })
 
 app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000), async (c) => {
-  const body = await c.req.json<{ postId?: string; progress?: number; readTime?: number }>()
+  const body = await c.req
+    .json<{ postId?: string; progress?: number; readTime?: number }>()
+    .catch(() => ({}))
   const parsed = recordReadingSchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ error: { message: parsed.error.issues.map((i) => i.message).join(', ') } }, 400)
@@ -1053,11 +1057,13 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
     .where(and(eq(item.id, id), eq(item.userId, currentUser.id), isNull(item.deletedAt)))
     .get()
 
+  if (!updated) throw new NotFoundError()
+
   await writeAuditLog(db, {
     action: 'item.update',
     entityId: id,
     entityType: 'item',
-    metadata: { name: updated!.name, status: updated!.status },
+    metadata: { name: updated.name, status: updated.status },
     userId: currentUser.id,
   })
 
@@ -1065,12 +1071,12 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
 
   return c.json({
     item: {
-      createdAt: updated!.createdAt,
-      description: updated!.description,
-      id: updated!.id,
-      name: updated!.name,
-      status: updated!.status,
-      updatedAt: updated!.updatedAt,
+      createdAt: updated.createdAt,
+      description: updated.description,
+      id: updated.id,
+      name: updated.name,
+      status: updated.status,
+      updatedAt: updated.updatedAt,
     },
   })
 })
@@ -1476,8 +1482,8 @@ protectedApp.post('/user/onboarding', async (c) => {
 
 // ── Public Account Reactivation ──────────────────────────────────────
 
-app.post('/api/account/reactivate', async (c) => {
-  const body = await c.req.json<{ email?: string; password?: string }>()
+app.post('/api/account/reactivate', withRateLimit('reactivate', 5, 60_000), async (c) => {
+  const body = await c.req.json<{ email?: string; password?: string }>().catch(() => ({}))
   if (!body.email || !body.password) {
     throw new BadRequestError('Email and password are required')
   }
@@ -3474,7 +3480,7 @@ adminApp.get('/users', async (c) => {
       .offset(offset),
   ])
 
-  return c.json({ total: countResult[0].count, users })
+  return c.json({ total: countResult[0]?.count ?? 0, users })
 })
 
 adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchema), async (c) => {
@@ -3544,6 +3550,8 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
     status: user.status,
     updatedAt: user.updatedAt,
   })
+
+  if (!updated) throw new NotFoundError()
 
   await writeAuditLog(db, {
     action: 'user.update',
@@ -4619,6 +4627,7 @@ orgApp.post(
 
     const plan = await getPlanById(db, body.planId)
     if (!plan) throw new NotFoundError()
+    if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
     const sub = await createSubscription(db, {
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
