@@ -112,11 +112,11 @@
       </p>
     {:else}
       <div class="space-y-8">
-        {#each data.posts as post (post.id)}
+        {#each data.posts as post, i (post.id)}
           <a href="/blog/{post.slug}" class="group block">
             <article class="rounded-xl border border-white/[0.06] bg-surface p-6 transition-all hover:border-white/[0.12]">
               {#if post.coverImageUrl}
-                <img src={post.coverImageUrl} alt={post.title} class="mb-4 h-48 w-full rounded-lg object-cover" loading="lazy" />
+                <img src={post.coverImageUrl} alt={post.title} class="mb-4 h-48 w-full rounded-lg object-cover" loading={i === 0 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} decoding="async" />
               {/if}
               <h2 class="mb-2 text-xl font-semibold text-text-primary transition-colors group-hover:text-brand">{post.title}</h2>
               {#if post.excerpt}

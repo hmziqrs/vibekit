@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ADAPTER=node vite dev",
     "build": "ADAPTER=cloudflare wrangler types --check && ADAPTER=cloudflare vite build",
+    "build:analyze": "ADAPTER=cloudflare vite build -- --analyse",
     "build:node": "ADAPTER=node vite build",
     "start": "bun ./build/index.js",
     "preview": "wrangler dev --config wrangler.jsonc --port 4173",

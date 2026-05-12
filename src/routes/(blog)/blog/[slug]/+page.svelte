@@ -69,7 +69,8 @@
 				src={data.post.coverImageUrl}
 				alt={data.post.title}
 				class="mb-10 w-full rounded-xl border border-white/6"
-				loading="lazy"
+				fetchpriority="high"
+				decoding="async"
 			/>
 		{/if}
 
@@ -124,6 +125,7 @@
 									alt={related.title}
 									class="aspect-video w-full rounded-t-lg object-cover"
 									loading="lazy"
+									decoding="async"
 								/>
 							{/if}
 							<div class="p-4">

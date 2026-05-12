@@ -36,6 +36,7 @@
 				alt={data.series.name}
 				class="mb-10 w-full rounded-xl border border-white/6"
 				loading="lazy"
+				decoding="async"
 			/>
 		{/if}
 

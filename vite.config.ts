@@ -13,6 +13,17 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['better-auth', '@better-auth/core', '@better-auth/svelte'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-tanstack': ['@tanstack/svelte-query', '@tanstack/svelte-form'],
+          'vendor-tiptap': ['@tiptap/core', '@tiptap/starter-kit', '@tiptap/extension-image'],
+          'vendor-hono': ['hono'],
+        },
+      },
+    },
+  },
   plugins: [
     tailwindcss(),
     sveltekit(),
