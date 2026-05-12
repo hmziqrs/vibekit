@@ -60,7 +60,15 @@ export class EmailQueue {
       } else if (!result.ok && item.onFinalFailure) {
         await item.onFinalFailure()
       }
-    } catch {
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          attempts: item.attempts,
+          error: err instanceof Error ? err.message : String(err),
+          event: 'email.send_failed',
+          to: item.message.to,
+        })
+      )
       if (item.attempts < item.maxRetries) {
         const delay = Math.min(1000 * 2 ** (item.attempts - 1), 15_000)
         await new Promise((resolve) => setTimeout(resolve, delay))

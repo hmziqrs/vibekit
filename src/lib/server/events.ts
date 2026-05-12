@@ -30,7 +30,15 @@ export async function emitEvent(
       entityType: input.entityType,
       ...input.metadata,
     })
-  } catch {
+  } catch (err) {
     // Webhook dispatch failure should never block the main operation
+    console.error(
+      JSON.stringify({
+        action: input.action,
+        entityId: input.entityId,
+        error: err instanceof Error ? err.message : String(err),
+        event: 'webhook.dispatch_failed',
+      })
+    )
   }
 }
