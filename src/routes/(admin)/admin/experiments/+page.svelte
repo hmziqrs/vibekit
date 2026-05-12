@@ -18,7 +18,7 @@
     ],
   })
 
-  const experimentsQuery = createQuery({
+  const experimentsQuery = createQuery(() => ({
     queryFn: async () => {
       const res = await fetch('/api/admin/experiments')
       if (!res.ok) throw new Error('Failed to fetch experiments')
@@ -26,10 +26,10 @@
       return data.experiments as Record<string, unknown>[]
     },
     queryKey: ['admin', 'experiments'],
-  })
+  }))
 
-  const resultsQuery = createQuery({
-    enabled: () => !!viewingResults,
+  const resultsQuery = createQuery(() => ({
+    enabled: !!viewingResults,
     queryFn: async () => {
       if (!viewingResults) return []
       const res = await fetch(`/api/admin/experiments/${encodeURIComponent(viewingResults)}/results`)
@@ -48,9 +48,9 @@
       }>
     },
     queryKey: ['admin', 'experiment-results', viewingResults],
-  })
+  }))
 
-  const createMutation = createMutation(() => ({
+  const createExpMutation = createMutation(() => ({
     mutationFn: async () => {
       const res = await fetch('/api/admin/experiments', {
         body: JSON.stringify({
@@ -178,11 +178,11 @@
           Close
         </button>
       </div>
-      {#if resultsQuery.current?.isLoading}
+      {#if resultsQuery.isPending}
         <div class="flex justify-center py-8">
           <div class="h-5 w-5 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
         </div>
-      {:else if resultsQuery.current?.data && resultsQuery.current.data.length > 0}
+      {:else if resultsQuery.data && resultsQuery.data.length > 0}
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
@@ -197,7 +197,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each resultsQuery.current.data as result (result.variantId)}
+              {#each resultsQuery.data as result (result.variantId)}
                 <tr class="border-b border-white/[0.04]">
                   <td class="px-3 py-2">
                     <div class="flex items-center gap-2">
@@ -327,22 +327,22 @@
 
       <div class="mt-4">
         <button
-          onclick={() => createMutation.mutate()}
-          disabled={createMutation.current?.isPending || !newExp.key || !newExp.name}
+          onclick={() => createExpMutation.mutate()}
+          disabled={createExpMutation.isPending || !newExp.key || !newExp.name}
           class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
         >
-          {createMutation.current?.isPending ? 'Creating...' : 'Create Experiment'}
+          {createExpMutation.isPending ? 'Creating...' : 'Create Experiment'}
         </button>
       </div>
     </div>
   {/if}
 
-  {#if experimentsQuery.current?.isLoading}
+  {#if experimentsQuery.isPending}
     <div class="flex items-center justify-center py-12">
       <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
     </div>
-  {:else if experimentsQuery.current?.data}
-    {@const experiments = experimentsQuery.current.data}
+  {:else if experimentsQuery.data}
+    {@const experiments = experimentsQuery.data}
     {#if experiments.length === 0}
       <div class="rounded-lg border border-white/[0.06] bg-surface p-8 text-center">
         <p class="text-sm text-text-muted">No experiments yet. Create one to start testing.</p>

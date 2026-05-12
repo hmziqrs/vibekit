@@ -10,7 +10,7 @@
   let viewMode = $state<'grid' | 'list'>('grid')
   let uploading = $state(false)
 
-  const mediaQuery = createQuery({
+  const mediaQuery = createQuery(() => ({
     queryFn: async () => {
       const params = new URLSearchParams()
       if (typeFilter) params.set('type', typeFilter)
@@ -30,7 +30,7 @@
       }>
     },
     queryKey: ['admin', 'media', typeFilter, prefixFilter],
-  })
+  }))
 
   const uploadMutation = createMutation(() => ({
     mutationFn: async (files: FileList) => {
@@ -85,11 +85,11 @@
   }
 
   function selectAll() {
-    if (!mediaQuery.current?.data) return
-    if (selectedKeys.size === mediaQuery.current.data.items.length) {
+    if (!mediaQuery.data) return
+    if (selectedKeys.size === mediaQuery.data.items.length) {
       selectedKeys = new Set()
     } else {
-      selectedKeys = new Set(mediaQuery.current.data.items.map((i) => i.key))
+      selectedKeys = new Set(mediaQuery.data.items.map((i) => i.key))
     }
   }
 
@@ -164,9 +164,9 @@
     </div>
   </div>
 
-  {#if uploadMutation.current?.isError}
+  {#if uploadMutation.isError}
     <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-      Upload failed: {uploadMutation.current.error?.message}
+      Upload failed: {uploadMutation.error?.message}
     </div>
   {/if}
 
@@ -204,12 +204,12 @@
   </div>
 
   <!-- Content -->
-  {#if mediaQuery.current?.isLoading}
+  {#if mediaQuery.isPending}
     <div class="flex items-center justify-center py-12">
       <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
     </div>
-  {:else if mediaQuery.current?.data}
-    {@const items = mediaQuery.current.data.items}
+  {:else if mediaQuery.data}
+    {@const items = mediaQuery.data.items}
     {#if items.length === 0}
       <div class="rounded-lg border border-white/[0.06] bg-surface p-8 text-center">
         <p class="text-sm text-text-muted">No media files found. Upload some to get started.</p>
@@ -317,7 +317,7 @@
         </table>
       </div>
     {/if}
-  {:else if mediaQuery.current?.isError}
+  {:else if mediaQuery.isError}
     <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
       Failed to load media files
     </div>

@@ -19,7 +19,7 @@
 
   let editFlag = $state<Record<string, unknown> | null>(null)
 
-  const flagsQuery = createQuery({
+  const flagsQuery = createQuery(() => ({
     queryFn: async () => {
       const res = await fetch('/api/admin/feature-flags')
       if (!res.ok) throw new Error('Failed to fetch flags')
@@ -27,9 +27,9 @@
       return data.flags as Record<string, unknown>[]
     },
     queryKey: ['admin', 'feature-flags'],
-  })
+  }))
 
-  const createMutation = createMutation(() => ({
+  const createFlagMutation = createMutation(() => ({
     mutationFn: async () => {
       const res = await fetch('/api/admin/feature-flags', {
         body: JSON.stringify({
@@ -139,9 +139,9 @@
     </button>
   </div>
 
-  {#if createMutation.current?.isError}
+  {#if createFlagMutation.isError}
     <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-      {createMutation.current.error?.message ?? 'Failed to create flag'}
+      {createFlagMutation.error?.message ?? 'Failed to create flag'}
     </div>
   {/if}
 
@@ -205,22 +205,22 @@
           Enabled
         </label>
         <button
-          onclick={() => createMutation.mutate()}
-          disabled={createMutation.current?.isPending || !newFlag.key || !newFlag.name}
+          onclick={() => createFlagMutation.mutate()}
+          disabled={createFlagMutation.isPending || !newFlag.key || !newFlag.name}
           class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
         >
-          {createMutation.current?.isPending ? 'Creating...' : 'Create Flag'}
+          {createFlagMutation.isPending ? 'Creating...' : 'Create Flag'}
         </button>
       </div>
     </div>
   {/if}
 
-  {#if flagsQuery.current?.isLoading}
+  {#if flagsQuery.isPending}
     <div class="flex items-center justify-center py-12">
       <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
     </div>
-  {:else if flagsQuery.current?.data}
-    {@const flags = flagsQuery.current.data}
+  {:else if flagsQuery.data}
+    {@const flags = flagsQuery.data}
     {#if flags.length === 0}
       <div class="rounded-lg border border-white/[0.06] bg-surface p-8 text-center">
         <p class="text-sm text-text-muted">No feature flags yet. Create one to get started.</p>
@@ -382,7 +382,7 @@
         </table>
       </div>
     {/if}
-  {:else if flagsQuery.current?.isError}
+  {:else if flagsQuery.isError}
     <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
       Failed to load feature flags
     </div>
