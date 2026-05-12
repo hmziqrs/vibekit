@@ -271,3 +271,211 @@ describe('feature Flag Evaluation Logic', () => {
     })
   })
 })
+
+// --- Service-level tests with proper DB mocking ---
+
+describe('feature-flags service', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  function createFlagDb(flagData: Record<string, unknown> | null = null) {
+    const rows = flagData ? [flagData] : []
+    const whereFn = vi.fn().mockResolvedValue(rows)
+    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+    const updateFn = vi.fn().mockReturnValue({ set: setFn })
+
+    return {
+      _setFn: setFn,
+      _updateFn: updateFn,
+      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({ where: whereFn }),
+      }),
+      update: updateFn,
+    } as unknown as import('$lib/server/services/types').AppDb
+  }
+
+  function makeFlag(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+    return {
+      cohortRules: {},
+      dependencies: [],
+      description: null,
+      enabled: true,
+      environment: null,
+      id: 'flag-1',
+      key: 'test-flag',
+      killSwitch: false,
+      name: 'Test Flag',
+      rolloutPercentage: 100,
+      ...overrides,
+    }
+  }
+
+  describe('getFeatureFlag', () => {
+    it('returns flag when found', async () => {
+      const { getFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ key: 'my-flag' }))
+      const flag = await getFeatureFlag(db, 'my-flag')
+      expect(flag).not.toBeNull()
+      expect(flag?.key).toBe('my-flag')
+    })
+
+    it('returns null when not found', async () => {
+      const { getFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(null)
+      expect(await getFeatureFlag(db, 'nonexistent')).toBeNull()
+    })
+  })
+
+  describe('createFeatureFlag', () => {
+    it('inserts with defaults and returns id+key', async () => {
+      const { createFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb()
+      const result = await createFeatureFlag(db, { key: 'new-flag', name: 'New Flag' })
+      expect(result.key).toBe('new-flag')
+      expect(result.id).toBeDefined()
+    })
+  })
+
+  describe('updateFeatureFlag', () => {
+    it('returns key on success', async () => {
+      const { updateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag())
+      expect(await updateFeatureFlag(db, 'test-flag', { name: 'Updated' })).toEqual({
+        key: 'test-flag',
+      })
+    })
+
+    it('returns null when not found', async () => {
+      const { updateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(null)
+      expect(await updateFeatureFlag(db, 'missing', { name: 'X' })).toBeNull()
+    })
+  })
+
+  describe('toggleFeatureFlag', () => {
+    it('enables flag and clears kill switch', async () => {
+      const { toggleFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ killSwitch: true }))
+      const result = await toggleFeatureFlag(db, 'test-flag', true)
+      expect(result).toEqual({ enabled: true, key: 'test-flag' })
+      const setArg = db._setFn.mock.calls[0][0] as Record<string, unknown>
+      expect(setArg.enabled).toBe(true)
+      expect(setArg.killSwitch).toBe(false)
+    })
+
+    it('returns null when not found', async () => {
+      const { toggleFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(null)
+      expect(await toggleFeatureFlag(db, 'missing', true)).toBeNull()
+    })
+  })
+
+  describe('activateKillSwitch', () => {
+    it('disables flag and sets kill switch', async () => {
+      const { activateKillSwitch } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag())
+      const result = await activateKillSwitch(db, 'test-flag')
+      expect(result).toEqual({ key: 'test-flag', killSwitch: true })
+      const setArg = db._setFn.mock.calls[0][0] as Record<string, unknown>
+      expect(setArg.enabled).toBe(false)
+      expect(setArg.killSwitch).toBe(true)
+    })
+  })
+
+  describe('evaluateFeatureFlag', () => {
+    it('returns false when flag not found', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(null)
+      expect(await evaluateFeatureFlag(db, 'missing')).toBe(false)
+    })
+
+    it('returns false when kill switch is active', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ killSwitch: true, enabled: true }))
+      expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(false)
+    })
+
+    it('returns false when flag is disabled', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ enabled: false }))
+      expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(false)
+    })
+
+    it('returns true when enabled with 100% rollout', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ enabled: true, rolloutPercentage: 100 }))
+      expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(true)
+    })
+
+    it('returns false when rollout is 0%', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ enabled: true, rolloutPercentage: 0 }))
+      expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(false)
+    })
+
+    it('returns false when environment does not match', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(
+        makeFlag({ enabled: true, environment: 'production', rolloutPercentage: 100 })
+      )
+      expect(await evaluateFeatureFlag(db, 'test-flag', { environment: 'staging' })).toBe(false)
+    })
+
+    it('returns true when environment matches', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(
+        makeFlag({ enabled: true, environment: 'production', rolloutPercentage: 100 })
+      )
+      expect(await evaluateFeatureFlag(db, 'test-flag', { environment: 'production' })).toBe(true)
+    })
+
+    it('deterministic rollout for same userId', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const db = createFlagDb(makeFlag({ enabled: true, rolloutPercentage: 50 }))
+      const a = await evaluateFeatureFlag(db, 'test-flag', { userId: 'user-123' })
+      const b = await evaluateFeatureFlag(db, 'test-flag', { userId: 'user-123' })
+      expect(a).toBe(b)
+    })
+
+    it('returns false when dependency evaluates to false', async () => {
+      const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
+      const depFlag = makeFlag({ enabled: false, key: 'dep-flag', rolloutPercentage: 100 })
+      const mainFlag = makeFlag({
+        dependencies: ['dep-flag'],
+        enabled: true,
+        rolloutPercentage: 100,
+      })
+      let callCount = 0
+      const whereFn = vi.fn().mockImplementation(() => {
+        callCount++
+        return Promise.resolve(callCount === 1 ? [mainFlag] : [depFlag])
+      })
+      const db = {
+        select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) }),
+      } as unknown as import('$lib/server/services/types').AppDb
+      expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(false)
+    })
+  })
+
+  describe('evaluateMultipleFlags', () => {
+    it('evaluates multiple flags independently', async () => {
+      const { evaluateMultipleFlags } = await import('$lib/server/feature-flags')
+      const flagA = makeFlag({ key: 'flag-a', rolloutPercentage: 100 })
+      const flagB = makeFlag({ enabled: false, key: 'flag-b' })
+      let callCount = 0
+      const whereFn = vi.fn().mockImplementation(() => {
+        callCount++
+        return Promise.resolve(callCount === 1 ? [flagA] : [flagB])
+      })
+      const db = {
+        select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) }),
+      } as unknown as import('$lib/server/services/types').AppDb
+      const result = await evaluateMultipleFlags(db, ['flag-a', 'flag-b'])
+      expect(result['flag-a']).toBe(true)
+      expect(result['flag-b']).toBe(false)
+    })
+  })
+})

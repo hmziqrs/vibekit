@@ -266,3 +266,217 @@ describe('hash Distribution', () => {
     expect(h1).not.toBe(h2)
   })
 })
+
+// --- Service-level tests ---
+
+describe('ab-testing service', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  function makeExperiment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      description: null,
+      id: 'exp-1',
+      key: 'test-exp',
+      name: 'Test Experiment',
+      status: 'running',
+      targetMetric: 'conversion',
+      winningVariantId: null,
+      ...overrides,
+    }
+  }
+
+  function makeVariant(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      description: null,
+      experimentId: 'exp-1',
+      id: 'var-1',
+      isControl: true,
+      name: 'Control',
+      payload: {},
+      trafficPercentage: 50,
+      ...overrides,
+    }
+  }
+
+  function createExperimentDb(
+    experiment: Record<string, unknown> | null = null,
+    variants: Record<string, unknown>[] = []
+  ) {
+    const expRows = experiment ? [experiment] : []
+    const whereFn = vi.fn().mockResolvedValue(expRows)
+    const variantWhereFn = vi.fn().mockResolvedValue(variants)
+
+    // select().from(abExperiment).where() → experiments
+    // select().from(abVariant).where() → variants
+    // select().from(abEvent).where() → counts
+    let selectCallCount = 0
+    const fromFn = vi.fn().mockImplementation(() => ({
+      where: vi.fn().mockImplementation(() => {
+        selectCallCount++
+        // First call = getExperiment, second call = getExperimentVariants (in assignVariant)
+        if (selectCallCount === 1) return Promise.resolve(expRows)
+        return Promise.resolve(variants)
+      }),
+    }))
+
+    const insertFn = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) })
+    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+    const updateFn = vi.fn().mockReturnValue({ set: setFn })
+
+    return {
+      _insertFn: insertFn,
+      _setFn: setFn,
+      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      insert: insertFn,
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+      update: updateFn,
+    }
+  }
+
+  describe('getExperiment', () => {
+    it('returns experiment when found', async () => {
+      const { getExperiment } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(makeExperiment({ key: 'my-exp' }))
+      const exp = await getExperiment(db, 'my-exp')
+      expect(exp).not.toBeNull()
+      expect(exp?.key).toBe('my-exp')
+    })
+
+    it('returns null when not found', async () => {
+      const { getExperiment } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(null)
+      expect(await getExperiment(db, 'missing')).toBeNull()
+    })
+  })
+
+  describe('createExperiment', () => {
+    it('creates experiment and variants', async () => {
+      const { createExperiment } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb()
+      const result = await createExperiment(db, {
+        key: 'new-exp',
+        name: 'New Experiment',
+        targetMetric: 'click_rate',
+        variants: [
+          { isControl: true, name: 'Control', trafficPercentage: 50 },
+          { name: 'Variant A', trafficPercentage: 50 },
+        ],
+      })
+      expect(result.key).toBe('new-exp')
+      // 1 insert for experiment + 2 inserts for variants = 3
+      expect(db._insertFn).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe('updateExperiment', () => {
+    it('updates and returns key', async () => {
+      const { updateExperiment } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(makeExperiment())
+      const result = await updateExperiment(db, 'test-exp', { name: 'Updated' })
+      expect(result).toEqual({ key: 'test-exp' })
+    })
+
+    it('returns null when not found', async () => {
+      const { updateExperiment } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(null)
+      expect(await updateExperiment(db, 'missing', { name: 'X' })).toBeNull()
+    })
+  })
+
+  describe('assignVariant', () => {
+    it('returns null when experiment not found', async () => {
+      const { assignVariant } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(null)
+      expect(await assignVariant(db, 'missing', { userId: 'user-1' })).toBeNull()
+    })
+
+    it('returns null when experiment is not running', async () => {
+      const { assignVariant } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(makeExperiment({ status: 'draft' }))
+      expect(await assignVariant(db, 'test-exp', { userId: 'user-1' })).toBeNull()
+    })
+
+    it('returns null when no variants exist', async () => {
+      const { assignVariant } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(makeExperiment(), [])
+      expect(await assignVariant(db, 'test-exp', { userId: 'user-1' })).toBeNull()
+    })
+
+    it('assigns variant deterministically for userId', async () => {
+      const { assignVariant } = await import('$lib/server/ab-testing')
+      const variants = [
+        makeVariant({ id: 'var-a', isControl: true, name: 'Control', trafficPercentage: 50 }),
+        makeVariant({ id: 'var-b', isControl: false, name: 'Variant', trafficPercentage: 50 }),
+      ]
+      const db = createExperimentDb(makeExperiment(), variants)
+      const result = await assignVariant(db, 'test-exp', { userId: 'user-1' })
+      expect(result).not.toBeNull()
+      expect(result?.variant).toBeDefined()
+      expect(result?.assignment).toBeDefined()
+    })
+  })
+
+  describe('recordEvent', () => {
+    it('inserts event record', async () => {
+      const { recordEvent } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb()
+      await recordEvent(db, {
+        eventName: 'purchase',
+        eventType: 'conversion',
+        experimentId: 'exp-1',
+        variantId: 'var-1',
+      })
+      expect(db._insertFn).toHaveBeenCalled()
+    })
+  })
+
+  describe('getExperimentResults', () => {
+    it('returns empty array when experiment not found', async () => {
+      const { getExperimentResults } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb(null)
+      expect(await getExperimentResults(db, 'missing')).toEqual([])
+    })
+
+    it('computes results with correct structure', async () => {
+      const { getExperimentResults } = await import('$lib/server/ab-testing')
+      const variants = [
+        makeVariant({ id: 'var-a', isControl: true, name: 'Control' }),
+        makeVariant({ id: 'var-b', isControl: false, name: 'Treatment' }),
+      ]
+
+      // Need a more sophisticated mock for the results query
+      let selectCount = 0
+      const fromFn = vi.fn().mockImplementation(() => ({
+        where: vi.fn().mockImplementation(() => {
+          selectCount++
+          if (selectCount === 1) return Promise.resolve([makeExperiment()]) // getExperiment
+          if (selectCount === 2) return Promise.resolve(variants) // getExperimentVariants
+          // Subsequent calls are event count queries
+          return Promise.resolve([{ count: 100 }])
+        }),
+      }))
+
+      const db = {
+        select: vi.fn().mockReturnValue({ from: fromFn }),
+      }
+
+      const results = await getExperimentResults(db, 'test-exp')
+      expect(results).toHaveLength(2)
+      expect(results[0].name).toBe('Control')
+      expect(results[0].isControl).toBe(true)
+      expect(results[1].name).toBe('Treatment')
+      expect(results[1].isControl).toBe(false)
+    })
+  })
+
+  describe('deleteExperiment', () => {
+    it('calls db.delete', async () => {
+      const { deleteExperiment } = await import('$lib/server/ab-testing')
+      const db = createExperimentDb()
+      await deleteExperiment(db, 'test-exp')
+      expect(db.delete).toHaveBeenCalled()
+    })
+  })
+})
