@@ -22,6 +22,7 @@
     { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
     { href: '/admin/integrations', icon: 'webhooks', label: 'Integrations' },
     { href: '/admin/feature-flags', icon: 'flags', label: 'Feature Flags' },
+    { href: '/admin/experiments', icon: 'experiment', label: 'Experiments' },
     { href: '/admin/webhooks', icon: 'webhooks', label: 'Webhooks' },
     { href: '/admin/settings', icon: 'settings', label: 'Settings' },
   ]
@@ -148,6 +149,12 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" y1="22" x2="4" y2="15" />
+                </svg>
+              {:else if item.icon === 'experiment'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 3h6v7l4 8H5l4-8V3z" />
+                  <line x1="9" y1="3" x2="15" y2="3" />
+                  <path d="M10 14h4" />
                 </svg>
               {:else if item.icon === 'settings'}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

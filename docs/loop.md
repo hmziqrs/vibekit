@@ -177,7 +177,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Feature Management
 - [x] Feature flags & kill switches (gradual rollout by %/cohort, instant disable without deploy, A/B testing support, flag dependencies)
-- [ ] A/B testing framework (experiment definition, variant assignment, metric tracking, statistical significance calculation)
+- [x] A/B testing framework (experiment definition, variant assignment, metric tracking, statistical significance calculation)
 - [ ] Configuration service (runtime config without redeploy, environment-specific overrides, config versioning)
 
 #### File Storage & Media

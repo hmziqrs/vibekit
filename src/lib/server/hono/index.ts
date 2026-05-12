@@ -1,4 +1,15 @@
 import {
+  assignVariant,
+  createExperiment,
+  deleteExperiment,
+  getExperiment,
+  getExperimentResults,
+  getExperimentVariants,
+  listExperiments,
+  recordEvent,
+  updateExperiment,
+} from '$lib/server/ab-testing'
+import {
   createApiKey,
   deleteApiKey,
   getApiKeyUsage,
@@ -34,6 +45,10 @@ import {
   announcement,
   apiKey,
   apiKeyUsageLog,
+  abAssignment,
+  abEvent,
+  abExperiment,
+  abVariant,
   blogPost,
   blogPostRevision,
   blogPostView,
@@ -162,6 +177,13 @@ import {
   updateTeamMemberRoleSchema,
   updateTeamSchema,
 } from '$lib/validators'
+import {
+  assignVariantSchema,
+  createExperimentSchema,
+  listExperimentsSchema,
+  recordEventSchema,
+  updateExperimentSchema,
+} from '$lib/validators/ab-testing'
 import { createApiKeySchema, rotateApiKeySchema, updateApiKeySchema } from '$lib/validators/api-key'
 import {
   checkoutSessionSchema,
@@ -1800,6 +1822,53 @@ protectedApp.post('/feature-flags/evaluate', validate(evaluateMultipleFlagsSchem
   const { keys, context } = c.req.valid('json')
   const flags = await evaluateMultipleFlags(db, keys, context)
   return c.json(flags)
+})
+
+// ── A/B Testing (auth required) ─────────────────────────────────────────
+
+protectedApp.post('/experiments/:key/assign', validate(assignVariantSchema), async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const input = c.req.valid('json')
+  const { id: userId } = c.get('user')
+  const result = await assignVariant(db, key, { ...input, userId })
+  if (!result) throw new NotFoundError()
+  return c.json({
+    experiment: { key: (result.experiment as Record<string, unknown>).key },
+    variant: {
+      id: (result.variant as Record<string, unknown>).id,
+      isControl: (result.variant as Record<string, unknown>).isControl,
+      name: (result.variant as Record<string, unknown>).name,
+      payload: (result.variant as Record<string, unknown>).payload,
+    },
+  })
+})
+
+protectedApp.post('/experiments/:key/event', validate(recordEventSchema), async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const input = c.req.valid('json')
+  const { id: userId } = c.get('user')
+  const experiment = await getExperiment(db, key)
+  if (!experiment) throw new NotFoundError()
+
+  const { sessionId } = input
+  const assignment = await assignVariant(db, key, { sessionId, userId })
+  if (!assignment) throw new NotFoundError()
+
+  await recordEvent(db, {
+    ...input,
+    experimentId: experiment.id as string,
+    variantId: (assignment.variant as Record<string, unknown>).id as string,
+  })
+  return c.json({ recorded: true })
+})
+
+protectedApp.get('/experiments/:key/results', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const results = await getExperimentResults(db, key)
+  return c.json({ results })
 })
 
 // ── Webhooks ─────────────────────────────────────────────────────────
@@ -5801,6 +5870,69 @@ adminApp.post('/feature-flags/:key/kill-switch', async (c) => {
   const flag = await activateKillSwitch(db, key)
   if (!flag) throw new NotFoundError()
   return c.json(flag)
+})
+
+// ── Admin A/B Testing ────────────────────────────────────────────────
+
+adminApp.get('/experiments', async (c) => {
+  const { db } = c.get('services')
+  const rawOpts = c.req.query()
+  const parsed = listExperimentsSchema.safeParse(rawOpts)
+  const options = parsed.success ? parsed.data : undefined
+  const experiments = await listExperiments(db, options)
+  return c.json({ experiments })
+})
+
+adminApp.post('/experiments', validate(createExperimentSchema), async (c) => {
+  const { db } = c.get('services')
+  const input = c.req.valid('json')
+  const experiment = await createExperiment(db, input)
+  return c.json(experiment, 201)
+})
+
+adminApp.get('/experiments/:key', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const experiment = await getExperiment(db, key)
+  if (!experiment) throw new NotFoundError()
+  const variants = await getExperimentVariants(db, experiment.id as string)
+  return c.json({ ...experiment, variants })
+})
+
+adminApp.patch('/experiments/:key', validate(updateExperimentSchema), async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const input = c.req.valid('json')
+  const result = await updateExperiment(db, key, {
+    ...input,
+    endDate: input.endDate ? new Date(input.endDate) : undefined,
+    startDate: input.startDate ? new Date(input.startDate) : undefined,
+  })
+  if (!result) throw new NotFoundError()
+  return c.json(result)
+})
+
+adminApp.delete('/experiments/:key', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  await deleteExperiment(db, key)
+  return c.json({ deleted: true, key })
+})
+
+adminApp.get('/experiments/:key/results', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const results = await getExperimentResults(db, key)
+  return c.json({ results })
+})
+
+adminApp.get('/experiments/:key/variants', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const experiment = await getExperiment(db, key)
+  if (!experiment) throw new NotFoundError()
+  const variants = await getExperimentVariants(db, experiment.id as string)
+  return c.json({ variants })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
