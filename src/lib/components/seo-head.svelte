@@ -13,11 +13,15 @@
     return image.startsWith('http') ? image : `${ORIGIN}${image}`
   }
 
-  const SCRIPT_OPEN = '<script type="application/ld+json">'
-  const SCRIPT_CLOSE = '</' + 'script>'
+  const SCRIPT_TAG = '<script type="application/ld+json">'
+
+  function buildScriptTag(json: string): string {
+    const close = String.raw`</` + 'script>'
+    return `${SCRIPT_TAG}${json}${close}`
+  }
 
   const jsonLdScript = $derived(
-    SCRIPT_OPEN +
+    buildScriptTag(
       JSON.stringify(
         meta.openGraph.type === 'article'
           ? {
@@ -37,8 +41,8 @@
               name: 'Vibekit',
               url: ORIGIN,
             },
-      ) +
-      SCRIPT_CLOSE,
+      ),
+    ),
   )
 </script>
 
