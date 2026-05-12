@@ -183,13 +183,19 @@ import {
   createReportSchema,
   createTeamSchema,
   addTeamMemberSchema,
+  appealSchema,
   inviteMemberSchema,
   moderateCommentSchema,
+  notificationPreferenceSchema,
+  onboardingSchema,
+  reactivateAccountSchema,
   recordReadingSchema,
   recordViewSchema,
+  resolveConfigSchema,
   resolveReportSchema,
   subscribeSchema,
   transferOwnershipSchema,
+  unsubscribeSchema,
   updateAnnouncementSchema,
   updateConfigSchema,
   updateCommentSchema,
@@ -308,8 +314,9 @@ const app = new Hono()
 app.post('/api/config/resolve', async (c) => {
   const services = c.get('services')
   if (!services) return c.json({})
-  const body = await c.req.json<{ keys: string[] }>().catch(() => ({ keys: [] }))
-  const resolved = await resolveConfig(services.db, body.keys)
+  const parsed = resolveConfigSchema.safeParse(await c.req.json().catch(() => ({})))
+  const keys = parsed.success ? parsed.data.keys : []
+  const resolved = await resolveConfig(services.db, keys)
   return c.json(resolved)
 })
 
@@ -432,20 +439,19 @@ app.get('/api/comments/:postId', async (c) => {
 // ── Appeal (public, rate-limited) ────────────────────────────────────
 
 app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
-  const body = await c.req
-    .json<{ email?: string; message?: string; name?: string }>()
-    .catch(() => ({}))
-  if (!body.email?.trim() || !body.message?.trim() || !body.name?.trim()) {
+  const parsed = appealSchema.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
     throw new BadRequestError('Name, email, and message are required')
   }
+  const { email, message, name } = parsed.data
 
   const { db } = c.get('services')
   const appealId = uuid()
   await db.insert(contactSubmission).values({
-    email: body.email.trim(),
+    email,
     id: appealId,
-    message: body.message.trim(),
-    name: body.name.trim(),
+    message,
+    name,
     subject: 'Ban Appeal',
     type: 'ban_appeal',
   })
@@ -455,9 +461,9 @@ app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
   if (env.contactNotificationEmail) {
     const emailService = createEmailService(c.get('services').email)
     await emailService.sendContactNotification({
-      email: body.email.trim(),
-      message: body.message.trim(),
-      name: body.name.trim(),
+      email,
+      message,
+      name,
       subject: 'Ban Appeal',
     })
   }
@@ -639,8 +645,8 @@ app.get('/api/newsletter/confirm', async (c) => {
 })
 
 app.post('/api/newsletter/unsubscribe', async (c) => {
-  const body = await c.req.json().catch(() => ({}))
-  const token = body.token ?? c.req.query('token')
+  const parsed = unsubscribeSchema.safeParse(await c.req.json().catch(() => ({})))
+  const token = (parsed.success ? parsed.data.token : undefined) ?? c.req.query('token')
   if (!token) return c.json({ error: { message: 'Missing token' } }, 400)
 
   const { db } = c.get('services')
@@ -1463,14 +1469,18 @@ protectedApp.get('/user/onboarding', async (c) => {
 protectedApp.post('/user/onboarding', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = await c.req.json<{ completed?: boolean; step?: number }>()
+  const parsed = onboardingSchema.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
+    throw new BadRequestError('Invalid onboarding data')
+  }
+  const { completed, step } = parsed.data
 
   const updates: Record<string, unknown> = {}
-  if (typeof body.step === 'number') {
-    updates.onboardingStep = Math.max(0, Math.min(3, body.step))
+  if (step !== undefined) {
+    updates.onboardingStep = step
   }
-  if (typeof body.completed === 'boolean') {
-    updates.onboardingCompleted = body.completed
+  if (completed !== undefined) {
+    updates.onboardingCompleted = completed
   }
 
   if (Object.keys(updates).length > 0) {
@@ -1483,13 +1493,14 @@ protectedApp.post('/user/onboarding', async (c) => {
 // ── Public Account Reactivation ──────────────────────────────────────
 
 app.post('/api/account/reactivate', withRateLimit('reactivate', 5, 60_000), async (c) => {
-  const body = await c.req.json<{ email?: string; password?: string }>().catch(() => ({}))
-  if (!body.email || !body.password) {
+  const parsed = reactivateAccountSchema.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
     throw new BadRequestError('Email and password are required')
   }
+  const { email, password } = parsed.data
 
   const { db } = c.get('services')
-  const [found] = await db.select().from(user).where(eq(user.email, body.email))
+  const [found] = await db.select().from(user).where(eq(user.email, email))
 
   if (!found || !found.deletedAt) {
     throw new BadRequestError('No deleted account found with this email')
@@ -1510,7 +1521,7 @@ app.post('/api/account/reactivate', withRateLimit('reactivate', 5, 60_000), asyn
   }
 
   const { verifyPassword } = await import('better-auth/crypto')
-  const valid = await verifyPassword({ hash: acct.password, password: body.password })
+  const valid = await verifyPassword({ hash: acct.password, password })
   if (!valid) {
     throw new BadRequestError('Invalid password')
   }
@@ -1626,20 +1637,13 @@ protectedApp.get('/notifications/preferences', async (c) => {
 protectedApp.patch('/notifications/preferences', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = await c.req.json<{ channel: 'email' | 'in_app'; enabled: boolean; type: string }>()
-
-  if (!body.channel || !body.type || typeof body.enabled !== 'boolean') {
+  const parsed = notificationPreferenceSchema.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
     throw new BadRequestError('channel, type, and enabled are required')
   }
 
-  if (body.channel !== 'email' && body.channel !== 'in_app') {
-    throw new BadRequestError('channel must be "email" or "in_app"')
-  }
-
   await setNotificationPreference(db, {
-    channel: body.channel,
-    enabled: body.enabled,
-    type: body.type,
+    ...parsed.data,
     userId,
   })
 

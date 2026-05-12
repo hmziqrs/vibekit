@@ -23,3 +23,7 @@ export const updateAnnouncementSchema = z.object({
   startsAt: z.string().datetime({ offset: true }).nullable().optional(),
   type: z.enum(['critical', 'info', 'warning']).optional(),
 })
+
+export const resolveConfigSchema = z.object({
+  keys: z.array(z.string()).default([]),
+})

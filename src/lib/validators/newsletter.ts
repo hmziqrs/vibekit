@@ -8,4 +8,8 @@ export const subscribeSchema = z.object({
   source: z.enum(['blog', 'footer', 'post']).default('blog'),
 })
 
+export const unsubscribeSchema = z.object({
+  token: z.string().optional(),
+})
+
 export type SubscribeInput = z.infer<typeof subscribeSchema>

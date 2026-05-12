@@ -12,3 +12,9 @@ export const contactSchema = z.object({
   name,
   subject: z.string().min(1, 'Subject is required').max(200, 'Subject is too long').trim(),
 })
+
+export const appealSchema = z.object({
+  email: z.string().trim().min(1, 'Email is required'),
+  message: z.string().trim().min(1, 'Message is required'),
+  name: z.string().trim().min(1, 'Name is required'),
+})

@@ -12,3 +12,19 @@ export const updateProfileSchema = z.object({
   name,
   timezone,
 })
+
+export const onboardingSchema = z.object({
+  completed: z.boolean().optional(),
+  step: z.number().int().min(0).max(3).optional(),
+})
+
+export const reactivateAccountSchema = z.object({
+  email: z.string().min(1, 'Email is required'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+export const notificationPreferenceSchema = z.object({
+  channel: z.enum(['email', 'in_app']),
+  enabled: z.boolean(),
+  type: z.string().min(1, 'Type is required'),
+})
