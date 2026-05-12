@@ -14,6 +14,7 @@ import {
   contactSubmission,
   contentReport,
   impersonationSession,
+  notification,
   item,
   auditLog,
   organization,
@@ -33,6 +34,7 @@ import {
   isAppError,
   NotFoundError,
 } from '$lib/server/errors'
+import { createNotification } from '$lib/server/notifications'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
@@ -716,6 +718,98 @@ app.post('/api/account/reactivate', async (c) => {
   }
 
   await db.update(user).set({ deletedAt: null, status: 'active' }).where(eq(user.id, found.id))
+
+  return c.json({ success: true })
+})
+
+// ── Notifications (auth required) ────────────────────────────────────
+
+protectedApp.get('/notifications', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const page = Math.max(1, Number(c.req.query('page') || '1'))
+  const limit = Math.min(50, Math.max(1, Number(c.req.query('limit') || '20')))
+  const offset = (page - 1) * limit
+
+  const [rows, countResult] = await Promise.all([
+    db
+      .select()
+      .from(notification)
+      .where(eq(notification.userId, userId))
+      .orderBy(desc(notification.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ value: count() }).from(notification).where(eq(notification.userId, userId)),
+  ])
+
+  return c.json({
+    limit,
+    notifications: rows,
+    page,
+    total: countResult[0]?.value ?? 0,
+  })
+})
+
+protectedApp.get('/notifications/unread-count', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const [result] = await db
+    .select({ value: count() })
+    .from(notification)
+    .where(and(eq(notification.userId, userId), isNull(notification.readAt)))
+
+  return c.json({ count: result?.value ?? 0 })
+})
+
+protectedApp.patch('/notifications/read-all', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  await db
+    .update(notification)
+    .set({ readAt: new Date() })
+    .where(and(eq(notification.userId, userId), isNull(notification.readAt)))
+
+  return c.json({ success: true })
+})
+
+protectedApp.patch('/notifications/:id/read', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ id: notification.id })
+    .from(notification)
+    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+    .get()
+
+  if (!existing) {
+    throw new NotFoundError()
+  }
+
+  await db.update(notification).set({ readAt: new Date() }).where(eq(notification.id, id))
+
+  return c.json({ success: true })
+})
+
+protectedApp.delete('/notifications/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ id: notification.id })
+    .from(notification)
+    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+    .get()
+
+  if (!existing) {
+    throw new NotFoundError()
+  }
+
+  await db.delete(notification).where(eq(notification.id, id))
 
   return c.json({ success: true })
 })
@@ -2330,6 +2424,15 @@ orgApp.patch(
       userId: currentUser.id,
     })
 
+    await createNotification(db, {
+      body: `Your role in "${org.name}" was changed from ${targetMember.role} to ${parsed.role}`,
+      entityId: org.id,
+      entityType: 'organization',
+      title: 'Role updated',
+      type: 'info',
+      userId: targetMember.userId,
+    })
+
     return c.json({ success: true })
   }
 )
@@ -2372,6 +2475,15 @@ orgApp.delete(
       entityType: 'organization_member',
       metadata: { organizationId: org.id, removedUserId: targetMember.userId },
       userId: currentUser.id,
+    })
+
+    await createNotification(db, {
+      body: `You were removed from "${org.name}"`,
+      entityId: org.id,
+      entityType: 'organization',
+      title: 'Removed from organization',
+      type: 'warning',
+      userId: targetMember.userId,
     })
 
     return c.json({ success: true })
@@ -2506,6 +2618,15 @@ orgApp.post(
       entityType: 'organization',
       metadata: { newOwnerId: parsed.newOwnerId, previousOwnerId: currentUser.id },
       userId: currentUser.id,
+    })
+
+    await createNotification(db, {
+      body: `Ownership of "${org.name}" was transferred to you`,
+      entityId: org.id,
+      entityType: 'organization',
+      title: 'Organization ownership transferred',
+      type: 'success',
+      userId: parsed.newOwnerId,
     })
 
     return c.json({ success: true })
@@ -2975,6 +3096,24 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
     metadata: { organizationId: invitation.organizationId, role: invitation.role },
     userId: currentUser.id,
   })
+
+  // Notify the inviter
+  const [org] = await db
+    .select({ name: organization.name })
+    .from(organization)
+    .where(eq(organization.id, invitation.organizationId))
+    .limit(1)
+
+  if (org) {
+    await createNotification(db, {
+      body: `${currentUser.name ?? currentUser.email} accepted your invitation to join "${org.name}"`,
+      entityId: invitation.organizationId,
+      entityType: 'organization',
+      title: 'Invitation accepted',
+      type: 'success',
+      userId: invitation.invitedBy,
+    })
+  }
 
   return c.json({ organizationId: invitation.organizationId, success: true })
 })

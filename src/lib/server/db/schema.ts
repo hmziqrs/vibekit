@@ -590,4 +590,36 @@ export const organizationInvitationRelations = relations(organizationInvitation,
   }),
 }))
 
+export const notification = sqliteTable(
+  'notification',
+  {
+    body: text('body'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    entityId: text('entity_id'),
+    entityType: text('entity_type'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    metadata: text('metadata'),
+    readAt: integer('read_at', { mode: 'timestamp_ms' }),
+    title: text('title').notNull(),
+    type: text('type', { enum: ['error', 'info', 'success', 'warning'] })
+      .default('info')
+      .notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [index('notification_user_read_idx').on(table.userId, table.readAt)]
+)
+
+export const notificationRelations = relations(notification, ({ one }) => ({
+  user: one(user, {
+    fields: [notification.userId],
+    references: [user.id],
+  }),
+}))
+
 export * from './auth.schema'

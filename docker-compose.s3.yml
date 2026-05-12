@@ -3,18 +3,18 @@ services:
     image: rustfs/rustfs:latest
     container_name: vibekit-rustfs
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     environment:
       RUSTFS_ACCESS_KEY: minioadmin
       RUSTFS_SECRET_KEY: minioadmin
       RUSTFS_VOLUMES: /data
-      RUSTFS_CONSOLE_ENABLE: "true"
-      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: 'true'
+      RUSTFS_CONSOLE_ADDRESS: ':9001'
     volumes:
       - rustfs-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9000/ > /dev/null 2>&1; exit 0"]
+      test: ['CMD-SHELL', 'curl -s http://localhost:9000/ > /dev/null 2>&1; exit 0']
       interval: 2s
       timeout: 5s
       retries: 10

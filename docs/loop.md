@@ -161,7 +161,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Payment webhooks (Stripe webhook handler, idempotent processing, event logging, failure recovery)
 
 #### Notifications & Communication
-- [ ] In-app notification system (notification bell, real-time updates, read/unread state, notification types, bulk actions, notification preferences)
+- [x] In-app notification system (notification bell, real-time updates, read/unread state, notification types, bulk actions, notification preferences)
 - [ ] System-to-user alerts (payment receipts, admin warnings, broadcast announcements, account status changes)
 - [ ] Email infrastructure (template system with preview, transactional emails, email queue with retries, bounce handling, unsubscribe flow)
 - [ ] Email templates (welcome, verification, password reset, invoice, subscription changes, team invites, security alerts, custom templates via editor)

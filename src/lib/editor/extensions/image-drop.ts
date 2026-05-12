@@ -34,11 +34,7 @@ function uploadAndReplace(editor: Editor, file: File, alt: string) {
     })
 }
 
-function replaceBlobSrc(
-  editor: Editor,
-  blobUrl: string,
-  attrs: Record<string, unknown>,
-) {
+function replaceBlobSrc(editor: Editor, blobUrl: string, attrs: Record<string, unknown>) {
   const { tr } = editor.state
   let found = false
   editor.state.doc.descendants((node, pos) => {

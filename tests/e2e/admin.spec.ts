@@ -72,7 +72,9 @@ test.describe('admin blog management', () => {
     await expect(page.getByRole('heading', { name: /blog posts/i })).toBeVisible()
     await expect(page.getByRole('button', { name: 'All' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Draft' })).toBeVisible()
-    await expect(page.locator('div.flex.gap-1').getByRole('button', { name: 'Published' })).toBeVisible()
+    await expect(
+      page.locator('div.flex.gap-1').getByRole('button', { name: 'Published' })
+    ).toBeVisible()
   })
 
   test('create and delete blog post', async ({ page }) => {

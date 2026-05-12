@@ -2,6 +2,7 @@
   import { getContext } from 'svelte'
   import type { AuthContext } from '$lib/auth.svelte'
   import AnnouncementBanner from '$lib/components/announcement-banner.svelte'
+  import NotificationBell from '$lib/components/notification-bell.svelte'
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
@@ -192,6 +193,7 @@
           </svg>
         </button>
         <span class="text-[14px] font-medium text-text-secondary">App</span>
+        <NotificationBell />
       </header>
       <main class="flex-1 p-6">
         {@render children()}

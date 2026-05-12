@@ -59,7 +59,7 @@ export function createS3Storage(): StorageClient {
           ContinuationToken: cursor || undefined,
           MaxKeys: limit ?? 100,
           Prefix: prefix || undefined,
-        }),
+        })
       )
 
       const items =
@@ -80,7 +80,7 @@ export function createS3Storage(): StorageClient {
     async put(
       key: string,
       body: ReadableStream | Uint8Array | Blob,
-      opts?: PutOptions,
+      opts?: PutOptions
     ): Promise<PutResult> {
       let bytes: Uint8Array
       if (body instanceof Uint8Array) {
@@ -116,7 +116,7 @@ export function createS3Storage(): StorageClient {
           ContentType: opts?.contentType,
           Key: key,
           Metadata: opts?.metadata,
-        }),
+        })
       )
 
       return {

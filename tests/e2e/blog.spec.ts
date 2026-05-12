@@ -95,7 +95,10 @@ test.describe('admin blog management', () => {
     // Dismiss cookie consent if present
     const dialog = page.getByRole('dialog', { name: /cookie consent/i })
     if (await dialog.isVisible()) {
-      await dialog.getByRole('button', { name: 'Decline' }).click().catch(() => {})
+      await dialog
+        .getByRole('button', { name: 'Decline' })
+        .click()
+        .catch(() => {})
     }
   })
 
@@ -167,7 +170,7 @@ test.describe('admin blog management', () => {
     await expect(actionBar.getByText(/delete/i)).toBeVisible()
     await expect(actionBar.getByText(/archive/i)).toBeVisible()
     // Clear selection
-    await actionBar.getByRole("button", { name: "Clear" }).click()
+    await actionBar.getByRole('button', { name: 'Clear' }).click()
   })
 
   test('edit page renders with Preview button', async ({ page }) => {
