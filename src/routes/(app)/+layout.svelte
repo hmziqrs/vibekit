@@ -75,6 +75,8 @@
 
     <!-- Sidebar -->
     <aside
+      role="navigation"
+      aria-label="Main navigation"
       class={cn(
         'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white/[0.06] bg-surface transition-transform duration-200 md:relative md:translate-x-0',
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
