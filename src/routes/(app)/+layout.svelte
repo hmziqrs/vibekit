@@ -4,6 +4,7 @@
   import AnnouncementBanner from '$lib/components/announcement-banner.svelte'
   import NotificationBell from '$lib/components/notification-bell.svelte'
   import SearchDialog from '$lib/components/search-dialog.svelte'
+  import ShortcutsHelp from '$lib/components/shortcuts-help.svelte'
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
@@ -14,11 +15,15 @@
   let mobileMenuOpen = $state(false)
   let signingOut = $state(false)
   let searchOpen = $state(false)
+  let shortcutsOpen = $state(false)
 
   function handleSearchKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault()
       searchOpen = true
+    } else if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      e.preventDefault()
+      shortcutsOpen = true
     }
   }
 
@@ -63,6 +68,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="flex min-h-screen bg-surface-base" onkeydown={handleSearchKeydown}>
     <SearchDialog bind:open={searchOpen} />
+    <ShortcutsHelp bind:open={shortcutsOpen} />
     <!-- Mobile overlay -->
     {#if mobileMenuOpen}
       <div

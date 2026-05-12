@@ -201,7 +201,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] i18n completion (all user-facing strings extracted, RTL support verification, plural rules, date/number formatting per locale, language switcher)
 - [x] i18n tooling (missing translation detection, translation key linting, icu message format support, translation workflow for contributors)
 - [x] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
-- [ ] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
+- [x] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
 
 #### Infrastructure & DevOps
 - [ ] CI/CD pipeline (GitHub Actions: lint → typecheck → test → build → preview deploy → production deploy, branch protection rules)
