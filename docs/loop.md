@@ -205,12 +205,12 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Infrastructure & DevOps
 - [x] CI/CD pipeline (GitHub Actions: lint → typecheck → test → build → preview deploy → production deploy, branch protection rules)
-- [ ] Staging environment (preview deploys per PR, environment variable management, smoke tests on staging)
+- [x] Staging environment (preview deploys per PR, environment variable management, smoke tests on staging)
 - [x] Monitoring & observability (structured logging, error tracking Sentry integration, performance monitoring, uptime checks)
 - [x] Health checks & readiness endpoints (liveness probe, dependency health: D1/R2/KV connectivity, degraded mode response)
-- [ ] Backup & disaster recovery (D1 backup schedule, point-in-time recovery plan, RTO/RPO targets documented, restore drill procedure)
-- [ ] Secret management (rotating BETTER_AUTH_SECRET, Stripe webhook secrets, API keys — no secrets in git, Cloudflare secrets integration)
-- [ ] Deployment safety (blue-green or canary deploys, automatic rollback on error spike, deploy locks, maintenance mode during migrations)
+- [x] Backup & disaster recovery (D1 backup schedule, point-in-time recovery plan, RTO/RPO targets documented, restore drill procedure)
+- [x] Secret management (rotating BETTER_AUTH_SECRET, Stripe webhook secrets, API keys — no secrets in git, Cloudflare secrets integration)
+- [x] Deployment safety (blue-green or canary deploys, automatic rollback on error spike, deploy locks, maintenance mode during migrations)
 
 #### Testing & Quality
 - [ ] Test infrastructure (Vitest config optimization, test database setup/teardown, mock patterns for D1/R2/KV, test fixtures factory)
