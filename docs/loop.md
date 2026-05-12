@@ -166,7 +166,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Email infrastructure (template system with preview, transactional emails, email queue with retries, bounce handling, unsubscribe flow)
 - [x] Email templates (welcome, verification, password reset, invoice, subscription changes, team invites, security alerts, custom templates via editor)
 - [x] Push notifications (Web Push API, subscription management, notification click actions, browser compatibility)
-- [ ] Slack/Discord integration (workspace notifications, command slash commands, webhook delivery, channel-specific alerts)
+- [x] Slack/Discord integration (workspace notifications, command slash commands, webhook delivery, channel-specific alerts)
 
 #### API & Integrations
 - [x] API key management (scoped tokens, key rotation, usage logging, key revocation, per-key rate limits)
@@ -222,16 +222,16 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Security testing (OWASP ZAP scan, dependency audit automation, secret leak detection in git history, CSRF/XSS regression tests)
 
 #### Analytics & Tracking
-- [ ] Analytics foundation (event tracking architecture, privacy-first: no cookies without consent, anonymize IPs, respect Do Not Track)
-- [ ] Product analytics (page views, feature usage funnels, user retention cohorts, conversion tracking signup → activation → paid)
-- [ ] Infrastructure analytics (worker execution time, D1 query latency percentiles, R2 bandwidth, cache hit rates, error rate trending)
-- [ ] Analytics dashboard (admin view with filters, date range selector, export to CSV, scheduled reports)
+- [x] Analytics foundation (event tracking architecture, privacy-first: no cookies without consent, anonymize IPs, respect Do Not Track)
+- [x] Product analytics (page views, feature usage funnels, user retention cohorts, conversion tracking signup → activation → paid)
+- [x] Infrastructure analytics (worker execution time, D1 query latency percentiles, R2 bandwidth, cache hit rates, error rate trending)
+- [x] Analytics dashboard (admin view with filters, date range selector, export to CSV, scheduled reports)
 
 #### Compliance & Privacy
-- [ ] GDPR compliance (consent management banner, data processing disclosure, right to access/deletion/portability automation, DPA documentation)
-- [ ] Privacy controls (cookie consent management, tracking opt-out, data retention policies with auto-deletion, privacy policy version tracking)
-- [ ] Terms of service (versioned ToS, acceptance tracking, change notification, enforce re-acceptance on major updates)
-- [ ] Audit compliance logging (immutable audit trail, data access logging, export for compliance audits, retention policy for logs)
+- [x] GDPR compliance (consent management banner, data processing disclosure, right to access/deletion/portability automation, DPA documentation)
+- [x] Privacy controls (cookie consent management, tracking opt-out, data retention policies with auto-deletion, privacy policy version tracking)
+- [x] Terms of service (versioned ToS, acceptance tracking, change notification, enforce re-acceptance on major updates)
+- [x] Audit compliance logging (immutable audit trail, data access logging, export for compliance audits, retention policy for logs)
 
 ## Task Completion Protocol
 
