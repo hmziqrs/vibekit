@@ -198,7 +198,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)
 
 #### i18n & Accessibility
-- [ ] i18n completion (all user-facing strings extracted, RTL support verification, plural rules, date/number formatting per locale, language switcher)
+- [x] i18n completion (all user-facing strings extracted, RTL support verification, plural rules, date/number formatting per locale, language switcher)
 - [ ] i18n tooling (missing translation detection, translation key linting, icu message format support, translation workflow for contributors)
 - [ ] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
 - [ ] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)

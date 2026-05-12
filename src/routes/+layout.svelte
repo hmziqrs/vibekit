@@ -8,6 +8,7 @@
 	import { QueryClientProvider } from '@tanstack/svelte-query';
 	import { createQueryClient } from '$lib/query-client';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
+	import LanguageSwitcher from '$lib/components/language-switcher.svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import ConsentBanner from '$lib/components/consent-banner.svelte';
@@ -51,3 +52,5 @@
 		>{locale}</a>
 	{/each}
 </div>
+
+<LanguageSwitcher />
