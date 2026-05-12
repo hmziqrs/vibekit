@@ -69,6 +69,7 @@ export interface EmailClient {
 
 export interface CacheClient {
   purgeBlog(slug?: string): Promise<void>
+  purgePatterns(patterns: string[]): Promise<void>
 }
 
 export interface RuntimeEnv {

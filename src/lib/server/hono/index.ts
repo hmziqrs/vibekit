@@ -348,7 +348,9 @@ app.get('/api/image/:key', async (c) => {
 
   const originalUrl = `/cdn/blog/${key}`
   const url = buildImageUrl(originalUrl, { fit, format, height, quality, width })
-  return c.json({ url })
+  return c.json({ url }, 200, {
+    'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=3600',
+  })
 })
 
 // Public: image srcset builder
@@ -358,7 +360,9 @@ app.get('/api/image/:key/srcset', async (c) => {
 
   const originalUrl = `/cdn/blog/${key}`
   const srcset = buildSrcset(originalUrl, undefined, { format })
-  return c.json({ srcset })
+  return c.json({ srcset }, 200, {
+    'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=3600',
+  })
 })
 
 // ── Comments (public read) ─────────────────────────────────────────────
@@ -498,7 +502,9 @@ app.get('/api/search', async (c) => {
   const adapter = createD1SearchAdapter(services.db)
   const searchService = createSearchService(adapter)
   const results = await searchService.search(q, { entityTypes: types, limit, offset })
-  return c.json({ ...results, query: q })
+  return c.json({ ...results, query: q }, 200, {
+    'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=30',
+  })
 })
 
 // ── Newsletter (public) ───────────────────────────────────────────────

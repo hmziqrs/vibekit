@@ -17,8 +17,24 @@ export async function purgeBlogCache(
     baseUrls.push(`/blog/${slug}`)
   }
 
+  await purgeUrls(cache, baseUrls)
+}
+
+export async function purgePatternsCache(
+  platform: CachePlatform | undefined,
+  patterns: string[]
+): Promise<void> {
+  if (!platform?.caches) {
+    return
+  }
+
+  const cache = (platform.caches as CacheStorage & { default: Cache }).default
+  await purgeUrls(cache, patterns)
+}
+
+async function purgeUrls(cache: Cache, paths: string[]): Promise<void> {
   await Promise.allSettled(
-    baseUrls.map(async (path) => {
+    paths.map(async (path) => {
       try {
         const url = new URL(path, 'https://placeholder')
         await cache.delete(url)
