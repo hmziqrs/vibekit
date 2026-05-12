@@ -126,7 +126,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices, user notification, auto-enable/disable)
 
 #### Blog Platform
-- [ ] Blog platform — full-fledged publishing system:
+- [x] Blog platform — full-fledged publishing system:
   - [x] Markdown editor with toolbar, split-pane preview, keyboard shortcuts (Milkdown / TipTap / CodeMirror+preview)
   - [x] Inline image upload-insert flow inside the editor body (upload to R2 → insert markdown image syntax)
   - [x] Syntax highlighting for code blocks (highlight.js, rendered server-side, CSS class-based)
@@ -154,11 +154,11 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Analytics per post (view count, referrer tracking, reading completion)
 
 #### Billing & Payments
-- [ ] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)
-- [ ] Payment processing (Stripe integration, payment method management, invoice generation, payment failure handling, dunning emails)
-- [ ] Usage-based billing (metered billing, usage tracking, quota enforcement, overage handling, usage dashboard for users)
-- [ ] Billing admin (revenue metrics, failed payment queue, refund processing, discount/coupon management, tax configuration)
-- [ ] Payment webhooks (Stripe webhook handler, idempotent processing, event logging, failure recovery)
+- [x] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)
+- [x] Payment processing (Stripe integration, payment method management, invoice generation, payment failure handling, dunning emails)
+- [x] Usage-based billing (metered billing, usage tracking, quota enforcement, overage handling, usage dashboard for users)
+- [x] Billing admin (revenue metrics, failed payment queue, refund processing, discount/coupon management, tax configuration)
+- [x] Payment webhooks (Stripe webhook handler, idempotent processing, event logging, failure recovery)
 
 #### Notifications & Communication
 - [x] In-app notification system (notification bell, real-time updates, read/unread state, notification types, bulk actions, notification preferences)

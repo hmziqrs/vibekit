@@ -1,4 +1,21 @@
 import { writeAuditLog } from '$lib/server/audit'
+import { getStripeClient, verifyWebhookSignature } from '$lib/server/billing/stripe'
+import {
+  cancelSubscription,
+  changeSubscriptionPlan,
+  createPlan,
+  createSubscription,
+  deactivatePlan,
+  getActivePlans,
+  getAllPlans,
+  getBillingOverview,
+  getOrgSubscription,
+  getPlanById,
+  getUserSubscription,
+  reactivateSubscription,
+  recordUsage,
+  updatePlan,
+} from '$lib/server/billing/subscription-service'
 import {
   account as accountTable,
   passkey,
@@ -21,12 +38,16 @@ import {
   impersonationSession,
   notification,
   notificationPreference,
+  invoice,
   item,
   auditLog,
   organization,
   organizationInvitation,
   organizationMember,
+  paymentMethod,
   securityEvent,
+  subscription,
+  subscriptionPlan,
   systemConfig,
   team,
   teamActivity,
@@ -79,6 +100,13 @@ import {
   updateTeamMemberRoleSchema,
   updateTeamSchema,
 } from '$lib/validators'
+import {
+  checkoutSessionSchema,
+  changePlanSchema,
+  createPlanSchema,
+  recordUsageSchema,
+  updatePlanSchema,
+} from '$lib/validators/billing'
 import { zValidator } from '@hono/zod-validator'
 import {
   and,
@@ -560,6 +588,120 @@ app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000
     .where(eq(blogPostView.id, view.id))
 
   return c.json({ updated: true })
+})
+
+// ── Stripe Webhook (public) ───────────────────────────────────────────
+
+app.post('/billing/webhooks/stripe', async (c) => {
+  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+  if (!stripe) {
+    return c.json({ error: 'Billing not configured' }, 503)
+  }
+
+  const webhookSecret = c.env?.STRIPE_WEBHOOK_SECRET
+  if (!webhookSecret) {
+    return c.json({ error: 'Webhook secret not configured' }, 500)
+  }
+
+  const signature = c.req.header('stripe-signature')
+  if (!signature) {
+    return c.json({ error: 'Missing signature' }, 400)
+  }
+
+  try {
+    const body = await c.req.text()
+    const event = await verifyWebhookSignature(stripe, body, signature, webhookSecret)
+
+    const { db } = c.get('services')
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object
+        const clientRef = session.client_reference_id
+        const subId = session.subscription as string | null
+        const customerId = session.customer as string | null
+
+        if (clientRef && subId) {
+          const existingSub = await db
+            .select({ id: subscription.id })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, subId))
+            .get()
+
+          if (!existingSub) {
+            const planId = 'plan_pro' // Default plan for checkout
+            await createSubscription(db, {
+              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              currentPeriodStart: new Date(),
+              planId,
+              stripeCustomerId: customerId ?? undefined,
+              stripeSubscriptionId: subId,
+              userId: clientRef,
+            })
+          }
+        }
+        break
+      }
+      case 'customer.subscription.updated': {
+        const sub = event.data.object
+        await db
+          .update(subscription)
+          .set({
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            currentPeriodStart: new Date(sub.current_period_start * 1000),
+            status: sub.status as
+              | 'active'
+              | 'canceled'
+              | 'incomplete'
+              | 'past_due'
+              | 'paused'
+              | 'trialing',
+          })
+          .where(eq(subscription.stripeSubscriptionId, sub.id))
+        break
+      }
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object
+        await db
+          .update(subscription)
+          .set({ canceledAt: new Date(), status: 'canceled' })
+          .where(eq(subscription.stripeSubscriptionId, sub.id))
+        break
+      }
+      case 'invoice.payment_succeeded': {
+        const inv = event.data.object
+        await db.insert(invoice).values({
+          amountInCents: inv.amount_paid,
+          currency: inv.currency,
+          id: uuid(),
+          paidAt: new Date(),
+          status: 'paid',
+          stripeInvoiceId: inv.id,
+          subscriptionId: inv.subscription as string | null,
+          userId: (inv.customer_email ?? inv.metadata?.userId) as string | null,
+        })
+        break
+      }
+      case 'invoice.payment_failed': {
+        const inv = event.data.object
+        await db.insert(invoice).values({
+          amountInCents: inv.amount_due,
+          currency: inv.currency,
+          dueDate: new Date(inv.due_date * 1000),
+          id: uuid(),
+          status: 'open',
+          stripeInvoiceId: inv.id,
+          subscriptionId: inv.subscription as string | null,
+          userId: (inv.customer_email ?? inv.metadata?.userId) as string | null,
+        })
+        break
+      }
+    }
+
+    return c.json({ received: true })
+  } catch {
+    return c.json({ error: 'Invalid signature' }, 400)
+  }
 })
 
 // ── Items (auth required) ────────────────────────────────────────────
@@ -1231,6 +1373,169 @@ protectedApp.patch('/notifications/preferences', async (c) => {
     enabled: body.enabled,
     type: body.type,
     userId,
+  })
+
+  return c.json({ success: true })
+})
+
+// ── Billing (auth required) ─────────────────────────────────────────────
+
+protectedApp.get('/billing/plans', async (c) => {
+  const { db } = c.get('services')
+  const plans = await getActivePlans(db)
+  return c.json({ plans })
+})
+
+protectedApp.get('/billing/subscription', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sub = await getUserSubscription(db, userId)
+  return c.json({ subscription: sub })
+})
+
+protectedApp.post('/billing/checkout', async (c) => {
+  const body = await c.req.json()
+  const parsed = checkoutSessionSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new BadRequestError('Invalid checkout parameters')
+  }
+
+  const { db } = c.get('services')
+  const user = c.get('user')
+  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+
+  const plan = await getPlanById(db, parsed.data.planId)
+  if (!plan) throw new NotFoundError()
+
+  if (stripe && plan.stripePriceId) {
+    const session = await import('$lib/server/billing/stripe').then((m) =>
+      m.createCheckoutSession(stripe, {
+        cancelUrl: parsed.data.cancelUrl,
+        customerEmail: user.email,
+        priceId: plan.stripePriceId,
+        successUrl: parsed.data.successUrl,
+        trialDays: plan.trialDays,
+        userId: user.id,
+      })
+    )
+    return c.json({ url: session.url })
+  }
+
+  // Without Stripe, create subscription directly
+  const sub = await createSubscription(db, {
+    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    currentPeriodStart: new Date(),
+    organizationId: parsed.data.organizationId,
+    planId: plan.id,
+    trialEnd:
+      plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : undefined,
+    userId: user.id,
+  })
+
+  return c.json({ subscription: sub })
+})
+
+protectedApp.post('/billing/portal', async (c) => {
+  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+  if (!stripe) {
+    throw new BadRequestError('Billing portal not configured')
+  }
+
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sub = await getUserSubscription(db, userId)
+  if (!sub?.stripeCustomerId) {
+    throw new BadRequestError('No billing account found')
+  }
+
+  const body = await c.req.json<{ returnUrl: string }>()
+  const session = await import('$lib/server/billing/stripe').then((m) =>
+    m.createBillingPortalSession(stripe, {
+      customerId: sub.stripeCustomerId,
+      returnUrl: body.returnUrl,
+    })
+  )
+
+  return c.json({ url: session.url })
+})
+
+protectedApp.post('/billing/change-plan', async (c) => {
+  const body = await c.req.json()
+  const parsed = changePlanSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new BadRequestError('Invalid plan change parameters')
+  }
+
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sub = await getUserSubscription(db, userId)
+  if (!sub) throw new BadRequestError('No active subscription')
+
+  const newPlan = await getPlanById(db, parsed.data.newPlanId)
+  if (!newPlan) throw new NotFoundError()
+
+  await changeSubscriptionPlan(db, sub.id, parsed.data.newPlanId)
+
+  return c.json({ success: true })
+})
+
+protectedApp.post('/billing/cancel', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sub = await getUserSubscription(db, userId)
+  if (!sub) throw new BadRequestError('No active subscription')
+
+  await cancelSubscription(db, sub.id)
+
+  return c.json({ success: true })
+})
+
+protectedApp.post('/billing/reactivate', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const sub = await db
+    .select()
+    .from(subscription)
+    .where(and(eq(subscription.userId, userId), eq(subscription.status, 'canceled')))
+    .orderBy(desc(subscription.createdAt))
+    .limit(1)
+    .get()
+
+  if (!sub) throw new BadRequestError('No canceled subscription found')
+
+  await reactivateSubscription(db, sub.id)
+
+  return c.json({ success: true })
+})
+
+protectedApp.get('/billing/invoices', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const invoices = await db
+    .select()
+    .from(invoice)
+    .where(eq(invoice.userId, userId))
+    .orderBy(desc(invoice.createdAt))
+
+  return c.json({ invoices })
+})
+
+protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const parsed = c.req.valid('json')
+
+  const sub = await getUserSubscription(db, userId)
+  if (!sub) throw new BadRequestError('No active subscription')
+
+  await recordUsage(db, {
+    metricType: parsed.metricType,
+    periodEnd: sub.currentPeriodEnd,
+    periodStart: sub.currentPeriodStart,
+    quantity: parsed.quantity,
+    subscriptionId: sub.id,
   })
 
   return c.json({ success: true })
@@ -3474,6 +3779,87 @@ orgApp.post(
   }
 )
 
+// ── Org Billing ───────────────────────────────────────────────────────
+
+orgApp.get(
+  '/:orgId/billing/subscription',
+  withOrgMembership,
+  requirePermission('org.read'),
+  async (c) => {
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const { db } = c.get('services')
+    const sub = await getOrgSubscription(db, org.id)
+    return c.json({ subscription: sub })
+  }
+)
+
+orgApp.post(
+  '/:orgId/billing/checkout',
+  withOrgMembership,
+  requirePermission('org.update'),
+  async (c) => {
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const user = c.get('user')
+    const body = await c.req.json<{ cancelUrl: string; planId: string; successUrl: string }>()
+    const { db } = c.get('services')
+
+    const plan = await getPlanById(db, body.planId)
+    if (!plan) throw new NotFoundError()
+
+    const sub = await createSubscription(db, {
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentPeriodStart: new Date(),
+      organizationId: org.id,
+      planId: plan.id,
+      trialEnd:
+        plan.trialDays > 0
+          ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000)
+          : undefined,
+      userId: user.id,
+    })
+
+    return c.json({ subscription: sub })
+  }
+)
+
+orgApp.post(
+  '/:orgId/billing/change-plan',
+  withOrgMembership,
+  requirePermission('org.update'),
+  async (c) => {
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const body = await c.req.json<{ newPlanId: string }>()
+    const { db } = c.get('services')
+
+    const sub = await getOrgSubscription(db, org.id)
+    if (!sub) throw new BadRequestError('No active subscription')
+
+    const newPlan = await getPlanById(db, body.newPlanId)
+    if (!newPlan) throw new NotFoundError()
+
+    await changeSubscriptionPlan(db, sub.id, body.newPlanId)
+    return c.json({ success: true })
+  }
+)
+
+orgApp.get(
+  '/:orgId/billing/invoices',
+  withOrgMembership,
+  requirePermission('org.read'),
+  async (c) => {
+    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const { db } = c.get('services')
+
+    const invoices = await db
+      .select()
+      .from(invoice)
+      .where(eq(invoice.organizationId, org.id))
+      .orderBy(desc(invoice.createdAt))
+
+    return c.json({ invoices })
+  }
+)
+
 // ── Teams (within organizations) ──────────────────────────────────────
 
 const teamApp = new Hono<TeamEnv>().use('*', requireUser)
@@ -4684,6 +5070,66 @@ adminApp.post('/notifications/broadcast', withRateLimit('broadcast', 5, 60_000),
   })
 
   return c.json({ count, success: true }, 201)
+})
+
+// ── Admin Billing ────────────────────────────────────────────────────
+
+adminApp.get('/billing/plans', async (c) => {
+  const { db } = c.get('services')
+  const plans = await getAllPlans(db)
+  return c.json({ plans })
+})
+
+adminApp.post('/billing/plans', validate(createPlanSchema), async (c) => {
+  const { db } = c.get('services')
+  const parsed = c.req.valid('json')
+  const plan = await createPlan(db, parsed)
+  return c.json({ plan }, 201)
+})
+
+adminApp.patch('/billing/plans/:id', validate(updatePlanSchema), async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+  const parsed = c.req.valid('json')
+
+  const existing = await getPlanById(db, id)
+  if (!existing) throw new NotFoundError()
+
+  const plan = await updatePlan(db, id, parsed)
+  return c.json({ plan })
+})
+
+adminApp.delete('/billing/plans/:id', async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+
+  const existing = await getPlanById(db, id)
+  if (!existing) throw new NotFoundError()
+
+  await deactivatePlan(db, id)
+  return c.json({ success: true })
+})
+
+adminApp.get('/billing/overview', async (c) => {
+  const { db } = c.get('services')
+  const overview = await getBillingOverview(db)
+  return c.json(overview)
+})
+
+adminApp.get('/billing/invoices', async (c) => {
+  const { db } = c.get('services')
+  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const offset = (page - 1) * limit
+
+  const invoices = await db
+    .select()
+    .from(invoice)
+    .orderBy(desc(invoice.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+  return c.json({ invoices, limit, page })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
