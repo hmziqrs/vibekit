@@ -1,5 +1,6 @@
 import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
+import { createLogger } from '$lib/server/logger'
 import { passkey } from '@better-auth/passkey'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
@@ -9,6 +10,8 @@ import { uuidv7 } from 'uuidv7'
 
 import type { EmailService } from './email/index'
 import type { AppDb } from './services/types'
+
+const logger = createLogger('auth')
 
 let _emailService: EmailService | null = null
 
@@ -47,7 +50,7 @@ export const authConfig = {
       if (_emailService) {
         await _emailService.sendPasswordReset(user.email, url, user.name ?? undefined)
       } else {
-        console.log(`[dev] Password reset for ${user.email}: ${url}`)
+        logger.info('Password reset URL (no email service)', { email: user.email, url })
       }
     },
   },
@@ -56,7 +59,7 @@ export const authConfig = {
       if (_emailService) {
         await _emailService.sendEmailVerification(user.email, url, user.name ?? undefined)
       } else {
-        console.log(`[dev] Email verification for ${user.email}: ${url}`)
+        logger.info('Email verification URL (no email service)', { email: user.email, url })
       }
     },
   },

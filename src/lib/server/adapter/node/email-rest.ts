@@ -1,4 +1,8 @@
+import { createLogger } from '$lib/server/logger'
+
 import type { EmailClient, EmailMessage, EmailResult } from '../../services/types'
+
+const logger = createLogger('email')
 
 interface EmailRestConfig {
   cfAccountId: string
@@ -56,12 +60,12 @@ export function createNodeEmail(): EmailClient {
 
       if (!config) {
         // Dev/no-op mode: log the email instead of sending
-        console.log(
-          `[dev:email] To: ${message.to}, From: ${message.from}, Subject: ${message.subject}`
-        )
-        if (message.text) {
-          console.log(`[dev:email] Body: ${message.text.slice(0, 200)}`)
-        }
+        logger.info('Email (no config)', {
+          body: message.text?.slice(0, 200),
+          from: message.from,
+          subject: message.subject,
+          to: message.to,
+        })
         const recipients = Array.isArray(message.to) ? message.to : [message.to]
         return { delivered: recipients, ok: true }
       }
