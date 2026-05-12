@@ -140,6 +140,13 @@ import {
   unsubscribeFromPush,
 } from '$lib/server/push'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
+import {
+  deindexEntity,
+  indexBlogPost,
+  indexItem,
+  reindexAllBlogPosts,
+  reindexAllItems,
+} from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
@@ -976,6 +983,8 @@ protectedApp.post('/items', validate(createItemSchema), async (c) => {
     userId: currentUser.id,
   })
 
+  indexItem(db, created.id).catch(() => {})
+
   return c.json({ item: created }, 201)
 })
 
@@ -1028,6 +1037,8 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
     userId: currentUser.id,
   })
 
+  indexItem(db, id).catch(() => {})
+
   return c.json({
     item: {
       createdAt: updated!.createdAt,
@@ -1060,6 +1071,8 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
     metadata: { name: existing.name },
     userId: c.get('user').id,
   })
+
+  deindexEntity(db, id, 'item').catch(() => {})
 
   return new Response(null, { status: 204 })
 })
@@ -2641,6 +2654,8 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
     userId: currentUser.id,
   })
 
+  indexBlogPost(db, id).catch(() => {})
+
   return c.json({ id }, 201)
 })
 
@@ -2926,6 +2941,8 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
     userId: c.get('user').id,
   })
 
+  indexBlogPost(db, id).catch(() => {})
+
   return c.json({ success: true })
 })
 
@@ -2952,6 +2969,8 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
     metadata: { slug: existing.slug, title: existing.title },
     userId: c.get('user').id,
   })
+
+  deindexEntity(db, id, 'blog_post').catch(() => {})
 
   return c.json({ success: true })
 })
@@ -2983,6 +3002,8 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
     metadata: { slug: existing.slug },
     userId: c.get('user').id,
   })
+
+  indexBlogPost(db, id).catch(() => {})
 
   return c.json({ success: true })
 })
@@ -3046,6 +3067,8 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
+  deindexEntity(db, id, 'blog_post').catch(() => {})
+
   return c.json({ success: true })
 })
 
@@ -3076,6 +3099,8 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
     metadata: { slug: existing.slug },
     userId: c.get('user').id,
   })
+
+  indexBlogPost(db, id).catch(() => {})
 
   return c.json({ success: true })
 })
@@ -6158,6 +6183,12 @@ adminApp.delete('/search/index', async (c) => {
   const searchService = createSearchService(adapter)
   await searchService.deleteEntity(body.entityId, body.entityType)
   return c.json({ deleted: true })
+})
+
+adminApp.post('/search/reindex', async (c) => {
+  const { db } = c.get('services')
+  const [blogCount, itemCount] = await Promise.all([reindexAllBlogPosts(db), reindexAllItems(db)])
+  return c.json({ blogPosts: blogCount, items: itemCount })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
