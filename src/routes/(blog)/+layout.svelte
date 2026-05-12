@@ -4,5 +4,9 @@
   const { children, data } = $props()
 </script>
 
+<svelte:head>
+  <link rel="alternate" type="application/rss+xml" title="Vibekit Blog" href="/blog/feed.xml" />
+</svelte:head>
+
 <CfBeacon token={data.cfToken} />
 {@render children()}

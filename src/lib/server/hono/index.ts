@@ -888,6 +888,12 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
     await db.insert(blogPostTag).values(parsed.tagIds.map((tagId) => ({ postId: id, tagId })))
   }
 
+  await writeAuditLog(db, {
+    action: 'blog.create',
+    details: { slug, status, title },
+    userId: currentUser.id,
+  })
+
   return c.json({ id }, 201)
 })
 
@@ -958,6 +964,12 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
     }
   }
 
+  await writeAuditLog(db, {
+    action: 'blog.update',
+    details: { id, slug: (updates.slug as string) ?? existing.slug, title: existing.title },
+    userId: c.get('user').id,
+  })
+
   return c.json({ success: true })
 })
 
@@ -976,6 +988,12 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
 
   await c.get('services').cache.purgeBlog(existing.slug)
+
+  await writeAuditLog(db, {
+    action: 'blog.delete',
+    details: { id, slug: existing.slug, title: existing.title },
+    userId: c.get('user').id,
+  })
 
   return c.json({ success: true })
 })
@@ -1000,6 +1018,12 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
 
   await c.get('services').cache.purgeBlog(existing.slug)
 
+  await writeAuditLog(db, {
+    action: 'blog.publish',
+    details: { id, slug: existing.slug },
+    userId: c.get('user').id,
+  })
+
   return c.json({ success: true })
 })
 
@@ -1022,6 +1046,12 @@ blogApp.post('/:id/unpublish', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
 
   await c.get('services').cache.purgeBlog(existing.slug)
+
+  await writeAuditLog(db, {
+    action: 'blog.unpublish',
+    details: { id, slug: existing.slug },
+    userId: c.get('user').id,
+  })
 
   return c.json({ success: true })
 })
@@ -1046,6 +1076,12 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
 
   await c.get('services').cache.purgeBlog(existing.slug)
 
+  await writeAuditLog(db, {
+    action: 'blog.archive',
+    details: { id, slug: existing.slug },
+    userId: c.get('user').id,
+  })
+
   return c.json({ success: true })
 })
 
@@ -1068,6 +1104,12 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
     .where(eq(blogPost.id, id))
 
   await c.get('services').cache.purgeBlog()
+
+  await writeAuditLog(db, {
+    action: 'blog.restore',
+    details: { id, slug: existing.slug },
+    userId: c.get('user').id,
+  })
 
   return c.json({ success: true })
 })

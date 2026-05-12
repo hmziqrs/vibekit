@@ -123,35 +123,35 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] User audit log & activity tracking (dispute resolution, security reviews, compliance trails, immutable log entries, export for compliance)
 - [x] Content moderation tools (flagged content queue, automated rules, moderator actions, appeal system, moderation log)
 - [x] System configuration management (feature flags UI, maintenance mode toggle, email template editor, system announcements)
-- [ ] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices, user notification, auto-enable/disable)
+- [x] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices, user notification, auto-enable/disable)
 
 #### Blog Platform
 - [ ] Blog platform — full-fledged publishing system:
-  - Markdown editor with toolbar, split-pane preview, keyboard shortcuts (Milkdown / TipTap / CodeMirror+preview)
-  - Inline image upload-insert flow inside the editor body (upload to R2 → insert markdown image syntax)
-  - Syntax highlighting for code blocks (Shiki or similar, rendered server-side)
-  - Tag system: wire up dead tagIds code — tag CRUD API, tag selector in editor, public tag pages, tag display on posts
-  - Pagination on public blog index (cursor or offset, load more or page nav)
-  - Author attribution on public posts (join user table for display name, author profile link)
-  - Reading time estimation on posts
-  - Table of contents auto-generated from headings
-  - Replace regex sanitization with DOMPurify
-  - RSS/Atom feed endpoint
-  - Draft preview (shareable link or admin-only preview route)
-  - Delete button on the blog edit page
-  - Audit log writes on blog mutations
-  - Cover image preview in editor (not just URL)
-  - Drag-and-drop image reordering for inline images
-  - Link card / oEmbed support (Twitter, YouTube, GitHub gists)
-  - SEO preview (Google/social card preview in editor sidebar)
-  - Full-text content search (admin side minimum)
-  - Scheduled publishing (set future publishedAt, cron promotes drafts)
-  - Related posts by tag overlap on single post page
-  - Copy-as-markdown option when viewing a post
-  - Series/collection support (group posts into named series with ordering)
-  - Comment system (threaded comments, moderation queue, spam filtering)
-  - Newsletter integration (subscribe on blog, Mailchimp/Resend sync)
-  - Analytics per post (view count, referrer tracking, reading completion)
+  - [x] Markdown editor with toolbar, split-pane preview, keyboard shortcuts (Milkdown / TipTap / CodeMirror+preview)
+  - [x] Inline image upload-insert flow inside the editor body (upload to R2 → insert markdown image syntax)
+  - [ ] Syntax highlighting for code blocks (Shiki or similar, rendered server-side)
+  - [x] Tag system: wire up dead tagIds code — tag CRUD API, tag selector in editor, public tag pages, tag display on posts
+  - [x] Pagination on public blog index (cursor or offset, load more or page nav)
+  - [x] Author attribution on public posts (join user table for display name, author profile link)
+  - [x] Reading time estimation on posts
+  - [x] Table of contents auto-generated from headings
+  - [x] Replace regex sanitization with DOMPurify
+  - [x] RSS/Atom feed endpoint
+  - [x] Draft preview (shareable link or admin-only preview route)
+  - [x] Delete button on the blog edit page
+  - [x] Audit log writes on blog mutations
+  - [x] Cover image preview in editor (not just URL)
+  - [ ] Drag-and-drop image reordering for inline images
+  - [ ] Link card / oEmbed support (Twitter, YouTube, GitHub gists)
+  - [x] SEO preview (Google/social card preview in editor sidebar)
+  - [ ] Full-text content search (admin side minimum)
+  - [ ] Scheduled publishing (set future publishedAt, cron promotes drafts)
+  - [ ] Related posts by tag overlap on single post page
+  - [x] Copy-as-markdown option when viewing a post
+  - [ ] Series/collection support (group posts into named series with ordering)
+  - [ ] Comment system (threaded comments, moderation queue, spam filtering)
+  - [ ] Newsletter integration (subscribe on blog, Mailchimp/Resend sync)
+  - [ ] Analytics per post (view count, referrer tracking, reading completion)
 
 #### Billing & Payments
 - [ ] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)

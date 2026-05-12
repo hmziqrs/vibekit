@@ -159,6 +159,14 @@
     await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
     goto('/admin/blog')
   }
+
+  async function deletePost() {
+    if (!confirm('Delete this post? This action can be undone by restoring from the blog list.')) {
+      return
+    }
+    await fetch(`/api/blog/${data.post.id}`, { method: 'DELETE' })
+    goto('/admin/blog')
+  }
 </script>
 
 <div class="flex items-center justify-between">
@@ -306,6 +314,14 @@
           class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
         >
           Archive
+        </button>
+
+        <button
+          type="button"
+          onclick={deletePost}
+          class="rounded-lg border border-red-500/30 px-5 py-2.5 text-[13px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
+        >
+          Delete
         </button>
       </div>
     </div>
