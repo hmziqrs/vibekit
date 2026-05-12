@@ -129,7 +129,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Blog platform — full-fledged publishing system:
   - [x] Markdown editor with toolbar, split-pane preview, keyboard shortcuts (Milkdown / TipTap / CodeMirror+preview)
   - [x] Inline image upload-insert flow inside the editor body (upload to R2 → insert markdown image syntax)
-  - [ ] Syntax highlighting for code blocks (Shiki or similar, rendered server-side)
+  - [x] Syntax highlighting for code blocks (highlight.js, rendered server-side, CSS class-based)
   - [x] Tag system: wire up dead tagIds code — tag CRUD API, tag selector in editor, public tag pages, tag display on posts
   - [x] Pagination on public blog index (cursor or offset, load more or page nav)
   - [x] Author attribution on public posts (join user table for display name, author profile link)

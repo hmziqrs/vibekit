@@ -23,9 +23,11 @@ describe(renderAndSanitize, () => {
     expect(result).toContain('<a href="https://example.com">link</a>')
   })
 
-  it('renders code blocks', () => {
+  it('renders code blocks with syntax highlighting', () => {
     const result = renderAndSanitize('```\ncode\n```')
-    expect(result).toContain('<pre><code>code\n</code></pre>')
+    expect(result).toContain('<pre><code')
+    expect(result).toContain('hljs')
+    expect(result).toContain('code')
   })
 
   it('renders inline code', () => {

@@ -1,6 +1,41 @@
+import hljs from 'highlight.js'
 import purify from 'isomorphic-dompurify'
 import { micromark } from 'micromark'
 import { gfm, gfmHtml } from 'micromark-extension-gfm'
+
+const CODE_BLOCK_RE = /<pre><code(?:\s+class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function unescapeHtml(str: string): string {
+  return str
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+}
+
+function highlightCodeBlocks(html: string): string {
+  return html.replace(CODE_BLOCK_RE, (_match, lang: string | undefined, code: string) => {
+    const rawCode = unescapeHtml(code).trim()
+    let highlighted: string
+
+    if (lang && hljs.getLanguage(lang)) {
+      highlighted = hljs.highlight(rawCode, { language: lang }).value
+    } else {
+      highlighted = hljs.highlightAuto(rawCode).value
+    }
+
+    const langAttr = lang ? ` class="language-${lang} hljs"` : ' class="hljs"'
+    return `<pre><code${langAttr}>${highlighted}</code></pre>`
+  })
+}
 
 function renderMarkdown(raw: string): string {
   if (!raw) {
@@ -23,5 +58,9 @@ function sanitizeHtml(html: string): string {
 }
 
 export function renderAndSanitize(raw: string): string {
-  return sanitizeHtml(renderMarkdown(raw))
+  const html = renderMarkdown(raw)
+  const highlighted = highlightCodeBlocks(html)
+  return sanitizeHtml(highlighted)
 }
+
+export { escapeHtml, highlightCodeBlocks, renderMarkdown, sanitizeHtml }

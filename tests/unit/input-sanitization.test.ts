@@ -58,7 +58,7 @@ describe('blog preview page sanitization', () => {
       resolve(process.cwd(), 'src/routes/(admin)/admin/blog/[id]/preview/+page.svelte'),
       'utf8'
     )
-    expect(source).toContain('purify.sanitize(raw')
+    expect(source).toContain('sanitizeWithHighlight(raw)')
   })
 
   it('sanitizes contentHtml passthrough with DOMPurify', async () => {
@@ -66,7 +66,7 @@ describe('blog preview page sanitization', () => {
       resolve(process.cwd(), 'src/routes/(admin)/admin/blog/[id]/preview/+page.svelte'),
       'utf8'
     )
-    expect(source).toContain('purify.sanitize(post.contentHtml')
+    expect(source).toContain('sanitizeWithHighlight(post.contentHtml)')
   })
 
   it('has PURIFY_OPTS with forbidden tags and attrs', async () => {

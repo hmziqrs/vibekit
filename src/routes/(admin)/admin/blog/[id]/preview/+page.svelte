@@ -1,6 +1,6 @@
 <script lang="ts">
   import purify from 'isomorphic-dompurify'
-  import { renderAndSanitize } from '$lib/markdown'
+  import { highlightCodeBlocks, renderAndSanitize, sanitizeHtml } from '$lib/markdown'
   import { onMount } from 'svelte'
 
   interface Post {
@@ -29,6 +29,10 @@
     FORBID_TAGS: ['button', 'form', 'input', 'select', 'style', 'textarea'],
   }
 
+  function sanitizeWithHighlight(html: string): string {
+    return sanitizeHtml(highlightCodeBlocks(html))
+  }
+
   onMount(async () => {
     try {
       const { id } = data.post
@@ -50,7 +54,7 @@
               Image,
               FigureImage,
             ])
-            renderedHtml = purify.sanitize(raw, PURIFY_OPTS)
+            renderedHtml = sanitizeWithHighlight(raw)
           } catch {
             renderedHtml = renderAndSanitize(trimmed)
           }
@@ -58,7 +62,7 @@
           renderedHtml = renderAndSanitize(trimmed)
         }
       } else if (post.contentHtml) {
-        renderedHtml = purify.sanitize(post.contentHtml, PURIFY_OPTS)
+        renderedHtml = sanitizeWithHighlight(post.contentHtml)
       }
     } catch (error) {
       errorMsg = error instanceof Error ? error.message : 'Failed to load preview'
