@@ -7,6 +7,7 @@
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
+  import { initWebVitals, reportToConsole } from '$lib/performance.svelte'
 
   const { children } = $props()
   const auth = getContext<AuthContext>('auth')
@@ -22,6 +23,11 @@
   }
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
+
+  $effect(() => {
+    initWebVitals()
+    if (import.meta.env.DEV) reportToConsole()
+  })
 
   $effect(() => {
     useAnalytics(firebaseConfig)

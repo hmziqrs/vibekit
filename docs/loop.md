@@ -195,7 +195,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] SEO foundation (meta tags, Open Graph, Twitter cards, canonical URLs, sitemap.xml, robots.txt, structured data/JSON-LD)
 - [x] Performance optimization (code splitting audit, bundle analysis, lazy loading images/components, font optimization, critical CSS)
 - [x] Caching strategy (Cache API usage review, stale-while-revalidate patterns, cache invalidation on mutation, edge caching rules)
-- [ ] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)
+- [x] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)
 
 #### i18n & Accessibility
 - [ ] i18n completion (all user-facing strings extracted, RTL support verification, plural rules, date/number formatting per locale, language switcher)

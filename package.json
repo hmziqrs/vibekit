@@ -7,6 +7,7 @@
     "dev": "ADAPTER=node vite dev",
     "build": "ADAPTER=cloudflare wrangler types --check && ADAPTER=cloudflare vite build",
     "build:analyze": "ADAPTER=cloudflare vite build -- --analyse",
+    "build:check-size": "du -sh build/client && du -sh build/server && find build/client/_app/immutable -name '*.js' -exec du -sh {} + | sort -rh | head -20",
     "build:node": "ADAPTER=node vite build",
     "start": "bun ./build/index.js",
     "preview": "wrangler dev --config wrangler.jsonc --port 4173",
