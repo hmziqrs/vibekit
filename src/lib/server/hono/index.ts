@@ -13,6 +13,7 @@ import {
   blogPostTag,
   blogSeries,
   blogTag,
+  comment,
   contactSubmission,
   contentReport,
   impersonationSession,
@@ -37,10 +38,12 @@ import {
   NotFoundError,
 } from '$lib/server/errors'
 import { createNotification } from '$lib/server/notifications'
+import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
 import {
   createAnnouncementSchema,
+  createCommentSchema,
   createItemSchema,
   createOrganizationSchema,
   createPostSchema,
@@ -49,10 +52,12 @@ import {
   createTeamSchema,
   addTeamMemberSchema,
   inviteMemberSchema,
+  moderateCommentSchema,
   resolveReportSchema,
   transferOwnershipSchema,
   updateAnnouncementSchema,
   updateConfigSchema,
+  updateCommentSchema,
   updateItemSchema,
   updateMemberRoleSchema,
   updateOrganizationSchema,
@@ -154,6 +159,94 @@ app.get('/api/health', async (c) => {
     ok: dbStatus === 'connected',
     responseTime: Date.now() - start,
     time: new Date().toISOString(),
+  })
+})
+
+// ── Comments (public read) ─────────────────────────────────────────────
+
+app.get('/api/comments/:postId', async (c) => {
+  const { db } = c.get('services')
+  const postId = c.req.param('postId')
+  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const limit = Math.min(50, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const offset = (page - 1) * limit
+
+  // Get top-level approved comments
+  const topLevel = await db
+    .select({
+      authorDisplayName: user.displayName,
+      authorId: comment.authorId,
+      authorImage: user.image,
+      authorName: user.name,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      editedAt: comment.editedAt,
+      htmlContent: comment.htmlContent,
+      id: comment.id,
+      replyCount: sql<number>`(select count(*) from comment c2 where c2.parent_id = ${comment.id} and c2.status = 'approved')`,
+    })
+    .from(comment)
+    .innerJoin(user, eq(comment.authorId, user.id))
+    .where(
+      and(eq(comment.postId, postId), isNull(comment.parentId), eq(comment.status, 'approved'))
+    )
+    .orderBy(desc(comment.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+  // Get replies for these comments
+  let replies: Array<{
+    authorDisplayName: string | null
+    authorId: string
+    authorImage: string | null
+    authorName: string
+    content: string
+    createdAt: Date
+    editedAt: Date | null
+    htmlContent: string | null
+    id: string
+    parentId: string | null
+  }> = []
+  if (topLevel.length > 0) {
+    const parentIds = topLevel.map((c) => c.id)
+    replies = await db
+      .select({
+        authorDisplayName: user.displayName,
+        authorId: comment.authorId,
+        authorImage: user.image,
+        authorName: user.name,
+        content: comment.content,
+        createdAt: comment.createdAt,
+        editedAt: comment.editedAt,
+        htmlContent: comment.htmlContent,
+        id: comment.id,
+        parentId: comment.parentId,
+      })
+      .from(comment)
+      .innerJoin(user, eq(comment.authorId, user.id))
+      .where(and(inArray(comment.parentId, parentIds), eq(comment.status, 'approved')))
+      .orderBy(asc(comment.createdAt))
+  }
+
+  const replyMap = new Map<string, typeof replies>()
+  for (const reply of replies) {
+    const pid = reply.parentId!
+    if (!replyMap.has(pid)) replyMap.set(pid, [])
+    replyMap.get(pid)!.push(reply)
+  }
+
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(comment)
+    .where(
+      and(eq(comment.postId, postId), isNull(comment.parentId), eq(comment.status, 'approved'))
+    )
+    .get()
+
+  return c.json({
+    comments: topLevel.map((c) => ({ ...c, replies: replyMap.get(c.id) ?? [] })),
+    page,
+    total: totalResult?.count ?? 0,
   })
 })
 
@@ -815,6 +908,146 @@ protectedApp.delete('/notifications/:id', async (c) => {
   }
 
   await db.delete(notification).where(eq(notification.id, id))
+
+  return c.json({ success: true })
+})
+
+// ── Comments (auth required) ──────────────────────────────────────────
+
+protectedApp.post(
+  '/comments/:postId',
+  withRateLimit('comment-create', 5, 60_000),
+  validate(createCommentSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const postId = c.req.param('postId')
+
+    // Verify post exists and is published
+    const post = await db
+      .select({ id: blogPost.id })
+      .from(blogPost)
+      .where(
+        and(eq(blogPost.id, postId), eq(blogPost.status, 'published'), isNull(blogPost.deletedAt))
+      )
+      .get()
+    if (!post) throw new NotFoundError('Post not found')
+
+    // If replying, verify parent comment exists and belongs to same post
+    if (parsed.parentId) {
+      const parent = await db
+        .select({ id: comment.id, parentId: comment.parentId })
+        .from(comment)
+        .where(and(eq(comment.id, parsed.parentId), eq(comment.postId, postId)))
+        .get()
+      if (!parent) throw new NotFoundError('Parent comment not found')
+      // Only allow one level of nesting
+      if (parent.parentId) throw new BadRequestError('Cannot reply to a reply')
+    }
+
+    // Spam detection
+    const spamResult = await detectSpam({
+      content: parsed.content,
+      db,
+      ipAddress: c.req.header('cf-connecting-ip') ?? '',
+      userId: currentUser.id,
+    })
+
+    // Auto-approve for admins, otherwise use spam result
+    const status: 'approved' | 'pending' | 'spam' =
+      currentUser.role === 'admin' ? 'approved' : spamResult.isSpam ? 'spam' : 'pending'
+
+    const id = uuid()
+    await db.insert(comment).values({
+      authorId: currentUser.id,
+      content: parsed.content,
+      htmlContent: parsed.content, // Stored as plain text for now
+      id,
+      ipAddress: c.req.header('cf-connecting-ip') ?? null,
+      moderatedAt: status !== 'pending' ? new Date() : null,
+      moderatedBy: status !== 'pending' ? currentUser.id : null,
+      parentId: parsed.parentId ?? null,
+      postId,
+      spamReason: spamResult.isSpam ? JSON.stringify(spamResult.reasons) : null,
+      spamScore: spamResult.score,
+      status,
+      userAgent: c.req.header('user-agent') ?? null,
+    })
+
+    await writeAuditLog(db, {
+      action: 'comment.create',
+      entityId: id,
+      entityType: 'comment',
+      metadata: { postId, spamScore: spamResult.score, status },
+      userId: currentUser.id,
+    })
+
+    // Notify post author
+    const postAuthor = await db
+      .select({ authorId: blogPost.authorId, title: blogPost.title })
+      .from(blogPost)
+      .where(eq(blogPost.id, postId))
+      .get()
+    if (postAuthor && postAuthor.authorId !== currentUser.id) {
+      await createNotification(db, {
+        body: `New comment on "${postAuthor.title}"`,
+        entityId: id,
+        entityType: 'comment',
+        title: 'New comment on your post',
+        type: 'info',
+        userId: postAuthor.authorId,
+      })
+    }
+
+    return c.json({ id, status }, 201)
+  }
+)
+
+protectedApp.patch('/comments/:id', validate(updateCommentSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
+  if (!existing) throw new NotFoundError()
+  if (existing.authorId !== currentUser.id) throw new ForbiddenError('Not your comment')
+
+  await db
+    .update(comment)
+    .set({
+      content: parsed.content,
+      editedAt: new Date(),
+      htmlContent: parsed.content,
+      updatedAt: new Date(),
+    })
+    .where(eq(comment.id, id))
+
+  return c.json({ success: true })
+})
+
+protectedApp.delete('/comments/:id', async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
+  if (!existing) throw new NotFoundError()
+  // Allow author or admin to delete
+  if (existing.authorId !== currentUser.id && currentUser.role !== 'admin') {
+    throw new ForbiddenError('Not your comment')
+  }
+
+  await db.delete(comment).where(eq(comment.id, id))
+
+  await writeAuditLog(db, {
+    action: 'comment.delete',
+    entityId: id,
+    entityType: 'comment',
+    metadata: { postId: existing.postId },
+    userId: currentUser.id,
+  })
 
   return c.json({ success: true })
 })
@@ -3695,6 +3928,153 @@ adminApp.delete('/announcements/:id', withRateLimit('announcement', 10, 60_000),
     action: 'announcement.delete',
     entityId: announcementId,
     entityType: 'announcement',
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
+// ── Comment Moderation (admin only) ────────────────────────────────────
+
+adminApp.get('/comments', async (c) => {
+  const { db } = c.get('services')
+  const statusFilter = c.req.query('status') as
+    | 'approved'
+    | 'pending'
+    | 'rejected'
+    | 'spam'
+    | undefined
+  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '25')))
+  const offset = (page - 1) * limit
+
+  const conditions = statusFilter ? eq(comment.status, statusFilter) : undefined
+
+  const [comments, totalResult] = await Promise.all([
+    db
+      .select({
+        authorEmail: user.email,
+        authorName: user.name,
+        content: comment.content,
+        createdAt: comment.createdAt,
+        id: comment.id,
+        moderatedAt: comment.moderatedAt,
+        postId: comment.postId,
+        postTitle: blogPost.title,
+        spamReason: comment.spamReason,
+        spamScore: comment.spamScore,
+        status: comment.status,
+      })
+      .from(comment)
+      .innerJoin(user, eq(comment.authorId, user.id))
+      .leftJoin(blogPost, eq(comment.postId, blogPost.id))
+      .where(conditions)
+      .orderBy(desc(comment.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(comment)
+      .where(conditions)
+      .get(),
+  ])
+
+  return c.json({
+    comments,
+    page,
+    total: totalResult?.count ?? 0,
+  })
+})
+
+adminApp.get('/comments/stats', async (c) => {
+  const { db } = c.get('services')
+  const [pending, spam, approved, rejected] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(comment)
+      .where(eq(comment.status, 'pending'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(comment)
+      .where(eq(comment.status, 'spam'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(comment)
+      .where(eq(comment.status, 'approved'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(comment)
+      .where(eq(comment.status, 'rejected'))
+      .get(),
+  ])
+  return c.json({
+    approved: approved?.count ?? 0,
+    pending: pending?.count ?? 0,
+    rejected: rejected?.count ?? 0,
+    spam: spam?.count ?? 0,
+  })
+})
+
+adminApp.patch('/comments/:id/moderate', validate(moderateCommentSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
+  if (!existing) throw new NotFoundError()
+
+  await db
+    .update(comment)
+    .set({
+      moderatedAt: new Date(),
+      moderatedBy: currentUser.id,
+      status: parsed.status,
+      updatedAt: new Date(),
+    })
+    .where(eq(comment.id, id))
+
+  await writeAuditLog(db, {
+    action: 'comment.moderate',
+    entityId: id,
+    entityType: 'comment',
+    metadata: { from: existing.status, to: parsed.status },
+    userId: currentUser.id,
+  })
+
+  // Notify comment author
+  if (parsed.status === 'approved') {
+    await createNotification(db, {
+      body: 'Your comment has been approved',
+      entityId: id,
+      entityType: 'comment',
+      title: 'Comment approved',
+      type: 'success',
+      userId: existing.authorId,
+    })
+  }
+
+  return c.json({ success: true })
+})
+
+adminApp.delete('/comments/:id', async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
+  if (!existing) throw new NotFoundError()
+
+  await db.delete(comment).where(eq(comment.id, id))
+
+  await writeAuditLog(db, {
+    action: 'comment.admin_delete',
+    entityId: id,
+    entityType: 'comment',
+    metadata: { originalStatus: existing.status, postId: existing.postId },
     userId: currentUser.id,
   })
 

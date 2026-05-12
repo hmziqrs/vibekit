@@ -2,6 +2,7 @@
 	import SeoHead from '$lib/components/seo-head.svelte'
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
+	import CommentSection from '$lib/components/comment-section.svelte'
 
 	const { data } = $props()
 
@@ -74,6 +75,8 @@
 		<div class="prose prose-invert max-none">
 			{@html data.post.contentHtml}
 		</div>
+
+		<CommentSection postId={data.post.id} />
 
 		{#if data.series.length > 0}
 			{#each data.series as s}

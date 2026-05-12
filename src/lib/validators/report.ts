@@ -7,7 +7,15 @@ export const createReportSchema = z.object({
     .trim()
     .optional(),
   entityId: z.string().min(1, 'Entity ID is required'),
-  entityType: z.enum(['blogPost', 'contactSubmission', 'item', 'organization', 'team', 'user']),
+  entityType: z.enum([
+    'blogPost',
+    'comment',
+    'contactSubmission',
+    'item',
+    'organization',
+    'team',
+    'user',
+  ]),
   reason: z.enum(['harassment', 'inappropriate', 'misinformation', 'other', 'spam']),
 })
 

@@ -1,5 +1,6 @@
 export * from './auth'
 export * from './blog'
+export * from './comment'
 export * from './common'
 export * from './config'
 export * from './item'

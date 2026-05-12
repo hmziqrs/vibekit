@@ -667,4 +667,66 @@ export const notificationRelations = relations(notification, ({ one }) => ({
   }),
 }))
 
+export const comment = sqliteTable(
+  'comment',
+  {
+    authorId: text('author_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    editedAt: integer('edited_at', { mode: 'timestamp_ms' }),
+    htmlContent: text('html_content'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    ipAddress: text('ip_address'),
+    moderatedAt: integer('moderated_at', { mode: 'timestamp_ms' }),
+    moderatedBy: text('moderated_by').references(() => user.id, { onDelete: 'set null' }),
+    parentId: text('parent_id').references(
+      // eslint-disable-next-line unicorn/no-useless-undefined
+      (): typeof comment => comment,
+      { onDelete: 'cascade' }
+    ),
+    postId: text('post_id')
+      .notNull()
+      .references(() => blogPost.id, { onDelete: 'cascade' }),
+    spamReason: text('spam_reason'),
+    spamScore: integer('spam_score').default(0),
+    status: text('status', {
+      enum: ['approved', 'pending', 'rejected', 'spam'],
+    })
+      .default('pending')
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+    userAgent: text('user_agent'),
+  },
+  (table) => [
+    index('comment_post_status_idx').on(table.postId, table.status, table.createdAt),
+    index('comment_parent_idx').on(table.parentId),
+    index('comment_author_idx').on(table.authorId),
+    index('comment_status_created_idx').on(table.status, table.createdAt),
+  ]
+)
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  author: one(user, { fields: [comment.authorId], references: [user.id] }),
+  moderator: one(user, {
+    fields: [comment.moderatedBy],
+    references: [user.id],
+    relationName: 'commentModerator',
+  }),
+  parent: one(comment, {
+    fields: [comment.parentId],
+    references: [comment.id],
+    relationName: 'commentReplies',
+  }),
+  post: one(blogPost, { fields: [comment.postId], references: [blogPost.id] }),
+}))
+
 export * from './auth.schema'
