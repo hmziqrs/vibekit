@@ -8,8 +8,10 @@ import {
   announcement,
   blogPost,
   blogPostRevision,
+  blogPostSeries,
   blogPostSlugHistory,
   blogPostTag,
+  blogSeries,
   blogTag,
   contactSubmission,
   contentReport,
@@ -42,6 +44,7 @@ import {
   createItemSchema,
   createOrganizationSchema,
   createPostSchema,
+  createSeriesSchema,
   createReportSchema,
   createTeamSchema,
   addTeamMemberSchema,
@@ -54,6 +57,7 @@ import {
   updateMemberRoleSchema,
   updateOrganizationSchema,
   updatePostSchema,
+  updateSeriesSchema,
   updateTeamMemberRoleSchema,
   updateTeamSchema,
 } from '$lib/validators'
@@ -996,6 +1000,12 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
     await db.insert(blogPostTag).values(parsed.tagIds.map((tagId) => ({ postId: id, tagId })))
   }
 
+  if (parsed.seriesIds?.length) {
+    await db
+      .insert(blogPostSeries)
+      .values(parsed.seriesIds.map((s) => ({ postId: id, seriesId: s.id, sortOrder: s.sortOrder })))
+  }
+
   await writeAuditLog(db, {
     action: 'blog.create',
     entityId: id,
@@ -1005,6 +1015,199 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
   })
 
   return c.json({ id }, 201)
+})
+
+// ── Tags ────────────────────────────────────────────────────────────
+
+blogApp.get('/tags', async (c) => {
+  const { db } = c.get('services')
+  const tags = await db
+    .select({
+      id: blogTag.id,
+      name: blogTag.name,
+      postCount: sql<number>`(select count(*) from ${blogPostTag} where ${blogPostTag.tagId} = ${blogTag.id})`,
+      slug: blogTag.slug,
+    })
+    .from(blogTag)
+    .orderBy(blogTag.name)
+  return c.json({ tags })
+})
+
+blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
+  const { name } = (await c.req.json()) as { name?: string }
+  if (!name?.trim()) throw new BadRequestError('Tag name is required')
+
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+
+  const slugValue = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  const existing = await db
+    .select({ id: blogTag.id })
+    .from(blogTag)
+    .where(eq(blogTag.slug, slugValue))
+    .get()
+  if (existing) throw new ConflictError('Tag already exists')
+
+  const id = uuid()
+  await db.insert(blogTag).values({ id, name: name.trim(), slug: slugValue })
+
+  await writeAuditLog(db, {
+    action: 'blog_tag.create',
+    entityId: id,
+    entityType: 'blog_tag',
+    metadata: { name: name.trim(), slug: slugValue },
+    userId: currentUser.id,
+  })
+
+  return c.json({ id }, 201)
+})
+
+blogApp.delete('/tags/:id', withRateLimit('blog-mutate'), async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ name: blogTag.name })
+    .from(blogTag)
+    .where(eq(blogTag.id, id))
+    .get()
+  if (!existing) throw new NotFoundError()
+
+  await db.delete(blogPostTag).where(eq(blogPostTag.tagId, id))
+  await db.delete(blogTag).where(eq(blogTag.id, id))
+
+  await writeAuditLog(db, {
+    action: 'blog_tag.delete',
+    entityId: id,
+    entityType: 'blog_tag',
+    metadata: { name: existing.name },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
+// ── Series ──────────────────────────────────────────────────────────
+
+blogApp.get('/series', async (c) => {
+  const { db } = c.get('services')
+  const series = await db
+    .select({
+      coverImageUrl: blogSeries.coverImageUrl,
+      description: blogSeries.description,
+      id: blogSeries.id,
+      name: blogSeries.name,
+      postCount: sql<number>`(select count(*) from ${blogPostSeries} where ${blogPostSeries.seriesId} = ${blogSeries.id})`,
+      slug: blogSeries.slug,
+    })
+    .from(blogSeries)
+    .orderBy(blogSeries.name)
+  return c.json({ series })
+})
+
+blogApp.post('/series', withRateLimit('blog-mutate'), validate(createSeriesSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+
+  const existing = await db
+    .select({ id: blogSeries.id })
+    .from(blogSeries)
+    .where(eq(blogSeries.slug, parsed.slug))
+    .get()
+  if (existing) throw new ConflictError('Series slug already exists')
+
+  const id = uuid()
+  await db.insert(blogSeries).values({
+    coverImageUrl: toNullable(parsed.coverImageUrl),
+    description: toNullable(parsed.description),
+    id,
+    name: parsed.name,
+    slug: parsed.slug,
+  })
+
+  await writeAuditLog(db, {
+    action: 'blog_series.create',
+    entityId: id,
+    entityType: 'blog_series',
+    metadata: { name: parsed.name, slug: parsed.slug },
+    userId: currentUser.id,
+  })
+
+  return c.json({ id }, 201)
+})
+
+blogApp.patch(
+  '/series/:id',
+  withRateLimit('blog-mutate'),
+  validate(updateSeriesSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const id = c.req.param('id')
+
+    const existing = await db.select().from(blogSeries).where(eq(blogSeries.id, id)).get()
+    if (!existing) throw new NotFoundError()
+
+    const updates: Partial<typeof blogSeries.$inferInsert> = { updatedAt: new Date() }
+    if (parsed.name !== undefined) updates.name = parsed.name
+    if (parsed.description !== undefined) updates.description = parsed.description
+    if (parsed.coverImageUrl !== undefined) updates.coverImageUrl = parsed.coverImageUrl
+    if (parsed.slug !== undefined && parsed.slug !== existing.slug) {
+      const slugConflict = await db
+        .select({ id: blogSeries.id })
+        .from(blogSeries)
+        .where(eq(blogSeries.slug, parsed.slug))
+        .get()
+      if (slugConflict) throw new ConflictError('Series slug already exists')
+      updates.slug = parsed.slug
+    }
+
+    await db.update(blogSeries).set(updates).where(eq(blogSeries.id, id))
+
+    await writeAuditLog(db, {
+      action: 'blog_series.update',
+      entityId: id,
+      entityType: 'blog_series',
+      metadata: { name: existing.name, slug: existing.slug },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
+  }
+)
+
+blogApp.delete('/series/:id', withRateLimit('blog-mutate'), async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ name: blogSeries.name })
+    .from(blogSeries)
+    .where(eq(blogSeries.id, id))
+    .get()
+  if (!existing) throw new NotFoundError()
+
+  await db.delete(blogPostSeries).where(eq(blogPostSeries.seriesId, id))
+  await db.delete(blogSeries).where(eq(blogSeries.id, id))
+
+  await writeAuditLog(db, {
+    action: 'blog_series.delete',
+    entityId: id,
+    entityType: 'blog_series',
+    metadata: { name: existing.name },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
 })
 
 blogApp.get('/:id', async (c) => {
@@ -1076,6 +1279,15 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
     await db.delete(blogPostTag).where(eq(blogPostTag.postId, id))
     if (data.tagIds.length > 0) {
       await db.insert(blogPostTag).values(data.tagIds.map((tagId) => ({ postId: id, tagId })))
+    }
+  }
+
+  if (data.seriesIds !== undefined) {
+    await db.delete(blogPostSeries).where(eq(blogPostSeries.postId, id))
+    if (data.seriesIds.length > 0) {
+      await db
+        .insert(blogPostSeries)
+        .values(data.seriesIds.map((s) => ({ postId: id, seriesId: s.id, sortOrder: s.sortOrder })))
     }
   }
 
@@ -1269,51 +1481,6 @@ blogApp.post('/bulk-archive', withRateLimit('blog-mutate'), async (c) => {
 
   await c.get('services').cache.purgeBlog()
   return c.json({ archived: ids.length, success: true })
-})
-
-// ── Tags ────────────────────────────────────────────────────────────
-
-blogApp.get('/tags', async (c) => {
-  const { db } = c.get('services')
-  const tags = await db
-    .select({
-      id: blogTag.id,
-      name: blogTag.name,
-      postCount: sql<number>`(select count(*) from ${blogPostTag} where ${blogPostTag.tagId} = ${blogTag.id})`,
-      slug: blogTag.slug,
-    })
-    .from(blogTag)
-    .orderBy(blogTag.name)
-  return c.json({ tags })
-})
-
-blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
-  const { name } = (await c.req.json()) as { name?: string }
-  if (!name?.trim()) throw new BadRequestError('Name is required')
-
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-  const { db } = c.get('services')
-
-  const existing = await db
-    .select({ id: blogTag.id })
-    .from(blogTag)
-    .where(eq(blogTag.slug, slug))
-    .get()
-  if (existing) throw new ConflictError('Tag already exists')
-
-  const id = uuid()
-  await db.insert(blogTag).values({ id, name: name.trim(), slug })
-  return c.json({ id, name: name.trim(), slug }, 201)
-})
-
-blogApp.delete('/tags/:id', withRateLimit('blog-mutate'), async (c) => {
-  const { db } = c.get('services')
-  await db.delete(blogPostTag).where(eq(blogPostTag.tagId, c.req.param('id')))
-  await db.delete(blogTag).where(eq(blogTag.id, c.req.param('id')))
-  return c.json({ success: true })
 })
 
 // ── Media ───────────────────────────────────────────────────────────

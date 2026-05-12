@@ -1,8 +1,15 @@
 import { renderAndSanitize } from '$lib/markdown'
 import { user } from '$lib/server/db/auth.schema'
-import { blogPost, blogPostSlugHistory, blogPostTag, blogTag } from '$lib/server/db/schema'
+import {
+  blogPost,
+  blogPostSeries,
+  blogPostSlugHistory,
+  blogPostTag,
+  blogSeries,
+  blogTag,
+} from '$lib/server/db/schema'
 import { redirect } from '@sveltejs/kit'
-import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -20,7 +27,6 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
   const { db } = locals.services
   const { slug } = params
 
-  // Try to find published, non-deleted post by slug with author
   const [post] = await db
     .select({
       authorImage: user.image,
@@ -38,7 +44,6 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
     const contentHtml = post.post.contentBody ? renderAndSanitize(post.post.contentBody) : ''
     const readingTime = estimateReadingTime(contentHtml)
 
-    // Fetch tags for this post
     const tags = await db
       .select({ name: blogTag.name, slug: blogTag.slug })
       .from(blogPostTag)
@@ -85,6 +90,51 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
         .limit(3)
     }
 
+    // Fetch series this post belongs to, with all posts in each series
+    const postSeriesRows = await db
+      .select({
+        series: blogSeries,
+      })
+      .from(blogPostSeries)
+      .innerJoin(blogSeries, eq(blogPostSeries.seriesId, blogSeries.id))
+      .where(eq(blogPostSeries.postId, post.post.id))
+
+    type SeriesEntry = {
+      description: string | null
+      id: string
+      name: string
+      posts: Array<{ isActive: boolean; slug: string; sortOrder: number; title: string }>
+      slug: string
+    }
+
+    const series: SeriesEntry[] = []
+
+    for (const row of postSeriesRows) {
+      const seriesPosts = await db
+        .select({
+          slug: blogPost.slug,
+          sortOrder: blogPostSeries.sortOrder,
+          title: blogPost.title,
+        })
+        .from(blogPostSeries)
+        .innerJoin(blogPost, eq(blogPostSeries.postId, blogPost.id))
+        .where(and(eq(blogPostSeries.seriesId, row.series.id), eq(blogPost.status, 'published')))
+        .orderBy(asc(blogPostSeries.sortOrder))
+
+      series.push({
+        description: row.series.description,
+        id: row.series.id,
+        name: row.series.name,
+        posts: seriesPosts.map((p) => ({
+          isActive: p.slug === post.post.slug,
+          slug: p.slug,
+          sortOrder: p.sortOrder,
+          title: p.title,
+        })),
+        slug: row.series.slug,
+      })
+    }
+
     return {
       post: {
         ...post.post,
@@ -95,6 +145,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
         tags,
       },
       relatedPosts,
+      series,
     }
   }
 

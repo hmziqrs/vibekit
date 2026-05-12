@@ -8,24 +8,27 @@
   import MediaLibrary from '$lib/components/media-library.svelte'
   import ArticleSearch from '$lib/components/article-search.svelte'
   import { updatePostSchema } from '$lib/validators/blog'
+  import { createQuery } from '@tanstack/svelte-query'
 
   const {
     data,
   }: {
     data: {
       post: {
-        id: string
-        title: string
-        slug: string
-        excerpt: string | null
+        canonicalUrl: string | null
         contentBody: string | null
         coverImageUrl: string | null
-        status: string
-        seoTitle: string | null
-        seoDescription: string | null
-        canonicalUrl: string | null
+        excerpt: string | null
+        id: string
         ogImageUrl: string | null
+        seoDescription: string | null
+        seoTitle: string | null
+        slug: string
+        status: string
+        title: string
       }
+      postSeries: Array<{ id: string; name: string; sortOrder: number }>
+      postTags: Array<{ id: string; name: string }>
     }
   } = $props()
 
@@ -48,12 +51,94 @@
   let showArticleSearch = $state(false)
   let showSchedulePicker = $state(false)
   let scheduleDate = $state('')
-  let activeTab = $state<'toc' | 'seo'>('toc')
+  let activeTab = $state<'metadata' | 'seo' | 'toc'>('metadata')
+
+  let selectedTagIds = $state<Set<string>>(new Set(data.postTags.map((t) => t.id)))
+  let selectedSeries = $state<Map<string, number>>(
+    new Map(data.postSeries.map((s) => [s.id, s.sortOrder])),
+  )
+  let tagSearch = $state('')
+  let seriesSearch = $state('')
+
+  const allTagsQuery = createQuery(() => ({
+    queryFn: async () => {
+      const res = await fetch('/api/blog/tags')
+      if (!res.ok) throw new Error('Failed to fetch tags')
+      return (await res.json()) as {
+        tags: Array<{ id: string; name: string; postCount: number; slug: string }>
+      }
+    },
+    queryKey: ['admin', 'tags'],
+    retry: 1,
+  }))
+
+  const allSeriesQuery = createQuery(() => ({
+    queryFn: async () => {
+      const res = await fetch('/api/blog/series')
+      if (!res.ok) throw new Error('Failed to fetch series')
+      return (await res.json()) as {
+        series: Array<{
+          coverImageUrl: string | null
+          description: string | null
+          id: string
+          name: string
+          postCount: number
+          slug: string
+        }>
+      }
+    },
+    queryKey: ['admin', 'series'],
+    retry: 1,
+  }))
+
+  let filteredTags = $derived(
+    tagSearch
+      ? (allTagsQuery.data?.tags ?? []).filter((t) =>
+          t.name.toLowerCase().includes(tagSearch.toLowerCase()),
+        )
+      : (allTagsQuery.data?.tags ?? []),
+  )
+
+  let filteredSeries = $derived(
+    seriesSearch
+      ? (allSeriesQuery.data?.series ?? []).filter((s) =>
+          s.name.toLowerCase().includes(seriesSearch.toLowerCase()),
+        )
+      : (allSeriesQuery.data?.series ?? []),
+  )
+
+  function toggleTag(id: string) {
+    const next = new Set(selectedTagIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    selectedTagIds = next
+  }
+
+  function toggleSeries(id: string) {
+    const next = new Map(selectedSeries)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.set(id, next.size)
+    }
+    selectedSeries = next
+  }
+
+  function updateSeriesOrder(id: string, order: number) {
+    const next = new Map(selectedSeries)
+    next.set(id, order)
+    selectedSeries = next
+  }
 
   $effect(() => {
     const el = editorWrapperEl
     if (!el) return
-    const handler = () => { showArticleSearch = true }
+    const handler = () => {
+      showArticleSearch = true
+    }
     el.addEventListener('open-article-search', handler)
     return () => el.removeEventListener('open-article-search', handler)
   })
@@ -91,6 +176,11 @@
     errors = {}
     serverError = ''
 
+    const seriesIds = [...selectedSeries.entries()].map(([id, sortOrder]) => ({
+      id,
+      sortOrder,
+    }))
+
     const result = updatePostSchema.safeParse({
       canonicalUrl: canonicalUrl || null,
       contentBody: contentBody || null,
@@ -99,7 +189,9 @@
       ogImageUrl: ogImageUrl || null,
       seoDescription: seoDescription || null,
       seoTitle: seoTitle || null,
+      seriesIds,
       slug,
+      tagIds: [...selectedTagIds],
       title,
     })
     if (!result.success) {
@@ -120,7 +212,9 @@
           ogImageUrl: ogImageUrl || null,
           seoDescription: seoDescription || null,
           seoTitle: seoTitle || null,
+          seriesIds,
           slug,
+          tagIds: [...selectedTagIds],
           title,
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -220,12 +314,12 @@
 
 <form onsubmit={handleSubmit} class="mt-8" novalidate>
   {#if serverError}
-    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400 mb-6">{serverError}</p>
+    <p class="mb-6 rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
   {/if}
 
   <div class="flex gap-6">
     <!-- Main content area -->
-    <div class="flex-1 min-w-0 space-y-6">
+    <div class="min-w-0 flex-1 space-y-6">
       <div>
         <label for="title" class="mb-2 block text-sm font-medium text-text-secondary">Title</label>
         <input
@@ -255,7 +349,9 @@
       </div>
 
       <div>
-        <label for="excerpt" class="mb-2 block text-sm font-medium text-text-secondary">Excerpt</label>
+        <label for="excerpt" class="mb-2 block text-sm font-medium text-text-secondary"
+          >Excerpt</label
+        >
         <input
           id="excerpt"
           bind:value={excerpt}
@@ -278,12 +374,12 @@
       {/if}
 
       <div>
-        <div class="flex items-center justify-between mb-2">
+        <div class="mb-2 flex items-center justify-between">
           <label class="text-sm font-medium text-text-secondary">Content</label>
           <button
             type="button"
             onclick={() => (showMediaLibrary = true)}
-            class="text-[12px] text-text-muted hover:text-brand transition-colors"
+            class="text-[12px] text-text-muted transition-colors hover:text-brand"
           >
             Media Library
           </button>
@@ -330,7 +426,7 @@
           </button>
           <button
             type="button"
-            onclick={() => showSchedulePicker = true}
+            onclick={() => (showSchedulePicker = true)}
             disabled={saving}
             class="rounded-lg border border-blue-500/30 px-5 py-2.5 text-[13px] font-medium text-blue-400 transition-colors hover:bg-blue-500/10"
           >
@@ -381,12 +477,21 @@
     <!-- Sidebar -->
     <div class="w-72 shrink-0">
       <div class="sticky top-8 space-y-0">
-        <div class="flex border-b border-border mb-4">
+        <div class="mb-4 flex border-b border-border">
+          <button
+            type="button"
+            onclick={() => (activeTab = 'metadata')}
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors {activeTab === 'metadata'
+              ? 'border-b-2 border-brand text-brand'
+              : 'text-text-muted hover:text-text-secondary'}"
+          >
+            Tags & Series
+          </button>
           <button
             type="button"
             onclick={() => (activeTab = 'toc')}
             class="flex-1 px-3 py-2 text-xs font-medium transition-colors {activeTab === 'toc'
-              ? 'text-brand border-b-2 border-brand'
+              ? 'border-b-2 border-brand text-brand'
               : 'text-text-muted hover:text-text-secondary'}"
           >
             Outline
@@ -395,7 +500,7 @@
             type="button"
             onclick={() => (activeTab = 'seo')}
             class="flex-1 px-3 py-2 text-xs font-medium transition-colors {activeTab === 'seo'
-              ? 'text-brand border-b-2 border-brand'
+              ? 'border-b-2 border-brand text-brand'
               : 'text-text-muted hover:text-text-secondary'}"
           >
             SEO & Social
@@ -403,7 +508,157 @@
         </div>
 
         <div class="rounded-lg border border-border bg-surface-base p-4">
-          {#if activeTab === 'toc'}
+          {#if activeTab === 'metadata'}
+            <!-- Tags section -->
+            <div class="mb-5">
+              <h3 class="mb-2 text-xs font-semibold text-text-secondary">Tags</h3>
+              {#if selectedTagIds.size > 0}
+                <div class="mb-2 flex flex-wrap gap-1.5">
+                  {#each [...selectedTagIds] as tagId}
+                    {@const tag = (allTagsQuery.data?.tags ?? []).find((t) => t.id === tagId)}
+                    {#if tag}
+                      <span
+                        class="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[11px] font-medium text-brand"
+                      >
+                        {tag.name}
+                        <button
+                          type="button"
+                          onclick={() => toggleTag(tagId)}
+                          class="text-brand/60 hover:text-brand"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
+              <input
+                type="text"
+                bind:value={tagSearch}
+                placeholder="Search tags..."
+                class="w-full rounded-md border border-border bg-input px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+              {#if allTagsQuery.isPending}
+                <p class="mt-1 text-[11px] text-text-faint">Loading tags...</p>
+              {:else if filteredTags.length > 0}
+                <div class="mt-1.5 max-h-32 overflow-y-auto">
+                  {#each filteredTags as tag (tag.id)}
+                    <button
+                      type="button"
+                      onclick={() => toggleTag(tag.id)}
+                      class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-colors {selectedTagIds.has(tag.id)
+                        ? 'bg-brand/10 text-brand'
+                        : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary'}"
+                    >
+                      <span
+                        class="flex size-3.5 shrink-0 items-center justify-center rounded border {selectedTagIds.has(tag.id)
+                          ? 'border-brand bg-brand text-brand-foreground'
+                          : 'border-border'}"
+                      >
+                        {#if selectedTagIds.has(tag.id)}
+                          <svg class="size-2.5" viewBox="0 0 12 12" fill="none">
+                            <path
+                              d="M2 6l3 3 5-5"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        {/if}
+                      </span>
+                      <span class="flex-1">{tag.name}</span>
+                      <span class="text-text-faint">{tag.postCount}</span>
+                    </button>
+                  {/each}
+                </div>
+              {:else}
+                <p class="mt-1 text-[11px] text-text-faint">No tags found</p>
+              {/if}
+            </div>
+
+            <!-- Series section -->
+            <div>
+              <h3 class="mb-2 text-xs font-semibold text-text-secondary">Series</h3>
+              {#if selectedSeries.size > 0}
+                <div class="mb-2 space-y-1">
+                  {#each [...selectedSeries.entries()] as [seriesId, order] (seriesId)}
+                    {@const s = (allSeriesQuery.data?.series ?? []).find((ser) => ser.id === seriesId)}
+                    {#if s}
+                      <div
+                        class="flex items-center gap-2 rounded-md bg-brand/10 px-2.5 py-1 text-[11px]"
+                      >
+                        <span class="flex-1 font-medium text-brand">{s.name}</span>
+                        <input
+                          type="number"
+                          value={order}
+                          onchange={(e) =>
+                            updateSeriesOrder(seriesId, Number((e.target as HTMLInputElement).value))}
+                          min="0"
+                          class="w-10 rounded border border-brand/30 bg-transparent px-1 py-0.5 text-center text-[11px] text-brand focus:border-brand focus:outline-none"
+                          title="Sort order"
+                        />
+                        <button
+                          type="button"
+                          onclick={() => toggleSeries(seriesId)}
+                          class="text-brand/60 hover:text-brand"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
+              <input
+                type="text"
+                bind:value={seriesSearch}
+                placeholder="Search series..."
+                class="w-full rounded-md border border-border bg-input px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+              {#if allSeriesQuery.isPending}
+                <p class="mt-1 text-[11px] text-text-faint">Loading series...</p>
+              {:else if filteredSeries.length > 0}
+                <div class="mt-1.5 max-h-32 overflow-y-auto">
+                  {#each filteredSeries as s (s.id)}
+                    <button
+                      type="button"
+                      onclick={() => toggleSeries(s.id)}
+                      class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-colors {selectedSeries.has(s.id)
+                        ? 'bg-brand/10 text-brand'
+                        : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary'}"
+                    >
+                      <span
+                        class="flex size-3.5 shrink-0 items-center justify-center rounded border {selectedSeries.has(s.id)
+                          ? 'border-brand bg-brand text-brand-foreground'
+                          : 'border-border'}"
+                      >
+                        {#if selectedSeries.has(s.id)}
+                          <svg class="size-2.5" viewBox="0 0 12 12" fill="none">
+                            <path
+                              d="M2 6l3 3 5-5"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        {/if}
+                      </span>
+                      <span class="flex-1">{s.name}</span>
+                      <span class="text-text-faint">{s.postCount}</span>
+                    </button>
+                  {/each}
+                </div>
+              {:else}
+                <p class="mt-1 text-[11px] text-text-faint">
+                  No series found.
+                  <a href="/admin/blog/series" class="text-brand hover:underline">Create one</a>
+                </p>
+              {/if}
+            </div>
+          {:else if activeTab === 'toc'}
             <TocPanel {editor} />
           {:else}
             <SeoPanel

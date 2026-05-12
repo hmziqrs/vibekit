@@ -75,6 +75,34 @@
 			{@html data.post.contentHtml}
 		</div>
 
+		{#if data.series.length > 0}
+			{#each data.series as s}
+				<section class="mt-12 rounded-lg border border-border bg-surface p-6">
+					<h2 class="mb-1 text-lg font-semibold text-text-primary">
+						<a href="/blog/series/{s.slug}" class="transition-colors hover:text-brand">{s.name}</a>
+					</h2>
+					{#if s.description}
+						<p class="mb-4 text-sm text-text-muted">{s.description}</p>
+					{/if}
+					<ol class="space-y-2">
+						{#each s.posts as p, i}
+							<li>
+								<a
+									href="/blog/{p.slug}"
+									class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {p.isActive
+										? 'bg-brand/10 font-medium text-brand'
+										: 'text-text-secondary hover:bg-surface-elevated hover:text-text-primary'}"
+								>
+									<span class="w-5 shrink-0 text-xs text-text-faint">{i + 1}.</span>
+									<span>{p.title}</span>
+								</a>
+							</li>
+						{/each}
+					</ol>
+				</section>
+			{/each}
+		{/if}
+
 		{#if data.relatedPosts.length > 0}
 			<section class="mt-16 border-t border-border pt-10">
 				<h2 class="mb-6 text-xl font-semibold text-text-primary">Related Posts</h2>

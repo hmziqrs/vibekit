@@ -148,7 +148,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Scheduled publishing (set future publishedAt, cron promotes drafts)
   - [x] Related posts by tag overlap on single post page
   - [x] Copy-as-markdown option when viewing a post
-  - [ ] Series/collection support (group posts into named series with ordering)
+  - [x] Series/collection support (group posts into named series with ordering)
   - [ ] Comment system (threaded comments, moderation queue, spam filtering)
   - [ ] Newsletter integration (subscribe on blog, Mailchimp/Resend sync)
   - [ ] Analytics per post (view count, referrer tracking, reading completion)

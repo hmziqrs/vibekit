@@ -274,7 +274,7 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url
 
   // Skip for whitelisted paths (health check, announcements)
-  if (MAINTENANCE_WHITELIST.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+  if (MAINTENANCE_WHITELIST.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return resolve(event)
   }
 
@@ -284,7 +284,7 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
   }
 
   // Check maintenance mode
-  const services = event.locals.services
+  const { services } = event.locals
   if (services) {
     try {
       const [row] = await services.db

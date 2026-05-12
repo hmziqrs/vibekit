@@ -92,6 +92,40 @@ export const blogPostTag = sqliteTable(
   })
 )
 
+export const blogSeries = sqliteTable('blog_series', {
+  coverImageUrl: text('cover_image_url'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  description: text('description'),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+})
+
+export const blogPostSeries = sqliteTable(
+  'blog_post_series',
+  {
+    postId: text('post_id')
+      .notNull()
+      .references(() => blogPost.id, { onDelete: 'cascade' }),
+    seriesId: text('series_id')
+      .notNull()
+      .references(() => blogSeries.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.postId, table.seriesId] }),
+    postIdIdx: index('blog_post_series_post_id_idx').on(table.postId),
+    seriesIdIdx: index('blog_post_series_series_id_idx').on(table.seriesId),
+  })
+)
+
 export const blogPostSlugHistory = sqliteTable(
   'blog_post_slug_history',
   {
@@ -463,6 +497,7 @@ export const teamActivity = sqliteTable(
 // Drizzle relations for app tables
 export const blogPostRelations = relations(blogPost, ({ many, one }) => ({
   author: one(user, { fields: [blogPost.authorId], references: [user.id] }),
+  postSeries: many(blogPostSeries),
   postTags: many(blogPostTag),
   revisions: many(blogPostRevision),
   slugHistory: many(blogPostSlugHistory),
@@ -475,6 +510,15 @@ export const blogTagRelations = relations(blogTag, ({ many }) => ({
 export const blogPostTagRelations = relations(blogPostTag, ({ one }) => ({
   post: one(blogPost, { fields: [blogPostTag.postId], references: [blogPost.id] }),
   tag: one(blogTag, { fields: [blogPostTag.tagId], references: [blogTag.id] }),
+}))
+
+export const blogSeriesRelations = relations(blogSeries, ({ many }) => ({
+  postSeries: many(blogPostSeries),
+}))
+
+export const blogPostSeriesRelations = relations(blogPostSeries, ({ one }) => ({
+  post: one(blogPost, { fields: [blogPostSeries.postId], references: [blogPost.id] }),
+  series: one(blogSeries, { fields: [blogPostSeries.seriesId], references: [blogSeries.id] }),
 }))
 
 export const blogPostRevisionRelations = relations(blogPostRevision, ({ one }) => ({

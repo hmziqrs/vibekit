@@ -27,6 +27,7 @@ export const createPostSchema = z.object({
   ogImageUrl: urlOrPath,
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
+  seriesIds: z.array(z.object({ id: z.string(), sortOrder: z.number().int().min(0) })).optional(),
   slug,
   status: z.enum(['draft', 'published', 'archived', 'scheduled']).default('draft'),
   tagIds: z.array(z.string()).optional(),
@@ -44,9 +45,14 @@ export const updatePostSchema = z.object({
     .datetime()
     .optional()
     .nullable()
-    .transform((v) => (v ? new Date(v) : v === null ? null : undefined)),
+    .transform((v) => {
+      if (v) return new Date(v)
+      if (v === null) return null
+      return undefined
+    }),
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
+  seriesIds: z.array(z.object({ id: z.string(), sortOrder: z.number().int().min(0) })).optional(),
   slug: slug.optional(),
   status: z.enum(['draft', 'published', 'archived', 'scheduled']).optional(),
   tagIds: z.array(z.string()).optional(),
@@ -55,3 +61,20 @@ export const updatePostSchema = z.object({
 
 export type CreatePostInput = z.infer<typeof createPostSchema>
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
+
+export const createSeriesSchema = z.object({
+  coverImageUrl: z.string().url().optional().nullable(),
+  description: z.string().max(1000).trim().optional().nullable(),
+  name: z.string().min(1, 'Name is required').max(200).trim(),
+  slug,
+})
+
+export const updateSeriesSchema = z.object({
+  coverImageUrl: z.string().url().optional().nullable(),
+  description: z.string().max(1000).trim().optional().nullable(),
+  name: z.string().min(1).max(200).trim().optional(),
+  slug: slug.optional(),
+})
+
+export type CreateSeriesInput = z.infer<typeof createSeriesSchema>
+export type UpdateSeriesInput = z.infer<typeof updateSeriesSchema>
