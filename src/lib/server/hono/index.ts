@@ -838,7 +838,12 @@ blogApp.get('/search', async (c) => {
     .where(
       and(
         isNull(blogPost.deletedAt),
-        or(like(blogPost.title, `%${q}%`), like(blogPost.slug, `%${q}%`))
+        or(
+          like(blogPost.title, `%${q}%`),
+          like(blogPost.slug, `%${q}%`),
+          like(blogPost.excerpt, `%${q}%`),
+          like(blogPost.contentBody, `%${q}%`)
+        )
       )
     )
     .orderBy(desc(blogPost.createdAt))
@@ -897,7 +902,14 @@ blogApp.get('/', async (c) => {
   }
 
   if (q && q.length >= 2) {
-    conditions.push(or(like(blogPost.title, `%${q}%`), like(blogPost.slug, `%${q}%`))!)
+    conditions.push(
+      or(
+        like(blogPost.title, `%${q}%`),
+        like(blogPost.slug, `%${q}%`),
+        like(blogPost.excerpt, `%${q}%`),
+        like(blogPost.contentBody, `%${q}%`)
+      )!
+    )
   }
 
   const whereClause = and(...conditions)!

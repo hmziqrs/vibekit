@@ -19,7 +19,13 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
   const conditions = [eq(blogPost.status, 'published'), isNull(blogPost.deletedAt)]
 
   if (q && q.length >= 2) {
-    conditions.push(or(like(blogPost.title, `%${q}%`), like(blogPost.excerpt, `%${q}%`))!)
+    conditions.push(
+      or(
+        like(blogPost.title, `%${q}%`),
+        like(blogPost.excerpt, `%${q}%`),
+        like(blogPost.contentBody, `%${q}%`)
+      )!
+    )
   }
 
   if (tagSlug) {
