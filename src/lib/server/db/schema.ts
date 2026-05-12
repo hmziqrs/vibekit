@@ -1395,4 +1395,40 @@ export const configVersion = sqliteTable(
   ]
 )
 
+export const uploadSession = sqliteTable(
+  'upload_session',
+  {
+    id: text('id')
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => uuid()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    fileName: text('file_name').notNull(),
+    fileSize: integer('file_size').notNull(),
+    fileType: text('file_type').notNull(),
+    storageKey: text('storage_key'),
+    chunkSize: integer('chunk_size').notNull(),
+    totalChunks: integer('total_chunks').notNull(),
+    receivedChunks: text('received_chunks', { mode: 'json' }).$type<number[]>().default([]),
+    status: text('status', { enum: ['pending', 'uploading', 'complete', 'failed', 'expired'] })
+      .default('pending')
+      .notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('upload_session_user_idx').on(table.userId),
+    index('upload_session_status_idx').on(table.status),
+    index('upload_session_expires_idx').on(table.expiresAt),
+  ]
+)
+
 export * from './auth.schema'

@@ -83,6 +83,7 @@ import {
   teamActivity,
   teamMember,
   user,
+  uploadSession,
   webhookDelivery,
   webhookEndpoint,
 } from '$lib/server/db/schema'
@@ -139,6 +140,17 @@ import {
 } from '$lib/server/push'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
+import {
+  cleanupExpiredSessions,
+  completeUploadSession,
+  createUploadSession,
+  deleteUploadSession,
+  failUploadSession,
+  getUploadProgress,
+  getUploadSession,
+  listUploadSessions,
+  recordChunk,
+} from '$lib/server/upload-session'
 import { uuid } from '$lib/server/uuid'
 import {
   createWebhookEndpoint,
@@ -202,6 +214,7 @@ import {
   toggleFeatureFlagSchema,
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
+import { createUploadSessionSchema, listUploadSessionsSchema } from '$lib/validators/upload'
 import {
   WEBHOOK_EVENT_TYPES,
   createWebhookEndpointSchema,
@@ -1113,6 +1126,62 @@ protectedApp.post('/upload-avatar', async (c) => {
   await db.update(user).set({ image: imageUrl }).where(eq(user.id, userId))
 
   return c.json({ image: imageUrl })
+})
+
+// ── Chunked Uploads (auth required) ────────────────────────────────────
+
+protectedApp.post('/uploads/session', validate(createUploadSessionSchema), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const input = c.req.valid('json')
+  const session = await createUploadSession(db, { ...input, userId })
+  return c.json(session, 201)
+})
+
+protectedApp.get('/uploads/session/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sessionId = c.req.param('id')
+  const session = await getUploadSession(db, sessionId)
+  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+  const progress = getUploadProgress(session)
+  return c.json({ ...session, progress })
+})
+
+protectedApp.post('/uploads/session/:id/chunk', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sessionId = c.req.param('id')
+  const session = await getUploadSession(db, sessionId)
+  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+
+  const chunkIndex = Number(c.req.query('index') ?? '0')
+  if (Number.isNaN(chunkIndex) || chunkIndex < 0) {
+    throw new BadRequestError('Invalid chunk index')
+  }
+
+  const result = await recordChunk(db, sessionId, chunkIndex)
+  return c.json(result)
+})
+
+protectedApp.delete('/uploads/session/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sessionId = c.req.param('id')
+  const session = await getUploadSession(db, sessionId)
+  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+  await deleteUploadSession(db, sessionId)
+  return c.json({ deleted: true })
+})
+
+protectedApp.get('/uploads/sessions', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const rawOpts = c.req.query()
+  const parsed = listUploadSessionsSchema.safeParse(rawOpts)
+  const options = parsed.success ? parsed.data : undefined
+  const sessions = await listUploadSessions(db, userId, options)
+  return c.json({ sessions })
 })
 
 // ── Account Data Export ────────────────────────────────────────────────
