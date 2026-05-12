@@ -21,6 +21,7 @@
   const navItems = [
     { href: '/app/dashboard', label: 'Dashboard' },
     { href: '/app/items', label: 'Items' },
+    { href: '/app/notifications', label: 'Notifications' },
     { href: '/app/organizations', label: 'Organizations' },
     { href: '/app/profile', label: 'Profile' },
     { href: '/app/settings', label: 'Settings' },

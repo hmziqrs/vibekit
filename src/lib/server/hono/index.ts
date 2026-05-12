@@ -20,6 +20,7 @@ import {
   contentReport,
   impersonationSession,
   notification,
+  notificationPreference,
   item,
   auditLog,
   organization,
@@ -41,7 +42,12 @@ import {
   isAppError,
   NotFoundError,
 } from '$lib/server/errors'
-import { createNotification } from '$lib/server/notifications'
+import {
+  createBroadcast,
+  createNotification,
+  getNotificationPreferences,
+  setNotificationPreference,
+} from '$lib/server/notifications'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
@@ -1192,6 +1198,40 @@ protectedApp.delete('/notifications/:id', async (c) => {
   }
 
   await db.delete(notification).where(eq(notification.id, id))
+
+  return c.json({ success: true })
+})
+
+// ── Notification Preferences (auth required) ──────────────────────────
+
+protectedApp.get('/notifications/preferences', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const prefs = await getNotificationPreferences(db, userId)
+
+  return c.json({ preferences: prefs })
+})
+
+protectedApp.patch('/notifications/preferences', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const body = await c.req.json<{ channel: 'email' | 'in_app'; enabled: boolean; type: string }>()
+
+  if (!body.channel || !body.type || typeof body.enabled !== 'boolean') {
+    throw new BadRequestError('channel, type, and enabled are required')
+  }
+
+  if (body.channel !== 'email' && body.channel !== 'in_app') {
+    throw new BadRequestError('channel must be "email" or "in_app"')
+  }
+
+  await setNotificationPreference(db, {
+    channel: body.channel,
+    enabled: body.enabled,
+    type: body.type,
+    userId,
+  })
 
   return c.json({ success: true })
 })
@@ -4583,6 +4623,67 @@ adminApp.delete('/comments/:id', async (c) => {
   })
 
   return c.json({ success: true })
+})
+
+// ── Admin Broadcasts ──────────────────────────────────────────────────
+
+adminApp.post('/notifications/broadcast', withRateLimit('broadcast', 5, 60_000), async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const body = await c.req.json<{
+    body?: string
+    link?: string
+    target: 'admins' | 'all'
+    title: string
+    type?: 'error' | 'info' | 'success' | 'warning'
+  }>()
+
+  if (!body.title?.trim()) {
+    throw new BadRequestError('title is required')
+  }
+
+  if (body.target !== 'all' && body.target !== 'admins') {
+    throw new BadRequestError('target must be "all" or "admins"')
+  }
+
+  const getUserIds = async (target: 'admins' | 'all') => {
+    const conditions = [isNull(user.deletedAt)]
+    if (target === 'admins') {
+      conditions.push(eq(user.role, 'admin'))
+    }
+    const rows = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(and(...conditions))
+    return rows.map((r) => r.id)
+  }
+
+  const count = await createBroadcast(
+    db,
+    {
+      body: body.body,
+      link: body.link,
+      target: body.target,
+      title: body.title.trim(),
+      type: body.type,
+    },
+    getUserIds
+  )
+
+  await writeAuditLog(db, {
+    action: 'notification.broadcast',
+    entityId: 'broadcast',
+    entityType: 'notification',
+    metadata: {
+      body: body.body,
+      recipientCount: count,
+      target: body.target,
+      title: body.title.trim(),
+    },
+    userId: currentUser.id,
+  })
+
+  return c.json({ count, success: true }, 201)
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────

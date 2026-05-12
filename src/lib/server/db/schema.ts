@@ -648,6 +648,7 @@ export const notification = sqliteTable(
     id: text('id')
       .primaryKey()
       .$defaultFn(() => uuid()),
+    link: text('link'),
     metadata: text('metadata'),
     readAt: integer('read_at', { mode: 'timestamp_ms' }),
     title: text('title').notNull(),
@@ -664,6 +665,29 @@ export const notification = sqliteTable(
 export const notificationRelations = relations(notification, ({ one }) => ({
   user: one(user, {
     fields: [notification.userId],
+    references: [user.id],
+  }),
+}))
+
+export const notificationPreference = sqliteTable(
+  'notification_preference',
+  {
+    channel: text('channel', { enum: ['email', 'in_app'] }).notNull(),
+    enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    type: text('type').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [index('notification_pref_user_type_idx').on(table.userId, table.type, table.channel)]
+)
+
+export const notificationPreferenceRelations = relations(notificationPreference, ({ one }) => ({
+  user: one(user, {
+    fields: [notificationPreference.userId],
     references: [user.id],
   }),
 }))

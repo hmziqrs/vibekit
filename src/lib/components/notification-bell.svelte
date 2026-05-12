@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { goto } from '$app/navigation'
   import { onDestroy } from 'svelte'
 
   interface NotificationData {
@@ -8,6 +9,7 @@
     entityId: string | null
     entityType: string | null
     id: string
+    link: string | null
     readAt: string | null
     title: string
     type: 'error' | 'info' | 'success' | 'warning'
@@ -55,6 +57,25 @@
   async function markAsRead(id: string) {
     await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
     queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  }
+
+  function getNotificationLink(n: NotificationData): string | null {
+    if (n.link) return n.link
+    if (n.entityType && n.entityId) {
+      return `/${n.entityType.replace('_', '-')}/${n.entityId}`
+    }
+    return null
+  }
+
+  async function handleNotificationClick(n: NotificationData) {
+    if (!n.readAt) {
+      await markAsRead(n.id)
+    }
+    const link = getNotificationLink(n)
+    if (link) {
+      open = false
+      goto(link)
+    }
   }
 
   async function markAllRead() {
@@ -135,7 +156,7 @@
         {:else}
           {#each listQuery.data?.notifications ?? [] as n (n.id)}
             <button
-              onclick={() => markAsRead(n.id)}
+              onclick={() => handleNotificationClick(n)}
               class="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04] {n.readAt ? 'opacity-60' : ''}"
             >
               <div class="mt-0.5 size-2 shrink-0 rounded-full {typeColor(n.type)} bg-current"></div>
