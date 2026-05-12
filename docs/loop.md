@@ -173,7 +173,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Webhooks & event bus (outbound webhook delivery, retry with exponential backoff, event subscription UI, payload signing, delivery logs)
 - [x] Public API documentation (OpenAPI spec generation, interactive API explorer, code examples in multiple languages, authentication guide)
 - [x] Third-party integrations framework (OAuth connector pattern, integration catalog, per-user credentials, connection health monitoring)
-- [ ] Zapier/n8n connector (expose actions and triggers for no-code automation platforms)
+- [x] Zapier/n8n connector (expose actions and triggers for no-code automation platforms)
 
 #### Feature Management
 - [ ] Feature flags & kill switches (gradual rollout by %/cohort, instant disable without deploy, A/B testing support, flag dependencies)

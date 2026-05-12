@@ -159,6 +159,7 @@ import {
   updatePlanSchema,
 } from '$lib/validators/billing'
 import {
+  WEBHOOK_EVENT_TYPES,
   createWebhookEndpointSchema,
   listDeliveriesSchema,
   updateWebhookEndpointSchema,
@@ -1847,6 +1848,110 @@ protectedApp.get('/webhooks/:id/deliveries', async (c) => {
   return c.json({ deliveries })
 })
 
+// ── Automation Manifest (public) ───────────────────────────────────────
+
+app.get('/api/automation/manifest', async (c) => {
+  const triggers = WEBHOOK_EVENT_TYPES.filter((t) => t !== '*').map((event) => ({
+    description: `Fires when a ${event.replace('.', ' ')} event occurs`,
+    event,
+    name: event,
+    payloadExample: {
+      data: { id: 'uuid', type: event.split('.')[0] },
+      eventType: event,
+      occurredAt: Date.now(),
+      webhookId: 'uuid',
+    },
+  }))
+
+  const actions = [
+    {
+      description: 'Retrieve a list of items',
+      endpoint: 'GET /api/items',
+      method: 'GET',
+      name: 'List Items',
+      path: '/api/items',
+    },
+    {
+      description: 'Create a new item',
+      endpoint: 'POST /api/items',
+      method: 'POST',
+      name: 'Create Item',
+      path: '/api/items',
+      requestBody: { content: 'string', title: 'string' },
+    },
+    {
+      description: 'Publish a blog post',
+      endpoint: 'POST /api/blog/:id/publish',
+      method: 'POST',
+      name: 'Publish Blog Post',
+      path: '/api/blog/:id/publish',
+    },
+    {
+      description: 'Search blog posts',
+      endpoint: 'GET /api/blog/search?q=...',
+      method: 'GET',
+      name: 'Search Blog',
+      path: '/api/blog/search',
+    },
+    {
+      description: 'Send a notification broadcast',
+      endpoint: 'POST /api/admin/notifications/broadcast',
+      method: 'POST',
+      name: 'Broadcast Notification',
+      path: '/api/admin/notifications/broadcast',
+      requestBody: { message: 'string', title: 'string' },
+    },
+    {
+      description: 'List organization members',
+      endpoint: 'GET /api/orgs/:orgId/members',
+      method: 'GET',
+      name: 'List Org Members',
+      path: '/api/orgs/:orgId/members',
+    },
+  ]
+
+  return c.json({
+    actions,
+    auth: {
+      description: 'API key with vk_ prefix',
+      headerName: 'Authorization',
+      headerValueFormat: 'Bearer vk_your_api_key',
+      scopes: [
+        'blog.read',
+        'blog.write',
+        'billing.read',
+        'items.read',
+        'items.write',
+        'orgs.read',
+        'orgs.write',
+        'teams.read',
+        'teams.write',
+        'users.read',
+        'webhooks.read',
+        'webhooks.write',
+        'analytics.read',
+      ],
+      type: 'bearer',
+    },
+    baseUrl: c.req.url.replace('/api/automation/manifest', '/api'),
+    name: 'Vibekit',
+    triggers,
+    version: '1.0.0',
+    webhookSetup: {
+      createEndpoint: 'POST /api/webhooks',
+      deleteEndpoint: 'DELETE /api/webhooks/:id',
+      description: 'Subscribe to events by creating webhook endpoints',
+      examplePayload: {
+        events: ['blog.create'],
+        url: 'https://your-app.com/webhooks/vibekit',
+      },
+      signatureHeader: 'X-Webhook-Signature',
+      signatureAlgorithm: 'HMAC-SHA256',
+      timestampHeader: 'X-Webhook-Timestamp',
+    },
+  })
+})
+
 // ── Integrations (auth required) ────────────────────────────────────────
 
 protectedApp.get('/integrations/providers', async (c) => {
@@ -1967,26 +2072,6 @@ app.get('/api/integrations/callback/:provider', async (c) => {
     const message = err instanceof Error ? err.message : 'Token exchange failed'
     return c.json({ error: message }, 500)
   }
-})
-
-// Admin integration routes
-adminApp.get('/admin/integrations', async (c) => {
-  const { db } = c.get('services')
-  const query = c.req.query()
-  const integrations = await listAllIntegrations(db, {
-    limit: Math.min(Number(query.limit ?? '50'), 100),
-    provider: query.provider,
-    status: query.status,
-  })
-  return c.json({ integrations })
-})
-
-adminApp.post('/admin/integrations/:id/health', async (c) => {
-  const { db } = c.get('services')
-  const integrationId = c.req.param('id')
-  const result = await checkIntegrationHealth(db, integrationId)
-  if (!result) throw new NotFoundError()
-  return c.json(result)
 })
 
 // ── Comments (auth required) ──────────────────────────────────────────
@@ -5598,6 +5683,26 @@ adminApp.post('/webhooks/:deliveryId/retry', async (c) => {
   const { db } = c.get('services')
   const deliveryId = c.req.param('deliveryId')
   const result = await retryWebhookDelivery(db, deliveryId)
+  if (!result) throw new NotFoundError()
+  return c.json(result)
+})
+
+// Admin integration routes
+adminApp.get('/integrations', async (c) => {
+  const { db } = c.get('services')
+  const query = c.req.query()
+  const integrations = await listAllIntegrations(db, {
+    limit: Math.min(Number(query.limit ?? '50'), 100),
+    provider: query.provider,
+    status: query.status,
+  })
+  return c.json({ integrations })
+})
+
+adminApp.post('/integrations/:id/health', async (c) => {
+  const { db } = c.get('services')
+  const integrationId = c.req.param('id')
+  const result = await checkIntegrationHealth(db, integrationId)
   if (!result) throw new NotFoundError()
   return c.json(result)
 })
