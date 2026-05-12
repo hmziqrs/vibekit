@@ -1024,4 +1024,33 @@ export const paymentMethodRelations = relations(paymentMethod, ({ one }) => ({
   user: one(user, { fields: [paymentMethod.userId], references: [user.id] }),
 }))
 
+// ── Push Notifications ─────────────────────────────────────────────────
+
+export const pushSubscription = sqliteTable(
+  'push_subscription',
+  {
+    auth: text('auth').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+      .notNull(),
+    endpoint: text('endpoint').notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    p256dh: text('p256dh').notNull(),
+    userAgent: text('user_agent'),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('push_sub_user_idx').on(table.userId),
+    index('push_sub_endpoint_idx').on(table.endpoint),
+  ]
+)
+
+export const pushSubscriptionRelations = relations(pushSubscription, ({ one }) => ({
+  user: one(user, { fields: [pushSubscription.userId], references: [user.id] }),
+}))
+
 export * from './auth.schema'

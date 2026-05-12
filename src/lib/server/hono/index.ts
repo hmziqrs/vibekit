@@ -45,6 +45,7 @@ import {
   organizationInvitation,
   organizationMember,
   paymentMethod,
+  pushSubscription,
   securityEvent,
   subscription,
   subscriptionPlan,
@@ -69,6 +70,13 @@ import {
   getNotificationPreferences,
   setNotificationPreference,
 } from '$lib/server/notifications'
+import {
+  configureWebPush,
+  getUserPushSubscriptions,
+  sendPushNotification,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '$lib/server/push'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
@@ -1539,6 +1547,77 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
   })
 
   return c.json({ success: true })
+})
+
+// ── Push Notifications (auth required) ──────────────────────────────────
+
+protectedApp.post('/push/subscribe', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const body = await c.req.json<{ auth: string; endpoint: string; p256dh: string }>()
+
+  if (!body.endpoint || !body.p256dh || !body.auth) {
+    throw new BadRequestError('endpoint, p256dh, and auth are required')
+  }
+
+  const userAgent = c.req.header('user-agent')
+  await subscribeToPush(db, {
+    auth: body.auth,
+    endpoint: body.endpoint,
+    p256dh: body.p256dh,
+    userAgent: userAgent ?? undefined,
+    userId,
+  })
+
+  return c.json({ success: true }, 201)
+})
+
+protectedApp.post('/push/unsubscribe', async (c) => {
+  const { db } = c.get('services')
+  const body = await c.req.json<{ endpoint: string }>()
+
+  if (!body.endpoint) {
+    throw new BadRequestError('endpoint is required')
+  }
+
+  await unsubscribeFromPush(db, body.endpoint)
+  return c.json({ success: true })
+})
+
+protectedApp.get('/push/subscriptions', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const subs = await getUserPushSubscriptions(db, userId)
+  return c.json({
+    subscriptions: subs.map((s) => ({
+      createdAt: s.createdAt,
+      endpoint: s.endpoint,
+      id: s.id,
+    })),
+  })
+})
+
+protectedApp.post('/push/test', withRateLimit('push-test', 3, 60_000), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const vapidPublicKey = c.env?.VAPID_PUBLIC_KEY
+  const vapidPrivateKey = c.env?.VAPID_PRIVATE_KEY
+  const vapidSubject = c.env?.VAPID_SUBJECT
+
+  if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
+    throw new BadRequestError('Push notifications not configured')
+  }
+
+  configureWebPush(vapidPublicKey, vapidPrivateKey, vapidSubject)
+
+  const result = await sendPushNotification(db, userId, {
+    body: 'This is a test push notification',
+    data: { url: '/app/notifications' },
+    title: 'Test Notification',
+  })
+
+  return c.json(result)
 })
 
 // ── Comments (auth required) ──────────────────────────────────────────

@@ -113,7 +113,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 #### Organizations & Teams
 - [x] Organizations & teams (org CRUD, member management, role assignment, team-scoped resources, org settings, transfer ownership)
 - [x] RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance in org hierarchy)
-- [ ] Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)
+- [x] Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)
 - [x] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)
 
 #### Admin & Moderation
@@ -165,7 +165,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] System-to-user alerts (payment receipts, admin warnings, broadcast announcements, account status changes)
 - [x] Email infrastructure (template system with preview, transactional emails, email queue with retries, bounce handling, unsubscribe flow)
 - [x] Email templates (welcome, verification, password reset, invoice, subscription changes, team invites, security alerts, custom templates via editor)
-- [ ] Push notifications (Web Push API, subscription management, notification click actions, browser compatibility)
+- [x] Push notifications (Web Push API, subscription management, notification click actions, browser compatibility)
 - [ ] Slack/Discord integration (workspace notifications, command slash commands, webhook delivery, channel-specific alerts)
 
 #### API & Integrations
