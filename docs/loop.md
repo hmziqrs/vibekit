@@ -204,7 +204,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
 
 #### Infrastructure & DevOps
-- [ ] CI/CD pipeline (GitHub Actions: lint → typecheck → test → build → preview deploy → production deploy, branch protection rules)
+- [x] CI/CD pipeline (GitHub Actions: lint → typecheck → test → build → preview deploy → production deploy, branch protection rules)
 - [ ] Staging environment (preview deploys per PR, environment variable management, smoke tests on staging)
 - [ ] Monitoring & observability (structured logging, error tracking Sentry integration, performance monitoring, uptime checks)
 - [ ] Health checks & readiness endpoints (liveness probe, dependency health: D1/R2/KV connectivity, degraded mode response)
