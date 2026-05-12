@@ -188,7 +188,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Search
 - [x] Full-text search infrastructure (Algolia/Meilisearch/Typesense integration, index management, relevance tuning)
-- [ ] Search UI (autocomplete/suggestions, faceted filters, search result previews, keyboard navigation, recent searches)
+- [x] Search UI (autocomplete/suggestions, faceted filters, search result previews, keyboard navigation, recent searches)
 - [ ] Content indexing (blog posts, user content, admin content — incremental updates on mutation)
 
 #### SEO & Performance

@@ -3,6 +3,7 @@
   import type { AuthContext } from '$lib/auth.svelte'
   import AnnouncementBanner from '$lib/components/announcement-banner.svelte'
   import NotificationBell from '$lib/components/notification-bell.svelte'
+  import SearchDialog from '$lib/components/search-dialog.svelte'
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
@@ -11,6 +12,14 @@
   const auth = getContext<AuthContext>('auth')
   let mobileMenuOpen = $state(false)
   let signingOut = $state(false)
+  let searchOpen = $state(false)
+
+  function handleSearchKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      searchOpen = true
+    }
+  }
 
   const firebaseConfig = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined
 
@@ -45,7 +54,9 @@
   }
 </script>
 
-  <div class="flex min-h-screen bg-surface-base">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="flex min-h-screen bg-surface-base" onkeydown={handleSearchKeydown}>
+    <SearchDialog bind:open={searchOpen} />
     <!-- Mobile overlay -->
     {#if mobileMenuOpen}
       <div
@@ -197,7 +208,21 @@
           </svg>
         </button>
         <span class="text-[14px] font-medium text-text-secondary">App</span>
-        <NotificationBell />
+        <div class="flex items-center gap-2">
+          <button
+            class="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[13px] text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+            onclick={() => (searchOpen = true)}
+            aria-label="Search"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <span class="hidden sm:inline">Search...</span>
+            <kbd class="hidden sm:inline-flex rounded border border-white/[0.08] bg-white/[0.04] px-1 py-0.5 text-[10px] text-text-faint">&#8984;K</kbd>
+          </button>
+          <NotificationBell />
+        </div>
       </header>
       <main class="flex-1 p-6">
         {@render children()}
