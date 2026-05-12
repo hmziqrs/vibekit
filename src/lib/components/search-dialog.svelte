@@ -73,7 +73,7 @@
     isLoading = true
     selectedIndex = -1
     try {
-      const params = new URLSearchParams({ q: trimmed, limit: '10' })
+      const params = new URLSearchParams({ limit: '10', q: trimmed })
       const res = await fetch(`/api/search?${params}`)
       if (res.ok) {
         const data: { hits?: typeof results; total?: number } = await res.json()

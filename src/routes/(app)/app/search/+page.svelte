@@ -12,11 +12,11 @@
   const limit = 20
 
   const entityTypes = [
-    { value: '', label: 'All' },
-    { value: 'blog_post', label: 'Blog Posts' },
-    { value: 'item', label: 'Items' },
-    { value: 'user', label: 'Users' },
-    { value: 'page', label: 'Pages' },
+    { label: 'All', value: '' },
+    { label: 'Blog Posts', value: 'blog_post' },
+    { label: 'Items', value: 'item' },
+    { label: 'Users', value: 'user' },
+    { label: 'Pages', value: 'page' },
   ]
 
   let query = $derived(page.url.searchParams.get('q') ?? '')
@@ -42,9 +42,9 @@
     error = ''
     try {
       const params = new URLSearchParams({
-        q: q.trim(),
         limit: String(limit),
         offset: String(offset),
+        q: q.trim(),
       })
       if (type) params.set('types', type)
       const res = await fetch(`/api/search?${params}`)
@@ -77,7 +77,7 @@
 
   function goToPage(offset: number) {
     fetchResults(query, activeType, offset)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ behavior: 'smooth', top: 0 })
   }
 
   function getTypeLabel(type: string): string {
