@@ -1053,4 +1053,66 @@ export const pushSubscriptionRelations = relations(pushSubscription, ({ one }) =
   user: one(user, { fields: [pushSubscription.userId], references: [user.id] }),
 }))
 
+// ── API Keys ───────────────────────────────────────────────────────────
+
+export const apiKey = sqliteTable(
+  'api_key',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    keyHash: text('key_hash').notNull().unique(),
+    keyPrefix: text('key_prefix').notNull(),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+    name: text('name').notNull(),
+    rateLimit: integer('rate_limit'),
+    requestCount: integer('request_count').default(0).notNull(),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+    scopes: text('scopes', { mode: 'json' }).$type<string[]>().notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('api_key_user_idx').on(table.userId),
+    index('api_key_hash_idx').on(table.keyHash),
+  ]
+)
+
+export const apiKeyRelations = relations(apiKey, ({ one }) => ({
+  user: one(user, { fields: [apiKey.userId], references: [user.id] }),
+}))
+
+export const apiKeyUsageLog = sqliteTable(
+  'api_key_usage_log',
+  {
+    apiKeyId: text('api_key_id')
+      .notNull()
+      .references(() => apiKey.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    endpoint: text('endpoint').notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    ipAddress: text('ip_address'),
+    method: text('method').notNull(),
+    statusCode: integer('status_code').notNull(),
+    userAgent: text('user_agent'),
+  },
+  (table) => [
+    index('api_key_usage_api_key_idx').on(table.apiKeyId),
+    index('api_key_usage_created_idx').on(table.createdAt),
+  ]
+)
+
+export const apiKeyUsageLogRelations = relations(apiKeyUsageLog, ({ one }) => ({
+  apiKey: one(apiKey, { fields: [apiKeyUsageLog.apiKeyId], references: [apiKey.id] }),
+}))
+
 export * from './auth.schema'

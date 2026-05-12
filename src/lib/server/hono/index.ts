@@ -1,3 +1,12 @@
+import {
+  createApiKey,
+  deleteApiKey,
+  getApiKeyUsage,
+  listApiKeys,
+  revokeApiKey,
+  rotateApiKey,
+  updateApiKey,
+} from '$lib/server/api-keys'
 import { writeAuditLog } from '$lib/server/audit'
 import { getStripeClient, verifyWebhookSignature } from '$lib/server/billing/stripe'
 import {
@@ -23,6 +32,8 @@ import {
 } from '$lib/server/db/auth.schema'
 import {
   announcement,
+  apiKey,
+  apiKeyUsageLog,
   blogPost,
   blogPostRevision,
   blogPostView,
@@ -108,6 +119,7 @@ import {
   updateTeamMemberRoleSchema,
   updateTeamSchema,
 } from '$lib/validators'
+import { createApiKeySchema, rotateApiKeySchema, updateApiKeySchema } from '$lib/validators/api-key'
 import {
   checkoutSessionSchema,
   changePlanSchema,
@@ -1618,6 +1630,102 @@ protectedApp.post('/push/test', withRateLimit('push-test', 3, 60_000), async (c)
   })
 
   return c.json(result)
+})
+
+// ── API Keys (auth required) ────────────────────────────────────────────
+
+protectedApp.get('/api-keys', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const keys = await listApiKeys(db, userId)
+  return c.json({ keys })
+})
+
+protectedApp.post(
+  '/api-keys',
+  withRateLimit('api-key-create', 10, 60_000),
+  validate(createApiKeySchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const input = c.req.valid('json')
+    const result = await createApiKey(db, userId, input)
+    await writeAuditLog(db, {
+      action: 'api_key.created',
+      entityId: result.id,
+      entityType: 'api_key',
+      userId,
+    })
+    return c.json(result, 201)
+  }
+)
+
+protectedApp.patch('/api-keys/:id', validate(updateApiKeySchema), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const keyId = c.req.param('id')
+  const input = c.req.valid('json')
+  await updateApiKey(db, keyId, userId, input)
+  await writeAuditLog(db, {
+    action: 'api_key.updated',
+    entityId: keyId,
+    entityType: 'api_key',
+    userId,
+  })
+  return c.json({ ok: true })
+})
+
+protectedApp.post('/api-keys/:id/rotate', withRateLimit('api-key-rotate', 5, 60_000), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const keyId = c.req.param('id')
+  const result = await rotateApiKey(db, keyId, userId)
+  if (!result) throw new NotFoundError('API key not found')
+  await writeAuditLog(db, {
+    action: 'api_key.rotated',
+    entityId: keyId,
+    entityType: 'api_key',
+    userId,
+  })
+  return c.json(result)
+})
+
+protectedApp.post('/api-keys/:id/revoke', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const keyId = c.req.param('id')
+  const revoked = await revokeApiKey(db, keyId, userId)
+  if (!revoked) throw new NotFoundError('API key not found')
+  await writeAuditLog(db, {
+    action: 'api_key.revoked',
+    entityId: keyId,
+    entityType: 'api_key',
+    userId,
+  })
+  return c.json({ ok: true })
+})
+
+protectedApp.delete('/api-keys/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const keyId = c.req.param('id')
+  await deleteApiKey(db, keyId, userId)
+  await writeAuditLog(db, {
+    action: 'api_key.deleted',
+    entityId: keyId,
+    entityType: 'api_key',
+    userId,
+  })
+  return c.json({ ok: true })
+})
+
+protectedApp.get('/api-keys/:id/usage', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const keyId = c.req.param('id')
+  const limit = Number(c.req.query('limit') ?? '50')
+  const usage = await getApiKeyUsage(db, keyId, Math.min(limit, 200))
+  return c.json({ usage })
 })
 
 // ── Comments (auth required) ──────────────────────────────────────────

@@ -169,7 +169,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Slack/Discord integration (workspace notifications, command slash commands, webhook delivery, channel-specific alerts)
 
 #### API & Integrations
-- [ ] API key management (scoped tokens, key rotation, usage logging, key revocation, per-key rate limits)
+- [x] API key management (scoped tokens, key rotation, usage logging, key revocation, per-key rate limits)
 - [ ] Webhooks & event bus (outbound webhook delivery, retry with exponential backoff, event subscription UI, payload signing, delivery logs)
 - [ ] Public API documentation (OpenAPI spec generation, interactive API explorer, code examples in multiple languages, authentication guide)
 - [ ] Third-party integrations framework (OAuth connector pattern, integration catalog, per-user credentials, connection health monitoring)

@@ -25,6 +25,7 @@
     { href: '/app/organizations', label: 'Organizations' },
     { href: '/app/profile', label: 'Profile' },
     { href: '/app/settings', label: 'Settings' },
+    { href: '/app/settings/api-keys', label: 'API Keys' },
   ]
 
   async function handleSignOut() {

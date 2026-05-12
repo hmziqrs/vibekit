@@ -1,4 +1,10 @@
 import type { OrgAction, OrgRole, TeamAction, TeamRole } from '$lib/permissions'
+import {
+  hasScope as apiKeyHasScope,
+  logApiKeyUsage,
+  touchApiKey,
+  validateApiKey,
+} from '$lib/server/api-keys'
 import { createAuthForHono } from '$lib/server/auth-hono'
 import { item, organization, organizationMember, team, teamMember } from '$lib/server/db/schema'
 import {
@@ -72,6 +78,68 @@ export const requireAdmin = createMiddleware<Env>(async (c, next) => {
   if (user.role !== 'admin') throw new ForbiddenError()
   await next()
 })
+
+export const withApiKey = (requiredScope?: string) =>
+  createMiddleware<Env>(async (c, next) => {
+    c.set('apiKey', null)
+
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      await next()
+      return
+    }
+
+    const token = authHeader.slice(7)
+    if (!token.startsWith('vk_')) {
+      await next()
+      return
+    }
+
+    const { db } = c.get('services')
+    const keyRecord = await validateApiKey(db, token)
+    if (!keyRecord) {
+      await next()
+      return
+    }
+
+    if (requiredScope && !apiKeyHasScope(keyRecord.scopes, requiredScope)) {
+      throw new ForbiddenError(`API key missing scope: ${requiredScope}`)
+    }
+
+    c.set('apiKey', keyRecord)
+
+    // Set user from API key's userId
+    if (!c.get('user')) {
+      const { user: userTable } = await import('$lib/server/db/auth.schema').then((m) => ({
+        user: m.user,
+      }))
+      const foundUser = await db
+        .select()
+        .from(userTable)
+        .where(eq(userTable.id, keyRecord.userId))
+        .get()
+      if (foundUser) {
+        c.set('user', foundUser as never)
+      }
+    }
+
+    // Update usage stats (fire and forget)
+    c.executionCtx?.waitUntil?.(
+      Promise.all([
+        touchApiKey(db, keyRecord.id),
+        logApiKeyUsage(db, {
+          apiKeyId: keyRecord.id,
+          endpoint: c.req.path,
+          ipAddress: c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for'),
+          method: c.req.method,
+          statusCode: 200,
+          userAgent: c.req.header('user-agent'),
+        }),
+      ])
+    )
+
+    await next()
+  })
 
 export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
   createMiddleware<Env>(async (c, next) => {

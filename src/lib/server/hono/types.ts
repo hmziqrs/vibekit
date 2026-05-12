@@ -12,6 +12,15 @@ export interface Variables {
   auth: ReturnType<typeof createAuthForHono>
   user: ReturnType<typeof createAuthForHono>['$Infer']['Session']['user'] | null
   session: ReturnType<typeof createAuthForHono>['$Infer']['Session']['session'] | null
+  apiKey: {
+    id: string
+    keyPrefix: string
+    name: string
+    rateLimit: number | null
+    requestCount: number
+    scopes: string[]
+    userId: string
+  } | null
 }
 
 export interface Env {
