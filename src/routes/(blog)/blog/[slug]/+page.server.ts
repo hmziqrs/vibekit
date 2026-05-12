@@ -2,7 +2,7 @@ import { renderAndSanitize } from '$lib/markdown'
 import { user } from '$lib/server/db/auth.schema'
 import { blogPost, blogPostSlugHistory, blogPostTag, blogTag } from '$lib/server/db/schema'
 import { redirect } from '@sveltejs/kit'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -46,6 +46,45 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
       .where(eq(blogPostTag.postId, post.post.id))
       .orderBy(blogTag.name)
 
+    // Find related posts by tag overlap
+    const tagIds = await db
+      .select({ tagId: blogPostTag.tagId })
+      .from(blogPostTag)
+      .where(eq(blogPostTag.postId, post.post.id))
+
+    let relatedPosts: Array<{
+      coverImageUrl: string | null
+      excerpt: string | null
+      publishedAt: number | null
+      slug: string
+      title: string
+    }> = []
+
+    if (tagIds.length > 0) {
+      const ids = tagIds.map((t) => t.tagId)
+      relatedPosts = await db
+        .select({
+          coverImageUrl: blogPost.coverImageUrl,
+          excerpt: blogPost.excerpt,
+          publishedAt: blogPost.publishedAt,
+          slug: blogPost.slug,
+          title: blogPost.title,
+        })
+        .from(blogPost)
+        .innerJoin(blogPostTag, eq(blogPost.id, blogPostTag.postId))
+        .where(
+          and(
+            eq(blogPost.status, 'published'),
+            isNull(blogPost.deletedAt),
+            ne(blogPost.id, post.post.id),
+            inArray(blogPostTag.tagId, ids)
+          )
+        )
+        .groupBy(blogPost.id)
+        .orderBy(desc(sql<number>`count(*)`))
+        .limit(3)
+    }
+
     return {
       post: {
         ...post.post,
@@ -55,6 +94,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
         readingTime,
         tags,
       },
+      relatedPosts,
     }
   }
 

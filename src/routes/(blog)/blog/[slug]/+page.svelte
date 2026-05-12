@@ -74,6 +74,46 @@
 		<div class="prose prose-invert max-none">
 			{@html data.post.contentHtml}
 		</div>
+
+		{#if data.relatedPosts.length > 0}
+			<section class="mt-16 border-t border-border pt-10">
+				<h2 class="mb-6 text-xl font-semibold text-text-primary">Related Posts</h2>
+				<div class="grid gap-6 sm:grid-cols-3">
+					{#each data.relatedPosts as related}
+						<a
+							href="/blog/{related.slug}"
+							class="group rounded-lg border border-border bg-surface transition-colors hover:border-brand/40"
+						>
+							{#if related.coverImageUrl}
+								<img
+									src={related.coverImageUrl}
+									alt={related.title}
+									class="aspect-video w-full rounded-t-lg object-cover"
+									loading="lazy"
+								/>
+							{/if}
+							<div class="p-4">
+								<h3 class="font-medium text-text-primary group-hover:text-brand transition-colors line-clamp-2">
+									{related.title}
+								</h3>
+								{#if related.excerpt}
+									<p class="mt-2 text-sm text-text-muted line-clamp-2">{related.excerpt}</p>
+								{/if}
+								{#if related.publishedAt}
+									<time class="mt-2 block text-xs text-text-faint">
+										{new Date(related.publishedAt).toLocaleDateString('en-US', {
+											day: 'numeric',
+											month: 'short',
+											year: 'numeric',
+										})}
+									</time>
+								{/if}
+							</div>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
 	</div>
 </article>
 
