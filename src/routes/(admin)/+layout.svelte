@@ -21,6 +21,7 @@
     { href: '/admin/moderation', icon: 'moderation', label: 'Moderation' },
     { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
     { href: '/admin/integrations', icon: 'webhooks', label: 'Integrations' },
+    { href: '/admin/feature-flags', icon: 'flags', label: 'Feature Flags' },
     { href: '/admin/webhooks', icon: 'webhooks', label: 'Webhooks' },
     { href: '/admin/settings', icon: 'settings', label: 'Settings' },
   ]
@@ -142,6 +143,11 @@
                   <path d="M12.58 4.89l2.33-1.67a2.16 2.16 0 0 1 2.84.35l2.34 2.34a2.16 2.16 0 0 1-.35 2.84l-1.67 2.33" />
                   <path d="M17 11l4 4-4 4" />
                   <path d="M8.6 5.53a4 4 0 1 0 6.07 4.72" />
+                </svg>
+              {:else if item.icon === 'flags'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                  <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
               {:else if item.icon === 'settings'}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

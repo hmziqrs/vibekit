@@ -1231,4 +1231,36 @@ export const integrationRelations = relations(integration, ({ one }) => ({
   }),
 }))
 
+export const featureFlag = sqliteTable(
+  'feature_flag',
+  {
+    cohortRules: text('cohort_rules', { mode: 'json' })
+      .$type<Record<string, unknown>>()
+      .default({}),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    dependencies: text('dependencies', { mode: 'json' }).$type<string[]>().default([]),
+    description: text('description'),
+    enabled: integer('enabled', { mode: 'boolean' }).default(false).notNull(),
+    environment: text('environment'),
+    id: text('id')
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => uuid()),
+    key: text('key').notNull().unique(),
+    killSwitch: integer('kill_switch', { mode: 'boolean' }).default(false).notNull(),
+    name: text('name').notNull(),
+    rolloutPercentage: integer('rollout_percentage').default(0).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('feature_flag_key_idx').on(table.key),
+    index('feature_flag_enabled_idx').on(table.enabled),
+  ]
+)
+
 export * from './auth.schema'

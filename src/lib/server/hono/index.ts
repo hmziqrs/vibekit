@@ -46,6 +46,7 @@ import {
   comment,
   contactSubmission,
   contentReport,
+  featureFlag,
   impersonationSession,
   notification,
   notificationPreference,
@@ -78,6 +79,17 @@ import {
   NotFoundError,
 } from '$lib/server/errors'
 import { emitEvent } from '$lib/server/events'
+import {
+  activateKillSwitch,
+  createFeatureFlag,
+  deleteFeatureFlag,
+  evaluateFeatureFlag,
+  evaluateMultipleFlags,
+  getFeatureFlag,
+  listFeatureFlags,
+  toggleFeatureFlag,
+  updateFeatureFlag,
+} from '$lib/server/feature-flags'
 import {
   consumeOAuthState,
   exchangeCodeForTokens,
@@ -158,6 +170,14 @@ import {
   recordUsageSchema,
   updatePlanSchema,
 } from '$lib/validators/billing'
+import {
+  createFeatureFlagSchema,
+  evaluateFlagSchema,
+  evaluateMultipleFlagsSchema,
+  listFeatureFlagsSchema,
+  toggleFeatureFlagSchema,
+  updateFeatureFlagSchema,
+} from '$lib/validators/feature-flag'
 import {
   WEBHOOK_EVENT_TYPES,
   createWebhookEndpointSchema,
@@ -1763,6 +1783,23 @@ protectedApp.get('/api-keys/:id/usage', async (c) => {
   const limit = Number(c.req.query('limit') ?? '50')
   const usage = await getApiKeyUsage(db, keyId, Math.min(limit, 200))
   return c.json({ usage })
+})
+
+// ── Feature Flags (auth required) ────────────────────────────────────────
+
+protectedApp.post('/feature-flags/evaluate/:key', validate(evaluateFlagSchema), async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const { context } = c.req.valid('json')
+  const enabled = await evaluateFeatureFlag(db, key, context)
+  return c.json({ enabled, key })
+})
+
+protectedApp.post('/feature-flags/evaluate', validate(evaluateMultipleFlagsSchema), async (c) => {
+  const { db } = c.get('services')
+  const { keys, context } = c.req.valid('json')
+  const flags = await evaluateMultipleFlags(db, keys, context)
+  return c.json(flags)
 })
 
 // ── Webhooks ─────────────────────────────────────────────────────────
@@ -5705,6 +5742,65 @@ adminApp.post('/integrations/:id/health', async (c) => {
   const result = await checkIntegrationHealth(db, integrationId)
   if (!result) throw new NotFoundError()
   return c.json(result)
+})
+
+// ── Admin Feature Flags ────────────────────────────────────────────────
+
+adminApp.get('/feature-flags', async (c) => {
+  const { db } = c.get('services')
+  const rawOpts = c.req.query()
+  const parsed = listFeatureFlagsSchema.safeParse(rawOpts)
+  const options = parsed.success ? parsed.data : undefined
+  const flags = await listFeatureFlags(db, options)
+  return c.json({ flags })
+})
+
+adminApp.post('/feature-flags', validate(createFeatureFlagSchema), async (c) => {
+  const { db } = c.get('services')
+  const input = c.req.valid('json')
+  const flag = await createFeatureFlag(db, input)
+  return c.json(flag, 201)
+})
+
+adminApp.get('/feature-flags/:key', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const flag = await getFeatureFlag(db, key)
+  if (!flag) throw new NotFoundError()
+  return c.json(flag)
+})
+
+adminApp.patch('/feature-flags/:key', validate(updateFeatureFlagSchema), async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const input = c.req.valid('json')
+  const flag = await updateFeatureFlag(db, key, input)
+  if (!flag) throw new NotFoundError()
+  return c.json(flag)
+})
+
+adminApp.delete('/feature-flags/:key', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  await deleteFeatureFlag(db, key)
+  return c.json({ deleted: true, key })
+})
+
+adminApp.post('/feature-flags/:key/toggle', validate(toggleFeatureFlagSchema), async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const { enabled } = c.req.valid('json')
+  const flag = await toggleFeatureFlag(db, key, enabled)
+  if (!flag) throw new NotFoundError()
+  return c.json(flag)
+})
+
+adminApp.post('/feature-flags/:key/kill-switch', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.param('key')
+  const flag = await activateKillSwitch(db, key)
+  if (!flag) throw new NotFoundError()
+  return c.json(flag)
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
