@@ -110,9 +110,7 @@ export const withApiKey = (requiredScope?: string) =>
 
     // Set user from API key's userId
     if (!c.get('user')) {
-      const { user: userTable } = await import('$lib/server/db/auth.schema').then((m) => ({
-        user: m.user,
-      }))
+      const { user: userTable } = await import('$lib/server/db/auth.schema')
       const foundUser = await db
         .select()
         .from(userTable)

@@ -55,8 +55,12 @@
   }
 
   async function markAsRead(id: string) {
-    await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    try {
+      await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      // Silently ignore — will show as unread until next refresh
+    }
   }
 
   function getNotificationLink(n: NotificationData): string | null {
@@ -79,8 +83,12 @@
   }
 
   async function markAllRead() {
-    await fetch('/api/notifications/read-all', { method: 'PATCH' })
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    try {
+      await fetch('/api/notifications/read-all', { method: 'PATCH' })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      // Silently ignore — will show as unread until next refresh
+    }
   }
 
   function formatTimeAgo(dateStr: string): string {

@@ -1680,16 +1680,15 @@ protectedApp.post('/billing/checkout', async (c) => {
   if (!plan) throw new NotFoundError()
 
   if (stripe && plan.stripePriceId) {
-    const session = await import('$lib/server/billing/stripe').then((m) =>
-      m.createCheckoutSession(stripe, {
-        cancelUrl: parsed.data.cancelUrl,
-        customerEmail: user.email,
-        priceId: plan.stripePriceId,
-        successUrl: parsed.data.successUrl,
-        trialDays: plan.trialDays,
-        userId: user.id,
-      })
-    )
+    const { createCheckoutSession } = await import('$lib/server/billing/stripe')
+    const session = await createCheckoutSession(stripe, {
+      cancelUrl: parsed.data.cancelUrl,
+      customerEmail: user.email,
+      priceId: plan.stripePriceId,
+      successUrl: parsed.data.successUrl,
+      trialDays: plan.trialDays,
+      userId: user.id,
+    })
     return c.json({ url: session.url })
   }
 
@@ -1721,12 +1720,11 @@ protectedApp.post('/billing/portal', async (c) => {
   }
 
   const body = await c.req.json<{ returnUrl: string }>()
-  const session = await import('$lib/server/billing/stripe').then((m) =>
-    m.createBillingPortalSession(stripe, {
-      customerId: sub.stripeCustomerId,
-      returnUrl: body.returnUrl,
-    })
-  )
+  const { createBillingPortalSession } = await import('$lib/server/billing/stripe')
+  const session = await createBillingPortalSession(stripe, {
+    customerId: sub.stripeCustomerId,
+    returnUrl: body.returnUrl,
+  })
 
   return c.json({ url: session.url })
 })
