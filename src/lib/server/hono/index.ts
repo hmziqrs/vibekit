@@ -304,30 +304,6 @@ const app = new Hono()
     )
   })
 
-// ── Health ───────────────────────────────────────────────────────────
-
-app.get('/api/health', async (c) => {
-  const start = Date.now()
-  let dbStatus: 'connected' | 'error' | 'unavailable' = 'error'
-  try {
-    const services = c.get('services')
-    if (services) {
-      await services.db.run(sql`SELECT 1`)
-      dbStatus = 'connected'
-    } else {
-      dbStatus = 'unavailable'
-    }
-  } catch {
-    dbStatus = 'error'
-  }
-  return c.json({
-    db: dbStatus,
-    ok: dbStatus === 'connected',
-    responseTime: Date.now() - start,
-    time: new Date().toISOString(),
-  })
-})
-
 // Public: resolve config values (safe keys only)
 app.post('/api/config/resolve', async (c) => {
   const services = c.get('services')
@@ -508,7 +484,7 @@ app.get('/api/health', async (c) => {
   // Check storage connectivity
   try {
     if (services?.storage) {
-      await services.storage.list({ limit: 1 })
+      await services.storage.list(undefined, undefined, 1)
       checks.storage = 'healthy'
     } else {
       checks.storage = 'healthy'
@@ -661,7 +637,8 @@ app.get('/api/newsletter/confirm', async (c) => {
 })
 
 app.post('/api/newsletter/unsubscribe', async (c) => {
-  const token = c.req.query('token')
+  const body = await c.req.json().catch(() => ({}))
+  const token = body.token ?? c.req.query('token')
   if (!token) return c.json({ error: { message: 'Missing token' } }, 400)
 
   const { db } = c.get('services')
@@ -870,7 +847,6 @@ app.post('/billing/webhooks/stripe', async (c) => {
         await db
           .update(subscription)
           .set({
-            cancelAtPeriodEnd: sub.cancel_at_period_end,
             currentPeriodEnd: new Date(sub.current_period_end * 1000),
             currentPeriodStart: new Date(sub.current_period_start * 1000),
             status: sub.status as

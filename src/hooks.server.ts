@@ -266,7 +266,12 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   return svelteKitHandler({ auth, building, event, resolve })
 }
 
-const MAINTENANCE_WHITELIST = ['/api/health', '/api/announcements']
+const MAINTENANCE_WHITELIST = [
+  '/api/health',
+  '/api/announcements',
+  '/api/admin/cleanup',
+  '/api/admin/publish-scheduled',
+]
 
 const handleMaintenance: Handle = async ({ event, resolve }) => {
   if (building) return resolve(event)

@@ -123,7 +123,9 @@ export const withApiKey = (requiredScope?: string) =>
       }
     }
 
-    // Update usage stats (fire and forget)
+    await next()
+
+    // Update usage stats (fire and forget) — after next() so status is available
     c.executionCtx?.waitUntil?.(
       Promise.all([
         touchApiKey(db, keyRecord.id),
@@ -132,13 +134,11 @@ export const withApiKey = (requiredScope?: string) =>
           endpoint: c.req.path,
           ipAddress: c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for'),
           method: c.req.method,
-          statusCode: 200,
+          statusCode: c.res.status,
           userAgent: c.req.header('user-agent'),
         }),
       ])
     )
-
-    await next()
   })
 
 export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
