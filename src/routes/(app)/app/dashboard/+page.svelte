@@ -121,7 +121,7 @@
 
   <!-- Stats -->
   <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    {#if statsQuery.isLoading}
+    {#if statsQuery.isPending}
       {#each [1, 2, 3, 4] as skeleton (skeleton)}
         <div class="h-[88px] animate-pulse rounded-xl border border-white/[0.06] bg-surface"></div>
       {/each}
@@ -179,7 +179,7 @@
         <h2 class="text-[15px] font-medium text-text-primary">Recent Items</h2>
       </div>
 
-      {#if itemsQuery.isLoading}
+      {#if itemsQuery.isPending}
         <div class="space-y-3 p-6">
           {#each [1, 2, 3, 4, 5] as skeleton (skeleton)}
             <div class="h-10 animate-pulse rounded-lg bg-white/[0.04]"></div>
@@ -229,7 +229,7 @@
         <h2 class="text-[15px] font-medium text-text-primary">Recent Activity</h2>
       </div>
 
-      {#if activityQuery.isLoading}
+      {#if activityQuery.isPending}
         <div class="space-y-3 p-6">
           {#each [1, 2, 3, 4] as skeleton (skeleton)}
             <div class="h-8 animate-pulse rounded-lg bg-white/[0.04]"></div>

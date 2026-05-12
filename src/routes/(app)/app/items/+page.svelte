@@ -106,7 +106,7 @@
   </div>
 
   <!-- Items list -->
-  {#if itemsQuery.isLoading}
+  {#if itemsQuery.isPending}
     <div class="rounded-xl border border-white/6 bg-surface">
       <div class="divide-y divide-white/6 p-1">
         {#each [1, 2, 3, 4, 5] as skeleton (skeleton)}

@@ -325,7 +325,7 @@
     </div>
   {/if}
 
-  {#if endpointsQuery.isLoading}
+  {#if endpointsQuery.isPending}
     <div class="py-8 text-center text-text-muted">Loading webhooks...</div>
   {:else if endpointsQuery.data?.endpoints.length === 0}
     <div class="rounded-xl border border-white/[0.06] bg-surface p-8 text-center">
@@ -392,7 +392,7 @@
           {#if selectedEndpointId === endpoint.id}
             <div class="mt-4 border-t border-white/[0.06] pt-4">
               <h4 class="mb-2 text-[13px] font-medium text-text-secondary">Delivery History</h4>
-              {#if deliveriesQuery.isLoading}
+              {#if deliveriesQuery.isPending}
                 <p class="text-[13px] text-text-muted">Loading...</p>
               {:else if deliveriesQuery.data?.deliveries.length === 0}
                 <p class="text-[13px] text-text-muted">No deliveries yet.</p>

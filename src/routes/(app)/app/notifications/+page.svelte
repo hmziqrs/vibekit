@@ -159,7 +159,7 @@
     </select>
   </div>
 
-  {#if notificationsQuery.isLoading}
+  {#if notificationsQuery.isPending}
     <div class="space-y-3">
       {#each Array(5) as _}
         <div class="h-16 animate-pulse rounded-xl bg-white/[0.04]"></div>

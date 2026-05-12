@@ -187,7 +187,7 @@
   <!-- Plans List -->
   <div>
     <h2 class="mb-3 text-[15px] font-semibold text-text-primary">Plans</h2>
-    {#if plansQuery.isLoading}
+    {#if plansQuery.isPending}
       <div class="space-y-2">
         {#each Array(3) as _}
           <div class="h-14 animate-pulse rounded-xl bg-white/[0.04]"></div>

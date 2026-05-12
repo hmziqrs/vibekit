@@ -129,7 +129,7 @@
   <h1 class="text-2xl font-bold text-text-primary">Billing & Subscription</h1>
 
   <!-- Current Subscription -->
-  {#if subQuery.isLoading}
+  {#if subQuery.isPending}
     <div class="h-24 animate-pulse rounded-xl bg-white/[0.04]"></div>
   {:else if subQuery.data}
     {@const sub = subQuery.data}

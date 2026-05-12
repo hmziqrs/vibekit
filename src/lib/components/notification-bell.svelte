@@ -149,7 +149,7 @@
       </div>
 
       <div class="max-h-80 overflow-y-auto">
-        {#if listQuery.isLoading}
+        {#if listQuery.isPending}
           <div class="px-4 py-6 text-center text-[12px] text-text-muted">Loading...</div>
         {:else if listQuery.data?.notifications.length === 0}
           <div class="px-4 py-6 text-center text-[12px] text-text-muted">No notifications</div>

@@ -73,7 +73,7 @@
   <h1 class="text-2xl font-semibold text-text-primary">Edit Item</h1>
   <p class="mt-1 text-[14px] text-text-muted">Update the details of your item.</p>
 
-  {#if itemQuery.isLoading}
+  {#if itemQuery.isPending}
     <div class="mt-6 rounded-xl border border-white/[0.06] bg-surface p-6">
       <div class="space-y-4">
         <div class="h-4 w-24 animate-pulse rounded bg-white/[0.04]"></div>

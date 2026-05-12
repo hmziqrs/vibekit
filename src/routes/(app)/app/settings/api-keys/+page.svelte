@@ -225,7 +225,7 @@
   </div>
 
   <!-- Keys list -->
-  {#if keysQuery.isLoading}
+  {#if keysQuery.isPending}
     <p class="text-text-muted text-sm">Loading API keys...</p>
   {:else if keysQuery.data && keysQuery.data.length > 0}
     <div class="space-y-3">

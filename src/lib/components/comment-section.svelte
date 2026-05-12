@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getContext } from 'svelte'
-  import { createQuery, useMutation, useQueryClient } from '@tanstack/svelte-query'
+  import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
   import type { AuthContext } from '$lib/auth.svelte'
 
   let { postId } = $props()
@@ -48,7 +48,7 @@
     replies: CommentData[]
   }
 
-  const createMutation = useMutation({
+  const commentMutation = createMutation(() => ({
     mutationFn: async ({ content, parentId }: { content: string; parentId?: string }) => {
       const res = await fetch(`/api/comments/${postId}`, {
         body: JSON.stringify({ content, parentId }),
@@ -71,20 +71,20 @@
       error = ''
       commentsQuery.refetch()
     },
-  })
+  }))
 
   function handleSubmit() {
     if (!auth.user) return
     submitting = true
     error = ''
-    createMutation.mutate({ content: newComment })
+    commentMutation.mutate({ content: newComment })
     submitting = false
   }
 
   function handleReply(parentId: string) {
     if (!auth.user) return
     if (!replyContent.trim()) return
-    createMutation.mutate({ content: replyContent, parentId })
+    commentMutation.mutate({ content: replyContent, parentId })
   }
 
   function cancelReply() {
@@ -136,10 +136,10 @@
         <div class="mt-2 flex justify-end">
           <button
             type="submit"
-            disabled={!newComment.trim() || createMutation.isPending}
+            disabled={!newComment.trim() || commentMutation.isPending}
             class="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover disabled:opacity-50"
           >
-            {createMutation.isPending ? 'Posting...' : 'Post Comment'}
+            {commentMutation.isPending ? 'Posting...' : 'Post Comment'}
           </button>
         </div>
       </form>
