@@ -2,7 +2,7 @@ import { renderAndSanitize } from '$lib/markdown'
 import { user } from '$lib/server/db/auth.schema'
 import { blogPost, blogPostSlugHistory, blogPostTag, blogTag } from '$lib/server/db/schema'
 import { redirect } from '@sveltejs/kit'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
