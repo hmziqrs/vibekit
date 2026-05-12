@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Performance Utilities', () => {
+describe('performance Utilities', () => {
   describe('getRating thresholds', () => {
     function getRating(
       value: number,
@@ -55,7 +55,7 @@ describe('Performance Utilities', () => {
     it('stores and invokes callbacks', () => {
       const received: string[] = []
       const unsub = () => {}
-      expect(received).toEqual([])
+      expect(received).toStrictEqual([])
     })
   })
 })

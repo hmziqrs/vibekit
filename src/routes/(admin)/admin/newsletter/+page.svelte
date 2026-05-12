@@ -56,16 +56,21 @@
 
   function statusColor(s: string): string {
     switch (s) {
-      case 'confirmed':
+      case 'confirmed': {
         return 'text-green-400 bg-green-500/10'
-      case 'pending':
+      }
+      case 'pending': {
         return 'text-yellow-400 bg-yellow-500/10'
-      case 'unsubscribed':
+      }
+      case 'unsubscribed': {
         return 'text-text-muted bg-white/5'
-      case 'bounced':
+      }
+      case 'bounced': {
         return 'text-red-400 bg-red-500/10'
-      default:
+      }
+      default: {
         return 'text-text-muted bg-white/5'
+      }
     }
   }
 

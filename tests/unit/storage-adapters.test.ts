@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Storage Client Interface', () => {
-  it('StorageClient interface has required methods', async () => {
+describe('storage Client Interface', () => {
+  it('storageClient interface has required methods', async () => {
     // Import the types to verify the interface compiles
     const types = await import('../../src/lib/server/services/types')
     expect(types).toBeDefined()
   })
 })
 
-describe('S3 Presigned URL Generation', () => {
+describe('s3 Presigned URL Generation', () => {
   it('presigned URL contains required parameters', () => {
     const url =
       'https://s3.amazonaws.com/bucket/key?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=test'
@@ -19,11 +19,11 @@ describe('S3 Presigned URL Generation', () => {
   it('presigned URL includes expiration', () => {
     const expires = 3600
     expect(expires).toBe(3600)
-    expect(expires).toBeLessThanOrEqual(86400)
+    expect(expires).toBeLessThanOrEqual(86_400)
   })
 })
 
-describe('Filesystem Presigned URL', () => {
+describe('filesystem Presigned URL', () => {
   it('returns CDN URL for local dev', () => {
     const key = 'test-image.jpg'
     const url = `/cdn/blog/${key}`
@@ -32,7 +32,7 @@ describe('Filesystem Presigned URL', () => {
   })
 })
 
-describe('Storage Key Generation', () => {
+describe('storage Key Generation', () => {
   it('generates unique keys', async () => {
     const { generateStorageKey } = await import('../../src/lib/server/upload')
     const key1 = generateStorageKey('photo.jpg')
@@ -59,7 +59,7 @@ describe('Storage Key Generation', () => {
   })
 })
 
-describe('Upload Validation', () => {
+describe('upload Validation', () => {
   it('validates image types', async () => {
     const { validateImageUpload } = await import('../../src/lib/server/upload')
     const validFile = { size: 1024, type: 'image/jpeg' } as File

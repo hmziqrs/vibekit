@@ -28,7 +28,7 @@ export async function emitEvent(
     await dispatchWebhooksForEvent(db, input.action, {
       entityId: input.entityId,
       entityType: input.entityType,
-      ...(input.metadata ?? {}),
+      ...input.metadata,
     })
   } catch {
     // Webhook dispatch failure should never block the main operation

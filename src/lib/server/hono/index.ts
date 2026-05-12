@@ -398,7 +398,7 @@ app.get('/api/comments/:postId', async (c) => {
     .offset(offset)
 
   // Get replies for these comments
-  let replies: Array<{
+  let replies: {
     authorDisplayName: string | null
     authorId: string
     authorImage: string | null
@@ -409,7 +409,7 @@ app.get('/api/comments/:postId', async (c) => {
     htmlContent: string | null
     id: string
     parentId: string | null
-  }> = []
+  }[] = []
   if (topLevel.length > 0) {
     const parentIds = topLevel.map((c) => c.id)
     replies = await db
@@ -2238,8 +2238,8 @@ app.get('/api/automation/manifest', async (c) => {
         events: ['blog.create'],
         url: 'https://your-app.com/webhooks/vibekit',
       },
-      signatureHeader: 'X-Webhook-Signature',
       signatureAlgorithm: 'HMAC-SHA256',
+      signatureHeader: 'X-Webhook-Signature',
       timestampHeader: 'X-Webhook-Timestamp',
     },
   })
@@ -2332,7 +2332,7 @@ app.get('/api/integrations/callback/:provider', async (c) => {
 
   const { db, env } = c.get('services')
 
-  const codeVerifier = stateData.codeVerifier
+  const { codeVerifier } = stateData
 
   if (!codeVerifier) return c.json({ error: 'Missing code verifier' }, 400)
 
@@ -2361,8 +2361,8 @@ app.get('/api/integrations/callback/:provider', async (c) => {
 
     const redirectUrl = stateData.redirectUrl ?? '/app/settings/integrations'
     return c.redirect(redirectUrl)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Token exchange failed'
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Token exchange failed'
     return c.json({ error: message }, 500)
   }
 })
@@ -3291,7 +3291,7 @@ blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (
           title: ogTitle || (oembed.title as string),
         })
       } catch {
-        // oEmbed fetch failed, fall through to OG scraping
+        // OEmbed fetch failed, fall through to OG scraping
       }
     }
 
@@ -6159,7 +6159,7 @@ adminApp.get('/media', async (c) => {
   const prefix = c.req.query('prefix') || undefined
   const cursor = c.req.query('cursor') || undefined
   const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
-  const type = c.req.query('type') // image, video, audio, document
+  const type = c.req.query('type') // Image, video, audio, document
 
   const result = await services.storage.list(prefix, cursor, limit)
 

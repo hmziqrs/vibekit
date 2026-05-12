@@ -5,8 +5,8 @@ import {
 } from '$lib/validators/upload'
 import { describe, expect, it } from 'vitest'
 
-describe('Upload Session Validators', () => {
-  describe('createUploadSessionSchema', () => {
+describe('upload Session Validators', () => {
+  describe(createUploadSessionSchema, () => {
     it('validates a valid upload session', () => {
       const result = createUploadSessionSchema.safeParse({
         chunkSize: 5 * 1024 * 1024,
@@ -81,7 +81,7 @@ describe('Upload Session Validators', () => {
     })
   })
 
-  describe('chunkUploadSchema', () => {
+  describe(chunkUploadSchema, () => {
     it('validates valid chunk index', () => {
       const result = chunkUploadSchema.safeParse({ chunkIndex: 0 })
       expect(result.success).toBe(true)
@@ -98,7 +98,7 @@ describe('Upload Session Validators', () => {
     })
   })
 
-  describe('listUploadSessionsSchema', () => {
+  describe(listUploadSessionsSchema, () => {
     it('validates empty params', () => {
       const result = listUploadSessionsSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -116,7 +116,7 @@ describe('Upload Session Validators', () => {
   })
 })
 
-describe('Upload Progress Calculation', () => {
+describe('upload Progress Calculation', () => {
   function getUploadProgress(session: { receivedChunks: number[]; totalChunks: number }) {
     return {
       percent:
@@ -156,7 +156,7 @@ describe('Upload Progress Calculation', () => {
   })
 })
 
-describe('Chunk Count Calculation', () => {
+describe('chunk Count Calculation', () => {
   it('calculates total chunks correctly', () => {
     const fileSize = 100 * 1024 * 1024 // 100MB
     const chunkSize = 5 * 1024 * 1024 // 5MB

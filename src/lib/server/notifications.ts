@@ -85,7 +85,7 @@ async function isInAppEnabled(db: AppDb, userId: string, type: string): Promise<
 export async function getNotificationPreferences(
   db: AppDb,
   userId: string
-): Promise<Array<{ channel: string; enabled: boolean; type: string }>> {
+): Promise<{ channel: string; enabled: boolean; type: string }[]> {
   const prefs = await db
     .select({
       channel: notificationPreference.channel,

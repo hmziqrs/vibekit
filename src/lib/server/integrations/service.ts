@@ -1,22 +1,12 @@
 import { integration } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, or } from 'drizzle-orm'
 
 import { getProvider } from './providers'
 import type { IntegrationStatus } from './providers'
 
-export async function listIntegrations(
-  db: {
-    select: () => {
-      from: (t: typeof integration) => {
-        where: (c: unknown) => Promise<unknown[]>
-        orderBy: (c: unknown) => Promise<unknown[]>
-      }
-    }
-  },
-  userId: string,
-  organizationId?: string
-) {
+export async function listIntegrations(db: AppDb, userId: string, organizationId?: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -31,7 +21,7 @@ export async function listIntegrations(
 }
 
 export async function createIntegration(
-  db: { insert: (t: typeof integration) => { values: (v: unknown) => Promise<void> } },
+  db: AppDb,
   input: {
     accessToken: string
     expiresAt?: Date
@@ -70,11 +60,7 @@ export async function createIntegration(
 }
 
 export async function updateIntegrationTokens(
-  db: {
-    update: (t: typeof integration) => {
-      set: (v: unknown) => { where: (c: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   integrationId: string,
   input: {
     accessToken: string
@@ -98,16 +84,7 @@ export async function updateIntegrationTokens(
     .where(eq(integration.id, integrationId))
 }
 
-export async function disconnectIntegration(
-  db: {
-    select: () => { from: (t: typeof integration) => { where: (c: unknown) => Promise<unknown[]> } }
-    update: (t: typeof integration) => {
-      set: (v: unknown) => { where: (c: unknown) => Promise<void> }
-    }
-  },
-  integrationId: string,
-  userId: string
-) {
+export async function disconnectIntegration(db: AppDb, integrationId: string, userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -133,13 +110,7 @@ export async function disconnectIntegration(
   return { id: integrationId }
 }
 
-export async function getIntegration(
-  db: {
-    select: () => { from: (t: typeof integration) => { where: (c: unknown) => Promise<unknown[]> } }
-  },
-  integrationId: string,
-  userId: string
-) {
+export async function getIntegration(db: AppDb, integrationId: string, userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -151,15 +122,7 @@ export async function getIntegration(
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
-export async function checkIntegrationHealth(
-  db: {
-    select: () => { from: (t: typeof integration) => { where: (c: unknown) => Promise<unknown[]> } }
-    update: (t: typeof integration) => {
-      set: (v: unknown) => { where: (c: unknown) => Promise<void> }
-    }
-  },
-  integrationId: string
-) {
+export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -216,26 +179,19 @@ async function pingProvider(provider: string, _accessToken: string): Promise<boo
     case 'slack':
     case 'discord':
     case 'notion':
-    case 'linear':
+    case 'linear': {
       // These require actual API calls in production
       // For now, return true if we have a token
       return true
-    default:
+    }
+    default: {
       return false
+    }
   }
 }
 
 export async function listAllIntegrations(
-  db: {
-    select: () => {
-      from: (t: typeof integration) => {
-        where: (c: unknown) => {
-          orderBy: (c: unknown) => { limit: (n: number) => Promise<unknown[]> }
-        }
-        orderBy: (c: unknown) => { limit: (n: number) => Promise<unknown[]> }
-      }
-    }
-  },
+  db: AppDb,
   options?: { limit?: number; provider?: string; status?: string }
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

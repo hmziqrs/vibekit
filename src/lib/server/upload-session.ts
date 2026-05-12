@@ -69,7 +69,7 @@ export async function recordChunk(db: DbClient, sessionId: string, chunkIndex: n
     return { complete: false, receivedChunks, totalChunks: session.totalChunks as number }
   }
 
-  const updatedChunks = [...receivedChunks, chunkIndex].sort((a, b) => a - b)
+  const updatedChunks = [...receivedChunks, chunkIndex].toSorted((a, b) => a - b)
   const totalChunks = session.totalChunks as number
   const isComplete = updatedChunks.length === totalChunks
 

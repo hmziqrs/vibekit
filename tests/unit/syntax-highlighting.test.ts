@@ -67,7 +67,7 @@ More text after.`
   })
 })
 
-describe('escapeHtml', () => {
+describe(escapeHtml, () => {
   it('escapes ampersands', () => {
     expect(escapeHtml('foo&bar')).toBe('foo&amp;bar')
   })
@@ -81,7 +81,7 @@ describe('escapeHtml', () => {
   })
 })
 
-describe('highlightCodeBlocks', () => {
+describe(highlightCodeBlocks, () => {
   it('highlights a code block with language', () => {
     const html = '<pre><code class="language-javascript">const x = 1</code></pre>'
     const result = highlightCodeBlocks(html)

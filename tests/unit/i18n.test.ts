@@ -30,11 +30,11 @@ describe('i18n Formatting Utilities', () => {
     }
 
     it('formats number in English', () => {
-      expect(formatNumber(1234567, 'en')).toBe('1,234,567')
+      expect(formatNumber(1_234_567, 'en')).toBe('1,234,567')
     })
 
     it('formats number in Urdu', () => {
-      const result = formatNumber(1234567, 'ur')
+      const result = formatNumber(1_234_567, 'ur')
       expect(result).toBeTruthy()
     })
   })
@@ -73,62 +73,62 @@ describe('i18n Formatting Utilities', () => {
     })
 
     it('identifies minutes-level difference', () => {
-      expect(getRelativeTimeUnit(300000)).toBe('minutes')
+      expect(getRelativeTimeUnit(300_000)).toBe('minutes')
     })
 
     it('identifies hours-level difference', () => {
-      expect(getRelativeTimeUnit(7200000)).toBe('hours')
+      expect(getRelativeTimeUnit(7_200_000)).toBe('hours')
     })
 
     it('identifies days-level difference', () => {
-      expect(getRelativeTimeUnit(172800000)).toBe('days')
+      expect(getRelativeTimeUnit(172_800_000)).toBe('days')
     })
 
     it('identifies months-level difference', () => {
-      expect(getRelativeTimeUnit(2592000000)).toBe('months')
+      expect(getRelativeTimeUnit(2_592_000_000)).toBe('months')
     })
   })
 
-  describe('Plural rules', () => {
-    it('English uses "one" for count 1', () => {
+  describe('plural rules', () => {
+    it('english uses "one" for count 1', () => {
       const rule = new Intl.PluralRules('en').select(1)
       expect(rule).toBe('one')
     })
 
-    it('English uses "other" for count 0', () => {
+    it('english uses "other" for count 0', () => {
       const rule = new Intl.PluralRules('en').select(0)
       expect(rule).toBe('other')
     })
 
-    it('English uses "other" for count 5', () => {
+    it('english uses "other" for count 5', () => {
       const rule = new Intl.PluralRules('en').select(5)
       expect(rule).toBe('other')
     })
 
-    it('Urdu uses "one" for count 1', () => {
+    it('urdu uses "one" for count 1', () => {
       const rule = new Intl.PluralRules('ur').select(1)
       expect(rule).toBe('one')
     })
 
-    it('Urdu uses "other" for count 5', () => {
+    it('urdu uses "other" for count 5', () => {
       const rule = new Intl.PluralRules('ur').select(5)
       expect(rule).toBe('other')
     })
   })
 
-  describe('RTL support', () => {
-    it('Urdu is RTL', () => {
+  describe('rTL support', () => {
+    it('urdu is RTL', () => {
       const rtlLanguages = new Set(['ar', 'he', 'fa', 'ur'])
       expect(rtlLanguages.has('ur')).toBe(true)
     })
 
-    it('English is not RTL', () => {
+    it('english is not RTL', () => {
       const rtlLanguages = new Set(['ar', 'he', 'fa', 'ur'])
       expect(rtlLanguages.has('en')).toBe(false)
     })
   })
 
-  describe('Translation keys coverage', () => {
+  describe('translation keys coverage', () => {
     const enKeys = [
       'nav_home',
       'nav_features',

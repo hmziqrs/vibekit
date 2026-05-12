@@ -2,7 +2,6 @@
   import { createMutation, createQuery } from '@tanstack/svelte-query'
 
   const integrationsQuery = createQuery(() => ({
-    queryKey: ['admin-integrations'],
     queryFn: async () => {
       const res = await fetch('/api/admin/integrations')
       if (!res.ok) throw new Error('Failed to fetch')
@@ -20,6 +19,7 @@
         }>
       }
     },
+    queryKey: ['admin-integrations'],
   }))
 
   const healthMutation = createMutation(() => ({

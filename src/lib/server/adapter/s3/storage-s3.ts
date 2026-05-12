@@ -31,11 +31,11 @@ export function createS3Storage(config: S3Config): StorageClient {
 
     const canonicalHeaders = Object.entries(headers)
       .map(([k, v]) => `${k.toLowerCase()}:${v}`)
-      .sort()
+      .toSorted()
       .join('\n')
     const signedHeaders = Object.keys(headers)
       .map((k) => k.toLowerCase())
-      .sort()
+      .toSorted()
       .join(';')
 
     const canonical = [
@@ -92,6 +92,52 @@ export function createS3Storage(config: S3Config): StorageClient {
         contentType: res.headers.get('content-type') ?? 'application/octet-stream',
         size: Number(res.headers.get('content-length') ?? '0'),
       }
+    },
+
+    async getPresignedUrl(
+      key: string,
+      options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      const expires = options?.expiresIn ?? 3600
+      const date = new Date()
+      const shortDate = date
+        .toISOString()
+        .replace(/[-:]/g, '')
+        .replace(/\.\d+Z$/, 'Z')
+        .slice(0, 8)
+
+      const credential = `${config.accessKeyId}/${shortDate}/${config.region}/s3/aws4_request`
+      const params = new URLSearchParams({
+        'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential': credential,
+        'X-Amz-Date': shortDate,
+        'X-Amz-Expires': String(expires),
+        'X-Amz-SignedHeaders': 'host',
+      })
+
+      const host = new URL(baseUrl).host
+      const path = `/${config.bucket}/${key}`
+      const canonical = [
+        'GET',
+        path,
+        params.toString(),
+        `host:${host}`,
+        '',
+        'host',
+        'UNSIGNED-PAYLOAD',
+      ].join('\n')
+
+      const signingKey = hmacChain(
+        `AWS4${config.secretAccessKey}`,
+        shortDate,
+        config.region,
+        's3',
+        'aws4_request'
+      )
+      const signature = hmacHex(signingKey, canonical)
+
+      params.set('X-Amz-Signature', signature)
+      return `${baseUrl}${path}?${params}`
     },
 
     async list(prefix?: string, _cursor?: string, limit = 100): Promise<ListResult> {
@@ -190,52 +236,6 @@ export function createS3Storage(config: S3Config): StorageClient {
         size: bytes.length,
         url: `${publicBase}/${config.bucket}/${key}`,
       }
-    },
-
-    async getPresignedUrl(
-      key: string,
-      options?: { contentType?: string; expiresIn?: number }
-    ): Promise<string> {
-      const expires = options?.expiresIn ?? 3600
-      const date = new Date()
-      const shortDate = date
-        .toISOString()
-        .replace(/[-:]/g, '')
-        .replace(/\.\d+Z$/, 'Z')
-        .slice(0, 8)
-
-      const credential = `${config.accessKeyId}/${shortDate}/${config.region}/s3/aws4_request`
-      const params = new URLSearchParams({
-        'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-        'X-Amz-Credential': credential,
-        'X-Amz-Date': shortDate,
-        'X-Amz-Expires': String(expires),
-        'X-Amz-SignedHeaders': 'host',
-      })
-
-      const host = new URL(baseUrl).host
-      const path = `/${config.bucket}/${key}`
-      const canonical = [
-        'GET',
-        path,
-        params.toString(),
-        `host:${host}`,
-        '',
-        'host',
-        'UNSIGNED-PAYLOAD',
-      ].join('\n')
-
-      const signingKey = hmacChain(
-        `AWS4${config.secretAccessKey}`,
-        shortDate,
-        config.region,
-        's3',
-        'aws4_request'
-      )
-      const signature = hmacHex(signingKey, canonical)
-
-      params.set('X-Amz-Signature', signature)
-      return `${baseUrl}${path}?${params}`
     },
   }
 }

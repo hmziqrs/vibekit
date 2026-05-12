@@ -84,8 +84,8 @@ export function extractImageMetadata(filename: string, fileSize: number) {
   const mimeTypeMap: Record<string, string> = {
     avif: 'image/avif',
     gif: 'image/gif',
-    jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
+    jpg: 'image/jpeg',
     png: 'image/png',
     webp: 'image/webp',
   }

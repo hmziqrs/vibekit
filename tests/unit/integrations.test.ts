@@ -13,7 +13,7 @@ import {
 import { describe, expect, it } from 'vitest'
 
 describe('integration validators', () => {
-  describe('connectIntegrationSchema', () => {
+  describe(connectIntegrationSchema, () => {
     it('validates empty input', () => {
       const result = connectIntegrationSchema.safeParse({})
       expect(result.success).toBeTruthy()
@@ -41,7 +41,7 @@ describe('integration validators', () => {
     })
   })
 
-  describe('listIntegrationsSchema', () => {
+  describe(listIntegrationsSchema, () => {
     it('uses default values', () => {
       const result = listIntegrationsSchema.safeParse({})
       expect(result.success).toBeTruthy()
@@ -79,7 +79,7 @@ describe('integration validators', () => {
     })
   })
 
-  describe('integrationCallbackQuerySchema', () => {
+  describe(integrationCallbackQuerySchema, () => {
     it('validates correct input', () => {
       const result = integrationCallbackQuerySchema.safeParse({
         code: 'abc123',
@@ -141,7 +141,7 @@ describe('integration provider registry', () => {
 
   it('getAvailableProviders returns all providers', () => {
     const result = getAvailableProviders({})
-    expect(result.length).toBe(5)
+    expect(result).toHaveLength(5)
   })
 
   it('getAvailableProviders marks configured providers', () => {
@@ -159,7 +159,13 @@ describe('integration provider registry', () => {
 
 describe('integration provider slugs', () => {
   it('matches INTEGRATION_PROVIDER_SLUGS', () => {
-    expect(INTEGRATION_PROVIDER_SLUGS).toEqual(['discord', 'github', 'linear', 'notion', 'slack'])
+    expect(INTEGRATION_PROVIDER_SLUGS).toStrictEqual([
+      'discord',
+      'github',
+      'linear',
+      'notion',
+      'slack',
+    ])
   })
 
   it('all provider slugs are in the enum', () => {

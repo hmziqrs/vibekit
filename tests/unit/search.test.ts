@@ -6,8 +6,8 @@ import {
 } from '$lib/validators/search'
 import { describe, expect, it } from 'vitest'
 
-describe('Search Validators', () => {
-  describe('searchSchema', () => {
+describe('search Validators', () => {
+  describe(searchSchema, () => {
     it('validates a valid search query', () => {
       const result = searchSchema.safeParse({ query: 'hello world' })
       expect(result.success).toBe(true)
@@ -47,7 +47,7 @@ describe('Search Validators', () => {
     })
   })
 
-  describe('indexDocumentSchema', () => {
+  describe(indexDocumentSchema, () => {
     it('validates a valid document', () => {
       const result = indexDocumentSchema.safeParse({
         content: 'This is the content of the document',
@@ -89,7 +89,7 @@ describe('Search Validators', () => {
 
     it('rejects content over 50000 chars', () => {
       const result = indexDocumentSchema.safeParse({
-        content: 'x'.repeat(50001),
+        content: 'x'.repeat(50_001),
         entityId: 'id-1',
         entityType: 'type',
         title: 'Title',
@@ -98,7 +98,7 @@ describe('Search Validators', () => {
     })
   })
 
-  describe('deleteIndexSchema', () => {
+  describe(deleteIndexSchema, () => {
     it('validates deletion params', () => {
       const result = deleteIndexSchema.safeParse({
         entityId: 'post-1',
@@ -113,7 +113,7 @@ describe('Search Validators', () => {
     })
   })
 
-  describe('reindexSchema', () => {
+  describe(reindexSchema, () => {
     it('validates empty body', () => {
       const result = reindexSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -131,7 +131,7 @@ describe('Search Validators', () => {
   })
 })
 
-describe('Search Query Sanitization', () => {
+describe('search Query Sanitization', () => {
   it('removes special FTS characters', () => {
     const query = 'test "quoted" *star*'
     const sanitized = query.replace(/["*]/g, '').trim()
@@ -152,7 +152,7 @@ describe('Search Query Sanitization', () => {
 
   it('appends wildcard for prefix matching', () => {
     const query = 'test'
-    const ftsQuery = query + '*'
+    const ftsQuery = `${query}*`
     expect(ftsQuery).toBe('test*')
   })
 })

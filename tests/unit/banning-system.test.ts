@@ -25,7 +25,7 @@ describe('ban validation', () => {
   it('requires a non-empty reason', () => {
     const reason = ''
     const trimmed = reason.trim()
-    expect(trimmed.length).toBe(0)
+    expect(trimmed).toHaveLength(0)
   })
 
   it('accepts a valid reason', () => {
@@ -70,13 +70,13 @@ describe('cleanup cron ban expiry', () => {
   it('identifies expired bans correctly', () => {
     const now = Date.now()
     const expiredBan = new Date(now - 1000)
-    expect(expiredBan.getTime() < now).toBe(true)
+    expect(expiredBan.getTime()).toBeLessThan(now)
   })
 
   it('does not expire future bans', () => {
     const now = Date.now()
     const futureBan = new Date(now + 30 * 24 * 60 * 60 * 1000)
-    expect(futureBan.getTime() > now).toBe(true)
+    expect(futureBan.getTime()).toBeGreaterThan(now)
   })
 
   it('thirty days cutoff is calculated correctly', () => {

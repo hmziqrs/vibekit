@@ -79,7 +79,7 @@
   }))
 
   const deliveriesQuery = createQuery(() => ({
-    enabled: !!selectedEndpointId,
+    enabled: Boolean(selectedEndpointId),
     queryFn: async () => {
       const res = await fetch(`/api/webhooks/${selectedEndpointId}/deliveries`)
       if (!res.ok) throw new Error('Failed to fetch deliveries')
@@ -169,11 +169,16 @@
 
   function statusColor(status: string): string {
     switch (status) {
-      case 'success': return 'text-green-400 bg-green-500/10'
-      case 'failed': return 'text-red-400 bg-red-500/10'
-      case 'pending': return 'text-yellow-400 bg-yellow-500/10'
-      case 'retrying': return 'text-blue-400 bg-blue-500/10'
-      default: return 'text-text-muted bg-white/5'
+      case 'success': { return 'text-green-400 bg-green-500/10'
+      }
+      case 'failed': { return 'text-red-400 bg-red-500/10'
+      }
+      case 'pending': { return 'text-yellow-400 bg-yellow-500/10'
+      }
+      case 'retrying': { return 'text-blue-400 bg-blue-500/10'
+      }
+      default: { return 'text-text-muted bg-white/5'
+      }
     }
   }
 </script>

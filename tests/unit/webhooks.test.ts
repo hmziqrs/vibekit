@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('$lib/server/db/schema', () => ({
+vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
   webhookDelivery: {
     attemptCount: 'attempt_count',
     createdAt: 'created_at',
@@ -10,8 +10,8 @@ vi.mock('$lib/server/db/schema', () => ({
     nextRetryAt: 'next_retry_at',
     payload: 'payload',
     responseBody: 'response_body',
-    statusCode: 'status_code',
     status: 'status',
+    statusCode: 'status_code',
     updatedAt: 'updated_at',
   },
   webhookEndpoint: {
@@ -27,8 +27,8 @@ vi.mock('$lib/server/db/schema', () => ({
   },
 }))
 
-vi.mock('$lib/server/uuid', () => ({
-  uuid: () => 'test-uuid-' + Math.random().toString(36).slice(2, 8),
+vi.mock<typeof import('$lib/server/uuid')>(import('$lib/server/uuid'), () => ({
+  uuid: () => `test-uuid-${Math.random().toString(36).slice(2, 8)}`,
 }))
 
 import { generateSecret, hmacSign } from '$lib/server/webhooks'
@@ -40,7 +40,7 @@ import {
 } from '$lib/validators/webhook'
 
 describe('webhook validators', () => {
-  describe('createWebhookEndpointSchema', () => {
+  describe(createWebhookEndpointSchema, () => {
     it('validates correct input', () => {
       const result = createWebhookEndpointSchema.safeParse({
         events: ['blog.create', 'blog.update'],
@@ -124,7 +124,7 @@ describe('webhook validators', () => {
     })
   })
 
-  describe('updateWebhookEndpointSchema', () => {
+  describe(updateWebhookEndpointSchema, () => {
     it('allows partial update with url only', () => {
       const result = updateWebhookEndpointSchema.safeParse({
         url: 'https://new-url.com/webhooks',
@@ -150,7 +150,7 @@ describe('webhook validators', () => {
     })
   })
 
-  describe('listDeliveriesSchema', () => {
+  describe(listDeliveriesSchema, () => {
     it('uses default values', () => {
       const result = listDeliveriesSchema.safeParse({})
       expect(result.success).toBeTruthy()
@@ -196,12 +196,12 @@ describe('webhook event types', () => {
   })
 
   it('event types are sorted alphabetically', () => {
-    const sorted = [...WEBHOOK_EVENT_TYPES].sort()
-    expect(WEBHOOK_EVENT_TYPES).toEqual(sorted)
+    const sorted = [...WEBHOOK_EVENT_TYPES].toSorted()
+    expect(WEBHOOK_EVENT_TYPES).toStrictEqual(sorted)
   })
 })
 
-describe('hmacSign', () => {
+describe(hmacSign, () => {
   it('produces consistent signatures', async () => {
     const payload = '{"test":true}'
     const secret = 'whsec_abcdef1234567890'
@@ -209,7 +209,7 @@ describe('hmacSign', () => {
     const sig1 = await hmacSign(payload, secret, ts)
     const sig2 = await hmacSign(payload, secret, ts)
     expect(sig1).toBe(sig2)
-    expect(sig1.length).toBe(64)
+    expect(sig1).toHaveLength(64)
   })
 
   it('different payloads produce different signatures', async () => {
@@ -223,18 +223,18 @@ describe('hmacSign', () => {
   it('different timestamps produce different signatures', async () => {
     const secret = 'whsec_test'
     const payload = 'same-payload'
-    const sig1 = await hmacSign(payload, secret, 1_000)
-    const sig2 = await hmacSign(payload, secret, 2_000)
+    const sig1 = await hmacSign(payload, secret, 1000)
+    const sig2 = await hmacSign(payload, secret, 2000)
     expect(sig1).not.toBe(sig2)
   })
 })
 
-describe('generateSecret', () => {
+describe(generateSecret, () => {
   it('produces secrets with whsec_ prefix', () => {
     const secret = generateSecret()
     expect(secret.startsWith('whsec_')).toBeTruthy()
     // 32 bytes = 64 hex chars + 6 char prefix = 70
-    expect(secret.length).toBe(70)
+    expect(secret).toHaveLength(70)
   })
 
   it('produces unique secrets', () => {

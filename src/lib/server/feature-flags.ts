@@ -1,4 +1,5 @@
 import { featureFlag } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, sql } from 'drizzle-orm'
 
@@ -8,14 +9,7 @@ export interface FlagEvaluationContext {
 }
 
 export async function listFeatureFlags(
-  db: {
-    select: () => {
-      from: (t: typeof featureFlag) => {
-        orderBy: (c: unknown) => Promise<unknown[]>
-        where: (c: unknown) => Promise<unknown[]>
-      }
-    }
-  },
+  db: AppDb,
   options?: { enabled?: boolean; environment?: string }
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,12 +36,7 @@ export async function listFeatureFlags(
   return dbAny.select().from(featureFlag).orderBy(desc(featureFlag.createdAt))
 }
 
-export async function getFeatureFlag(
-  db: {
-    select: () => { from: (t: typeof featureFlag) => { where: (c: unknown) => Promise<unknown[]> } }
-  },
-  key: string
-) {
+export async function getFeatureFlag(db: AppDb, key: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -56,7 +45,7 @@ export async function getFeatureFlag(
 }
 
 export async function createFeatureFlag(
-  db: { insert: (t: typeof featureFlag) => { values: (v: unknown) => Promise<void> } },
+  db: AppDb,
   input: {
     cohortRules?: Record<string, unknown>
     dependencies?: string[]
@@ -92,12 +81,7 @@ export async function createFeatureFlag(
 }
 
 export async function updateFeatureFlag(
-  db: {
-    select: () => { from: (t: typeof featureFlag) => { where: (c: unknown) => Promise<unknown[]> } }
-    update: (t: typeof featureFlag) => {
-      set: (v: unknown) => { where: (c: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   key: string,
   input: {
     cohortRules?: Record<string, unknown>
@@ -130,25 +114,13 @@ export async function updateFeatureFlag(
   return { key }
 }
 
-export async function deleteFeatureFlag(
-  db: { delete: (t: typeof featureFlag) => { where: (c: unknown) => Promise<void> } },
-  key: string
-) {
+export async function deleteFeatureFlag(db: AppDb, key: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
   await dbAny.delete(featureFlag).where(eq(featureFlag.key, key))
 }
 
-export async function toggleFeatureFlag(
-  db: {
-    select: () => { from: (t: typeof featureFlag) => { where: (c: unknown) => Promise<unknown[]> } }
-    update: (t: typeof featureFlag) => {
-      set: (v: unknown) => { where: (c: unknown) => Promise<void> }
-    }
-  },
-  key: string,
-  enabled: boolean
-) {
+export async function toggleFeatureFlag(db: AppDb, key: string, enabled: boolean) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -163,15 +135,7 @@ export async function toggleFeatureFlag(
   return { enabled, key }
 }
 
-export async function activateKillSwitch(
-  db: {
-    select: () => { from: (t: typeof featureFlag) => { where: (c: unknown) => Promise<unknown[]> } }
-    update: (t: typeof featureFlag) => {
-      set: (v: unknown) => { where: (c: unknown) => Promise<void> }
-    }
-  },
-  key: string
-) {
+export async function activateKillSwitch(db: AppDb, key: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -187,9 +151,7 @@ export async function activateKillSwitch(
 }
 
 export async function evaluateFeatureFlag(
-  db: {
-    select: () => { from: (t: typeof featureFlag) => { where: (c: unknown) => Promise<unknown[]> } }
-  },
+  db: AppDb,
   key: string,
   context?: FlagEvaluationContext
 ): Promise<boolean> {
@@ -241,9 +203,7 @@ function simpleHash(str: string): number {
 }
 
 export async function evaluateMultipleFlags(
-  db: {
-    select: () => { from: (t: typeof featureFlag) => { where: (c: unknown) => Promise<unknown[]> } }
-  },
+  db: AppDb,
   keys: string[],
   context?: FlagEvaluationContext
 ): Promise<Record<string, boolean>> {

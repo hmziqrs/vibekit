@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Caching Strategy', () => {
-  describe('Cache-Control header values', () => {
+describe('caching Strategy', () => {
+  describe('cache-Control header values', () => {
     it('search API uses short browser cache with longer CDN cache', () => {
       const header = 'public, max-age=60, s-maxage=300, stale-while-revalidate=30'
       expect(header).toContain('max-age=60')
@@ -30,10 +30,10 @@ describe('Caching Strategy', () => {
 
   describe('_headers static file rules', () => {
     const rules = [
-      { path: '/_app/immutable/*', expected: 'immutable' },
-      { path: '/feed.xml', expected: 'stale-while-revalidate=60' },
-      { path: '/sitemap.xml', expected: 'max-age=3600' },
-      { path: '/sw.js', expected: 'no-cache' },
+      { expected: 'immutable', path: '/_app/immutable/*' },
+      { expected: 'stale-while-revalidate=60', path: '/feed.xml' },
+      { expected: 'max-age=3600', path: '/sitemap.xml' },
+      { expected: 'no-cache', path: '/sw.js' },
     ]
 
     it('has correct number of cache rules', () => {

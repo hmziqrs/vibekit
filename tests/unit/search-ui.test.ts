@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-describe('Search Dialog Utilities', () => {
+describe('search Dialog Utilities', () => {
   describe('highlightMatch', () => {
     function highlightMatch(text: string, term: string): string {
       if (!term) return text
-      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)})`, 'gi')
       return text.replace(regex, '<mark>$1</mark>')
     }
 
@@ -21,9 +21,7 @@ describe('Search Dialog Utilities', () => {
     })
 
     it('escapes regex special characters in term', () => {
-      expect(highlightMatch('test (group)', '(group)')).toBe(
-        'test <mark>(group)</mark>'
-      )
+      expect(highlightMatch('test (group)', '(group)')).toBe('test <mark>(group)</mark>')
     })
 
     it('highlights multiple occurrences', () => {
@@ -40,16 +38,21 @@ describe('Search Dialog Utilities', () => {
   describe('getTypeLabel', () => {
     function getTypeLabel(type: string): string {
       switch (type) {
-        case 'blog_post':
+        case 'blog_post': {
           return 'Blog'
-        case 'user':
+        }
+        case 'user': {
           return 'User'
-        case 'item':
+        }
+        case 'item': {
           return 'Item'
-        case 'page':
+        }
+        case 'page': {
           return 'Page'
-        default:
+        }
+        default: {
           return type
+        }
       }
     }
 
@@ -75,16 +78,23 @@ describe('Search Dialog Utilities', () => {
   })
 
   describe('buildResultUrl', () => {
-    function buildResultUrl(result: { entityId: string; entityType: string }, query: string): string {
+    function buildResultUrl(
+      result: { entityId: string; entityType: string },
+      query: string
+    ): string {
       switch (result.entityType) {
-        case 'blog_post':
+        case 'blog_post': {
           return `/admin/blog/${result.entityId}/edit`
-        case 'user':
+        }
+        case 'user': {
           return `/admin/users`
-        case 'item':
+        }
+        case 'item': {
           return `/app/items`
-        default:
+        }
+        default: {
           return `/app/search?q=${encodeURIComponent(query)}`
+        }
       }
     }
 
@@ -109,14 +119,11 @@ describe('Search Dialog Utilities', () => {
     })
   })
 
-  describe('Recent Searches localStorage', () => {
+  describe('recent Searches localStorage', () => {
     const STORAGE_KEY = 'vibekit:recent-searches'
     const MAX_RECENT = 5
 
-    function saveRecentSearch(
-      term: string,
-      current: string[],
-    ): string[] {
+    function saveRecentSearch(term: string, current: string[]): string[] {
       const trimmed = term.trim()
       if (!trimmed) return current
       return [trimmed, ...current.filter((s) => s !== trimmed)].slice(0, MAX_RECENT)
@@ -124,22 +131,22 @@ describe('Search Dialog Utilities', () => {
 
     it('adds new search to front of list', () => {
       const result = saveRecentSearch('new term', ['old term'])
-      expect(result).toEqual(['new term', 'old term'])
+      expect(result).toStrictEqual(['new term', 'old term'])
     })
 
     it('moves existing search to front', () => {
       const result = saveRecentSearch('existing', ['existing', 'other'])
-      expect(result).toEqual(['existing', 'other'])
+      expect(result).toStrictEqual(['existing', 'other'])
     })
 
     it('trims whitespace', () => {
       const result = saveRecentSearch('  spaced  ', [])
-      expect(result).toEqual(['spaced'])
+      expect(result).toStrictEqual(['spaced'])
     })
 
     it('ignores empty strings', () => {
       const result = saveRecentSearch('  ', ['existing'])
-      expect(result).toEqual(['existing'])
+      expect(result).toStrictEqual(['existing'])
     })
 
     it('limits to MAX_RECENT items', () => {
@@ -152,11 +159,11 @@ describe('Search Dialog Utilities', () => {
     it('removes duplicate from middle when adding new', () => {
       const current = ['first', 'duplicate', 'third']
       const result = saveRecentSearch('duplicate', current)
-      expect(result).toEqual(['duplicate', 'first', 'third'])
+      expect(result).toStrictEqual(['duplicate', 'first', 'third'])
     })
   })
 
-  describe('Search query sanitization', () => {
+  describe('search query sanitization', () => {
     function sanitizeQuery(query: string): string {
       return query.replace(/["*]/g, '').trim()
     }

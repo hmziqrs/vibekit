@@ -8,8 +8,8 @@ import {
 } from '$lib/validators/ab-testing'
 import { describe, expect, it } from 'vitest'
 
-describe('A/B Testing Validators', () => {
-  describe('createExperimentSchema', () => {
+describe('a/B Testing Validators', () => {
+  describe(createExperimentSchema, () => {
     it('validates a valid experiment', () => {
       const result = createExperimentSchema.safeParse({
         key: 'checkout-redesign',
@@ -90,7 +90,7 @@ describe('A/B Testing Validators', () => {
     })
   })
 
-  describe('updateExperimentSchema', () => {
+  describe(updateExperimentSchema, () => {
     it('validates status update', () => {
       const result = updateExperimentSchema.safeParse({ status: 'running' })
       expect(result.success).toBe(true)
@@ -112,7 +112,7 @@ describe('A/B Testing Validators', () => {
     })
   })
 
-  describe('assignVariantSchema', () => {
+  describe(assignVariantSchema, () => {
     it('validates with userId', () => {
       const result = assignVariantSchema.safeParse({ userId: 'user-123' })
       expect(result.success).toBe(true)
@@ -129,7 +129,7 @@ describe('A/B Testing Validators', () => {
     })
   })
 
-  describe('recordEventSchema', () => {
+  describe(recordEventSchema, () => {
     it('validates conversion event', () => {
       const result = recordEventSchema.safeParse({
         eventName: 'purchase',
@@ -164,7 +164,7 @@ describe('A/B Testing Validators', () => {
     })
   })
 
-  describe('listExperimentsSchema', () => {
+  describe(listExperimentsSchema, () => {
     it('validates empty params', () => {
       const result = listExperimentsSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -177,8 +177,8 @@ describe('A/B Testing Validators', () => {
   })
 })
 
-describe('Statistical Significance', () => {
-  describe('calculateZTest', () => {
+describe('statistical Significance', () => {
+  describe(calculateZTest, () => {
     it('returns 0 zScore for identical rates', () => {
       const { zScore } = calculateZTest(0.1, 1000, 0.1, 1000)
       expect(zScore).toBe(0)
@@ -204,7 +204,7 @@ describe('Statistical Significance', () => {
 
     it('handles small differences with large samples', () => {
       // 10% vs 11% with very large sample
-      const { pValue } = calculateZTest(0.1, 50000, 0.11, 50000)
+      const { pValue } = calculateZTest(0.1, 50_000, 0.11, 50_000)
       expect(pValue).toBeLessThan(0.05)
     })
 
@@ -228,7 +228,7 @@ describe('Statistical Significance', () => {
   })
 })
 
-describe('Hash Distribution', () => {
+describe('hash Distribution', () => {
   function simpleHash(str: string): number {
     let hash = 0
     for (let i = 0; i < str.length; i++) {

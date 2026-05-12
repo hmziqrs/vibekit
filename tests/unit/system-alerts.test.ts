@@ -39,7 +39,7 @@ describe('notification preference logic', () => {
     const { getNotificationPreferences } = await import('$lib/server/notifications')
 
     const prefs = await getNotificationPreferences(db, 'user-1')
-    expect(prefs).toEqual([])
+    expect(prefs).toStrictEqual([])
   })
 })
 
@@ -196,7 +196,7 @@ describe('notification type validation', () => {
   it('all notification types are valid strings', () => {
     const types = ['error', 'info', 'success', 'warning']
     for (const t of types) {
-      expect(typeof t).toBe('string')
+      expectTypeOf(t).toBeString()
       expect(t.length).toBeGreaterThan(0)
     }
   })

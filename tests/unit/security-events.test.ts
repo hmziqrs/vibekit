@@ -1,5 +1,5 @@
 import { isNewDevice, type SecurityEventType } from '$lib/server/services/security-events'
-import { describe, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe('new device detection', () => {
   it('returns false when currentIP is empty', () => {

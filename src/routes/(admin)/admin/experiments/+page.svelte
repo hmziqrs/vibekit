@@ -19,17 +19,17 @@
   })
 
   const experimentsQuery = createQuery({
-    queryKey: ['admin', 'experiments'],
     queryFn: async () => {
       const res = await fetch('/api/admin/experiments')
       if (!res.ok) throw new Error('Failed to fetch experiments')
       const data = await res.json()
       return data.experiments as Record<string, unknown>[]
     },
+    queryKey: ['admin', 'experiments'],
   })
 
   const resultsQuery = createQuery({
-    queryKey: ['admin', 'experiment-results', viewingResults],
+    enabled: () => !!viewingResults,
     queryFn: async () => {
       if (!viewingResults) return []
       const res = await fetch(`/api/admin/experiments/${encodeURIComponent(viewingResults)}/results`)
@@ -47,7 +47,7 @@
         zScore: number | null
       }>
     },
-    enabled: () => !!viewingResults,
+    queryKey: ['admin', 'experiment-results', viewingResults],
   })
 
   const createMutation = createMutation(() => ({
@@ -129,18 +129,24 @@
 
   function statusColor(status: string) {
     switch (status) {
-      case 'running':
+      case 'running': {
         return 'bg-green-500/10 text-green-400'
-      case 'draft':
+      }
+      case 'draft': {
         return 'bg-white/[0.06] text-text-muted'
-      case 'paused':
+      }
+      case 'paused': {
         return 'bg-yellow-500/10 text-yellow-400'
-      case 'completed':
+      }
+      case 'completed': {
         return 'bg-blue-500/10 text-blue-400'
-      case 'archived':
+      }
+      case 'archived': {
         return 'bg-white/[0.04] text-text-faint'
-      default:
+      }
+      default: {
         return 'bg-white/[0.06] text-text-muted'
+      }
     }
   }
 </script>

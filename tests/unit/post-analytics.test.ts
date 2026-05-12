@@ -1,7 +1,7 @@
 import { recordReadingSchema, recordViewSchema } from '$lib/validators/analytics'
 import { describe, expect, it } from 'vitest'
 
-describe('recordViewSchema', () => {
+describe(recordViewSchema, () => {
   it('validates postId only', () => {
     const result = recordViewSchema.safeParse({ postId: 'abc-123' })
     expect(result.success).toBeTruthy()
@@ -41,7 +41,7 @@ describe('recordViewSchema', () => {
   })
 })
 
-describe('recordReadingSchema', () => {
+describe(recordReadingSchema, () => {
   it('validates progress and readTime', () => {
     const result = recordReadingSchema.safeParse({
       postId: 'abc-123',

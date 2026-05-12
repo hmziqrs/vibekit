@@ -23,7 +23,7 @@ describe('renderEmail base template', () => {
   })
 })
 
-describe('renderNewsletterConfirm', () => {
+describe(renderNewsletterConfirm, () => {
   it('returns html and text', () => {
     const result = renderNewsletterConfirm('https://example.com/confirm?token=abc')
     expect(result.html).toContain('https://example.com/confirm?token=abc')
@@ -47,7 +47,7 @@ describe('renderNewsletterConfirm', () => {
   })
 })
 
-describe('renderPasswordReset', () => {
+describe(renderPasswordReset, () => {
   it('includes reset url in html', () => {
     const result = renderPasswordReset('https://example.com/reset?token=xyz')
     expect(result.html).toContain('https://example.com/reset?token=xyz')
@@ -77,7 +77,7 @@ describe('renderPasswordReset', () => {
   })
 })
 
-describe('renderEmailVerification', () => {
+describe(renderEmailVerification, () => {
   it('includes verify url in html', () => {
     const result = renderEmailVerification('https://example.com/verify?token=123')
     expect(result.html).toContain('https://example.com/verify?token=123')
@@ -99,7 +99,7 @@ describe('renderEmailVerification', () => {
   })
 })
 
-describe('renderContactNotification', () => {
+describe(renderContactNotification, () => {
   const data = {
     email: 'user@example.com',
     message: 'Hello, I have a question.',
@@ -143,7 +143,7 @@ describe('renderContactNotification', () => {
   })
 })
 
-describe('renderWelcome', () => {
+describe(renderWelcome, () => {
   it('includes user name', () => {
     const result = renderWelcome('Alice')
     expect(result.html).toContain('Alice')

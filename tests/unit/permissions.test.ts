@@ -225,7 +225,7 @@ describe('role hierarchy', () => {
   })
 })
 
-describe('getPermissions', () => {
+describe(getPermissions, () => {
   it('returns valid actions for admin', () => {
     const perms = getPermissions('admin')
     expect(perms.length).toBeGreaterThan(0)

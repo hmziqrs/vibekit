@@ -15,7 +15,7 @@ describe('image-reorder', () => {
   })
 
   it('is a TipTap extension with addProseMirrorPlugins method', () => {
-    expect(typeof ImageReorder.configure).toBe('function')
+    expectTypeOf(ImageReorder.configure).toBeFunction()
   })
 
   it('configures without error', () => {

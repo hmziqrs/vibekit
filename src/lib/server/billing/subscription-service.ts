@@ -278,30 +278,22 @@ export async function getUsageForPeriod(
 
 export async function getBillingOverview(db: AppDb) {
   const [activeSubs, totalSubs, planDistribution] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(subscription)
-      .where(sql`${subscription.status} IN ('active', 'trialing')`)
-      .get(),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(subscription)
-      .get(),
-    db
-      .select({
-        count: sql<number>`count(*)`,
-        planName: subscriptionPlan.name,
-      })
-      .from(subscription)
-      .innerJoin(subscriptionPlan, eq(subscription.planId, subscriptionPlan.id))
-      .where(sql`${subscription.status} IN ('active', 'trialing')`)
-      .groupBy(subscriptionPlan.name),
+    db.all<{ count: number }>(
+      sql`SELECT count(*) as count FROM subscription WHERE status IN ('active', 'trialing')`
+    ),
+    db.all<{ count: number }>(sql`SELECT count(*) as count FROM subscription`),
+    db.all<{ count: number; planName: string }>(
+      sql`SELECT count(*) as count, sp.name as plan_name FROM subscription s INNER JOIN subscription_plan sp ON s.plan_id = sp.id WHERE s.status IN ('active', 'trialing') GROUP BY sp.name`
+    ),
   ])
 
   return {
-    activeSubscriptions: activeSubs?.count ?? 0,
-    planDistribution,
-    totalSubscriptions: totalSubs?.count ?? 0,
+    activeSubscriptions: activeSubs[0]?.count ?? 0,
+    planDistribution: planDistribution.map((row) => ({
+      count: row.count,
+      planName: row.planName,
+    })),
+    totalSubscriptions: totalSubs[0]?.count ?? 0,
   }
 }
 

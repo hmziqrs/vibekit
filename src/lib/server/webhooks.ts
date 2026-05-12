@@ -1,4 +1,5 @@
 import { webhookDelivery, webhookEndpoint } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, sql } from 'drizzle-orm'
 
@@ -18,7 +19,7 @@ async function hmacSign(payload: string, secret: string, timestamp: number): Pro
   const key = await crypto.subtle.importKey(
     'raw',
     keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
+    { hash: 'SHA-256', name: 'HMAC' },
     false,
     ['sign']
   )
@@ -27,7 +28,7 @@ async function hmacSign(payload: string, secret: string, timestamp: number): Pro
 }
 
 function getBackoffDelay(attemptCount: number): number {
-  return Math.min(BACKOFF_BASE_MS * Math.pow(5, attemptCount), 60_000)
+  return Math.min(BACKOFF_BASE_MS * 5 ** attemptCount, 60_000)
 }
 
 export interface WebhookPayload {
@@ -38,9 +39,7 @@ export interface WebhookPayload {
 }
 
 export async function createWebhookEndpoint(
-  db: {
-    insert: (table: typeof webhookEndpoint) => { values: (vals: unknown) => Promise<void> }
-  },
+  db: AppDb,
   userId: string,
   input: { description?: string; events: string[]; url: string }
 ) {
@@ -65,17 +64,7 @@ export async function createWebhookEndpoint(
   return { id, secret, url: input.url }
 }
 
-export async function listWebhookEndpoints(
-  db: {
-    select: () => {
-      from: (table: typeof webhookEndpoint) => {
-        where: (cond: unknown) => Promise<unknown[]>
-        orderBy: (col: unknown) => Promise<unknown[]>
-      }
-    }
-  },
-  userId: string
-) {
+export async function listWebhookEndpoints(db: AppDb, userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -87,16 +76,7 @@ export async function listWebhookEndpoints(
 }
 
 export async function updateWebhookEndpoint(
-  db: {
-    select: () => {
-      from: (table: typeof webhookEndpoint) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-    update: (table: typeof webhookEndpoint) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   endpointId: string,
   userId: string,
   input: { active?: boolean; description?: string; events?: string[]; url?: string }
@@ -123,13 +103,7 @@ export async function updateWebhookEndpoint(
   return { id: endpointId }
 }
 
-export async function deleteWebhookEndpoint(
-  db: {
-    delete: (table: typeof webhookEndpoint) => { where: (cond: unknown) => Promise<void> }
-  },
-  endpointId: string,
-  userId: string
-) {
+export async function deleteWebhookEndpoint(db: AppDb, endpointId: string, userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -138,17 +112,7 @@ export async function deleteWebhookEndpoint(
     .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
 }
 
-export async function getWebhookEndpoint(
-  db: {
-    select: () => {
-      from: (table: typeof webhookEndpoint) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-  },
-  endpointId: string,
-  userId: string
-) {
+export async function getWebhookEndpoint(db: AppDb, endpointId: string, userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -161,12 +125,7 @@ export async function getWebhookEndpoint(
 }
 
 export async function deliverWebhook(
-  db: {
-    insert: (table: typeof webhookDelivery) => { values: (vals: unknown) => Promise<void> }
-    update: (table: typeof webhookDelivery) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   endpoint: { id: string; secret: string; url: string },
   eventType: string,
   data: Record<string, unknown>
@@ -195,8 +154,8 @@ export async function deliverWebhook(
     nextRetryAt: null,
     payload,
     responseBody: null,
-    statusCode: null,
     status: 'pending',
+    statusCode: null,
     updatedAt: new Date(),
   })
 
@@ -222,8 +181,8 @@ export async function deliverWebhook(
         .set({
           attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
           responseBody: responseBody.slice(0, 10_000),
-          statusCode: response.status,
           status: 'success',
+          statusCode: response.status,
           updatedAt: new Date(),
         })
         .where(eq(webhookDelivery.id, id))
@@ -240,8 +199,8 @@ export async function deliverWebhook(
         attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
         nextRetryAt: shouldRetry ? new Date(Date.now() + getBackoffDelay(attemptCount)) : null,
         responseBody: responseBody.slice(0, 10_000),
-        statusCode: response.status,
         status: shouldRetry ? 'retrying' : 'failed',
+        statusCode: response.status,
         updatedAt: new Date(),
       })
       .where(eq(webhookDelivery.id, id))
@@ -267,17 +226,7 @@ export async function deliverWebhook(
 }
 
 export async function dispatchWebhooksForEvent(
-  db: {
-    select: () => {
-      from: (table: typeof webhookEndpoint) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-    insert: (table: typeof webhookDelivery) => { values: (vals: unknown) => Promise<void> }
-    update: (table: typeof webhookDelivery) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   eventType: string,
   data: Record<string, unknown>
 ) {
@@ -291,7 +240,7 @@ export async function dispatchWebhooksForEvent(
     .where(eq(webhookEndpoint.active, true))
 
   const matching = (
-    endpoints as Array<{ events: string[]; id: string; secret: string; url: string }>
+    endpoints as { events: string[]; id: string; secret: string; url: string }[]
   ).filter((ep) => ep.events.includes('*') || ep.events.includes(eventType))
 
   // Fire deliveries in parallel (fire and forget for each)
@@ -304,24 +253,7 @@ export async function dispatchWebhooksForEvent(
   return results.length
 }
 
-export async function retryWebhookDelivery(
-  db: {
-    select: () => {
-      from: (table: typeof webhookDelivery) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-    update: (table: typeof webhookDelivery) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-    select: () => {
-      from: (table: typeof webhookEndpoint) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-  },
-  deliveryId: string
-) {
+export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -375,8 +307,8 @@ export async function retryWebhookDelivery(
         attemptCount,
         nextRetryAt: null,
         responseBody: responseBody.slice(0, 10_000),
-        statusCode: response.status,
         status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed',
+        statusCode: response.status,
         updatedAt: new Date(),
       })
       .where(eq(webhookDelivery.id, deliveryId))
@@ -406,18 +338,7 @@ export async function retryWebhookDelivery(
   }
 }
 
-export async function listWebhookDeliveries(
-  db: {
-    select: () => {
-      from: (table: typeof webhookDelivery) => {
-        where: (cond: unknown) => Promise<unknown[]>
-        orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
-      }
-    }
-  },
-  endpointId: string,
-  limit = 50
-) {
+export async function listWebhookDeliveries(db: AppDb, endpointId: string, limit = 50) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dbAny = db as any
 
@@ -430,16 +351,7 @@ export async function listWebhookDeliveries(
 }
 
 export async function listAllDeliveries(
-  db: {
-    select: () => {
-      from: (table: typeof webhookDelivery) => {
-        orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
-        where: (cond: unknown) => {
-          orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
-        }
-      }
-    }
-  },
+  db: AppDb,
   options?: { eventType?: string; limit?: number; status?: string }
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -465,12 +377,7 @@ export async function listAllDeliveries(
 }
 
 export async function sendTestWebhook(
-  db: {
-    insert: (table: typeof webhookDelivery) => { values: (vals: unknown) => Promise<void> }
-    update: (table: typeof webhookDelivery) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   endpoint: { id: string; secret: string; url: string }
 ) {
   return deliverWebhook(db, endpoint, 'webhook.test', {

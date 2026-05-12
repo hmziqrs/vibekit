@@ -5,7 +5,7 @@ const LOCALES_DIR = resolve(import.meta.dirname, '..', 'messages')
 
 function loadMessages(locale: string): Record<string, string> {
   const path = resolve(LOCALES_DIR, `${locale}.json`)
-  const raw = readFileSync(path, 'utf-8')
+  const raw = readFileSync(path, 'utf8')
   const json = JSON.parse(raw)
   const { $schema: _, ...messages } = json
   return messages as Record<string, string>
@@ -32,7 +32,7 @@ function findUsedKeys(): Set<string> {
   try {
     const files = walkDir(srcDir)
     for (const file of files) {
-      const content = readFileSync(file, 'utf-8')
+      const content = readFileSync(file, 'utf8')
       const matches = content.matchAll(/m\.([a-z_]+)\(\)/g)
       for (const match of matches) {
         usedKeys.add(match[1])

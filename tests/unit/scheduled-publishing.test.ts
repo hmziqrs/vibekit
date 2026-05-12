@@ -7,7 +7,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod/v4'
 
-describe('createPostSchema', () => {
+describe(createPostSchema, () => {
   it('accepts draft status', () => {
     const result = createPostSchema.safeParse({
       slug: 'test-post',
@@ -37,7 +37,7 @@ describe('createPostSchema', () => {
   })
 })
 
-describe('updatePostSchema', () => {
+describe(updatePostSchema, () => {
   it('accepts scheduled status', () => {
     const result = updatePostSchema.safeParse({
       status: 'scheduled',
@@ -46,7 +46,7 @@ describe('updatePostSchema', () => {
   })
 
   it('accepts scheduledAt as ISO datetime string', () => {
-    const future = new Date(Date.now() + 86400000).toISOString()
+    const future = new Date(Date.now() + 86_400_000).toISOString()
     const result = updatePostSchema.safeParse({
       scheduledAt: future,
       status: 'scheduled',
@@ -84,14 +84,14 @@ describe('updatePostSchema', () => {
 describe('scheduled publishing logic', () => {
   it('a scheduled post with past scheduledAt should be due for publishing', () => {
     const now = new Date()
-    const pastDate = new Date(now.getTime() - 60000)
-    expect(pastDate.getTime() <= now.getTime()).toBe(true)
+    const pastDate = new Date(now.getTime() - 60_000)
+    expect(pastDate.getTime()).toBeLessThanOrEqual(now.getTime())
   })
 
   it('a scheduled post with future scheduledAt should not be due yet', () => {
     const now = new Date()
-    const futureDate = new Date(now.getTime() + 86400000)
-    expect(futureDate.getTime() > now.getTime()).toBe(true)
+    const futureDate = new Date(now.getTime() + 86_400_000)
+    expect(futureDate.getTime()).toBeGreaterThan(now.getTime())
   })
 
   it('cron should only query posts with status scheduled and non-null scheduledAt', () => {

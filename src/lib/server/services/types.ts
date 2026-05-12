@@ -38,7 +38,7 @@ export interface ListResult {
 }
 
 export interface PresignedUrlOptions {
-  expiresIn?: number // seconds, default 3600
+  expiresIn?: number // Seconds, default 3600
   contentType?: string
 }
 

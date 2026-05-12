@@ -1,7 +1,7 @@
 import { subscribeSchema } from '$lib/validators/newsletter'
 import { describe, expect, it } from 'vitest'
 
-describe('subscribeSchema', () => {
+describe(subscribeSchema, () => {
   it('validates email only', () => {
     const result = subscribeSchema.safeParse({ email: 'test@example.com' })
     expect(result.success).toBeTruthy()
@@ -78,12 +78,12 @@ describe('confirmation token logic', () => {
   })
 
   it('status transitions are valid', () => {
-    const validTransitions: Array<{ from: string; to: string }> = [
+    const validTransitions: { from: string; to: string }[] = [
       { from: 'pending', to: 'confirmed' },
       { from: 'confirmed', to: 'unsubscribed' },
       { from: 'unsubscribed', to: 'pending' },
       { from: 'confirmed', to: 'bounced' },
     ]
-    expect(validTransitions.length).toBe(4)
+    expect(validTransitions).toHaveLength(4)
   })
 })

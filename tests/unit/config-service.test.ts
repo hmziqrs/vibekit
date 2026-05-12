@@ -1,8 +1,8 @@
 import { updateConfigSchema } from '$lib/validators'
 import { describe, expect, it } from 'vitest'
 
-describe('Configuration Service Validators', () => {
-  describe('updateConfigSchema', () => {
+describe('configuration Service Validators', () => {
+  describe(updateConfigSchema, () => {
     it('validates a string config value', () => {
       const result = updateConfigSchema.safeParse({ value: 'hello' })
       expect(result.success).toBe(true)
@@ -25,7 +25,7 @@ describe('Configuration Service Validators', () => {
   })
 })
 
-describe('Config Key Resolution Logic', () => {
+describe('config Key Resolution Logic', () => {
   it('environment-specific key format is correct', () => {
     const key = 'maintenance_mode'
     const env = 'production'

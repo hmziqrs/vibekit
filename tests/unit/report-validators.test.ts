@@ -2,7 +2,7 @@ import { createReportSchema, resolveReportSchema } from '$lib/validators/report'
 import { describe, expect, test } from 'vitest'
 
 describe('create report schema', () => {
-  test('validates a complete report', () => {
+  it('validates a complete report', () => {
     const result = createReportSchema.safeParse({
       entityId: 'abc-123',
       entityType: 'item',
@@ -11,7 +11,7 @@ describe('create report schema', () => {
     expect(result.success).toBe(true)
   })
 
-  test('validates with optional description', () => {
+  it('validates with optional description', () => {
     const result = createReportSchema.safeParse({
       description: 'This is spam content',
       entityId: 'abc-123',
@@ -21,7 +21,7 @@ describe('create report schema', () => {
     expect(result.success).toBe(true)
   })
 
-  test('rejects missing entityId', () => {
+  it('rejects missing entityId', () => {
     const result = createReportSchema.safeParse({
       entityType: 'item',
       reason: 'spam',
@@ -29,7 +29,7 @@ describe('create report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('rejects invalid entityType', () => {
+  it('rejects invalid entityType', () => {
     const result = createReportSchema.safeParse({
       entityId: 'abc-123',
       entityType: 'invalidType',
@@ -38,7 +38,7 @@ describe('create report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('rejects invalid reason', () => {
+  it('rejects invalid reason', () => {
     const result = createReportSchema.safeParse({
       entityId: 'abc-123',
       entityType: 'item',
@@ -47,7 +47,7 @@ describe('create report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('rejects description over 1000 chars', () => {
+  it('rejects description over 1000 chars', () => {
     const result = createReportSchema.safeParse({
       description: 'x'.repeat(1001),
       entityId: 'abc-123',
@@ -57,7 +57,7 @@ describe('create report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('accepts all valid entity types', () => {
+  it('accepts all valid entity types', () => {
     const types = ['blogPost', 'contactSubmission', 'item', 'organization', 'team', 'user']
     for (const type of types) {
       const result = createReportSchema.safeParse({
@@ -69,7 +69,7 @@ describe('create report schema', () => {
     }
   })
 
-  test('accepts all valid reasons', () => {
+  it('accepts all valid reasons', () => {
     const reasons = ['harassment', 'inappropriate', 'misinformation', 'other', 'spam']
     for (const reason of reasons) {
       const result = createReportSchema.safeParse({
@@ -81,7 +81,7 @@ describe('create report schema', () => {
     }
   })
 
-  test('trims description whitespace', () => {
+  it('trims description whitespace', () => {
     const result = createReportSchema.parse({
       description: '  spaced content  ',
       entityId: 'abc-123',
@@ -93,7 +93,7 @@ describe('create report schema', () => {
 })
 
 describe('resolve report schema', () => {
-  test('validates resolved status with note', () => {
+  it('validates resolved status with note', () => {
     const result = resolveReportSchema.safeParse({
       resolutionNote: 'Content removed and user warned',
       status: 'resolved',
@@ -101,7 +101,7 @@ describe('resolve report schema', () => {
     expect(result.success).toBe(true)
   })
 
-  test('validates dismissed status with note', () => {
+  it('validates dismissed status with note', () => {
     const result = resolveReportSchema.safeParse({
       resolutionNote: 'Not a violation',
       status: 'dismissed',
@@ -109,7 +109,7 @@ describe('resolve report schema', () => {
     expect(result.success).toBe(true)
   })
 
-  test('rejects invalid status', () => {
+  it('rejects invalid status', () => {
     const result = resolveReportSchema.safeParse({
       resolutionNote: 'Some note',
       status: 'pending',
@@ -117,14 +117,14 @@ describe('resolve report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('rejects missing resolutionNote', () => {
+  it('rejects missing resolutionNote', () => {
     const result = resolveReportSchema.safeParse({
       status: 'resolved',
     })
     expect(result.success).toBe(false)
   })
 
-  test('rejects empty resolutionNote', () => {
+  it('rejects empty resolutionNote', () => {
     const result = resolveReportSchema.safeParse({
       resolutionNote: '',
       status: 'resolved',
@@ -132,7 +132,7 @@ describe('resolve report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('rejects note over 500 chars', () => {
+  it('rejects note over 500 chars', () => {
     const result = resolveReportSchema.safeParse({
       resolutionNote: 'x'.repeat(501),
       status: 'resolved',
@@ -140,7 +140,7 @@ describe('resolve report schema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('trims resolution note whitespace', () => {
+  it('trims resolution note whitespace', () => {
     const result = resolveReportSchema.parse({
       resolutionNote: '  some note  ',
       status: 'resolved',

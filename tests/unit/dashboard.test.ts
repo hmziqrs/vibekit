@@ -10,9 +10,9 @@ describe('dashboard stats response shape', () => {
 
   it('returns numeric counts', () => {
     const stats = { activeItems: 0, itemsThisWeek: 0, totalItems: 0 }
-    expect(typeof stats.activeItems).toBe('number')
-    expect(typeof stats.totalItems).toBe('number')
-    expect(typeof stats.itemsThisWeek).toBe('number')
+    expectTypeOf(stats.activeItems).toBeNumber()
+    expectTypeOf(stats.totalItems).toBeNumber()
+    expectTypeOf(stats.itemsThisWeek).toBeNumber()
   })
 })
 

@@ -20,7 +20,12 @@ type DbClient = any
 export async function listExperiments(db: DbClient, options?: { status?: string }) {
   const conditions = []
   if (options?.status) {
-    conditions.push(eq(abExperiment.status, options.status))
+    conditions.push(
+      eq(
+        abExperiment.status,
+        options.status as 'draft' | 'running' | 'paused' | 'completed' | 'archived'
+      )
+    )
   }
   if (conditions.length > 0) {
     return db
@@ -44,13 +49,13 @@ export async function createExperiment(
     key: string
     name: string
     targetMetric: string
-    variants: Array<{
+    variants: {
       description?: string
       isControl?: boolean
       name: string
       payload?: Record<string, unknown>
       trafficPercentage: number
-    }>
+    }[]
   }
 ) {
   const id = uuid()
@@ -166,6 +171,7 @@ export async function assignVariant(
   if (!selectedVariant) {
     selectedVariant = variants[variants.length - 1]
   }
+  if (!selectedVariant) return null
 
   const assignmentId = uuid()
   await db.insert(abAssignment).values({
@@ -252,8 +258,8 @@ export async function getExperimentResults(
     const conversionRate = exposureCount > 0 ? conversions / exposureCount : 0
 
     results.push({
-      conversions,
       conversionRate,
+      conversions,
       exposureCount,
       isControl: variant.isControl as boolean,
       isWinner: experiment.winningVariantId === variantId,
@@ -311,20 +317,20 @@ function twoTailedNormalP(z: number): number {
 
 function normalCDF(z: number): number {
   // Abramowitz and Stegun approximation
-  const a1 = 0.254829592
-  const a2 = -0.284496736
-  const a3 = 1.421413741
-  const a4 = -1.453152027
-  const a5 = 1.061405429
-  const p = 0.3275911
+  const a1 = 0.254_829_592
+  const a2 = -0.284_496_736
+  const a3 = 1.421_413_741
+  const a4 = -1.453_152_027
+  const a5 = 1.061_405_429
+  const p = 0.327_591_1
 
   const sign = z < 0 ? -1 : 1
   const x = Math.abs(z) / Math.sqrt(2)
 
-  const t = 1.0 / (1.0 + p * x)
-  const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
+  const t = 1 / (1 + p * x)
+  const y = 1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
 
-  return 0.5 * (1.0 + sign * y)
+  return 0.5 * (1 + sign * y)
 }
 
 function simpleHash(str: string): number {

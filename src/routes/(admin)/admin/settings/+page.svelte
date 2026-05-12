@@ -59,7 +59,7 @@
   }))
 
   const historyQuery = createQuery(() => ({
-    queryKey: ['admin', 'config-history'],
+    enabled: () => section === 'history',
     queryFn: async () => {
       const res = await fetch('/api/admin/config/history?limit=20')
       if (!res.ok) throw new Error('Failed to fetch history')
@@ -75,7 +75,7 @@
         }>
       }>
     },
-    enabled: () => section === 'history',
+    queryKey: ['admin', 'config-history'],
   }))
 
   const maintenanceConfig = $derived(configQuery.data?.find((c) => c.key === 'maintenance_mode'))

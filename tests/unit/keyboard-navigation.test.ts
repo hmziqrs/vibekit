@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Keyboard Navigation', () => {
-  describe('Shortcut registration', () => {
+describe('keyboard Navigation', () => {
+  describe('shortcut registration', () => {
     it('registers and returns shortcuts', async () => {
       const { registerShortcut, getShortcuts } = await import('$lib/keyboard.svelte')
       const unsub = registerShortcut({
@@ -29,7 +29,7 @@ describe('Keyboard Navigation', () => {
     })
   })
 
-  describe('Collision detection', () => {
+  describe('collision detection', () => {
     it('detects collision for same key+modifiers', async () => {
       const { registerShortcut, checkCollision } = await import('$lib/keyboard.svelte')
       const unsub = registerShortcut({
@@ -59,7 +59,7 @@ describe('Keyboard Navigation', () => {
     })
   })
 
-  describe('Focus trap selector', () => {
+  describe('focus trap selector', () => {
     const FOCUSABLE_SELECTOR =
       'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -80,7 +80,7 @@ describe('Keyboard Navigation', () => {
     })
   })
 
-  describe('Roving tabindex logic', () => {
+  describe('roving tabindex logic', () => {
     it('wraps to start on ArrowDown past end', () => {
       const items = [0, 1, 2]
       const activeIndex = 2
@@ -95,20 +95,20 @@ describe('Keyboard Navigation', () => {
       expect(prev).toBe(2)
     })
 
-    it('Home goes to first item', () => {
+    it('home goes to first item', () => {
       const activeIndex = 2
       const home = 0
       expect(home).toBe(0)
     })
 
-    it('End goes to last item', () => {
+    it('end goes to last item', () => {
       const items = [0, 1, 2]
       const end = items.length - 1
       expect(end).toBe(2)
     })
   })
 
-  describe('Keyboard shortcuts help panel', () => {
+  describe('keyboard shortcuts help panel', () => {
     it('shortcuts help component exists', async () => {
       const mod = await import('$lib/components/shortcuts-help.svelte')
       expect(mod.default).toBeDefined()

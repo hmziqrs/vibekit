@@ -38,7 +38,7 @@ describe('related posts query logic', () => {
 
   describe('tag overlap scoring', () => {
     it('ranks posts by number of shared tags', () => {
-      const currentPostTags = ['tag-dev', 'tag-code', 'tag-testing']
+      const currentPostTags = new Set(['tag-dev', 'tag-code', 'tag-testing'])
       const candidates = [
         { id: 'post-a', tags: ['tag-dev', 'tag-code'] }, // 2 overlap
         { id: 'post-b', tags: ['tag-dev'] }, // 1 overlap
@@ -48,9 +48,9 @@ describe('related posts query logic', () => {
       const scored = candidates
         .map((c) => ({
           id: c.id,
-          overlap: c.tags.filter((t) => currentPostTags.includes(t)).length,
+          overlap: c.tags.filter((t) => currentPostTags.has(t)).length,
         }))
-        .sort((a, b) => b.overlap - a.overlap)
+        .toSorted((a, b) => b.overlap - a.overlap)
 
       expect(scored[0].id).toBe('post-c')
       expect(scored[0].overlap).toBe(3)
@@ -73,7 +73,7 @@ describe('related posts query logic', () => {
     })
 
     it('limits results to 3 posts', () => {
-      const currentPostTags = ['tag-dev']
+      const currentPostTags = new Set(['tag-dev'])
       const candidates = Array.from({ length: 10 }, (_, i) => ({
         id: `post-${i}`,
         tags: ['tag-dev'],
@@ -82,9 +82,9 @@ describe('related posts query logic', () => {
       const scored = candidates
         .map((c) => ({
           ...c,
-          overlap: c.tags.filter((t) => currentPostTags.includes(t)).length,
+          overlap: c.tags.filter((t) => currentPostTags.has(t)).length,
         }))
-        .sort((a, b) => b.overlap - a.overlap)
+        .toSorted((a, b) => b.overlap - a.overlap)
         .slice(0, 3)
 
       expect(scored).toHaveLength(3)

@@ -71,6 +71,14 @@ export function createNodeStorage(): StorageClient {
       }
     },
 
+    async getPresignedUrl(
+      key: string,
+      _options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      // Local dev: just return the CDN URL directly
+      return `/cdn/blog/${key}`
+    },
+
     async list(prefix?: string, _cursor?: string, limit = 100): Promise<ListResult> {
       const items: ListResult['items'] = []
 
@@ -166,14 +174,6 @@ export function createNodeStorage(): StorageClient {
         size: bytes.length,
         url: `/cdn/blog/${key}`,
       }
-    },
-
-    async getPresignedUrl(
-      key: string,
-      _options?: { contentType?: string; expiresIn?: number }
-    ): Promise<string> {
-      // Local dev: just return the CDN URL directly
-      return `/cdn/blog/${key}`
     },
   }
 }

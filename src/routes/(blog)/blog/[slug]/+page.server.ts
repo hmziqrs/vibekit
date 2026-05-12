@@ -57,13 +57,13 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
       .from(blogPostTag)
       .where(eq(blogPostTag.postId, post.post.id))
 
-    let relatedPosts: Array<{
+    let relatedPosts: {
       coverImageUrl: string | null
       excerpt: string | null
       publishedAt: number | null
       slug: string
       title: string
-    }> = []
+    }[] = []
 
     if (tagIds.length > 0) {
       const ids = tagIds.map((t) => t.tagId)
@@ -99,7 +99,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
       .innerJoin(blogSeries, eq(blogPostSeries.seriesId, blogSeries.id))
       .where(eq(blogPostSeries.postId, post.post.id))
 
-    type SeriesEntry = {
+    interface SeriesEntry {
       description: string | null
       id: string
       name: string

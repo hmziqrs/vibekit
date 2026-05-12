@@ -81,12 +81,12 @@ export function getProvider(slug: string): IntegrationProvider | undefined {
   return INTEGRATION_PROVIDERS[slug]
 }
 
-export function getAvailableProviders(env: Record<string, string | undefined>): Array<{
+export function getAvailableProviders(env: Record<string, string | undefined>): {
   configured: boolean
   provider: IntegrationProvider
-}> {
+}[] {
   return Object.values(INTEGRATION_PROVIDERS).map((provider) => ({
-    configured: !!(env[provider.clientIdEnvKey] && env[provider.clientSecretEnvKey]),
+    configured: Boolean(env[provider.clientIdEnvKey] && env[provider.clientSecretEnvKey]),
     provider,
   }))
 }

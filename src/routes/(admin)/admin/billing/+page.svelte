@@ -17,7 +17,7 @@
 
   interface BillingOverview {
     activeSubscriptions: number
-    planDistribution: Array<{ count: number; planName: string }>
+    planDistribution: { count: number; planName: string }[]
     totalSubscriptions: number
   }
 

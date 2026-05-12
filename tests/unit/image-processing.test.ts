@@ -8,8 +8,8 @@ import {
 import { imageResizeSchema } from '$lib/validators/image'
 import { describe, expect, it } from 'vitest'
 
-describe('Image Processing', () => {
-  describe('buildImageUrl', () => {
+describe('image Processing', () => {
+  describe(buildImageUrl, () => {
     it('returns original URL when no options', () => {
       const url = buildImageUrl('/cdn/blog/test.jpg', {})
       expect(url).toBe('/cdn/blog/test.jpg')
@@ -43,7 +43,7 @@ describe('Image Processing', () => {
     })
   })
 
-  describe('buildSrcset', () => {
+  describe(buildSrcset, () => {
     it('generates srcset with default sizes', () => {
       const srcset = buildSrcset('/cdn/blog/test.jpg')
       expect(srcset).toContain('320w')
@@ -67,7 +67,7 @@ describe('Image Processing', () => {
     })
   })
 
-  describe('buildSizesAttribute', () => {
+  describe(buildSizesAttribute, () => {
     it('generates sizes attribute with default sizes', () => {
       const sizes = buildSizesAttribute()
       expect(sizes).toContain('(max-width: 320px)')
@@ -80,7 +80,7 @@ describe('Image Processing', () => {
     })
   })
 
-  describe('extractImageMetadata', () => {
+  describe(extractImageMetadata, () => {
     it('extracts metadata from JPEG', () => {
       const meta = extractImageMetadata('photo.jpg', 1024 * 500)
       expect(meta.extension).toBe('jpg')
@@ -112,7 +112,7 @@ describe('Image Processing', () => {
     })
   })
 
-  describe('getResponsiveImageHtml', () => {
+  describe(getResponsiveImageHtml, () => {
     it('generates img tag with srcset', () => {
       const html = getResponsiveImageHtml('/cdn/blog/test.jpg', 'Test image')
       expect(html).toContain('srcset=')
@@ -143,7 +143,7 @@ describe('Image Processing', () => {
   })
 })
 
-describe('Image Resize Validator', () => {
+describe('image Resize Validator', () => {
   it('validates width only', () => {
     const result = imageResizeSchema.safeParse({ width: 640 })
     expect(result.success).toBe(true)

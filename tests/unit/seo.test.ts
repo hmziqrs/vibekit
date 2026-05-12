@@ -1,7 +1,7 @@
 import { seo } from '$lib/seo'
 import { describe, expect, it } from 'vitest'
 
-describe('seo', () => {
+describe(seo, () => {
   it('formats title with site name suffix', () => {
     const result = seo({ description: 'Test page', title: 'About' })
     expect(result.title).toBe('About — Vibekit')
@@ -14,7 +14,7 @@ describe('seo', () => {
 
   it('includes open graph metadata', () => {
     const result = seo({ description: 'Desc', title: 'Test' })
-    expect(result.openGraph).toEqual({
+    expect(result.openGraph).toStrictEqual({
       description: 'Desc',
       image: undefined,
       publishedTime: undefined,
@@ -26,7 +26,7 @@ describe('seo', () => {
 
   it('includes twitter metadata', () => {
     const result = seo({ description: 'Desc', title: 'Test' })
-    expect(result.twitter).toEqual({
+    expect(result.twitter).toStrictEqual({
       card: 'summary',
       description: 'Desc',
       image: undefined,

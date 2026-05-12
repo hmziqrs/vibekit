@@ -2,7 +2,6 @@
   import { createMutation, createQuery } from '@tanstack/svelte-query'
 
   const integrationsQuery = createQuery(() => ({
-    queryKey: ['integrations'],
     queryFn: async () => {
       const res = await fetch('/api/integrations')
       if (!res.ok) throw new Error('Failed to fetch integrations')
@@ -21,10 +20,10 @@
         }>
       }
     },
+    queryKey: ['integrations'],
   }))
 
   const providersQuery = createQuery(() => ({
-    queryKey: ['integration-providers'],
     queryFn: async () => {
       const res = await fetch('/api/integrations/providers')
       if (!res.ok) throw new Error('Failed to fetch providers')
@@ -42,6 +41,7 @@
         }>
       }
     },
+    queryKey: ['integration-providers'],
   }))
 
   const connectMutation = createMutation(() => ({
@@ -83,7 +83,7 @@
     expired: 'bg-yellow-500/15 text-yellow-400',
   }
 
-  function getConnected(integrations: Array<{ provider: string }>, slug: string) {
+  function getConnected(integrations: { provider: string }[], slug: string) {
     return integrations.some((i) => i.provider === slug)
   }
 

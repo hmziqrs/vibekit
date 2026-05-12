@@ -20,13 +20,13 @@
   let editFlag = $state<Record<string, unknown> | null>(null)
 
   const flagsQuery = createQuery({
-    queryKey: ['admin', 'feature-flags'],
     queryFn: async () => {
       const res = await fetch('/api/admin/feature-flags')
       if (!res.ok) throw new Error('Failed to fetch flags')
       const data = await res.json()
       return data.flags as Record<string, unknown>[]
     },
+    queryKey: ['admin', 'feature-flags'],
   })
 
   const createMutation = createMutation(() => ({

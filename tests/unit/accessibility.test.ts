@@ -3,10 +3,10 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-describe('Accessibility Audit', () => {
-  describe('CSS accessibility utilities', () => {
+describe('accessibility Audit', () => {
+  describe('cSS accessibility utilities', () => {
     const cssPath = resolve(import.meta.dirname, '..', '..', 'src', 'routes', 'layout.css')
-    const css = readFileSync(cssPath, 'utf-8')
+    const css = readFileSync(cssPath, 'utf8')
 
     it('has reduced-motion media query', () => {
       expect(css).toContain('prefers-reduced-motion')
@@ -37,7 +37,7 @@ describe('Accessibility Audit', () => {
     })
   })
 
-  describe('App layout ARIA landmarks', () => {
+  describe('app layout ARIA landmarks', () => {
     const layoutPath = resolve(
       import.meta.dirname,
       '..',
@@ -47,7 +47,7 @@ describe('Accessibility Audit', () => {
       '(app)',
       '+layout.svelte'
     )
-    const layout = readFileSync(layoutPath, 'utf-8')
+    const layout = readFileSync(layoutPath, 'utf8')
 
     it('sidebar has navigation role', () => {
       expect(layout).toContain('role="navigation"')
@@ -82,7 +82,7 @@ describe('Accessibility Audit', () => {
     })
   })
 
-  describe('Search dialog accessibility', () => {
+  describe('search dialog accessibility', () => {
     const dialogPath = resolve(
       import.meta.dirname,
       '..',
@@ -92,7 +92,7 @@ describe('Accessibility Audit', () => {
       'components',
       'search-dialog.svelte'
     )
-    const dialog = readFileSync(dialogPath, 'utf-8')
+    const dialog = readFileSync(dialogPath, 'utf8')
 
     it('input has role="combobox"', () => {
       expect(dialog).toContain('role="combobox"')
@@ -127,7 +127,7 @@ describe('Accessibility Audit', () => {
     })
   })
 
-  describe('Skip link component', () => {
+  describe('skip link component', () => {
     const skipLinkPath = resolve(
       import.meta.dirname,
       '..',
@@ -137,7 +137,7 @@ describe('Accessibility Audit', () => {
       'components',
       'skip-link.svelte'
     )
-    const skipLink = readFileSync(skipLinkPath, 'utf-8')
+    const skipLink = readFileSync(skipLinkPath, 'utf8')
 
     it('has skip link component', () => {
       expect(skipLink).toBeTruthy()
@@ -148,7 +148,7 @@ describe('Accessibility Audit', () => {
     })
   })
 
-  describe('Confirm dialog accessibility', () => {
+  describe('confirm dialog accessibility', () => {
     const dialogPath = resolve(
       import.meta.dirname,
       '..',
@@ -158,7 +158,7 @@ describe('Accessibility Audit', () => {
       'components',
       'confirm-dialog.svelte'
     )
-    const dialog = readFileSync(dialogPath, 'utf-8')
+    const dialog = readFileSync(dialogPath, 'utf8')
 
     it('has z-50 overlay for modal backdrop', () => {
       expect(dialog).toContain('z-50')
@@ -177,7 +177,7 @@ describe('Accessibility Audit', () => {
     })
   })
 
-  describe('Image alt text in blog pages', () => {
+  describe('image alt text in blog pages', () => {
     const blogListPath = resolve(
       import.meta.dirname,
       '..',
@@ -188,7 +188,7 @@ describe('Accessibility Audit', () => {
       'blog',
       '+page.svelte'
     )
-    const blogList = readFileSync(blogListPath, 'utf-8')
+    const blogList = readFileSync(blogListPath, 'utf8')
 
     it('blog listing images have alt attributes', () => {
       expect(blogList).toContain('alt={post.title}')

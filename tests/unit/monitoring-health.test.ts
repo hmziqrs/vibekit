@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Monitoring & Health Checks', () => {
-  describe('Health check response structure', () => {
+describe('monitoring & Health Checks', () => {
+  describe('health check response structure', () => {
     interface HealthResponse {
       checks: Record<string, 'healthy' | 'unhealthy'>
       status: 'degraded' | 'healthy'
@@ -58,11 +58,11 @@ describe('Monitoring & Health Checks', () => {
 
     it('includes version string', () => {
       const res = buildHealthResponse({ database: 'healthy' })
-      expect(typeof res.version).toBe('string')
+      expectTypeOf(res.version).toBeString()
     })
   })
 
-  describe('Structured logger', () => {
+  describe('structured logger', () => {
     interface LogEntry {
       level: 'debug' | 'error' | 'info' | 'warn'
       message: string
@@ -109,11 +109,11 @@ describe('Monitoring & Health Checks', () => {
 
     it('logger module exports createLogger', async () => {
       const mod = await import('$lib/server/logger')
-      expect(typeof mod.createLogger).toBe('function')
+      expectTypeOf(mod.createLogger).toBeFunction()
     })
   })
 
-  describe('HTTP status codes for health', () => {
+  describe('hTTP status codes for health', () => {
     it('200 for healthy', () => {
       const healthy = true
       expect(healthy ? 200 : 503).toBe(200)

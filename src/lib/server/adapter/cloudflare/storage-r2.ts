@@ -24,6 +24,18 @@ export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
       }
     },
 
+    async getPresignedUrl(
+      key: string,
+      options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      // R2 doesn't natively support presigned URLs in Workers,
+      // but we can use createSignedUrl for direct access
+      const url = await bucket.createSignedUrl(key, {
+        expiresIn: options?.expiresIn ?? 3600,
+      })
+      return url
+    },
+
     async list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult> {
       const listed = await bucket.list({
         cursor: cursor || undefined,
@@ -61,18 +73,6 @@ export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
         size: 0,
         url: `/cdn/blog/${key}`,
       }
-    },
-
-    async getPresignedUrl(
-      key: string,
-      options?: { contentType?: string; expiresIn?: number }
-    ): Promise<string> {
-      // R2 doesn't natively support presigned URLs in Workers,
-      // but we can use createSignedUrl for direct access
-      const url = await bucket.createSignedUrl(key, {
-        expiresIn: options?.expiresIn ?? 3600,
-      })
-      return url
     },
   }
 }

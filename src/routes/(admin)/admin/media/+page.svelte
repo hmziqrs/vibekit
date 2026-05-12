@@ -11,7 +11,6 @@
   let uploading = $state(false)
 
   const mediaQuery = createQuery({
-    queryKey: ['admin', 'media', typeFilter, prefixFilter],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (typeFilter) params.set('type', typeFilter)
@@ -30,6 +29,7 @@
         truncated: boolean
       }>
     },
+    queryKey: ['admin', 'media', typeFilter, prefixFilter],
   })
 
   const uploadMutation = createMutation(() => ({

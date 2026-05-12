@@ -82,35 +82,44 @@
 
   function getTypeLabel(type: string): string {
     switch (type) {
-      case 'blog_post':
+      case 'blog_post': {
         return 'Blog Post'
-      case 'user':
+      }
+      case 'user': {
         return 'User'
-      case 'item':
+      }
+      case 'item': {
         return 'Item'
-      case 'page':
+      }
+      case 'page': {
         return 'Page'
-      default:
+      }
+      default: {
         return type
+      }
     }
   }
 
   function getResultUrl(result: { entityId: string; entityType: string }): string {
     switch (result.entityType) {
-      case 'blog_post':
+      case 'blog_post': {
         return `/admin/blog/${result.entityId}/edit`
-      case 'user':
+      }
+      case 'user': {
         return `/admin/users`
-      case 'item':
+      }
+      case 'item': {
         return `/app/items`
-      default:
+      }
+      default: {
         return '#'
+      }
     }
   }
 
   function highlightMatch(text: string, term: string): string {
     if (!term) return text
-    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)})`, 'gi')
     return text.replace(regex, '<mark class="bg-brand/20 text-text-primary rounded px-0.5">$1</mark>')
   }
 

@@ -8,7 +8,7 @@ import {
 } from '$lib/validators/billing'
 import { describe, expect, it } from 'vitest'
 
-describe('createPlanSchema', () => {
+describe(createPlanSchema, () => {
   it('validates a complete plan', () => {
     const result = createPlanSchema.safeParse({
       interval: 'month',
@@ -81,7 +81,7 @@ describe('createPlanSchema', () => {
   })
 })
 
-describe('updatePlanSchema', () => {
+describe(updatePlanSchema, () => {
   it('validates partial update', () => {
     const result = updatePlanSchema.safeParse({ name: 'Updated Pro' })
     expect(result.success).toBeTruthy()
@@ -98,7 +98,7 @@ describe('updatePlanSchema', () => {
   })
 })
 
-describe('checkoutSessionSchema', () => {
+describe(checkoutSessionSchema, () => {
   it('validates required fields', () => {
     const result = checkoutSessionSchema.safeParse({
       cancelUrl: 'https://example.com/cancel',
@@ -127,7 +127,7 @@ describe('checkoutSessionSchema', () => {
   })
 })
 
-describe('changePlanSchema', () => {
+describe(changePlanSchema, () => {
   it('validates required fields', () => {
     const result = changePlanSchema.safeParse({ newPlanId: 'plan_pro' })
     expect(result.success).toBeTruthy()
@@ -139,7 +139,7 @@ describe('changePlanSchema', () => {
   })
 })
 
-describe('recordUsageSchema', () => {
+describe(recordUsageSchema, () => {
   it('validates required fields', () => {
     const result = recordUsageSchema.safeParse({
       metricType: 'api_calls',
@@ -181,7 +181,7 @@ describe('recordUsageSchema', () => {
   })
 })
 
-describe('calculateProration', () => {
+describe(calculateProration, () => {
   it('returns full new price when period is over', () => {
     const result = calculateProration({
       currentPeriodEnd: new Date('2024-01-01'),

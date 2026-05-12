@@ -16,7 +16,7 @@
   const SCRIPT_TAG = '<script type="application/ld+json">'
 
   function buildScriptTag(json: string): string {
-    const close = String.raw`</` + 'script>'
+    const close = `${String.raw`</`  }script>`
     return `${SCRIPT_TAG}${json}${close}`
   }
 

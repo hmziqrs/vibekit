@@ -15,7 +15,7 @@ export function onWebVital(cb: MetricCallback): () => void {
   callbacks.push(cb)
   return () => {
     const idx = callbacks.indexOf(cb)
-    if (idx >= 0) callbacks.splice(idx, 1)
+    if (idx !== -1) callbacks.splice(idx, 1)
   }
 }
 
@@ -48,7 +48,7 @@ function observeLCP(): void {
         })
       }
     })
-    po.observe({ type: 'largest-contentful-paint', buffered: true })
+    po.observe({ buffered: true, type: 'largest-contentful-paint' })
   } catch {
     // PerformanceObserver not supported
   }
@@ -96,7 +96,7 @@ function observeCLS(): void {
         value: clsValue,
       })
     })
-    po.observe({ type: 'layout-shift', buffered: true })
+    po.observe({ buffered: true, type: 'layout-shift' })
   } catch {
     // PerformanceObserver not supported
   }
@@ -109,14 +109,14 @@ function observeINP(): void {
 
     const po = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        const duration = (entry as PerformanceEntry & { duration: number }).duration
+        const { duration } = entry as PerformanceEntry & { duration: number }
         if (duration > worst) {
           worst = duration
           worstEntries = [entry]
         }
       }
     })
-    po.observe({ type: 'event', buffered: true })
+    po.observe({ buffered: true, type: 'event' })
 
     // Report on page hide
     document.addEventListener('visibilitychange', () => {

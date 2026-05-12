@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock web-push before importing the module
-vi.mock('web-push', () => ({
+vi.mock<typeof import('web-push')>(import('web-push'), () => ({
   default: {
     sendNotification: vi
       .fn<() => Promise<{ statusCode: number }>>()
@@ -11,7 +11,7 @@ vi.mock('web-push', () => ({
 }))
 
 // Mock db schema
-vi.mock('$lib/server/db/schema', () => ({
+vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
   pushSubscription: {
     auth: 'auth',
     createdAt: 'created_at',
@@ -23,10 +23,11 @@ vi.mock('$lib/server/db/schema', () => ({
   },
 }))
 
-vi.mock('$lib/server/uuid', () => ({
-  uuid: () => 'test-uuid-' + Math.random().toString(36).slice(2, 8),
+vi.mock<typeof import('$lib/server/uuid')>(import('$lib/server/uuid'), () => ({
+  uuid: () => `test-uuid-${Math.random().toString(36).slice(2, 8)}`,
 }))
 
+import { pushSubscription } from '$lib/server/db/schema'
 import { configureWebPush, subscribeToPush, unsubscribeFromPush } from '$lib/server/push'
 import webpush from 'web-push'
 
@@ -46,7 +47,7 @@ function createMockDb() {
   }
 }
 
-describe('configureWebPush', () => {
+describe(configureWebPush, () => {
   it('calls setVapidDetails with correct arguments', () => {
     configureWebPush('public-key', 'private-key', 'mailto:test@example.com')
     expect(webpush.setVapidDetails).toHaveBeenCalledWith(
@@ -57,7 +58,7 @@ describe('configureWebPush', () => {
   })
 })
 
-describe('subscribeToPush', () => {
+describe(subscribeToPush, () => {
   it('removes existing subscription before creating new one', async () => {
     const db = createMockDb()
     await subscribeToPush(db, {
@@ -68,8 +69,8 @@ describe('subscribeToPush', () => {
     })
 
     // Should delete existing, then insert new
-    expect(db.delete).toHaveBeenCalled()
-    expect(db.insert).toHaveBeenCalled()
+    expect(db.delete).toHaveBeenCalledWith(pushSubscription)
+    expect(db.insert).toHaveBeenCalledWith(pushSubscription)
   })
 
   it('stores user agent when provided', async () => {
@@ -82,15 +83,15 @@ describe('subscribeToPush', () => {
       userId: 'user-1',
     })
 
-    expect(db.insert).toHaveBeenCalled()
+    expect(db.insert).toHaveBeenCalledWith(pushSubscription)
   })
 })
 
-describe('unsubscribeFromPush', () => {
+describe(unsubscribeFromPush, () => {
   it('deletes subscription by endpoint', async () => {
     const db = createMockDb()
     await unsubscribeFromPush(db, 'https://push.example.com/sub/123')
-    expect(db.delete).toHaveBeenCalled()
+    expect(db.delete).toHaveBeenCalledWith(pushSubscription)
   })
 })
 

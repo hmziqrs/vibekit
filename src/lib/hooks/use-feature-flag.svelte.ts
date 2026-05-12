@@ -17,8 +17,8 @@ async function evaluateFlag(key: string, context?: { environment?: string; userI
 
 export function useFeatureFlag(key: string, context?: { environment?: string; userId?: string }) {
   const query = createQuery<FlagEvaluation>({
-    queryKey: ['feature-flag', key, context],
     queryFn: () => evaluateFlag(key, context),
+    queryKey: ['feature-flag', key, context],
     refetchOnWindowFocus: false,
     staleTime: 60_000,
   })
@@ -38,7 +38,6 @@ export function useFeatureFlags(keys: string[]) {
   const queryClient = useQueryClient()
 
   const query = createQuery<Record<string, boolean>>({
-    queryKey: ['feature-flags', keys],
     queryFn: async () => {
       const res = await fetch('/api/feature-flags/evaluate', {
         body: JSON.stringify({ keys }),
@@ -48,6 +47,7 @@ export function useFeatureFlags(keys: string[]) {
       if (!res.ok) return {}
       return (await res.json()) as Record<string, boolean>
     },
+    queryKey: ['feature-flags', keys],
     refetchOnWindowFocus: false,
     staleTime: 60_000,
   })
@@ -56,11 +56,11 @@ export function useFeatureFlags(keys: string[]) {
     get flags() {
       return query.current?.data ?? {}
     },
-    get isLoading() {
-      return query.current?.isLoading ?? true
-    },
     isEnabled(flagKey: string) {
       return query.current?.data?.[flagKey] ?? false
+    },
+    get isLoading() {
+      return query.current?.isLoading ?? true
     },
     query,
     refresh() {

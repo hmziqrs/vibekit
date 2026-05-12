@@ -17,6 +17,14 @@
     curl: `curl -X GET https://vibekit.dev/api/items \\
   -H "Authorization: Bearer vk_your_api_key_here" \\
   -H "Content-Type: application/json"`,
+    go: `req, _ := http.NewRequest("GET",
+    "https://vibekit.dev/api/items", nil)
+req.Header.Set("Authorization",
+    "Bearer vk_your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)`,
     javascript: `const response = await fetch('https://vibekit.dev/api/items', {
   headers: {
     'Authorization': 'Bearer vk_your_api_key_here',
@@ -36,14 +44,6 @@ response = requests.get(
 )
 
 items = response.json()`,
-    go: `req, _ := http.NewRequest("GET",
-    "https://vibekit.dev/api/items", nil)
-req.Header.Set("Authorization",
-    "Bearer vk_your_api_key_here")
-req.Header.Set("Content-Type", "application/json")
-
-client := &http.Client{}
-resp, _ := client.Do(req)`,
   }
 
   let selectedLang = $state<keyof typeof codeExamples>('curl')
@@ -65,17 +65,17 @@ resp, _ := client.Do(req)`,
       const tryInit = () => {
         const container = document.getElementById('scalar-container')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const Scalar = (window as any).Scalar
+        const {Scalar} = (window as any)
         if (container && Scalar) {
           // Clear any existing content
           container.innerHTML = ''
           Scalar.createApiReference(container, {
+            hideDownloadButton: false,
+            hideModels: false,
+            layout: 'modern',
+            searchHotKey: 'k',
             spec: { url: '/openapi.yaml' },
             theme: 'dark',
-            layout: 'modern',
-            hideModels: false,
-            hideDownloadButton: false,
-            searchHotKey: 'k',
           })
         } else {
           setTimeout(tryInit, 200)

@@ -15,7 +15,7 @@ export function useExperiment(
     experiment: { key: string }
     variant: Variant
   }>({
-    queryKey: ['experiment', experimentKey, options],
+    enabled: () => !!experimentKey,
     queryFn: async () => {
       const res = await fetch(`/api/experiments/${encodeURIComponent(experimentKey)}/assign`, {
         body: JSON.stringify({ sessionId: options?.sessionId, userId: options?.userId }),
@@ -25,7 +25,7 @@ export function useExperiment(
       if (!res.ok) return null as never
       return (await res.json()) as { experiment: { key: string }; variant: Variant }
     },
-    enabled: () => !!experimentKey,
+    queryKey: ['experiment', experimentKey, options],
     refetchOnWindowFocus: false,
     staleTime: 300_000,
   })
@@ -53,14 +53,11 @@ export function useExperiment(
   }))
 
   return {
-    get isLoading() {
-      return query.current?.isLoading ?? true
-    },
     get isControl() {
       return query.current?.data?.variant?.isControl ?? false
     },
-    get variant() {
-      return query.current?.data?.variant ?? null
+    get isLoading() {
+      return query.current?.isLoading ?? true
     },
     query,
     track(event: {
@@ -70,6 +67,9 @@ export function useExperiment(
       metadata?: Record<string, unknown>
     }) {
       trackMutation.mutate(event)
+    },
+    get variant() {
+      return query.current?.data?.variant ?? null
     },
   }
 }

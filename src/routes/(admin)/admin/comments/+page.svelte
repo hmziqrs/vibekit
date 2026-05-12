@@ -60,16 +60,21 @@
 
   function statusColor(s: string): string {
     switch (s) {
-      case 'approved':
+      case 'approved': {
         return 'text-green-400 bg-green-500/10'
-      case 'pending':
+      }
+      case 'pending': {
         return 'text-yellow-400 bg-yellow-500/10'
-      case 'rejected':
+      }
+      case 'rejected': {
         return 'text-red-400 bg-red-500/10'
-      case 'spam':
+      }
+      case 'spam': {
         return 'text-red-500 bg-red-500/10'
-      default:
+      }
+      default: {
         return 'text-text-muted bg-white/5'
+      }
     }
   }
 
@@ -97,7 +102,7 @@
   }
 
   async function bulkModerate(newStatus: 'approved' | 'rejected') {
-    const promises = Array.from(selectedIds).map((id) =>
+    const promises = [...selectedIds].map((id) =>
       fetch(`/api/admin/comments/${id}/moderate`, {
         body: JSON.stringify({ status: newStatus }),
         headers: { 'Content-Type': 'application/json' },

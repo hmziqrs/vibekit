@@ -27,8 +27,8 @@
         status: string
         title: string
       }
-      postSeries: Array<{ id: string; name: string; sortOrder: number }>
-      postTags: Array<{ id: string; name: string }>
+      postSeries: { id: string; name: string; sortOrder: number }[]
+      postTags: { id: string; name: string }[]
     }
   } = $props()
 
@@ -65,7 +65,7 @@
       const res = await fetch('/api/blog/tags')
       if (!res.ok) throw new Error('Failed to fetch tags')
       return (await res.json()) as {
-        tags: Array<{ id: string; name: string; postCount: number; slug: string }>
+        tags: { id: string; name: string; postCount: number; slug: string }[]
       }
     },
     queryKey: ['admin', 'tags'],
@@ -77,14 +77,14 @@
       const res = await fetch('/api/blog/series')
       if (!res.ok) throw new Error('Failed to fetch series')
       return (await res.json()) as {
-        series: Array<{
+        series: {
           coverImageUrl: string | null
           description: string | null
           id: string
           name: string
           postCount: number
           slug: string
-        }>
+        }[]
       }
     },
     queryKey: ['admin', 'series'],

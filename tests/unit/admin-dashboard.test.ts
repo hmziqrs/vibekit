@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
+  const minutes = Math.floor(diff / 60_000)
   if (minutes < 1) return 'just now'
   if (minutes < 60) return `${minutes}m ago`
   const hours = Math.floor(minutes / 60)
@@ -39,17 +39,17 @@ describe('time ago formatting', () => {
   })
 
   it('shows minutes ago', () => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60000).toISOString()
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60_000).toISOString()
     expect(formatTimeAgo(fiveMinutesAgo)).toBe('5m ago')
   })
 
   it('shows hours ago', () => {
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60000).toISOString()
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60_000).toISOString()
     expect(formatTimeAgo(threeHoursAgo)).toBe('3h ago')
   })
 
   it('shows days ago', () => {
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60000).toISOString()
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString()
     expect(formatTimeAgo(twoDaysAgo)).toBe('2d ago')
   })
 })

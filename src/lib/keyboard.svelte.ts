@@ -13,7 +13,7 @@ export function registerShortcut(entry: ShortcutEntry): () => void {
   shortcuts.push(entry)
   return () => {
     const idx = shortcuts.indexOf(entry)
-    if (idx >= 0) shortcuts.splice(idx, 1)
+    if (idx !== -1) shortcuts.splice(idx, 1)
   }
 }
 
@@ -28,7 +28,11 @@ export function checkCollision(
   alt?: boolean
 ): ShortcutEntry | undefined {
   return shortcuts.find(
-    (s) => s.key === key && s.mac === mac && !!s.shift === !!shift && !!s.alt === !!alt
+    (s) =>
+      s.key === key &&
+      s.mac === mac &&
+      Boolean(s.shift) === Boolean(shift) &&
+      Boolean(s.alt) === Boolean(alt)
   )
 }
 
@@ -48,7 +52,7 @@ export function createFocusTrap(container: HTMLElement): { destroy: () => void }
     'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
   function getFocusableElements(): HTMLElement[] {
-    return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
+    return [...container.querySelectorAll(FOCUSABLE_SELECTOR)]
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -95,7 +99,7 @@ export function createRovingTabIndex(
   let activeIndex = 0
 
   function getItems(): HTMLElement[] {
-    return Array.from(container.querySelectorAll(itemSelector))
+    return [...container.querySelectorAll(itemSelector)]
   }
 
   function setActive(index: number) {

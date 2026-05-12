@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 describe('impersonation session validation', () => {
   it('rejects empty reason', () => {
     const reason = ''
-    expect(reason.trim().length > 0).toBe(false)
+    expect(reason.trim().length).toBeLessThanOrEqual(0)
   })
 
   it('accepts valid reason', () => {
     const reason = 'Investigating user-reported bug'
-    expect(reason.trim().length > 0).toBe(true)
+    expect(reason.trim().length).toBeGreaterThan(0)
   })
 
   it('rejects impersonating yourself', () => {

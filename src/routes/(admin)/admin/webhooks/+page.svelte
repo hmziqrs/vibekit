@@ -3,7 +3,6 @@
   import { page } from '$app/state'
 
   const { isSuccess, data, refetch } = createQuery(() => ({
-    queryKey: ['admin-webhook-deliveries'],
     queryFn: async () => {
       const params = new URLSearchParams()
       if ($state.snapshot(statusFilter)) params.set('status', statusFilter)
@@ -24,6 +23,7 @@
         }>
       }
     },
+    queryKey: ['admin-webhook-deliveries'],
   }))
 
   let statusFilter = $state('')

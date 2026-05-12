@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Content Indexing', () => {
-  describe('SearchDocument construction', () => {
+describe('content Indexing', () => {
+  describe('searchDocument construction', () => {
     interface SearchDocument {
       content: string
       entityId: string
@@ -57,7 +57,7 @@ describe('Content Indexing', () => {
       expect(doc.entityId).toBe('post-1')
       expect(doc.content).toContain('A test post')
       expect(doc.content).toContain('<p>Hello world</p>')
-      expect(doc.metadata).toEqual({ slug: 'test-post', status: 'published' })
+      expect(doc.metadata).toStrictEqual({ slug: 'test-post', status: 'published' })
     })
 
     it('falls back to slug when title is null', () => {
@@ -87,7 +87,7 @@ describe('Content Indexing', () => {
     })
 
     it('truncates content to 5000 chars', () => {
-      const longContent = 'x'.repeat(10000)
+      const longContent = 'x'.repeat(10_000)
       const doc = buildBlogDocument({
         contentBody: longContent,
         excerpt: 'short',
@@ -112,7 +112,7 @@ describe('Content Indexing', () => {
       expect(doc.entityType).toBe('item')
       expect(doc.entityId).toBe('item-1')
       expect(doc.content).toBe('A test item')
-      expect(doc.metadata).toEqual({ status: 'active' })
+      expect(doc.metadata).toStrictEqual({ status: 'active' })
     })
 
     it('handles null item description', () => {
@@ -127,7 +127,7 @@ describe('Content Indexing', () => {
     })
   })
 
-  describe('Indexing decision logic', () => {
+  describe('indexing decision logic', () => {
     function shouldIndex(status: string): boolean {
       return status !== 'archived'
     }
@@ -149,7 +149,7 @@ describe('Content Indexing', () => {
     })
   })
 
-  describe('Content concatenation', () => {
+  describe('content concatenation', () => {
     function buildContent(excerpt: string | null, body: string | null): string {
       return [excerpt ?? '', body ?? ''].join('\n').slice(0, 5000)
     }

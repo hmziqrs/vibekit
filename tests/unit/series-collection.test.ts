@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 // ── Series Validators ──
 
-describe('createSeriesSchema', () => {
+describe(createSeriesSchema, () => {
   const validInput = {
     name: 'Building a SaaS',
     slug: 'building-a-saas',
@@ -100,7 +100,7 @@ describe('createSeriesSchema', () => {
   })
 })
 
-describe('updateSeriesSchema', () => {
+describe(updateSeriesSchema, () => {
   it('allows partial updates with just name', () => {
     const result = updateSeriesSchema.safeParse({ name: 'Updated Name' })
     expect(result.success).toBeTruthy()
@@ -303,7 +303,7 @@ describe('series API route patterns', () => {
     // Verify the update logic pattern: undefined check means empty array clears associations
     const data = { seriesIds: [] }
     expect(data.seriesIds).toBeDefined()
-    expect(data.seriesIds.length).toBe(0)
+    expect(data.seriesIds).toHaveLength(0)
   })
 
   it('seriesIds uses optional check on create', () => {
@@ -319,7 +319,7 @@ describe('series API route patterns', () => {
       { id: 's3', sortOrder: 2 },
     ]
     expect(seriesIds[0].sortOrder).toBe(0)
-    expect(seriesIds.length).toBe(3)
+    expect(seriesIds).toHaveLength(3)
   })
 
   it('post can belong to multiple series', () => {
@@ -327,7 +327,7 @@ describe('series API route patterns', () => {
       { id: 'series-a', sortOrder: 0 },
       { id: 'series-b', sortOrder: 3 },
     ]
-    expect(seriesIds.length).toBe(2)
+    expect(seriesIds).toHaveLength(2)
     expect(seriesIds[0].id).not.toBe(seriesIds[1].id)
   })
 })

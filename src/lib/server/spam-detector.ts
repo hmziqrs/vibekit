@@ -18,11 +18,11 @@ interface SpamResult {
 
 const SPAM_THRESHOLD = 50
 
-const BLOCKED_PATTERNS: Array<{
+const BLOCKED_PATTERNS: {
   reason: string
   score: number
   test: (content: string) => boolean
-}> = [
+}[] = [
   {
     reason: 'excessive_links',
     score: 20,

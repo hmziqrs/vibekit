@@ -6,11 +6,11 @@ describe('automation manifest endpoint', () => {
     expect(response.ok).toBeTruthy()
 
     const manifest = (await response.json()) as {
-      actions: Array<{ method: string; name: string; path: string }>
+      actions: { method: string; name: string; path: string }[]
       auth: { headerName: string; type: string }
       baseUrl: string
       name: string
-      triggers: Array<{ event: string; name: string }>
+      triggers: { event: string; name: string }[]
       version: string
       webhookSetup: {
         createEndpoint: string
@@ -30,7 +30,7 @@ describe('automation manifest endpoint', () => {
   it('triggers include expected events', async () => {
     const response = await fetch('http://localhost:5173/api/automation/manifest')
     const manifest = (await response.json()) as {
-      triggers: Array<{ event: string }>
+      triggers: { event: string }[]
     }
 
     const events = manifest.triggers.map((t) => t.event)
@@ -44,7 +44,7 @@ describe('automation manifest endpoint', () => {
   it('actions include expected operations', async () => {
     const response = await fetch('http://localhost:5173/api/automation/manifest')
     const manifest = (await response.json()) as {
-      actions: Array<{ name: string }>
+      actions: { name: string }[]
     }
 
     const names = manifest.actions.map((a) => a.name)
@@ -56,7 +56,7 @@ describe('automation manifest endpoint', () => {
   it('each trigger has required fields', async () => {
     const response = await fetch('http://localhost:5173/api/automation/manifest')
     const manifest = (await response.json()) as {
-      triggers: Array<{ description: string; event: string; name: string; payloadExample: object }>
+      triggers: { description: string; event: string; name: string; payloadExample: object }[]
     }
 
     for (const trigger of manifest.triggers) {
@@ -70,7 +70,7 @@ describe('automation manifest endpoint', () => {
   it('each action has required fields', async () => {
     const response = await fetch('http://localhost:5173/api/automation/manifest')
     const manifest = (await response.json()) as {
-      actions: Array<{ description: string; method: string; name: string; path: string }>
+      actions: { description: string; method: string; name: string; path: string }[]
     }
 
     for (const action of manifest.actions) {

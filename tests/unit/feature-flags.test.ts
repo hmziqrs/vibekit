@@ -8,8 +8,8 @@ import {
 } from '$lib/validators/feature-flag'
 import { describe, expect, it, vi } from 'vitest'
 
-describe('Feature Flag Validators', () => {
-  describe('createFeatureFlagSchema', () => {
+describe('feature Flag Validators', () => {
+  describe(createFeatureFlagSchema, () => {
     it('validates a valid flag creation', () => {
       const result = createFeatureFlagSchema.safeParse({
         key: 'new-dashboard',
@@ -96,7 +96,7 @@ describe('Feature Flag Validators', () => {
     })
   })
 
-  describe('updateFeatureFlagSchema', () => {
+  describe(updateFeatureFlagSchema, () => {
     it('validates partial update', () => {
       const result = updateFeatureFlagSchema.safeParse({
         name: 'Updated Name',
@@ -117,7 +117,7 @@ describe('Feature Flag Validators', () => {
     })
   })
 
-  describe('toggleFeatureFlagSchema', () => {
+  describe(toggleFeatureFlagSchema, () => {
     it('validates enable', () => {
       const result = toggleFeatureFlagSchema.safeParse({ enabled: true })
       expect(result.success).toBe(true)
@@ -134,7 +134,7 @@ describe('Feature Flag Validators', () => {
     })
   })
 
-  describe('evaluateFlagSchema', () => {
+  describe(evaluateFlagSchema, () => {
     it('validates without context', () => {
       const result = evaluateFlagSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -148,7 +148,7 @@ describe('Feature Flag Validators', () => {
     })
   })
 
-  describe('evaluateMultipleFlagsSchema', () => {
+  describe(evaluateMultipleFlagsSchema, () => {
     it('validates with keys', () => {
       const result = evaluateMultipleFlagsSchema.safeParse({
         keys: ['flag-a', 'flag-b'],
@@ -171,7 +171,7 @@ describe('Feature Flag Validators', () => {
     })
   })
 
-  describe('listFeatureFlagsSchema', () => {
+  describe(listFeatureFlagsSchema, () => {
     it('validates empty params', () => {
       const result = listFeatureFlagsSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -195,7 +195,7 @@ describe('Feature Flag Validators', () => {
   })
 })
 
-describe('Feature Flag Service Logic', () => {
+describe('feature Flag Service Logic', () => {
   describe('simpleHash (via rollout logic)', () => {
     it('produces deterministic results', () => {
       function simpleHash(str: string): number {
@@ -248,14 +248,12 @@ describe('Feature Flag Service Logic', () => {
   })
 })
 
-describe('Feature Flag Evaluation Logic', () => {
+describe('feature Flag Evaluation Logic', () => {
   function createMockDb(flags: Record<string, Record<string, unknown>>) {
     return {
       select: () => ({
         from: () => ({
-          where: async (condition: unknown) => {
-            return Object.values(flags)
-          },
+          where: async (condition: unknown) => Object.values(flags),
         }),
       }),
     }

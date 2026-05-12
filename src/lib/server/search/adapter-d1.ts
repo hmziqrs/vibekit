@@ -7,6 +7,13 @@ type DbClient = any
 
 export function createD1SearchAdapter(db: DbClient): SearchAdapter {
   return {
+    async delete(entityId: string, entityType: string): Promise<void> {
+      await db.run(sql`
+        DELETE FROM search_index
+        WHERE entity_type = ${entityType} AND entity_id = ${entityId}
+      `)
+    },
+
     async index(document: SearchDocument): Promise<void> {
       await db.run(sql`
         INSERT INTO search_index (entity_type, entity_id, title, content, metadata, updated_at)
@@ -23,13 +30,6 @@ export function createD1SearchAdapter(db: DbClient): SearchAdapter {
       for (const doc of documents) {
         await this.index(doc)
       }
-    },
-
-    async delete(entityId: string, entityType: string): Promise<void> {
-      await db.run(sql`
-        DELETE FROM search_index
-        WHERE entity_type = ${entityType} AND entity_id = ${entityId}
-      `)
     },
 
     async search(

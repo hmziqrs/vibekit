@@ -693,6 +693,7 @@ export const notificationPreferenceRelations = relations(notificationPreference,
   }),
 }))
 
+// @ts-expect-error -- self-referencing FK (parentId -> comment.id) causes circular type inference; safe at runtime
 export const comment = sqliteTable(
   'comment',
   {
@@ -712,8 +713,8 @@ export const comment = sqliteTable(
     moderatedAt: integer('moderated_at', { mode: 'timestamp_ms' }),
     moderatedBy: text('moderated_by').references(() => user.id, { onDelete: 'set null' }),
     parentId: text('parent_id').references(
-      // eslint-disable-next-line unicorn/no-useless-undefined
-      (): typeof comment => comment,
+      // @ts-expect-error -- self-referencing FK causes circular type inference; callback is lazy so this is safe at runtime
+      () => comment.id,
       { onDelete: 'cascade' }
     ),
     postId: text('post_id')
@@ -1164,10 +1165,10 @@ export const webhookDelivery = sqliteTable(
     nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
     payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
     responseBody: text('response_body'),
-    statusCode: integer('status_code'),
     status: text('status', { enum: ['failed', 'pending', 'retrying', 'success'] })
       .default('pending')
       .notNull(),
+    statusCode: integer('status_code'),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -1267,27 +1268,27 @@ export const featureFlag = sqliteTable(
 export const abExperiment = sqliteTable(
   'ab_experiment',
   {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    description: text('description'),
+    endDate: integer('end_date', { mode: 'timestamp_ms' }),
     id: text('id')
       .primaryKey()
       .notNull()
       .$defaultFn(() => uuid()),
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
-    description: text('description'),
+    startDate: integer('start_date', { mode: 'timestamp_ms' }),
     status: text('status', { enum: ['draft', 'running', 'paused', 'completed', 'archived'] })
       .default('draft')
       .notNull(),
     targetMetric: text('target_metric').notNull(),
-    startDate: integer('start_date', { mode: 'timestamp_ms' }),
-    endDate: integer('end_date', { mode: 'timestamp_ms' }),
-    winningVariantId: text('winning_variant_id'),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
+    winningVariantId: text('winning_variant_id'),
   },
   (table) => [
     index('ab_experiment_key_idx').on(table.key),
@@ -1298,21 +1299,21 @@ export const abExperiment = sqliteTable(
 export const abVariant = sqliteTable(
   'ab_variant',
   {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    description: text('description'),
+    experimentId: text('experiment_id')
+      .notNull()
+      .references(() => abExperiment.id, { onDelete: 'cascade' }),
     id: text('id')
       .primaryKey()
       .notNull()
       .$defaultFn(() => uuid()),
-    experimentId: text('experiment_id')
-      .notNull()
-      .references(() => abExperiment.id, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
-    description: text('description'),
-    trafficPercentage: integer('traffic_percentage').default(50).notNull(),
-    payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().default({}),
     isControl: integer('is_control', { mode: 'boolean' }).default(false).notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
+    name: text('name').notNull(),
+    payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().default({}),
+    trafficPercentage: integer('traffic_percentage').default(50).notNull(),
   },
   (table) => [index('ab_variant_experiment_idx').on(table.experimentId)]
 )
@@ -1320,21 +1321,21 @@ export const abVariant = sqliteTable(
 export const abAssignment = sqliteTable(
   'ab_assignment',
   {
+    assignedAt: integer('assigned_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    experimentId: text('experiment_id')
+      .notNull()
+      .references(() => abExperiment.id, { onDelete: 'cascade' }),
     id: text('id')
       .primaryKey()
       .notNull()
       .$defaultFn(() => uuid()),
-    experimentId: text('experiment_id')
-      .notNull()
-      .references(() => abExperiment.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id'),
+    userId: text('user_id'),
     variantId: text('variant_id')
       .notNull()
       .references(() => abVariant.id, { onDelete: 'cascade' }),
-    userId: text('user_id'),
-    sessionId: text('session_id'),
-    assignedAt: integer('assigned_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
   },
   (table) => [
     index('ab_assignment_experiment_idx').on(table.experimentId),
@@ -1346,25 +1347,25 @@ export const abAssignment = sqliteTable(
 export const abEvent = sqliteTable(
   'ab_event',
   {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    eventName: text('event_name').notNull(),
+    eventType: text('event_type').notNull(),
+    eventValue: integer('event_value'),
+    experimentId: text('experiment_id')
+      .notNull()
+      .references(() => abExperiment.id, { onDelete: 'cascade' }),
     id: text('id')
       .primaryKey()
       .notNull()
       .$defaultFn(() => uuid()),
-    experimentId: text('experiment_id')
-      .notNull()
-      .references(() => abExperiment.id, { onDelete: 'cascade' }),
+    metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>().default({}),
+    sessionId: text('session_id'),
+    userId: text('user_id'),
     variantId: text('variant_id')
       .notNull()
       .references(() => abVariant.id, { onDelete: 'cascade' }),
-    userId: text('user_id'),
-    sessionId: text('session_id'),
-    eventType: text('event_type').notNull(),
-    eventName: text('event_name').notNull(),
-    eventValue: integer('event_value'),
-    metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>().default({}),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
   },
   (table) => [
     index('ab_event_experiment_idx').on(table.experimentId),
@@ -1376,18 +1377,18 @@ export const abEvent = sqliteTable(
 export const configVersion = sqliteTable(
   'config_version',
   {
+    changedBy: text('changed_by').references(() => user.id, { onDelete: 'set null' }),
+    configKey: text('config_key').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    environment: text('environment'),
     id: text('id')
       .primaryKey()
       .notNull()
       .$defaultFn(() => uuid()),
-    configKey: text('config_key').notNull(),
-    environment: text('environment'),
     newValue: text('new_value'),
     oldValue: text('old_value'),
-    changedBy: text('changed_by').references(() => user.id, { onDelete: 'set null' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
   },
   (table) => [
     index('config_version_key_idx').on(table.configKey),
@@ -1398,31 +1399,31 @@ export const configVersion = sqliteTable(
 export const uploadSession = sqliteTable(
   'upload_session',
   {
+    chunkSize: integer('chunk_size').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    fileName: text('file_name').notNull(),
+    fileSize: integer('file_size').notNull(),
+    fileType: text('file_type').notNull(),
     id: text('id')
       .primaryKey()
       .notNull()
       .$defaultFn(() => uuid()),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    fileName: text('file_name').notNull(),
-    fileSize: integer('file_size').notNull(),
-    fileType: text('file_type').notNull(),
-    storageKey: text('storage_key'),
-    chunkSize: integer('chunk_size').notNull(),
-    totalChunks: integer('total_chunks').notNull(),
     receivedChunks: text('received_chunks', { mode: 'json' }).$type<number[]>().default([]),
     status: text('status', { enum: ['pending', 'uploading', 'complete', 'failed', 'expired'] })
       .default('pending')
       .notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
+    storageKey: text('storage_key'),
+    totalChunks: integer('total_chunks').notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [
     index('upload_session_user_idx').on(table.userId),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 function buildSearchConditions(
   q: string | undefined,
-  fields: Array<(query: string) => string>
+  fields: ((query: string) => string)[]
 ): string[] | null {
   if (!q || q.length < 2) return null
   return fields.map((fn) => fn(q))
@@ -65,6 +65,6 @@ describe('search field coverage', () => {
 
   it('contentBody field can store large text', () => {
     const largeContent = 'a'.repeat(100_000)
-    expect(largeContent.length).toBe(100_000)
+    expect(largeContent).toHaveLength(100_000)
   })
 })

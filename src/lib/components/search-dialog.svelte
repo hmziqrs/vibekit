@@ -49,7 +49,7 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
     } catch {
-      // ignore quota errors
+      // Ignore quota errors
     }
   }
 
@@ -58,7 +58,7 @@
     try {
       localStorage.removeItem(STORAGE_KEY)
     } catch {
-      // ignore
+      // Ignore
     }
   }
 
@@ -140,48 +140,61 @@
 
   function buildResultUrl(result: { entityId: string; entityType: string }): string {
     switch (result.entityType) {
-      case 'blog_post':
+      case 'blog_post': {
         return `/admin/blog/${result.entityId}/edit`
-      case 'user':
+      }
+      case 'user': {
         return `/admin/users`
-      case 'item':
+      }
+      case 'item': {
         return `/app/items`
-      default:
+      }
+      default: {
         return `/app/search?q=${encodeURIComponent(query)}`
+      }
     }
   }
 
   function getTypeLabel(type: string): string {
     switch (type) {
-      case 'blog_post':
+      case 'blog_post': {
         return 'Blog'
-      case 'user':
+      }
+      case 'user': {
         return 'User'
-      case 'item':
+      }
+      case 'item': {
         return 'Item'
-      case 'page':
+      }
+      case 'page': {
         return 'Page'
-      default:
+      }
+      default: {
         return type
+      }
     }
   }
 
   function getTypeIcon(type: string): string {
     switch (type) {
-      case 'blog_post':
+      case 'blog_post': {
         return 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'
-      case 'user':
+      }
+      case 'user': {
         return 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'
-      case 'item':
+      }
+      case 'item': {
         return 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'
-      default:
+      }
+      default: {
         return 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'
+      }
     }
   }
 
   function highlightMatch(text: string, term: string): string {
     if (!term) return text
-    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)})`, 'gi')
     return text.replace(regex, '<mark class="bg-brand/20 text-text-primary rounded px-0.5">$1</mark>')
   }
 </script>

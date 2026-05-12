@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import { describe, expect, it } from 'vitest'
 
 const specPath = 'static/openapi.yaml'
-const specText = readFileSync(specPath, 'utf-8')
+const specText = readFileSync(specPath, 'utf8')
 
 function countMatches(text: string, pattern: RegExp): number {
   return (text.match(pattern) ?? []).length
@@ -21,7 +21,7 @@ function hasSchema(name: string): boolean {
   return specText.includes(`    ${name}:`)
 }
 
-describe('OpenAPI spec', () => {
+describe('openAPI spec', () => {
   it('has valid openapi version', () => {
     expect(specText).toMatch(/^openapi: 3\.1\.0$/m)
   })
