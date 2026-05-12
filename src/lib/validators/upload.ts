@@ -14,3 +14,10 @@ export const chunkUploadSchema = z.object({
 export const listUploadSessionsSchema = z.object({
   status: z.enum(['complete', 'expired', 'failed', 'pending', 'uploading']).optional(),
 })
+
+export const bulkDeleteMediaSchema = z.object({
+  keys: z
+    .array(z.string().min(1))
+    .min(1, 'Must provide at least one key')
+    .max(100, 'Maximum 100 keys per request'),
+})

@@ -76,5 +76,25 @@ export const updateSeriesSchema = z.object({
   slug: slug.optional(),
 })
 
+export const createTagSchema = z.object({
+  name: z.string().trim().min(1, 'Tag name is required').max(100),
+})
+
+export const bulkActionSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1, 'At least one ID is required').max(100),
+})
+
+export const linkPreviewSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1, 'URL is required')
+    .url('Invalid URL format')
+    .refine(
+      (val) => val.startsWith('https://') || val.startsWith('http://'),
+      'URL must use http or https protocol'
+    ),
+})
+
 export type CreateSeriesInput = z.infer<typeof createSeriesSchema>
 export type UpdateSeriesInput = z.infer<typeof updateSeriesSchema>

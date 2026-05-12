@@ -180,6 +180,9 @@ import {
   createOrganizationSchema,
   createPostSchema,
   createSeriesSchema,
+  createTagSchema,
+  bulkActionSchema,
+  linkPreviewSchema,
   createReportSchema,
   createTeamSchema,
   addTeamMemberSchema,
@@ -214,6 +217,12 @@ import {
   recordEventSchema,
   updateExperimentSchema,
 } from '$lib/validators/ab-testing'
+import {
+  banUserSchema,
+  broadcastNotificationSchema,
+  impersonateUserSchema,
+  stopImpersonateSchema,
+} from '$lib/validators/admin'
 import { createApiKeySchema, rotateApiKeySchema, updateApiKeySchema } from '$lib/validators/api-key'
 import {
   checkoutSessionSchema,
@@ -230,8 +239,13 @@ import {
   toggleFeatureFlagSchema,
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
-import { indexDocumentSchema, searchSchema } from '$lib/validators/search'
-import { createUploadSessionSchema, listUploadSessionsSchema } from '$lib/validators/upload'
+import { pushSubscribeSchema, pushUnsubscribeSchema } from '$lib/validators/push'
+import { deleteSearchIndexSchema, indexDocumentSchema, searchSchema } from '$lib/validators/search'
+import {
+  bulkDeleteMediaSchema,
+  createUploadSessionSchema,
+  listUploadSessionsSchema,
+} from '$lib/validators/upload'
 import {
   WEBHOOK_EVENT_TYPES,
   createWebhookEndpointSchema,
@@ -1813,14 +1827,10 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
 
 // ── Push Notifications (auth required) ──────────────────────────────────
 
-protectedApp.post('/push/subscribe', async (c) => {
+protectedApp.post('/push/subscribe', validate(pushSubscribeSchema), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = await c.req.json<{ auth: string; endpoint: string; p256dh: string }>()
-
-  if (!body.endpoint || !body.p256dh || !body.auth) {
-    throw new BadRequestError('endpoint, p256dh, and auth are required')
-  }
+  const body = c.req.valid('json')
 
   const userAgent = c.req.header('user-agent')
   await subscribeToPush(db, {
@@ -1834,13 +1844,9 @@ protectedApp.post('/push/subscribe', async (c) => {
   return c.json({ success: true }, 201)
 })
 
-protectedApp.post('/push/unsubscribe', async (c) => {
+protectedApp.post('/push/unsubscribe', validate(pushUnsubscribeSchema), async (c) => {
   const { db } = c.get('services')
-  const body = await c.req.json<{ endpoint: string }>()
-
-  if (!body.endpoint) {
-    throw new BadRequestError('endpoint is required')
-  }
+  const body = c.req.valid('json')
 
   await unsubscribeFromPush(db, body.endpoint)
   return c.json({ success: true })
@@ -2707,9 +2713,8 @@ blogApp.get('/tags', async (c) => {
   return c.json({ tags })
 })
 
-blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
-  const { name } = (await c.req.json().catch(() => ({}))) as { name?: string }
-  if (!name?.trim()) throw new BadRequestError('Tag name is required')
+blogApp.post('/tags', withRateLimit('blog-mutate'), validate(createTagSchema), async (c) => {
+  const { name } = c.req.valid('json')
 
   const { db } = c.get('services')
   const currentUser = c.get('user')
@@ -3139,33 +3144,41 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
 
 // ── Bulk actions ────────────────────────────────────────────────────
 
-blogApp.post('/bulk-delete', withRateLimit('blog-mutate'), async (c) => {
-  const { ids } = (await c.req.json().catch(() => ({}))) as { ids?: string[] }
-  if (!ids?.length) throw new BadRequestError('No IDs provided')
+blogApp.post(
+  '/bulk-delete',
+  withRateLimit('blog-mutate'),
+  validate(bulkActionSchema),
+  async (c) => {
+    const { ids } = c.req.valid('json')
 
-  const { db } = c.get('services')
-  await db
-    .update(blogPost)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(inArray(blogPost.id, ids))
+    const { db } = c.get('services')
+    await db
+      .update(blogPost)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(inArray(blogPost.id, ids))
 
-  await c.get('services').cache.purgeBlog()
-  return c.json({ deleted: ids.length, success: true })
-})
+    await c.get('services').cache.purgeBlog()
+    return c.json({ deleted: ids.length, success: true })
+  }
+)
 
-blogApp.post('/bulk-archive', withRateLimit('blog-mutate'), async (c) => {
-  const { ids } = (await c.req.json().catch(() => ({}))) as { ids?: string[] }
-  if (!ids?.length) throw new BadRequestError('No IDs provided')
+blogApp.post(
+  '/bulk-archive',
+  withRateLimit('blog-mutate'),
+  validate(bulkActionSchema),
+  async (c) => {
+    const { ids } = c.req.valid('json')
 
-  const { db } = c.get('services')
-  await db
-    .update(blogPost)
-    .set({ status: 'archived', updatedAt: new Date() })
-    .where(inArray(blogPost.id, ids))
+    const { db } = c.get('services')
+    await db
+      .update(blogPost)
+      .set({ status: 'archived', updatedAt: new Date() })
+      .where(inArray(blogPost.id, ids))
 
-  await c.get('services').cache.purgeBlog()
-  return c.json({ archived: ids.length, success: true })
-})
+    await c.get('services').cache.purgeBlog()
+    return c.json({ archived: ids.length, success: true })
+  }
+)
 
 // ── Media ───────────────────────────────────────────────────────────
 
@@ -3244,56 +3257,58 @@ blogApp.post('/:id/revisions/:revId/restore', withRateLimit('blog-mutate'), asyn
   return c.json({ success: true })
 })
 
-blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (c) => {
-  const { url } = (await c.req.json().catch(() => ({}))) as { url?: string }
-  if (!url || typeof url !== 'string') {
-    throw new BadRequestError('URL required')
-  }
+blogApp.post(
+  '/link-preview',
+  withRateLimit('link-preview', 30, 60_000),
+  validate(linkPreviewSchema),
+  async (c) => {
+    const { url } = c.req.valid('json')
 
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
-      signal: AbortSignal.timeout(5000),
-    })
-    const html = await res.text()
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
+        signal: AbortSignal.timeout(5000),
+      })
+      const html = await res.text()
 
-    // Check for oEmbed link tag in the HTML
-    const oembedHref = extractOembedLink(html)
-    if (oembedHref) {
-      try {
-        const oembedRes = await fetch(oembedHref, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
-          signal: AbortSignal.timeout(5000),
-        })
-        const oembed = (await oembedRes.json()) as Record<string, unknown>
-        const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
-        return c.json({
-          description: (oembed.title as string) || extractMeta(html, 'og:description'),
-          embedHtml: oembed.html as string | undefined,
-          image: (oembed.thumbnail_url as string) || extractMeta(html, 'og:image'),
-          siteName: extractMeta(html, 'og:site_name') || (oembed.provider_name as string),
-          title: ogTitle || (oembed.title as string),
-        })
-      } catch {
-        // OEmbed fetch failed, fall through to OG scraping
+      // Check for oEmbed link tag in the HTML
+      const oembedHref = extractOembedLink(html)
+      if (oembedHref) {
+        try {
+          const oembedRes = await fetch(oembedHref, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
+            signal: AbortSignal.timeout(5000),
+          })
+          const oembed = (await oembedRes.json()) as Record<string, unknown>
+          const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
+          return c.json({
+            description: (oembed.title as string) || extractMeta(html, 'og:description'),
+            embedHtml: oembed.html as string | undefined,
+            image: (oembed.thumbnail_url as string) || extractMeta(html, 'og:image'),
+            siteName: extractMeta(html, 'og:site_name') || (oembed.provider_name as string),
+            title: ogTitle || (oembed.title as string),
+          })
+        } catch {
+          // OEmbed fetch failed, fall through to OG scraping
+        }
       }
+
+      const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
+      const ogDescription = extractMeta(html, 'og:description')
+      const ogImage = extractMeta(html, 'og:image')
+      const ogSiteName = extractMeta(html, 'og:site_name')
+
+      return c.json({
+        description: ogDescription,
+        image: ogImage,
+        siteName: ogSiteName,
+        title: ogTitle,
+      })
+    } catch {
+      throw new BadRequestError('Failed to fetch URL')
     }
-
-    const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
-    const ogDescription = extractMeta(html, 'og:description')
-    const ogImage = extractMeta(html, 'og:image')
-    const ogSiteName = extractMeta(html, 'og:site_name')
-
-    return c.json({
-      description: ogDescription,
-      image: ogImage,
-      siteName: ogSiteName,
-      title: ogTitle,
-    })
-  } catch {
-    throw new BadRequestError('Failed to fetch URL')
   }
-})
+)
 
 function extractMeta(html: string, property: string): string | null {
   const pattern = `<meta\\s+(?:property|name)=["']${property}["']\\s+content=["']([^"']*)["']`
@@ -3573,62 +3588,63 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
 
 // ── Admin Ban/Unban ──────────────────────────────────────────────────
 
-adminApp.post('/users/:id/ban', withRateLimit('users-mutate'), async (c) => {
-  const currentUser = c.get('user')
-  const targetId = c.req.param('id')
-  const body = await c.req.json<{ reason?: string; durationDays?: number }>()
+adminApp.post(
+  '/users/:id/ban',
+  withRateLimit('users-mutate'),
+  validate(banUserSchema),
+  async (c) => {
+    const currentUser = c.get('user')
+    const targetId = c.req.param('id')
+    const body = c.req.valid('json')
 
-  if (!body.reason?.trim()) {
-    throw new BadRequestError('Ban reason is required')
-  }
+    const { db } = c.get('services')
+    const [target] = await db
+      .select()
+      .from(user)
+      .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
 
-  const { db } = c.get('services')
-  const [target] = await db
-    .select()
-    .from(user)
-    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+    if (!target) {
+      throw new NotFoundError('User not found')
+    }
+    if (target.id === currentUser.id) {
+      throw new BadRequestError('Cannot ban yourself')
+    }
+    if (target.status === 'suspended') {
+      throw new BadRequestError('User is already suspended')
+    }
 
-  if (!target) {
-    throw new NotFoundError('User not found')
-  }
-  if (target.id === currentUser.id) {
-    throw new BadRequestError('Cannot ban yourself')
-  }
-  if (target.status === 'suspended') {
-    throw new BadRequestError('User is already suspended')
-  }
+    const banExpiresAt = body.durationDays
+      ? new Date(Date.now() + body.durationDays * 24 * 60 * 60 * 1000)
+      : null
 
-  const banExpiresAt = body.durationDays
-    ? new Date(Date.now() + body.durationDays * 24 * 60 * 60 * 1000)
-    : null
+    await db
+      .update(user)
+      .set({
+        banExpiresAt,
+        banReason: body.reason.trim(),
+        status: 'suspended',
+      })
+      .where(eq(user.id, targetId))
 
-  await db
-    .update(user)
-    .set({
-      banExpiresAt,
-      banReason: body.reason.trim(),
-      status: 'suspended',
+    await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
+
+    await writeAuditLog(db, {
+      action: 'user.ban',
+      entityId: targetId,
+      entityType: 'user',
+      metadata: {
+        banExpiresAt: banExpiresAt?.toISOString() ?? null,
+        durationDays: body.durationDays ?? null,
+        reason: body.reason.trim(),
+        targetEmail: target.email,
+        targetName: target.name,
+      },
+      userId: currentUser.id,
     })
-    .where(eq(user.id, targetId))
 
-  await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
-
-  await writeAuditLog(db, {
-    action: 'user.ban',
-    entityId: targetId,
-    entityType: 'user',
-    metadata: {
-      banExpiresAt: banExpiresAt?.toISOString() ?? null,
-      durationDays: body.durationDays ?? null,
-      reason: body.reason.trim(),
-      targetEmail: target.email,
-      targetName: target.name,
-    },
-    userId: currentUser.id,
-  })
-
-  return c.json({ success: true })
-})
+    return c.json({ success: true })
+  }
+)
 
 adminApp.post('/users/:id/unban', withRateLimit('users-mutate'), async (c) => {
   const currentUser = c.get('user')
@@ -3729,84 +3745,81 @@ adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
 
 // ── Admin Impersonation ──────────────────────────────────────────────
 
-adminApp.post('/users/:id/impersonate', withRateLimit('impersonate', 5, 60_000), async (c) => {
-  const currentUser = c.get('user')
-  const targetId = c.req.param('id')
-  const body = await c.req.json<{ reason?: string }>()
+adminApp.post(
+  '/users/:id/impersonate',
+  withRateLimit('impersonate', 5, 60_000),
+  validate(impersonateUserSchema),
+  async (c) => {
+    const currentUser = c.get('user')
+    const targetId = c.req.param('id')
+    const body = c.req.valid('json')
 
-  if (!body.reason?.trim()) {
-    throw new BadRequestError('Reason is required for impersonation')
-  }
+    const { db } = c.get('services')
 
-  const { db } = c.get('services')
+    const [target] = await db
+      .select()
+      .from(user)
+      .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
 
-  const [target] = await db
-    .select()
-    .from(user)
-    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+    if (!target) {
+      throw new NotFoundError('User not found')
+    }
 
-  if (!target) {
-    throw new NotFoundError('User not found')
-  }
+    if (target.id === currentUser.id) {
+      throw new BadRequestError('Cannot impersonate yourself')
+    }
 
-  if (target.id === currentUser.id) {
-    throw new BadRequestError('Cannot impersonate yourself')
-  }
+    if (target.role === 'admin') {
+      throw new ForbiddenError('Cannot impersonate other admins')
+    }
 
-  if (target.role === 'admin') {
-    throw new ForbiddenError('Cannot impersonate other admins')
-  }
+    const sessionToken = uuid()
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour max
 
-  const sessionToken = uuid()
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour max
+    await db.insert(sessionTable).values({
+      expiresAt,
+      id: uuid(),
+      token: sessionToken,
+      userId: target.id,
+    })
 
-  await db.insert(sessionTable).values({
-    expiresAt,
-    id: uuid(),
-    token: sessionToken,
-    userId: target.id,
-  })
-
-  const impersonationId = uuid()
-  await db.insert(impersonationSession).values({
-    adminUserId: currentUser.id,
-    id: impersonationId,
-    reason: body.reason.trim(),
-    sessionToken,
-    targetUserId: target.id,
-  })
-
-  await writeAuditLog(db, {
-    action: 'user.impersonate_start',
-    entityId: impersonationId,
-    entityType: 'impersonation_session',
-    metadata: {
-      impersonationId,
+    const impersonationId = uuid()
+    await db.insert(impersonationSession).values({
+      adminUserId: currentUser.id,
+      id: impersonationId,
       reason: body.reason.trim(),
-      targetEmail: target.email,
-      targetName: target.name,
+      sessionToken,
       targetUserId: target.id,
-    },
-    userId: currentUser.id,
-  })
+    })
 
-  return c.json({
-    sessionToken,
-    targetUser: {
-      email: target.email,
-      id: target.id,
-      name: target.name,
-    },
-  })
-})
+    await writeAuditLog(db, {
+      action: 'user.impersonate_start',
+      entityId: impersonationId,
+      entityType: 'impersonation_session',
+      metadata: {
+        impersonationId,
+        reason: body.reason.trim(),
+        targetEmail: target.email,
+        targetName: target.name,
+        targetUserId: target.id,
+      },
+      userId: currentUser.id,
+    })
 
-adminApp.post('/users/:id/stop-impersonate', async (c) => {
-  const currentUser = c.get('user')
-  const body = await c.req.json<{ sessionToken?: string }>()
-
-  if (!body.sessionToken) {
-    throw new BadRequestError('Session token is required')
+    return c.json({
+      sessionToken,
+      targetUser: {
+        email: target.email,
+        id: target.id,
+        name: target.name,
+      },
+    })
   }
+)
+
+adminApp.post('/users/:id/stop-impersonate', validate(stopImpersonateSchema), async (c) => {
+  const currentUser = c.get('user')
+  const body = c.req.valid('json')
 
   const { db } = c.get('services')
 
@@ -5351,9 +5364,9 @@ adminApp.get('/config/history', async (c) => {
 })
 
 // Admin: resolve config for environment
-adminApp.post('/config/resolve', async (c) => {
+adminApp.post('/config/resolve', validate(resolveConfigSchema), async (c) => {
   const { db } = c.get('services')
-  const body = await c.req.json<{ environment?: string; keys: string[] }>()
+  const body = c.req.valid('json')
   const resolved = await resolveConfig(db, body.keys, body.environment)
   return c.json(resolved)
 })
@@ -5856,64 +5869,55 @@ adminApp.delete('/comments/:id', async (c) => {
 
 // ── Admin Broadcasts ──────────────────────────────────────────────────
 
-adminApp.post('/notifications/broadcast', withRateLimit('broadcast', 5, 60_000), async (c) => {
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const body = await c.req.json<{
-    body?: string
-    link?: string
-    target: 'admins' | 'all'
-    title: string
-    type?: 'error' | 'info' | 'success' | 'warning'
-  }>()
+adminApp.post(
+  '/notifications/broadcast',
+  withRateLimit('broadcast', 5, 60_000),
+  validate(broadcastNotificationSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const body = c.req.valid('json')
 
-  if (!body.title?.trim()) {
-    throw new BadRequestError('title is required')
-  }
-
-  if (body.target !== 'all' && body.target !== 'admins') {
-    throw new BadRequestError('target must be "all" or "admins"')
-  }
-
-  const getUserIds = async (target: 'admins' | 'all') => {
-    const conditions = [isNull(user.deletedAt)]
-    if (target === 'admins') {
-      conditions.push(eq(user.role, 'admin'))
+    const getUserIds = async (target: 'admins' | 'all') => {
+      const conditions = [isNull(user.deletedAt)]
+      if (target === 'admins') {
+        conditions.push(eq(user.role, 'admin'))
+      }
+      const rows = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(and(...conditions))
+      return rows.map((r) => r.id)
     }
-    const rows = await db
-      .select({ id: user.id })
-      .from(user)
-      .where(and(...conditions))
-    return rows.map((r) => r.id)
+
+    const count = await createBroadcast(
+      db,
+      {
+        body: body.body,
+        link: body.link,
+        target: body.target,
+        title: body.title.trim(),
+        type: body.type,
+      },
+      getUserIds
+    )
+
+    await writeAuditLog(db, {
+      action: 'notification.broadcast',
+      entityId: 'broadcast',
+      entityType: 'notification',
+      metadata: {
+        body: body.body,
+        recipientCount: count,
+        target: body.target,
+        title: body.title.trim(),
+      },
+      userId: currentUser.id,
+    })
+
+    return c.json({ count, success: true }, 201)
   }
-
-  const count = await createBroadcast(
-    db,
-    {
-      body: body.body,
-      link: body.link,
-      target: body.target,
-      title: body.title.trim(),
-      type: body.type,
-    },
-    getUserIds
-  )
-
-  await writeAuditLog(db, {
-    action: 'notification.broadcast',
-    entityId: 'broadcast',
-    entityType: 'notification',
-    metadata: {
-      body: body.body,
-      recipientCount: count,
-      target: body.target,
-      title: body.title.trim(),
-    },
-    userId: currentUser.id,
-  })
-
-  return c.json({ count, success: true }, 201)
-})
+)
 
 // ── Admin Billing ────────────────────────────────────────────────────
 
@@ -6188,12 +6192,9 @@ adminApp.post('/media/upload', withRateLimit('upload', 10, 60_000), async (c) =>
   return c.json(result, 201)
 })
 
-adminApp.post('/media/bulk-delete', async (c) => {
+adminApp.post('/media/bulk-delete', validate(bulkDeleteMediaSchema), async (c) => {
   const services = c.get('services')
-  const { keys } = await c.req.json<{ keys: string[] }>()
-  if (!Array.isArray(keys) || keys.length === 0 || keys.length > 100) {
-    throw new BadRequestError('Must provide 1-100 keys')
-  }
+  const { keys } = c.req.valid('json')
   for (const key of keys) {
     await services.storage.delete(key)
   }
@@ -6211,9 +6212,9 @@ adminApp.post('/search/index', validate(indexDocumentSchema), async (c) => {
   return c.json({ indexed: true })
 })
 
-adminApp.delete('/search/index', async (c) => {
+adminApp.delete('/search/index', validate(deleteSearchIndexSchema), async (c) => {
   const { db } = c.get('services')
-  const body = await c.req.json<{ entityId: string; entityType: string }>()
+  const body = c.req.valid('json')
   const adapter = createD1SearchAdapter(db)
   const searchService = createSearchService(adapter)
   await searchService.deleteEntity(body.entityId, body.entityType)

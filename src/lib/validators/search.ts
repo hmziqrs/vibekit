@@ -23,3 +23,8 @@ export const deleteIndexSchema = z.object({
 export const reindexSchema = z.object({
   entityType: z.enum(['blog_post', 'comment', 'item', 'page', 'user']).optional(),
 })
+
+export const deleteSearchIndexSchema = z.object({
+  entityId: z.string().trim().min(1, 'Entity ID is required'),
+  entityType: z.string().trim().min(1, 'Entity type is required'),
+})
