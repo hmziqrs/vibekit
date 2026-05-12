@@ -3,6 +3,7 @@ import { Suggestion } from '@tiptap/suggestion'
 import { mount, unmount } from 'svelte'
 
 import SlashMenuContent, { type SlashMenuItem } from '../slash-menu.svelte'
+import { detectEmbedProvider, getEmbedUrl } from '../utils/detect-embed-provider'
 
 function replaceBlobSrc(editor: Editor, blobUrl: string, attrs: Record<string, unknown>) {
   const { tr } = editor.state
@@ -127,13 +128,26 @@ function getSlashItems(_editor: Editor): SlashMenuItem[] {
       label: 'Image',
     },
     {
-      aliases: ['embed', 'youtube', 'video'],
+      aliases: ['embed', 'youtube', 'video', 'gist'],
       command: (e) => {
-        const url = prompt('Embed URL (YouTube, Vimeo):')
+        const url = prompt('Embed URL (YouTube, Vimeo, Twitter, GitHub Gist):')
         if (!url) return
-        e.chain().focus().setEmbedBlock({ caption: '', provider: 'generic', url }).run()
+
+        const provider = detectEmbedProvider(url)
+        if (provider) {
+          const embedUrl = getEmbedUrl(url)
+          e.chain()
+            .focus()
+            .setEmbedBlock({ caption: '', provider: provider.name, url: embedUrl })
+            .run()
+        } else {
+          e.chain()
+            .focus()
+            .setLinkPreviewCard({ description: '', image: '', siteName: '', title: '', url })
+            .run()
+        }
       },
-      description: 'YouTube, Vimeo, or other embed',
+      description: 'YouTube, Vimeo, Twitter, GitHub Gist, or link card',
       label: 'Embed',
     },
     {

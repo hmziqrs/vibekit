@@ -22,6 +22,27 @@
   // svelte-ignore state_referenced_locally
   let captionInput = $state(caption)
 
+  let isGist = $derived(provider === 'github-gist')
+  let displayProvider = $derived(
+    provider === 'github-gist'
+      ? 'GitHub Gist'
+      : provider === 'twitter'
+        ? 'X / Twitter'
+        : provider === 'youtube'
+          ? 'YouTube'
+          : provider === 'vimeo'
+            ? 'Vimeo'
+            : provider === 'instagram'
+              ? 'Instagram'
+              : provider === 'tiktok'
+                ? 'TikTok'
+                : provider === 'reddit'
+                  ? 'Reddit'
+                  : provider === 'facebook'
+                    ? 'Facebook'
+                    : provider,
+  )
+
   function saveCaption() {
     editingCaption = false
     onUpdateAttrs({ caption: captionInput })
@@ -29,15 +50,26 @@
 </script>
 
 <div class="my-4 overflow-hidden rounded-lg border border-border" contenteditable="false">
-  <div class="relative aspect-video w-full bg-surface-deep">
-    <iframe
-      src={url}
-      class="size-full"
-      allowfullscreen
-      loading="lazy"
-      title="{provider} embed"
-    ></iframe>
-  </div>
+  {#if isGist}
+    <div class="gist-embed bg-surface-deep min-h-[60px] p-4">
+      <script src={url}></script>
+      <noscript>
+        <a href={url} target="_blank" rel="noopener noreferrer" class="text-brand hover:underline">
+          View GitHub Gist
+        </a>
+      </noscript>
+    </div>
+  {:else}
+    <div class="relative aspect-video w-full bg-surface-deep">
+      <iframe
+        src={url}
+        class="size-full"
+        allowfullscreen
+        loading="lazy"
+        title="{provider} embed"
+      ></iframe>
+    </div>
+  {/if}
 
   <div class="px-3 py-2 text-center text-sm">
     {#if editingCaption}
@@ -78,7 +110,7 @@
     {/if}
 
     <p class="mt-1 text-xs text-text-faint">
-      {provider}
+      {displayProvider}
     </p>
   </div>
 </div>

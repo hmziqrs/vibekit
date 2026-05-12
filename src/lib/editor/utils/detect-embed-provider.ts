@@ -5,6 +5,7 @@ export interface EmbedProvider {
 }
 
 const FACEBOOK_PATTERN = /(?:facebook\.com|fb\.watch)\/.+/i
+const GITHUB_GIST_PATTERN = /gist\.github\.com\/([\w-]+\/[\w-]+)/
 const INSTAGRAM_PATTERN = /instagram\.com\/(?:p|reel|reels)\/([\w-]+)/i
 const REDDIT_PATTERN = /reddit\.com\/r\/[\w]+\/comments\/([\w]+)/i
 const TIKTOK_PATTERN = /tiktok\.com\/@[\w.]+\/video\/(\d+)/i
@@ -18,6 +19,16 @@ const providers: EmbedProvider[] = [
     toEmbedUrl: (url) =>
       `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}`,
     urlPattern: FACEBOOK_PATTERN,
+  },
+  {
+    name: 'github-gist',
+    toEmbedUrl: (url) => {
+      const match = url.match(GITHUB_GIST_PATTERN)
+      if (!match) return url
+      const fileParam = url.includes('?file=') ? `?file=${url.split('?file=')[1]}` : ''
+      return `https://gist.github.com/${match[1]}.js${fileParam}`
+    },
+    urlPattern: GITHUB_GIST_PATTERN,
   },
   {
     name: 'instagram',
@@ -70,4 +81,8 @@ export function detectEmbedProvider(url: string): EmbedProvider | null {
 export function getEmbedUrl(url: string): string {
   const provider = detectEmbedProvider(url)
   return provider ? provider.toEmbedUrl(url) : url
+}
+
+export function isGistProvider(provider: EmbedProvider): boolean {
+  return provider.name === 'github-gist'
 }

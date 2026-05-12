@@ -142,7 +142,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Audit log writes on blog mutations
   - [x] Cover image preview in editor (not just URL)
   - [x] Drag-and-drop image reordering for inline images (HTML5 Drag API, grip handle, drop line indicator, ProseMirror plugin)
-  - [ ] Link card / oEmbed support (Twitter, YouTube, GitHub gists)
+  - [x] Link card / oEmbed support (Twitter, YouTube, GitHub gists, embed provider detection, oEmbed discovery, conditional rendering)
   - [x] SEO preview (Google/social card preview in editor sidebar)
   - [ ] Full-text content search (admin side minimum)
   - [ ] Scheduled publishing (set future publishedAt, cron promotes drafts)

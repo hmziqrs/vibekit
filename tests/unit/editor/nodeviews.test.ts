@@ -1,4 +1,8 @@
-import { getEmbedUrl, detectEmbedProvider } from '$lib/editor/utils/detect-embed-provider'
+import {
+  getEmbedUrl,
+  detectEmbedProvider,
+  isGistProvider,
+} from '$lib/editor/utils/detect-embed-provider'
 import { describe, expect, it } from 'vitest'
 
 describe(detectEmbedProvider, () => {
@@ -56,6 +60,17 @@ describe(detectEmbedProvider, () => {
       'reddit'
     )
   })
+
+  it('detects GitHub Gist URLs', () => {
+    expect(detectEmbedProvider('https://gist.github.com/user/abc123def456')?.name).toBe(
+      'github-gist'
+    )
+  })
+
+  it('detects GitHub Gist URLs with file parameter', () => {
+    const result = detectEmbedProvider('https://gist.github.com/user/abc123?file=main.ts')
+    expect(result?.name).toBe('github-gist')
+  })
 })
 
 describe(getEmbedUrl, () => {
@@ -77,5 +92,27 @@ describe(getEmbedUrl, () => {
   it('returns original URL for unknown providers', () => {
     const url = 'https://example.com/page'
     expect(getEmbedUrl(url)).toBe(url)
+  })
+
+  it('converts GitHub Gist URL to embed script URL', () => {
+    const result = getEmbedUrl('https://gist.github.com/user/abc123def456')
+    expect(result).toBe('https://gist.github.com/user/abc123def456.js')
+  })
+
+  it('preserves file parameter in Gist embed URL', () => {
+    const result = getEmbedUrl('https://gist.github.com/user/abc123?file=main.ts')
+    expect(result).toContain('.js?file=main.ts')
+  })
+})
+
+describe(isGistProvider, () => {
+  it('returns true for gist provider', () => {
+    const provider = detectEmbedProvider('https://gist.github.com/user/abc123')
+    expect(isGistProvider(provider!)).toBe(true)
+  })
+
+  it('returns false for non-gist provider', () => {
+    const provider = detectEmbedProvider('https://www.youtube.com/watch?v=test')
+    expect(isGistProvider(provider!)).toBe(false)
   })
 })

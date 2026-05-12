@@ -1373,6 +1373,28 @@ blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (
     })
     const html = await res.text()
 
+    // Check for oEmbed link tag in the HTML
+    const oembedHref = extractOembedLink(html)
+    if (oembedHref) {
+      try {
+        const oembedRes = await fetch(oembedHref, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
+          signal: AbortSignal.timeout(5000),
+        })
+        const oembed = (await oembedRes.json()) as Record<string, unknown>
+        const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
+        return c.json({
+          description: (oembed.title as string) || extractMeta(html, 'og:description'),
+          embedHtml: oembed.html as string | undefined,
+          image: (oembed.thumbnail_url as string) || extractMeta(html, 'og:image'),
+          siteName: extractMeta(html, 'og:site_name') || (oembed.provider_name as string),
+          title: ogTitle || (oembed.title as string),
+        })
+      } catch {
+        // oEmbed fetch failed, fall through to OG scraping
+      }
+    }
+
     const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
     const ogDescription = extractMeta(html, 'og:description')
     const ogImage = extractMeta(html, 'og:image')
@@ -1401,6 +1423,15 @@ function extractMeta(html: string, property: string): string | null {
 function extractTitle(html: string): string | null {
   const match = html.match(/<title[^>]*>([^<]*)<\/title>/i)
   return match?.[1]?.trim() ?? null
+}
+
+function extractOembedLink(html: string): string | null {
+  const jsonPattern = /<link[^>]+type=["']application\/json\+oembed["'][^>]+href=["']([^"']+)["']/i
+  const match = html.match(jsonPattern)
+  if (match?.[1]) return match[1]
+  const altPattern = /<link[^>]+href=["']([^"']+)["'][^>]+type=["']application\/json\+oembed["']/i
+  const altMatch = html.match(altPattern)
+  return altMatch?.[1] ?? null
 }
 
 blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
