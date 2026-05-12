@@ -32,6 +32,7 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt . --write",
     "format:check": "oxfmt . --check",
+    "i18n:check": "bun run scripts/i18n-check.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
