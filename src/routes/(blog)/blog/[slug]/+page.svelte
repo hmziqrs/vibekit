@@ -1,14 +1,9 @@
 <script lang="ts">
-	import { seo } from '$lib/seo'
+	import SeoHead from '$lib/components/seo-head.svelte'
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
 
 	const { data } = $props()
-
-	const meta = $derived(seo({
-		description: data.post.seoDescription ?? data.post.excerpt ?? '',
-		title: data.post.title,
-	}))
 
 	const formattedDate = $derived(
 		new Date(data.post.publishedAt ?? data.post.createdAt).toLocaleDateString('en-US', {
@@ -19,15 +14,13 @@
 	)
 </script>
 
-<svelte:head>
-	<title>{meta.title}</title>
-	<meta name="description" content={meta.description} />
-	<meta property="og:title" content={meta.title} />
-	<meta property="og:description" content={meta.description} />
-	{#if data.post.coverImageUrl}
-		<meta property="og:image" content={data.post.coverImageUrl} />
-	{/if}
-</svelte:head>
+<SeoHead
+  description={data.post.seoDescription ?? data.post.excerpt ?? ''}
+  image={data.post.coverImageUrl}
+  publishedTime={data.post.publishedAt ? new Date(data.post.publishedAt).toISOString() : undefined}
+  title={data.post.title}
+  type="article"
+/>
 
 <Nav />
 

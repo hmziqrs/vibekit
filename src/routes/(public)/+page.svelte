@@ -1,14 +1,15 @@
 <script lang="ts">
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
+	import SeoHead from '$lib/components/seo-head.svelte'
 	import SmartLink from '$lib/components/smart-link.svelte'
 	import { Rocket } from '@lucide/svelte'
 </script>
 
-<svelte:head>
-	<title>Vibekit — Ship SvelteKit products on Cloudflare</title>
-	<meta name="description" content="A complete SvelteKit stack on Cloudflare. Auth, edge database, admin panel, and blog engine — pre-wired so you start building features on day one." />
-</svelte:head>
+<SeoHead
+	description="A complete SvelteKit stack on Cloudflare. Auth, edge database, admin panel, and blog engine — pre-wired so you start building features on day one."
+	title="Ship SvelteKit products on Cloudflare"
+/>
 
 <Nav />
 

@@ -1,12 +1,7 @@
 <script lang="ts">
-  import { seo } from '$lib/seo'
+  import SeoHead from '$lib/components/seo-head.svelte'
   import { enhance } from '$app/forms'
   import { contactSchema } from '$lib/validators/contact'
-
-  const meta = seo({
-    description: 'Get in touch with the Vibekit team.',
-    title: 'Contact',
-  })
 
   const { form } = $props()
 
@@ -47,10 +42,10 @@
   }
 </script>
 
-<svelte:head>
-  <title>{meta.title}</title>
-  <meta name="description" content={meta.description} />
-</svelte:head>
+<SeoHead
+  description="Get in touch with the Vibekit team."
+  title="Contact"
+/>
 
 <div class="mx-auto max-w-2xl px-6 py-24">
   <h1 class="mb-2 text-3xl font-bold text-text-primary">Contact us</h1>

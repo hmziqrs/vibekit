@@ -192,7 +192,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Content indexing (blog posts, user content, admin content — incremental updates on mutation)
 
 #### SEO & Performance
-- [ ] SEO foundation (meta tags, Open Graph, Twitter cards, canonical URLs, sitemap.xml, robots.txt, structured data/JSON-LD)
+- [x] SEO foundation (meta tags, Open Graph, Twitter cards, canonical URLs, sitemap.xml, robots.txt, structured data/JSON-LD)
 - [ ] Performance optimization (code splitting audit, bundle analysis, lazy loading images/components, font optimization, critical CSS)
 - [ ] Caching strategy (Cache API usage review, stale-while-revalidate patterns, cache invalidation on mutation, edge caching rules)
 - [ ] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)

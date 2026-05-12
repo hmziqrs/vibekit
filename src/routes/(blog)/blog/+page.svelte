@@ -1,22 +1,11 @@
 <script lang="ts">
   import Pagination from '$lib/components/pagination.svelte'
-  import { seo } from '$lib/seo'
+  import SeoHead from '$lib/components/seo-head.svelte'
   import { goto } from '$app/navigation'
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
 
   const { data } = $props()
-
-  const pageTitle = $derived.by(() => {
-    if (data.page > 1) return `Blog — Page ${data.page}`
-    if (data.q) return `Search: ${data.q}`
-    return 'Blog'
-  })
-
-  const meta = $derived(seo({
-    description: 'Articles about SvelteKit, Cloudflare, and building SaaS products.',
-    title: pageTitle,
-  }))
 
   const limit = 10
   const totalPages = $derived(Math.ceil(data.total / limit))
@@ -41,10 +30,10 @@
   }
 </script>
 
-<svelte:head>
-  <title>{meta.title}</title>
-  <meta name="description" content={meta.description} />
-</svelte:head>
+<SeoHead
+  description="Articles about SvelteKit, Cloudflare, and building SaaS products."
+  title={data.page > 1 ? `Blog — Page ${data.page}` : data.q ? `Search: ${data.q}` : 'Blog'}
+/>
 
 <Nav />
 

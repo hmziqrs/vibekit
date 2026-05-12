@@ -2,13 +2,7 @@
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
   import SmartLink from '$lib/components/smart-link.svelte'
-  import { seo } from '$lib/seo'
-
-  const meta = seo({
-    description:
-      'Learn about Vibekit — an open-source SvelteKit SaaS boilerplate built for Cloudflare Workers.',
-    title: 'About',
-  })
+  import SeoHead from '$lib/components/seo-head.svelte'
 
   const stack = [
     { desc: 'Full-stack framework with runes-mode Svelte 5', name: 'SvelteKit' },
@@ -21,10 +15,10 @@
   ]
 </script>
 
-<svelte:head>
-  <title>{meta.title}</title>
-  <meta name="description" content={meta.description} />
-</svelte:head>
+<SeoHead
+  description="Learn about Vibekit — an open-source SvelteKit SaaS boilerplate built for Cloudflare Workers."
+  title="About"
+/>
 
 <Nav />
 

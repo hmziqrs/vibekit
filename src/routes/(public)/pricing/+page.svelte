@@ -2,13 +2,7 @@
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
   import SmartLink from '$lib/components/smart-link.svelte'
-  import { seo } from '$lib/seo'
-
-  const meta = seo({
-    description:
-      'Start free and upgrade when you need more. Simple, predictable pricing for SvelteKit SaaS projects on Cloudflare.',
-    title: 'Pricing',
-  })
+  import SeoHead from '$lib/components/seo-head.svelte'
 
   const starterFeatures = [
     { included: true, text: 'Everything in the template' },
@@ -66,10 +60,10 @@
   }
 </script>
 
-<svelte:head>
-  <title>{meta.title}</title>
-  <meta name="description" content={meta.description} />
-</svelte:head>
+<SeoHead
+  description="Start free and upgrade when you need more. Simple, predictable pricing for SvelteKit SaaS projects on Cloudflare."
+  title="Pricing"
+/>
 
 <Nav />
 

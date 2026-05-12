@@ -1,18 +1,13 @@
 <script lang="ts">
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
-  import { seo } from '$lib/seo'
-
-  const meta = seo({
-    description: 'Vibekit privacy policy — how we collect, use, and protect your data.',
-    title: 'Privacy Policy',
-  })
+  import SeoHead from '$lib/components/seo-head.svelte'
 </script>
 
-<svelte:head>
-  <title>{meta.title}</title>
-  <meta name="description" content={meta.description} />
-</svelte:head>
+<SeoHead
+  description="Vibekit privacy policy — how we collect, use, and protect your data."
+  title="Privacy Policy"
+/>
 
 <Nav />
 
