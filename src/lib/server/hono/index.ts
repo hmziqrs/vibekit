@@ -8,6 +8,7 @@ import {
   announcement,
   blogPost,
   blogPostRevision,
+  blogPostView,
   blogPostSeries,
   blogPostSlugHistory,
   newsletterSubscriber,
@@ -54,6 +55,8 @@ import {
   addTeamMemberSchema,
   inviteMemberSchema,
   moderateCommentSchema,
+  recordReadingSchema,
+  recordViewSchema,
   resolveReportSchema,
   subscribeSchema,
   transferOwnershipSchema,
@@ -420,6 +423,129 @@ app.post('/api/newsletter/unsubscribe', async (c) => {
     .where(eq(newsletterSubscriber.id, subscriber.id))
 
   return c.json({ message: 'Successfully unsubscribed' })
+})
+
+// ── Analytics (public) ─────────────────────────────────────────────────
+
+app.post('/api/analytics/view', withRateLimit('analytics-view', 30, 60_000), async (c) => {
+  const body = await c.req.json<{ postId?: string; referrer?: string }>()
+  const parsed = recordViewSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ error: { message: parsed.error.issues.map((i) => i.message).join(', ') } }, 400)
+  }
+
+  const { db } = c.get('services')
+  const { postId, referrer } = parsed.data
+
+  // Verify post exists and is published
+  const post = await db
+    .select({ id: blogPost.id, status: blogPost.status })
+    .from(blogPost)
+    .where(eq(blogPost.id, postId))
+    .get()
+  if (!post || post.status !== 'published') {
+    return c.json({ error: { message: 'Post not found' } }, 404)
+  }
+
+  // Create visitor hash from IP + User-Agent (no raw PII stored long-term)
+  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown'
+  const ua = c.req.header('user-agent') ?? 'unknown'
+  const visitorHash = `${ip}:${ua}`.slice(0, 200) // Simple hash for dedup
+
+  // Dedup: skip if same visitor viewed same post within last hour
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+  const recentView = await db
+    .select({ id: blogPostView.id })
+    .from(blogPostView)
+    .where(
+      and(
+        eq(blogPostView.postId, postId),
+        eq(blogPostView.visitorHash, visitorHash),
+        gte(blogPostView.createdAt, oneHourAgo)
+      )
+    )
+    .get()
+
+  if (recentView) {
+    return c.json({ reason: 'dedup', recorded: false })
+  }
+
+  // Extract referrer domain
+  let referrerDomain: string | null = null
+  if (referrer) {
+    try {
+      referrerDomain = new URL(referrer).hostname
+    } catch {
+      referrerDomain = null
+    }
+  }
+
+  const id = uuid()
+  await db.insert(blogPostView).values({
+    country: c.req.header('cf-ipcountry') ?? null,
+    id,
+    isCompleted: false,
+    postId,
+    readTime: null,
+    readingProgress: 0,
+    referrer: referrer ?? null,
+    referrerDomain,
+    userAgent: ua.slice(0, 200),
+    visitorHash,
+  })
+
+  // Increment denormalized view count
+  await db
+    .update(blogPost)
+    .set({ viewCount: sql`${blogPost.viewCount} + 1` })
+    .where(eq(blogPost.id, postId))
+
+  return c.json({ recorded: true, viewId: id }, 201)
+})
+
+app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000), async (c) => {
+  const body = await c.req.json<{ postId?: string; progress?: number; readTime?: number }>()
+  const parsed = recordReadingSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ error: { message: parsed.error.issues.map((i) => i.message).join(', ') } }, 400)
+  }
+
+  const { db } = c.get('services')
+  const { postId, progress, readTime } = parsed.data
+
+  // Find most recent view for this visitor + post
+  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown'
+  const ua = c.req.header('user-agent') ?? 'unknown'
+  const visitorHash = `${ip}:${ua}`.slice(0, 200)
+
+  const view = await db
+    .select({
+      id: blogPostView.id,
+      isCompleted: blogPostView.isCompleted,
+      readingProgress: blogPostView.readingProgress,
+    })
+    .from(blogPostView)
+    .where(and(eq(blogPostView.postId, postId), eq(blogPostView.visitorHash, visitorHash)))
+    .orderBy(desc(blogPostView.createdAt))
+    .limit(1)
+    .get()
+
+  if (!view) {
+    return c.json({ error: { message: 'No view found' } }, 404)
+  }
+
+  const isCompleted = !view.isCompleted && progress >= 80 && readTime >= 30
+
+  await db
+    .update(blogPostView)
+    .set({
+      isCompleted: view.isCompleted || isCompleted,
+      readTime,
+      readingProgress: Math.max(view.readingProgress, progress),
+    })
+    .where(eq(blogPostView.id, view.id))
+
+  return c.json({ updated: true })
 })
 
 // ── Items (auth required) ────────────────────────────────────────────
@@ -4177,6 +4303,131 @@ adminApp.delete('/newsletter/subscribers/:id', async (c) => {
   })
 
   return c.json({ success: true })
+})
+
+// ── Post Analytics (admin only) ──────────────────────────────────────────
+
+adminApp.get('/analytics/overview', async (c) => {
+  const { db } = c.get('services')
+  const days = parseInt(c.req.query('days') ?? '30')
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+  const [totalViews, uniqueVisitors, completedReads, topPosts, referrers] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(blogPostView)
+      .where(gte(blogPostView.createdAt, since))
+      .get(),
+    db
+      .select({ count: sql<number>`count(distinct ${blogPostView.visitorHash})` })
+      .from(blogPostView)
+      .where(gte(blogPostView.createdAt, since))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(blogPostView)
+      .where(and(gte(blogPostView.createdAt, since), eq(blogPostView.isCompleted, true)))
+      .get(),
+    db
+      .select({
+        slug: blogPost.slug,
+        title: blogPost.title,
+        views: sql<number>`count(${blogPostView.id})`,
+      })
+      .from(blogPostView)
+      .innerJoin(blogPost, eq(blogPostView.postId, blogPost.id))
+      .where(gte(blogPostView.createdAt, since))
+      .groupBy(blogPost.id, blogPost.slug, blogPost.title)
+      .orderBy(sql`count(${blogPostView.id}) desc`)
+      .limit(10),
+    db
+      .select({
+        count: sql<number>`count(*)`,
+        domain: blogPostView.referrerDomain,
+      })
+      .from(blogPostView)
+      .where(and(gte(blogPostView.createdAt, since), isNotNull(blogPostView.referrerDomain)))
+      .groupBy(blogPostView.referrerDomain)
+      .orderBy(sql`count(*) desc`)
+      .limit(10),
+  ])
+
+  const avgCompletion = totalViews?.count
+    ? Math.round(((completedReads?.count ?? 0) / totalViews.count) * 100)
+    : 0
+
+  return c.json({
+    avgCompletion,
+    referrers,
+    topPosts,
+    totalViews: totalViews?.count ?? 0,
+    uniqueVisitors: uniqueVisitors?.count ?? 0,
+  })
+})
+
+adminApp.get('/analytics/posts/:postId', async (c) => {
+  const { db } = c.get('services')
+  const postId = c.req.param('postId')
+  const days = parseInt(c.req.query('days') ?? '30')
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+  const [views, uniqueVisitors, completedReads, avgReadTime, dailyViews] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(blogPostView)
+      .where(and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since)))
+      .get(),
+    db
+      .select({ count: sql<number>`count(distinct ${blogPostView.visitorHash})` })
+      .from(blogPostView)
+      .where(and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since)))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(blogPostView)
+      .where(
+        and(
+          eq(blogPostView.postId, postId),
+          gte(blogPostView.createdAt, since),
+          eq(blogPostView.isCompleted, true)
+        )
+      )
+      .get(),
+    db
+      .select({
+        avg: sql<number>`cast(avg(${blogPostView.readTime}) as integer)`,
+      })
+      .from(blogPostView)
+      .where(
+        and(
+          eq(blogPostView.postId, postId),
+          gte(blogPostView.createdAt, since),
+          isNotNull(blogPostView.readTime)
+        )
+      )
+      .get(),
+    db
+      .select({
+        count: sql<number>`count(*)`,
+        date: sql<string>`date(${blogPostView.createdAt} / 1000, 'unixepoch')`,
+      })
+      .from(blogPostView)
+      .where(and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since)))
+      .groupBy(sql`date(${blogPostView.createdAt} / 1000, 'unixepoch')`)
+      .orderBy(sql`date(${blogPostView.createdAt} / 1000, 'unixepoch')`),
+  ])
+
+  const completionRate = views?.count
+    ? Math.round(((completedReads?.count ?? 0) / views.count) * 100)
+    : 0
+
+  return c.json({
+    avgReadTime: avgReadTime?.avg ?? 0,
+    completionRate,
+    dailyViews,
+    totalViews: views?.count ?? 0,
+    uniqueVisitors: uniqueVisitors?.count ?? 0,
+  })
 })
 
 // ── Comment Moderation (admin only) ────────────────────────────────────

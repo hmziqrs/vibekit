@@ -53,6 +53,7 @@ export const blogPost = sqliteTable(
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
+    viewCount: integer('view_count').default(0).notNull(),
   },
   (table) => [
     index('blog_post_status_deleted_published_idx').on(
@@ -761,5 +762,36 @@ export const newsletterSubscriber = sqliteTable(
     index('newsletter_subscriber_token_idx').on(table.confirmationToken),
   ]
 )
+
+export const blogPostView = sqliteTable(
+  'blog_post_view',
+  {
+    country: text('country'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    isCompleted: integer('is_completed', { mode: 'boolean' }).default(false).notNull(),
+    postId: text('post_id')
+      .notNull()
+      .references(() => blogPost.id, { onDelete: 'cascade' }),
+    readTime: integer('read_time'),
+    readingProgress: integer('reading_progress').default(0).notNull(),
+    referrer: text('referrer'),
+    referrerDomain: text('referrer_domain'),
+    userAgent: text('user_agent'),
+    visitorHash: text('visitor_hash').notNull(),
+  },
+  (table) => [
+    index('blog_post_view_post_created_idx').on(table.postId, table.createdAt),
+    index('blog_post_view_post_visitor_idx').on(table.postId, table.visitorHash),
+  ]
+)
+
+export const blogPostViewRelations = relations(blogPostView, ({ one }) => ({
+  post: one(blogPost, { fields: [blogPostView.postId], references: [blogPost.id] }),
+}))
 
 export * from './auth.schema'

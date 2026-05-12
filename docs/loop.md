@@ -151,7 +151,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Series/collection support (group posts into named series with ordering)
   - [x] Comment system (threaded comments, moderation queue, spam filtering)
   - [x] Newsletter integration (subscribe on blog, Mailchimp/Resend sync)
-  - [ ] Analytics per post (view count, referrer tracking, reading completion)
+  - [x] Analytics per post (view count, referrer tracking, reading completion)
 
 #### Billing & Payments
 - [ ] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)

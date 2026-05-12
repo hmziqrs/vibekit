@@ -4,7 +4,7 @@
 	import Footer from '$lib/components/footer.svelte'
 	import CommentSection from '$lib/components/comment-section.svelte'
 	import NewsletterSignup from '$lib/components/newsletter-signup.svelte'
-
+	import ReadingTracker from '$lib/components/reading-tracker.svelte'
 	const { data } = $props()
 
 	const formattedDate = $derived(
@@ -76,6 +76,8 @@
 		<div class="prose prose-invert max-none">
 			{@html data.post.contentHtml}
 		</div>
+
+		<ReadingTracker postId={data.post.id} />
 
 		<CommentSection postId={data.post.id} />
 
