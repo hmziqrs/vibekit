@@ -38,10 +38,10 @@ async function purgeUrls(cache: Cache, paths: string[]): Promise<void> {
       try {
         const url = new URL(path, 'https://placeholder')
         await cache.delete(url)
-      } catch (err) {
+      } catch (error) {
         console.error(
           JSON.stringify({
-            error: err instanceof Error ? err.message : String(err),
+            error: error instanceof Error ? error.message : String(error),
             event: 'cache.purge_failed',
             path,
           })

@@ -60,11 +60,11 @@ export class EmailQueue {
       } else if (!result.ok && item.onFinalFailure) {
         await item.onFinalFailure()
       }
-    } catch (err) {
+    } catch (error) {
       console.error(
         JSON.stringify({
           attempts: item.attempts,
-          error: err instanceof Error ? err.message : String(err),
+          error: error instanceof Error ? error.message : String(error),
           event: 'email.send_failed',
           to: item.message.to,
         })
