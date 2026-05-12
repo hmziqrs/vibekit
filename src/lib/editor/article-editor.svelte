@@ -19,6 +19,7 @@
   import FloatingMenuContent from './floating-menu.svelte'
   import { FigureImage } from './extensions/figure-image.svelte'
   import { ImageDrop } from './extensions/image-drop'
+  import { ImageReorder } from './extensions/image-reorder'
   import { EmbedBlock } from './extensions/embed-block.svelte'
   import { PullQuote } from './extensions/pull-quote.svelte'
   import { FactBox } from './extensions/fact-box.svelte'
@@ -106,6 +107,7 @@
       FactBox,
       FigureImage,
       ImageDrop,
+      ImageReorder,
       LinkPreviewCard,
       PullQuote,
       RelatedArticle,
@@ -289,6 +291,11 @@
     font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
     font-size: 0.875rem;
     line-height: 1.6;
+  }
+
+  :global(.figure-image-nodeview) {
+    position: relative;
+    padding-left: 2rem;
   }
 
   :global(.ProseMirror code) {

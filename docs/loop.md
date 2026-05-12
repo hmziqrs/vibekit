@@ -141,7 +141,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Delete button on the blog edit page
   - [x] Audit log writes on blog mutations
   - [x] Cover image preview in editor (not just URL)
-  - [ ] Drag-and-drop image reordering for inline images
+  - [x] Drag-and-drop image reordering for inline images (HTML5 Drag API, grip handle, drop line indicator, ProseMirror plugin)
   - [ ] Link card / oEmbed support (Twitter, YouTube, GitHub gists)
   - [x] SEO preview (Google/social card preview in editor sidebar)
   - [ ] Full-text content search (admin side minimum)

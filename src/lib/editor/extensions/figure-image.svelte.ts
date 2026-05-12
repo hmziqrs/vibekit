@@ -54,6 +54,7 @@ export const FigureImage = Node.create<FigureImageOptions>({
         alt: node.attrs.alt,
         caption: node.attrs.caption,
         credit: node.attrs.credit,
+        getNodePos: () => getPos(),
         onUpdateAttrs: (attrs: Record<string, unknown>) => {
           const pos = getPos()
           if (pos === undefined) return

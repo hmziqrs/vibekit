@@ -7,6 +7,7 @@
     sourceUrl?: string
     uploadState?: string
     uploadProgress?: number
+    getNodePos: () => number | undefined
     onUpdateAttrs: (attrs: Record<string, unknown>) => void
   }
 
@@ -18,6 +19,7 @@
     sourceUrl = '',
     uploadState = 'none',
     uploadProgress = 0,
+    getNodePos,
     onUpdateAttrs,
   }: Props = $props()
 
@@ -33,6 +35,15 @@
   let isUploading = $derived(uploadState === 'uploading')
   let hasError = $derived(uploadState === 'error')
 
+  const DRAG_MIME = 'application/x-figure-image-pos'
+
+  function handleDragStart(e: DragEvent) {
+    const pos = getNodePos()
+    if (pos === undefined) return
+    e.dataTransfer?.setData(DRAG_MIME, String(pos))
+    e.dataTransfer!.effectAllowed = 'move'
+  }
+
   function saveCaption() {
     editingCaption = false
     onUpdateAttrs({ caption: captionInput })
@@ -44,7 +55,23 @@
   }
 </script>
 
-<figure class="my-4 relative" contenteditable="false">
+<figure class="figure-image-wrapper group/my-fig my-4 relative" contenteditable="false">
+  {#if !isUploading && !hasError}
+    <div
+      class="absolute -left-8 top-2 cursor-grab rounded p-1 opacity-0 transition-opacity hover:bg-surface group-hover/my-fig:opacity-100"
+      draggable="true"
+      role="button"
+      tabindex="0"
+      title="Drag to reorder image"
+      ondragstart={handleDragStart}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-text-muted">
+        <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
+        <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
+      </svg>
+    </div>
+  {/if}
+
   <img
     {src}
     {alt}
