@@ -487,6 +487,48 @@ app.post('/api/appeal', async (c) => {
   return c.json({ success: true })
 })
 
+// ── Health check (public) ──────────────────────────────────────────────
+
+app.get('/api/health', async (c) => {
+  const services = c.get('services')
+  const checks: Record<string, 'healthy' | 'unhealthy'> = {}
+
+  // Check D1 connectivity
+  try {
+    if (services?.db) {
+      await services.db.all(sql`SELECT 1`)
+      checks.database = 'healthy'
+    } else {
+      checks.database = 'unhealthy'
+    }
+  } catch {
+    checks.database = 'unhealthy'
+  }
+
+  // Check storage connectivity
+  try {
+    if (services?.storage) {
+      await services.storage.list({ limit: 1 })
+      checks.storage = 'healthy'
+    } else {
+      checks.storage = 'healthy'
+    }
+  } catch {
+    checks.storage = 'unhealthy'
+  }
+
+  const allHealthy = Object.values(checks).every((s) => s === 'healthy')
+  return c.json(
+    {
+      checks,
+      status: allHealthy ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version ?? '0.0.0',
+    },
+    allHealthy ? 200 : 503
+  )
+})
+
 // ── Search (public) ───────────────────────────────────────────────────
 
 app.get('/api/search', async (c) => {
