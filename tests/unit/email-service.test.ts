@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock email templates
 vi.mock('$lib/server/email/templates/newsletter-confirm', () => ({

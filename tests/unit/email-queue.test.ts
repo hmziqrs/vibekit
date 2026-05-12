@@ -18,6 +18,7 @@ describe('EmailQueue', () => {
     const queue = new EmailQueue(client)
 
     queue.enqueue({
+      from: 'noreply@vibekit.com',
       html: '<p>Hello</p>',
       subject: 'Test',
       to: 'test@example.com',
@@ -46,7 +47,12 @@ describe('EmailQueue', () => {
     const queue = new EmailQueue(client)
 
     queue.enqueue(
-      { html: '<p>Retry</p>', subject: 'Test', to: 'retry@example.com' },
+      {
+        from: 'noreply@vibekit.com',
+        html: '<p>Retry</p>',
+        subject: 'Test',
+        to: 'retry@example.com',
+      },
       { maxRetries: 3 }
     )
 
@@ -73,7 +79,7 @@ describe('EmailQueue', () => {
     const queue = new EmailQueue(client)
 
     queue.enqueue(
-      { html: '<p>Fail</p>', subject: 'Test', to: 'fail@example.com' },
+      { from: 'noreply@vibekit.com', html: '<p>Fail</p>', subject: 'Test', to: 'fail@example.com' },
       { maxRetries: 2, onFinalFailure }
     )
 
@@ -98,6 +104,7 @@ describe('EmailQueue', () => {
     const queue = new EmailQueue(client)
 
     const result = await queue.sendImmediate({
+      from: 'noreply@vibekit.com',
       html: '<p>Direct</p>',
       subject: 'Direct',
       to: 'direct@example.com',
@@ -112,9 +119,9 @@ describe('EmailQueue', () => {
     const client = createMockClient({ ok: true })
     const queue = new EmailQueue(client)
 
-    queue.enqueue({ html: '1', subject: 'First', to: 'a@test.com' })
-    queue.enqueue({ html: '2', subject: 'Second', to: 'b@test.com' })
-    queue.enqueue({ html: '3', subject: 'Third', to: 'c@test.com' })
+    queue.enqueue({ from: 'noreply@vibekit.com', html: '1', subject: 'First', to: 'a@test.com' })
+    queue.enqueue({ from: 'noreply@vibekit.com', html: '2', subject: 'Second', to: 'b@test.com' })
+    queue.enqueue({ from: 'noreply@vibekit.com', html: '3', subject: 'Third', to: 'c@test.com' })
 
     await vi.waitFor(() => {
       expect(client.send).toHaveBeenCalledTimes(3)
@@ -136,7 +143,7 @@ describe('EmailQueue', () => {
     const queue = new EmailQueue(client)
 
     queue.enqueue(
-      { html: '<p>Test</p>', subject: 'Test', to: 'log@test.com' },
+      { from: 'noreply@vibekit.com', html: '<p>Test</p>', subject: 'Test', to: 'log@test.com' },
       { maxRetries: 1, onFinalFailure }
     )
 
