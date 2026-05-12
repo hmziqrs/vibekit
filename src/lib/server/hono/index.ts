@@ -1666,7 +1666,7 @@ protectedApp.get('/billing/subscription', async (c) => {
 })
 
 protectedApp.post('/billing/checkout', async (c) => {
-  const body = await c.req.json()
+  const body = await c.req.json().catch(() => ({}))
   const parsed = checkoutSessionSchema.safeParse(body)
   if (!parsed.success) {
     throw new BadRequestError('Invalid checkout parameters')
@@ -1730,7 +1730,7 @@ protectedApp.post('/billing/portal', async (c) => {
 })
 
 protectedApp.post('/billing/change-plan', async (c) => {
-  const body = await c.req.json()
+  const body = await c.req.json().catch(() => ({}))
   const parsed = changePlanSchema.safeParse(body)
   if (!parsed.success) {
     throw new BadRequestError('Invalid plan change parameters')
@@ -2708,7 +2708,7 @@ blogApp.get('/tags', async (c) => {
 })
 
 blogApp.post('/tags', withRateLimit('blog-mutate'), async (c) => {
-  const { name } = (await c.req.json()) as { name?: string }
+  const { name } = (await c.req.json().catch(() => ({}))) as { name?: string }
   if (!name?.trim()) throw new BadRequestError('Tag name is required')
 
   const { db } = c.get('services')
@@ -3140,7 +3140,7 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
 // ── Bulk actions ────────────────────────────────────────────────────
 
 blogApp.post('/bulk-delete', withRateLimit('blog-mutate'), async (c) => {
-  const { ids } = (await c.req.json()) as { ids?: string[] }
+  const { ids } = (await c.req.json().catch(() => ({}))) as { ids?: string[] }
   if (!ids?.length) throw new BadRequestError('No IDs provided')
 
   const { db } = c.get('services')
@@ -3154,7 +3154,7 @@ blogApp.post('/bulk-delete', withRateLimit('blog-mutate'), async (c) => {
 })
 
 blogApp.post('/bulk-archive', withRateLimit('blog-mutate'), async (c) => {
-  const { ids } = (await c.req.json()) as { ids?: string[] }
+  const { ids } = (await c.req.json().catch(() => ({}))) as { ids?: string[] }
   if (!ids?.length) throw new BadRequestError('No IDs provided')
 
   const { db } = c.get('services')
@@ -3245,7 +3245,7 @@ blogApp.post('/:id/revisions/:revId/restore', withRateLimit('blog-mutate'), asyn
 })
 
 blogApp.post('/link-preview', withRateLimit('link-preview', 30, 60_000), async (c) => {
-  const { url } = (await c.req.json()) as { url?: string }
+  const { url } = (await c.req.json().catch(() => ({}))) as { url?: string }
   if (!url || typeof url !== 'string') {
     throw new BadRequestError('URL required')
   }
