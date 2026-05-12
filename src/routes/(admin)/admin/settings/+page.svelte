@@ -58,6 +58,26 @@
     retry: 1,
   }))
 
+  const historyQuery = createQuery(() => ({
+    queryKey: ['admin', 'config-history'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/config/history?limit=20')
+      if (!res.ok) throw new Error('Failed to fetch history')
+      return res.json() as Promise<{
+        versions: Array<{
+          changedBy: string | null
+          configKey: string
+          createdAt: number
+          environment: string | null
+          id: string
+          newValue: string | null
+          oldValue: string | null
+        }>
+      }>
+    },
+    enabled: () => section === 'history',
+  }))
+
   const maintenanceConfig = $derived(configQuery.data?.find((c) => c.key === 'maintenance_mode'))
   const featureFlags = $derived(configQuery.data?.filter((c) => c.key !== 'maintenance_mode' && c.key !== 'maintenance_message') ?? [])
 
@@ -166,6 +186,7 @@
   const sections = [
     { id: 'config' as const, label: 'Feature Flags' },
     { id: 'maintenance' as const, label: 'Maintenance' },
+    { id: 'history' as const, label: 'History' },
     { id: 'announcements' as const, label: 'Announcements' },
   ]
 </script>
@@ -342,6 +363,53 @@
           {/if}
         </div>
       {/if}
+    {/if}
+  </div>
+{/if}
+
+<!-- Config History Section -->
+{#if section === 'history'}
+  <div class="mt-6">
+    <p class="text-[14px] font-medium text-text-secondary">Configuration Change History</p>
+    {#if historyQuery.isPending}
+      <div class="mt-4 space-y-3">
+        {#each Array(5) as _}
+          <div class="h-12 w-full animate-pulse rounded-xl bg-white/[0.06]"></div>
+        {/each}
+      </div>
+    {:else if historyQuery.error}
+      <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
+        <p class="text-[13px] text-red-400">Failed to load history.</p>
+      </div>
+    {:else if !historyQuery.data?.versions.length}
+      <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
+        <p class="text-[13px] text-text-muted">No configuration changes recorded yet.</p>
+      </div>
+    {:else}
+      <div class="mt-4 overflow-hidden rounded-lg border border-white/[0.06]">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-white/[0.06] bg-surface-deep">
+              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Key</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Environment</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Old Value</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">New Value</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each historyQuery.data.versions as v (v.id)}
+              <tr class="border-b border-white/[0.04]">
+                <td class="px-4 py-2 font-mono text-xs text-text-primary">{v.configKey}</td>
+                <td class="px-4 py-2 text-xs text-text-muted">{v.environment ?? 'All'}</td>
+                <td class="max-w-32 truncate px-4 py-2 font-mono text-xs text-text-muted">{v.oldValue ?? '—'}</td>
+                <td class="max-w-32 truncate px-4 py-2 font-mono text-xs text-brand">{v.newValue ?? '—'}</td>
+                <td class="px-4 py-2 text-xs text-text-faint">{new Date(v.createdAt).toLocaleString()}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {/if}
   </div>
 {/if}

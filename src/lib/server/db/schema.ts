@@ -432,6 +432,7 @@ export const systemConfig = sqliteTable('system_config', {
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
   description: text('description'),
+  environment: text('environment'),
   id: text('id')
     .primaryKey()
     .$defaultFn(() => uuid()),
@@ -1369,6 +1370,28 @@ export const abEvent = sqliteTable(
     index('ab_event_experiment_idx').on(table.experimentId),
     index('ab_event_type_idx').on(table.eventType),
     index('ab_event_created_idx').on(table.createdAt),
+  ]
+)
+
+export const configVersion = sqliteTable(
+  'config_version',
+  {
+    id: text('id')
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => uuid()),
+    configKey: text('config_key').notNull(),
+    environment: text('environment'),
+    newValue: text('new_value'),
+    oldValue: text('old_value'),
+    changedBy: text('changed_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index('config_version_key_idx').on(table.configKey),
+    index('config_version_created_idx').on(table.createdAt),
   ]
 )
 

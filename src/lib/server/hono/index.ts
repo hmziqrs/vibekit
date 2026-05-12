@@ -36,6 +36,7 @@ import {
   recordUsage,
   updatePlan,
 } from '$lib/server/billing/subscription-service'
+import { getConfigHistory, resolveConfig, setConfigValue } from '$lib/server/config-service'
 import {
   account as accountTable,
   passkey,
@@ -61,6 +62,7 @@ import {
   comment,
   contactSubmission,
   contentReport,
+  configVersion,
   featureFlag,
   impersonationSession,
   notification,
@@ -300,6 +302,15 @@ app.get('/api/health', async (c) => {
     responseTime: Date.now() - start,
     time: new Date().toISOString(),
   })
+})
+
+// Public: resolve config values (safe keys only)
+app.post('/api/config/resolve', async (c) => {
+  const services = c.get('services')
+  if (!services) return c.json({})
+  const body = await c.req.json<{ keys: string[] }>()
+  const resolved = await resolveConfig(services.db, body.keys)
+  return c.json(resolved)
 })
 
 // ── Comments (public read) ─────────────────────────────────────────────
@@ -5153,6 +5164,24 @@ adminApp.patch(
     return c.json({ key: configKey, value: parsed.value })
   }
 )
+
+// Admin: config version history
+adminApp.get('/config/history', async (c) => {
+  const { db } = c.get('services')
+  const key = c.req.query('key') ?? undefined
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '50')))
+  const offset = Math.max(0, Number(c.req.query('offset') ?? '0'))
+  const versions = await getConfigHistory(db, key, { limit, offset })
+  return c.json({ versions })
+})
+
+// Admin: resolve config for environment
+adminApp.post('/config/resolve', async (c) => {
+  const { db } = c.get('services')
+  const body = await c.req.json<{ environment?: string; keys: string[] }>()
+  const resolved = await resolveConfig(db, body.keys, body.environment)
+  return c.json(resolved)
+})
 
 // Admin: list announcements
 adminApp.get('/announcements', async (c) => {
