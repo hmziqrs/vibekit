@@ -33,8 +33,10 @@
     <div
       class="mx-4 w-full max-w-md rounded-xl border border-white/[0.06] bg-surface p-6"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={handleKeydown}
       role="dialog"
       aria-label="Keyboard shortcuts"
+      tabindex="-1"
     >
       <h2 class="mb-4 text-base font-semibold text-text-primary">Keyboard Shortcuts</h2>
 
