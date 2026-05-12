@@ -1,5 +1,13 @@
+<script lang="ts">
+	import NewsletterSignup from './newsletter-signup.svelte'
+</script>
+
 <footer class="border-t border-white/[0.06] bg-surface-base px-6 pt-20 pb-12">
 	<div class="mx-auto max-w-6xl">
+		<div class="mb-10 rounded-lg border border-border bg-surface p-5">
+			<h4 class="mb-1 text-sm font-semibold text-text-primary">Subscribe to the newsletter</h4>
+			<NewsletterSignup source="footer" compact={true} />
+		</div>
 		<div class="grid gap-12 md:grid-cols-12">
 			<div class="md:col-span-5">
 				<a href="/" class="mb-5 flex items-center gap-2.5">

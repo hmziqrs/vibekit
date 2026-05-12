@@ -74,8 +74,12 @@ export const requireAdmin = createMiddleware<Env>(async (c, next) => {
 })
 
 export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
-  createMiddleware<ProtectedEnv>(async (c, next) => {
-    const { allowed } = rateLimit(`${prefix}:${c.get('user').id}`, limit, windowMs)
+  createMiddleware<Env>(async (c, next) => {
+    const user = c.get('user')
+    const key = user
+      ? `${prefix}:${user.id}`
+      : `${prefix}:ip:${c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'anon'}`
+    const { allowed } = rateLimit(key, limit, windowMs)
     if (!allowed) throw new RateLimitError()
     await next()
   })

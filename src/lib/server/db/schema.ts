@@ -729,4 +729,37 @@ export const commentRelations = relations(comment, ({ one }) => ({
   post: one(blogPost, { fields: [comment.postId], references: [blogPost.id] }),
 }))
 
+export const newsletterSubscriber = sqliteTable(
+  'newsletter_subscriber',
+  {
+    confirmationToken: text('confirmation_token').notNull().unique(),
+    confirmedAt: integer('confirmed_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    email: text('email').notNull().unique(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    ipAddress: text('ip_address'),
+    name: text('name'),
+    source: text('source').default('blog'),
+    status: text('status', {
+      enum: ['bounced', 'confirmed', 'pending', 'unsubscribed'],
+    })
+      .default('pending')
+      .notNull(),
+    unsubscribedAt: integer('unsubscribed_at', { mode: 'timestamp_ms' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('newsletter_subscriber_status_idx').on(table.status),
+    index('newsletter_subscriber_email_idx').on(table.email),
+    index('newsletter_subscriber_token_idx').on(table.confirmationToken),
+  ]
+)
+
 export * from './auth.schema'

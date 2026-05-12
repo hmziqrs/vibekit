@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation'
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
+  import NewsletterSignup from '$lib/components/newsletter-signup.svelte'
 
   const { data } = $props()
 
@@ -99,6 +100,11 @@
         Showing {startItem}-{endItem} of {data.total} article{data.total !== 1 ? 's' : ''}
       </p>
     {/if}
+
+    <div class="mb-8 rounded-lg border border-border bg-surface p-5">
+      <h3 class="mb-1 text-sm font-semibold text-text-primary">Subscribe to the newsletter</h3>
+      <NewsletterSignup source="blog" />
+    </div>
 
     {#if data.posts.length === 0}
       <p class="text-text-muted">

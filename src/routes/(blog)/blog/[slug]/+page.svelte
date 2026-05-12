@@ -3,6 +3,7 @@
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
 	import CommentSection from '$lib/components/comment-section.svelte'
+	import NewsletterSignup from '$lib/components/newsletter-signup.svelte'
 
 	const { data } = $props()
 

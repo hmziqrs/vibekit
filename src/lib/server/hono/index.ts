@@ -10,6 +10,7 @@ import {
   blogPostRevision,
   blogPostSeries,
   blogPostSlugHistory,
+  newsletterSubscriber,
   blogPostTag,
   blogSeries,
   blogTag,
@@ -54,6 +55,7 @@ import {
   inviteMemberSchema,
   moderateCommentSchema,
   resolveReportSchema,
+  subscribeSchema,
   transferOwnershipSchema,
   updateAnnouncementSchema,
   updateConfigSchema,
@@ -270,6 +272,154 @@ app.post('/api/appeal', async (c) => {
   })
 
   return c.json({ success: true })
+})
+
+// ── Newsletter (public) ───────────────────────────────────────────────
+
+app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), async (c) => {
+  const body = await c.req.json<{ email?: string; name?: string; source?: string }>()
+  const parsed = subscribeSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ error: { message: parsed.error.issues.map((i) => i.message).join(', ') } }, 400)
+  }
+
+  const { db } = c.get('services')
+  const { email: emailAddress, name, source } = parsed.data
+
+  // Check if already subscribed
+  const existing = await db
+    .select()
+    .from(newsletterSubscriber)
+    .where(eq(newsletterSubscriber.email, emailAddress))
+    .get()
+
+  if (existing) {
+    if (existing.status === 'confirmed') {
+      return c.json({ message: 'Already subscribed' })
+    }
+    if (existing.status === 'pending') {
+      return c.json({ message: 'Check your inbox to confirm your subscription' })
+    }
+    // Re-subscribe unsubscribed/bounced users
+    const newToken = uuid()
+    await db
+      .update(newsletterSubscriber)
+      .set({
+        confirmationToken: newToken,
+        name: name ?? existing.name,
+        source: source ?? existing.source,
+        status: 'pending',
+        updatedAt: new Date(),
+      })
+      .where(eq(newsletterSubscriber.id, existing.id))
+
+    // Send confirmation email
+    const { env } = c.get('services')
+    const confirmUrl = `${env.origin}/api/newsletter/confirm?token=${newToken}`
+    await c.get('services').email.send({
+      from: 'Vibekit Blog <noreply@vibekit.com>',
+      html: `<p>Click <a href="${confirmUrl}">here</a> to confirm your subscription.</p><p>If you didn't subscribe, ignore this email.</p>`,
+      subject: 'Confirm your subscription to Vibekit Blog',
+      text: `Confirm your subscription: ${confirmUrl}`,
+      to: emailAddress,
+    })
+
+    return c.json({ message: 'Check your inbox to confirm your subscription' })
+  }
+
+  // New subscriber
+  const token = uuid()
+  const id = uuid()
+  await db.insert(newsletterSubscriber).values({
+    confirmationToken: token,
+    email: emailAddress,
+    id,
+    ipAddress: c.req.header('cf-connecting-ip') ?? null,
+    name: name ?? null,
+    source: source ?? 'blog',
+    status: 'pending',
+  })
+
+  // Send confirmation email
+  const { env } = c.get('services')
+  const confirmUrl = `${env.origin}/api/newsletter/confirm?token=${token}`
+  await c.get('services').email.send({
+    from: 'Vibekit Blog <noreply@vibekit.com>',
+    html: `<p>Click <a href="${confirmUrl}">here</a> to confirm your subscription.</p><p>If you didn't subscribe, ignore this email.</p>`,
+    subject: 'Confirm your subscription to Vibekit Blog',
+    text: `Confirm your subscription: ${confirmUrl}`,
+    to: emailAddress,
+  })
+
+  return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)
+})
+
+app.get('/api/newsletter/confirm', async (c) => {
+  const token = c.req.query('token')
+  if (!token) return c.json({ error: { message: 'Missing token' } }, 400)
+
+  const { db } = c.get('services')
+  const subscriber = await db
+    .select()
+    .from(newsletterSubscriber)
+    .where(eq(newsletterSubscriber.confirmationToken, token))
+    .get()
+
+  if (!subscriber) {
+    return c.json({ error: { message: 'Invalid confirmation link' } }, 404)
+  }
+
+  if (subscriber.status === 'confirmed') {
+    return c.redirect('/blog?newsletter=already-confirmed')
+  }
+
+  // Check token expiry (24 hours)
+  const createdAt = subscriber.createdAt.getTime()
+  if (Date.now() - createdAt > 24 * 60 * 60 * 1000) {
+    return c.json({ error: { message: 'Confirmation link expired. Please subscribe again.' } }, 410)
+  }
+
+  await db
+    .update(newsletterSubscriber)
+    .set({
+      confirmedAt: new Date(),
+      status: 'confirmed',
+      updatedAt: new Date(),
+    })
+    .where(eq(newsletterSubscriber.id, subscriber.id))
+
+  return c.redirect('/blog?newsletter=confirmed')
+})
+
+app.post('/api/newsletter/unsubscribe', async (c) => {
+  const token = c.req.query('token')
+  if (!token) return c.json({ error: { message: 'Missing token' } }, 400)
+
+  const { db } = c.get('services')
+  const subscriber = await db
+    .select()
+    .from(newsletterSubscriber)
+    .where(eq(newsletterSubscriber.confirmationToken, token))
+    .get()
+
+  if (!subscriber) {
+    return c.json({ error: { message: 'Invalid unsubscribe link' } }, 404)
+  }
+
+  if (subscriber.status === 'unsubscribed') {
+    return c.json({ message: 'Already unsubscribed' })
+  }
+
+  await db
+    .update(newsletterSubscriber)
+    .set({
+      status: 'unsubscribed',
+      unsubscribedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(newsletterSubscriber.id, subscriber.id))
+
+  return c.json({ message: 'Successfully unsubscribed' })
 })
 
 // ── Items (auth required) ────────────────────────────────────────────
@@ -3928,6 +4078,101 @@ adminApp.delete('/announcements/:id', withRateLimit('announcement', 10, 60_000),
     action: 'announcement.delete',
     entityId: announcementId,
     entityType: 'announcement',
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
+// ── Newsletter Admin (admin only) ──────────────────────────────────────
+
+adminApp.get('/newsletter/subscribers', async (c) => {
+  const { db } = c.get('services')
+  const statusFilter = c.req.query('status') as
+    | 'confirmed'
+    | 'pending'
+    | 'unsubscribed'
+    | 'bounced'
+    | undefined
+  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '25')))
+  const offset = (page - 1) * limit
+
+  const conditions = statusFilter ? eq(newsletterSubscriber.status, statusFilter) : undefined
+
+  const [subscribers, totalResult] = await Promise.all([
+    db
+      .select()
+      .from(newsletterSubscriber)
+      .where(conditions)
+      .orderBy(desc(newsletterSubscriber.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(newsletterSubscriber)
+      .where(conditions)
+      .get(),
+  ])
+
+  return c.json({
+    page,
+    subscribers,
+    total: totalResult?.count ?? 0,
+  })
+})
+
+adminApp.get('/newsletter/stats', async (c) => {
+  const { db } = c.get('services')
+  const [pending, confirmed, unsubscribed, bounced] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(newsletterSubscriber)
+      .where(eq(newsletterSubscriber.status, 'pending'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(newsletterSubscriber)
+      .where(eq(newsletterSubscriber.status, 'confirmed'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(newsletterSubscriber)
+      .where(eq(newsletterSubscriber.status, 'unsubscribed'))
+      .get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(newsletterSubscriber)
+      .where(eq(newsletterSubscriber.status, 'bounced'))
+      .get(),
+  ])
+  return c.json({
+    bounced: bounced?.count ?? 0,
+    confirmed: confirmed?.count ?? 0,
+    pending: pending?.count ?? 0,
+    unsubscribed: unsubscribed?.count ?? 0,
+  })
+})
+
+adminApp.delete('/newsletter/subscribers/:id', async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select()
+    .from(newsletterSubscriber)
+    .where(eq(newsletterSubscriber.id, id))
+    .get()
+  if (!existing) throw new NotFoundError()
+
+  await db.delete(newsletterSubscriber).where(eq(newsletterSubscriber.id, id))
+
+  await writeAuditLog(db, {
+    action: 'newsletter.subscriber_delete',
+    entityId: id,
+    entityType: 'newsletter_subscriber',
+    metadata: { email: existing.email, originalStatus: existing.status },
     userId: currentUser.id,
   })
 
