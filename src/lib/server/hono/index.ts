@@ -32,6 +32,8 @@ import {
   teamMember,
   user,
 } from '$lib/server/db/schema'
+import { handleBounce } from '$lib/server/email/bounce-handler'
+import { createEmailService } from '$lib/server/email/index'
 import {
   BadRequestError,
   ConflictError,
@@ -274,6 +276,18 @@ app.post('/api/appeal', async (c) => {
     type: 'ban_appeal',
   })
 
+  // Send notification email if configured
+  const { env } = c.get('services')
+  if (env.contactNotificationEmail) {
+    const emailService = createEmailService(c.get('services').email)
+    await emailService.sendContactNotification({
+      email: body.email.trim(),
+      message: body.message.trim(),
+      name: body.name.trim(),
+      subject: 'Ban Appeal',
+    })
+  }
+
   return c.json({ success: true })
 })
 
@@ -319,12 +333,9 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     // Send confirmation email
     const { env } = c.get('services')
     const confirmUrl = `${env.origin}/api/newsletter/confirm?token=${newToken}`
-    await c.get('services').email.send({
-      from: 'Vibekit Blog <noreply@vibekit.com>',
-      html: `<p>Click <a href="${confirmUrl}">here</a> to confirm your subscription.</p><p>If you didn't subscribe, ignore this email.</p>`,
-      subject: 'Confirm your subscription to Vibekit Blog',
-      text: `Confirm your subscription: ${confirmUrl}`,
-      to: emailAddress,
+    const emailService = createEmailService(c.get('services').email)
+    await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, async () => {
+      await handleBounce(db, emailAddress)
     })
 
     return c.json({ message: 'Check your inbox to confirm your subscription' })
@@ -344,14 +355,11 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
   })
 
   // Send confirmation email
-  const { env } = c.get('services')
-  const confirmUrl = `${env.origin}/api/newsletter/confirm?token=${token}`
-  await c.get('services').email.send({
-    from: 'Vibekit Blog <noreply@vibekit.com>',
-    html: `<p>Click <a href="${confirmUrl}">here</a> to confirm your subscription.</p><p>If you didn't subscribe, ignore this email.</p>`,
-    subject: 'Confirm your subscription to Vibekit Blog',
-    text: `Confirm your subscription: ${confirmUrl}`,
-    to: emailAddress,
+  const { env: env2 } = c.get('services')
+  const confirmUrl2 = `${env2.origin}/api/newsletter/confirm?token=${token}`
+  const emailService2 = createEmailService(c.get('services').email)
+  await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, async () => {
+    await handleBounce(db, emailAddress)
   })
 
   return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)

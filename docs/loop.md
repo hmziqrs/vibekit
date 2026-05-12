@@ -163,8 +163,8 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 #### Notifications & Communication
 - [x] In-app notification system (notification bell, real-time updates, read/unread state, notification types, bulk actions, notification preferences)
 - [ ] System-to-user alerts (payment receipts, admin warnings, broadcast announcements, account status changes)
-- [ ] Email infrastructure (template system with preview, transactional emails, email queue with retries, bounce handling, unsubscribe flow)
-- [ ] Email templates (welcome, verification, password reset, invoice, subscription changes, team invites, security alerts, custom templates via editor)
+- [x] Email infrastructure (template system with preview, transactional emails, email queue with retries, bounce handling, unsubscribe flow)
+- [x] Email templates (welcome, verification, password reset, invoice, subscription changes, team invites, security alerts, custom templates via editor)
 - [ ] Push notifications (Web Push API, subscription management, notification click actions, browser compatibility)
 - [ ] Slack/Discord integration (workspace notifications, command slash commands, webhook delivery, channel-specific alerts)
 

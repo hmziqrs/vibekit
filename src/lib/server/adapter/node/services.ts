@@ -1,4 +1,6 @@
 import 'dotenv/config'
+import { setEmailService } from '../../auth'
+import { createEmailService } from '../../email/index'
 import type { AppServices } from '../../services/types'
 import { createNodeCache } from './cache'
 import { createNodeDb } from './db'
@@ -9,11 +11,15 @@ import { createS3Storage } from './storage-s3'
 
 export async function createNodeServices(): Promise<AppServices> {
   const storage = process.env.S3_ENDPOINT ? createS3Storage() : createNodeStorage()
+  const emailClient = createNodeEmail()
+
+  const emailService = createEmailService(emailClient)
+  setEmailService(emailService)
 
   return {
     cache: createNodeCache(),
     db: await createNodeDb(),
-    email: createNodeEmail(),
+    email: emailClient,
     env: readNodeEnv(),
     storage,
   }

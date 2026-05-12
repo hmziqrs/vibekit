@@ -7,7 +7,14 @@ import { twoFactor } from 'better-auth/plugins'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { uuidv7 } from 'uuidv7'
 
+import type { EmailService } from './email/index'
 import type { AppDb } from './services/types'
+
+let _emailService: EmailService | null = null
+
+export function setEmailService(service: EmailService): void {
+  _emailService = service
+}
 
 export const authConfig = {
   account: {
@@ -36,15 +43,21 @@ export const authConfig = {
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    sendResetPassword: async ({ user, url }) => {
-      // TODO: Wire to real email service (Resend, SendGrid, etc.)
-      console.log(`[dev] Password reset for ${user.email}: ${url}`)
+    sendResetPassword: async ({ url, user }) => {
+      if (_emailService) {
+        await _emailService.sendPasswordReset(user.email, url, user.name ?? undefined)
+      } else {
+        console.log(`[dev] Password reset for ${user.email}: ${url}`)
+      }
     },
   },
   emailVerification: {
-    sendVerificationEmail: async ({ user, url }) => {
-      // TODO: Wire to real email service (Resend, SendGrid, etc.)
-      console.log(`[dev] Email verification for ${user.email}: ${url}`)
+    sendVerificationEmail: async ({ url, user }) => {
+      if (_emailService) {
+        await _emailService.sendEmailVerification(user.email, url, user.name ?? undefined)
+      } else {
+        console.log(`[dev] Email verification for ${user.email}: ${url}`)
+      }
     },
   },
   rateLimit: {
