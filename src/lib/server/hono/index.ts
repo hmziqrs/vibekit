@@ -108,6 +108,7 @@ import {
   toggleFeatureFlag,
   updateFeatureFlag,
 } from '$lib/server/feature-flags'
+import { buildImageUrl, buildSrcset } from '$lib/server/image-processing'
 import {
   consumeOAuthState,
   exchangeCodeForTokens,
@@ -324,6 +325,30 @@ app.post('/api/config/resolve', async (c) => {
   const body = await c.req.json<{ keys: string[] }>()
   const resolved = await resolveConfig(services.db, body.keys)
   return c.json(resolved)
+})
+
+// Public: image URL builder (returns transformed URL)
+app.get('/api/image/:key', async (c) => {
+  const key = decodeURIComponent(c.req.param('key'))
+  const width = Number(c.req.query('w')) || undefined
+  const height = Number(c.req.query('h')) || undefined
+  const format = c.req.query('f') as 'avif' | 'webp' | undefined
+  const fit = c.req.query('fit') as 'contain' | 'cover' | 'crop' | 'scale-down' | undefined
+  const quality = Number(c.req.query('q')) || undefined
+
+  const originalUrl = `/cdn/blog/${key}`
+  const url = buildImageUrl(originalUrl, { fit, format, height, quality, width })
+  return c.json({ url })
+})
+
+// Public: image srcset builder
+app.get('/api/image/:key/srcset', async (c) => {
+  const key = decodeURIComponent(c.req.param('key'))
+  const format = c.req.query('f') as 'avif' | 'webp' | undefined
+
+  const originalUrl = `/cdn/blog/${key}`
+  const srcset = buildSrcset(originalUrl, undefined, { format })
+  return c.json({ srcset })
 })
 
 // ── Comments (public read) ─────────────────────────────────────────────
