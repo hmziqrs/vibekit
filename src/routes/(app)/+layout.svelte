@@ -26,6 +26,7 @@
     { href: '/app/profile', label: 'Profile' },
     { href: '/app/settings', label: 'Settings' },
     { href: '/app/settings/api-keys', label: 'API Keys' },
+    { href: '/app/settings/webhooks', label: 'Webhooks' },
   ]
 
   async function handleSignOut() {

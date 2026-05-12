@@ -1,0 +1,482 @@
+import { webhookDelivery, webhookEndpoint } from '$lib/server/db/schema'
+import { uuid } from '$lib/server/uuid'
+import { and, desc, eq, sql } from 'drizzle-orm'
+
+const MAX_RETRIES = 5
+const BACKOFF_BASE_MS = 1000
+
+function generateSecret(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return `whsec_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`
+}
+
+async function hmacSign(payload: string, secret: string, timestamp: number): Promise<string> {
+  const signedPayload = `${timestamp}.${payload}`
+  const encoder = new TextEncoder()
+  const keyData = encoder.encode(secret.replace('whsec_', ''))
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signedPayload))
+  return [...new Uint8Array(signature)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function getBackoffDelay(attemptCount: number): number {
+  return Math.min(BACKOFF_BASE_MS * Math.pow(5, attemptCount), 60_000)
+}
+
+export interface WebhookPayload {
+  data: Record<string, unknown>
+  eventType: string
+  occurredAt: number
+  webhookId: string
+}
+
+export async function createWebhookEndpoint(
+  db: {
+    insert: (table: typeof webhookEndpoint) => { values: (vals: unknown) => Promise<void> }
+  },
+  userId: string,
+  input: { description?: string; events: string[]; url: string }
+) {
+  const id = uuid()
+  const secret = generateSecret()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  await dbAny.insert(webhookEndpoint).values({
+    active: true,
+    createdAt: new Date(),
+    description: input.description ?? null,
+    events: input.events,
+    id,
+    secret,
+    updatedAt: new Date(),
+    url: input.url,
+    userId,
+  })
+
+  return { id, secret, url: input.url }
+}
+
+export async function listWebhookEndpoints(
+  db: {
+    select: () => {
+      from: (table: typeof webhookEndpoint) => {
+        where: (cond: unknown) => Promise<unknown[]>
+        orderBy: (col: unknown) => Promise<unknown[]>
+      }
+    }
+  },
+  userId: string
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  return dbAny
+    .select()
+    .from(webhookEndpoint)
+    .where(eq(webhookEndpoint.userId, userId))
+    .orderBy(desc(webhookEndpoint.createdAt))
+}
+
+export async function updateWebhookEndpoint(
+  db: {
+    select: () => {
+      from: (table: typeof webhookEndpoint) => {
+        where: (cond: unknown) => Promise<unknown[]>
+      }
+    }
+    update: (table: typeof webhookEndpoint) => {
+      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
+    }
+  },
+  endpointId: string,
+  userId: string,
+  input: { active?: boolean; description?: string; events?: string[]; url?: string }
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  const rows = await dbAny
+    .select()
+    .from(webhookEndpoint)
+    .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
+
+  const existing = rows[0] as { id: string } | undefined
+  if (!existing) return null
+
+  const updates: Record<string, unknown> = { updatedAt: new Date() }
+  if (input.url !== undefined) updates.url = input.url
+  if (input.events !== undefined) updates.events = input.events
+  if (input.description !== undefined) updates.description = input.description
+  if (input.active !== undefined) updates.active = input.active
+
+  await dbAny.update(webhookEndpoint).set(updates).where(eq(webhookEndpoint.id, endpointId))
+
+  return { id: endpointId }
+}
+
+export async function deleteWebhookEndpoint(
+  db: {
+    delete: (table: typeof webhookEndpoint) => { where: (cond: unknown) => Promise<void> }
+  },
+  endpointId: string,
+  userId: string
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  await dbAny
+    .delete(webhookEndpoint)
+    .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
+}
+
+export async function getWebhookEndpoint(
+  db: {
+    select: () => {
+      from: (table: typeof webhookEndpoint) => {
+        where: (cond: unknown) => Promise<unknown[]>
+      }
+    }
+  },
+  endpointId: string,
+  userId: string
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  const rows = await dbAny
+    .select()
+    .from(webhookEndpoint)
+    .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
+
+  return (rows[0] as Record<string, unknown> | undefined) ?? null
+}
+
+export async function deliverWebhook(
+  db: {
+    insert: (table: typeof webhookDelivery) => { values: (vals: unknown) => Promise<void> }
+    update: (table: typeof webhookDelivery) => {
+      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
+    }
+  },
+  endpoint: { id: string; secret: string; url: string },
+  eventType: string,
+  data: Record<string, unknown>
+) {
+  const id = uuid()
+  const occurredAt = Date.now()
+  const payload: WebhookPayload = {
+    data,
+    eventType,
+    occurredAt,
+    webhookId: id,
+  }
+  const payloadStr = JSON.stringify(payload)
+  const signature = await hmacSign(payloadStr, endpoint.secret, occurredAt)
+
+  // Create delivery record as pending
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  await dbAny.insert(webhookDelivery).values({
+    attemptCount: 0,
+    createdAt: new Date(),
+    endpointId: endpoint.id,
+    eventType,
+    id,
+    nextRetryAt: null,
+    payload,
+    responseBody: null,
+    statusCode: null,
+    status: 'pending',
+    updatedAt: new Date(),
+  })
+
+  // Attempt delivery
+  try {
+    const response = await fetch(endpoint.url, {
+      body: payloadStr,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-ID': id,
+        'X-Webhook-Signature': `sha256=${signature}`,
+        'X-Webhook-Timestamp': String(occurredAt),
+      },
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    const responseBody = await response.text().catch(() => '')
+
+    if (response.ok) {
+      await dbAny
+        .update(webhookDelivery)
+        .set({
+          attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
+          responseBody: responseBody.slice(0, 10_000),
+          statusCode: response.status,
+          status: 'success',
+          updatedAt: new Date(),
+        })
+        .where(eq(webhookDelivery.id, id))
+      return { id, status: 'success' as const }
+    }
+
+    // Non-2xx — schedule retry
+    const attemptCount = 1
+    const shouldRetry = attemptCount < MAX_RETRIES
+
+    await dbAny
+      .update(webhookDelivery)
+      .set({
+        attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
+        nextRetryAt: shouldRetry ? new Date(Date.now() + getBackoffDelay(attemptCount)) : null,
+        responseBody: responseBody.slice(0, 10_000),
+        statusCode: response.status,
+        status: shouldRetry ? 'retrying' : 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(webhookDelivery.id, id))
+
+    return { id, status: shouldRetry ? ('retrying' as const) : ('failed' as const) }
+  } catch {
+    // Network error — schedule retry
+    const attemptCount = 1
+    const shouldRetry = attemptCount < MAX_RETRIES
+
+    await dbAny
+      .update(webhookDelivery)
+      .set({
+        attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
+        nextRetryAt: shouldRetry ? new Date(Date.now() + getBackoffDelay(attemptCount)) : null,
+        status: shouldRetry ? 'retrying' : 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(webhookDelivery.id, id))
+
+    return { id, status: shouldRetry ? ('retrying' as const) : ('failed' as const) }
+  }
+}
+
+export async function dispatchWebhooksForEvent(
+  db: {
+    select: () => {
+      from: (table: typeof webhookEndpoint) => {
+        where: (cond: unknown) => Promise<unknown[]>
+      }
+    }
+    insert: (table: typeof webhookDelivery) => { values: (vals: unknown) => Promise<void> }
+    update: (table: typeof webhookDelivery) => {
+      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
+    }
+  },
+  eventType: string,
+  data: Record<string, unknown>
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  // Find all active endpoints subscribed to this event type (or with wildcard '*')
+  const endpoints = await dbAny
+    .select()
+    .from(webhookEndpoint)
+    .where(eq(webhookEndpoint.active, true))
+
+  const matching = (
+    endpoints as Array<{ events: string[]; id: string; secret: string; url: string }>
+  ).filter((ep) => ep.events.includes('*') || ep.events.includes(eventType))
+
+  // Fire deliveries in parallel (fire and forget for each)
+  const results = await Promise.allSettled(
+    matching.map((ep) =>
+      deliverWebhook(db, { id: ep.id, secret: ep.secret, url: ep.url }, eventType, data)
+    )
+  )
+
+  return results.length
+}
+
+export async function retryWebhookDelivery(
+  db: {
+    select: () => {
+      from: (table: typeof webhookDelivery) => {
+        where: (cond: unknown) => Promise<unknown[]>
+      }
+    }
+    update: (table: typeof webhookDelivery) => {
+      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
+    }
+    select: () => {
+      from: (table: typeof webhookEndpoint) => {
+        where: (cond: unknown) => Promise<unknown[]>
+      }
+    }
+  },
+  deliveryId: string
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  const rows = await dbAny.select().from(webhookDelivery).where(eq(webhookDelivery.id, deliveryId))
+
+  const delivery = rows[0] as
+    | {
+        attemptCount: number
+        endpointId: string
+        eventType: string
+        id: string
+        payload: Record<string, unknown>
+        status: string
+      }
+    | undefined
+
+  if (!delivery || delivery.status === 'success') return null
+
+  const endpointRows = await dbAny
+    .select()
+    .from(webhookEndpoint)
+    .where(eq(webhookEndpoint.id, delivery.endpointId))
+
+  const endpoint = endpointRows[0] as { id: string; secret: string; url: string } | undefined
+  if (!endpoint) return null
+
+  const attemptCount = delivery.attemptCount + 1
+  const shouldRetry = attemptCount < MAX_RETRIES
+  const payloadStr = JSON.stringify(delivery.payload)
+  const occurredAt = Date.now()
+  const signature = await hmacSign(payloadStr, endpoint.secret, occurredAt)
+
+  try {
+    const response = await fetch(endpoint.url, {
+      body: payloadStr,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-ID': delivery.id,
+        'X-Webhook-Signature': `sha256=${signature}`,
+        'X-Webhook-Timestamp': String(occurredAt),
+      },
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    const responseBody = await response.text().catch(() => '')
+
+    await dbAny
+      .update(webhookDelivery)
+      .set({
+        attemptCount,
+        nextRetryAt: null,
+        responseBody: responseBody.slice(0, 10_000),
+        statusCode: response.status,
+        status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(webhookDelivery.id, deliveryId))
+
+    if (!response.ok && shouldRetry) {
+      await dbAny
+        .update(webhookDelivery)
+        .set({
+          nextRetryAt: new Date(Date.now() + getBackoffDelay(attemptCount)),
+        })
+        .where(eq(webhookDelivery.id, deliveryId))
+    }
+
+    return { id: deliveryId, status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed' }
+  } catch {
+    await dbAny
+      .update(webhookDelivery)
+      .set({
+        attemptCount,
+        nextRetryAt: shouldRetry ? new Date(Date.now() + getBackoffDelay(attemptCount)) : null,
+        status: shouldRetry ? 'retrying' : 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(webhookDelivery.id, deliveryId))
+
+    return { id: deliveryId, status: shouldRetry ? 'retrying' : 'failed' }
+  }
+}
+
+export async function listWebhookDeliveries(
+  db: {
+    select: () => {
+      from: (table: typeof webhookDelivery) => {
+        where: (cond: unknown) => Promise<unknown[]>
+        orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
+      }
+    }
+  },
+  endpointId: string,
+  limit = 50
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  return dbAny
+    .select()
+    .from(webhookDelivery)
+    .where(eq(webhookDelivery.endpointId, endpointId))
+    .orderBy(desc(webhookDelivery.createdAt))
+    .limit(limit)
+}
+
+export async function listAllDeliveries(
+  db: {
+    select: () => {
+      from: (table: typeof webhookDelivery) => {
+        orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
+        where: (cond: unknown) => {
+          orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
+        }
+      }
+    }
+  },
+  options?: { eventType?: string; limit?: number; status?: string }
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any
+
+  const limit = options?.limit ?? 50
+  let query = dbAny.select().from(webhookDelivery)
+
+  const conditions = []
+  if (options?.eventType) {
+    conditions.push(eq(webhookDelivery.eventType, options.eventType))
+  }
+  if (options?.status) {
+    conditions.push(eq(webhookDelivery.status, options.status))
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions))
+    return query.orderBy(desc(webhookDelivery.createdAt)).limit(limit)
+  }
+
+  return query.orderBy(desc(webhookDelivery.createdAt)).limit(limit)
+}
+
+export async function sendTestWebhook(
+  db: {
+    insert: (table: typeof webhookDelivery) => { values: (vals: unknown) => Promise<void> }
+    update: (table: typeof webhookDelivery) => {
+      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
+    }
+  },
+  endpoint: { id: string; secret: string; url: string }
+) {
+  return deliverWebhook(db, endpoint, 'webhook.test', {
+    message: 'Test webhook from Vibekit',
+    timestamp: new Date().toISOString(),
+  })
+}
+
+export { generateSecret, hmacSign }

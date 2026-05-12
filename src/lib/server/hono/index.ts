@@ -65,6 +65,8 @@ import {
   teamActivity,
   teamMember,
   user,
+  webhookDelivery,
+  webhookEndpoint,
 } from '$lib/server/db/schema'
 import { handleBounce } from '$lib/server/email/bounce-handler'
 import { createEmailService } from '$lib/server/email/index'
@@ -75,6 +77,7 @@ import {
   isAppError,
   NotFoundError,
 } from '$lib/server/errors'
+import { emitEvent } from '$lib/server/events'
 import {
   createBroadcast,
   createNotification,
@@ -91,6 +94,17 @@ import {
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import { uuid } from '$lib/server/uuid'
+import {
+  createWebhookEndpoint,
+  deleteWebhookEndpoint,
+  getWebhookEndpoint,
+  listAllDeliveries,
+  listWebhookDeliveries,
+  listWebhookEndpoints,
+  retryWebhookDelivery,
+  sendTestWebhook,
+  updateWebhookEndpoint,
+} from '$lib/server/webhooks'
 import {
   createAnnouncementSchema,
   createCommentSchema,
@@ -127,6 +141,11 @@ import {
   recordUsageSchema,
   updatePlanSchema,
 } from '$lib/validators/billing'
+import {
+  createWebhookEndpointSchema,
+  listDeliveriesSchema,
+  updateWebhookEndpointSchema,
+} from '$lib/validators/webhook'
 import { zValidator } from '@hono/zod-validator'
 import {
   and,
@@ -1726,6 +1745,89 @@ protectedApp.get('/api-keys/:id/usage', async (c) => {
   const limit = Number(c.req.query('limit') ?? '50')
   const usage = await getApiKeyUsage(db, keyId, Math.min(limit, 200))
   return c.json({ usage })
+})
+
+// ── Webhooks ─────────────────────────────────────────────────────────
+
+protectedApp.get('/webhooks', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const endpoints = await listWebhookEndpoints(db, userId)
+  return c.json({ endpoints })
+})
+
+protectedApp.post(
+  '/webhooks',
+  withRateLimit('webhook-create', 10, 60_000),
+  validate(createWebhookEndpointSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const input = c.req.valid('json')
+    const result = await createWebhookEndpoint(db, userId, input)
+    await emitEvent(db, {
+      action: 'webhook.create',
+      entityId: result.id,
+      entityType: 'webhook_endpoint',
+      userId,
+    })
+    return c.json(result, 201)
+  }
+)
+
+protectedApp.patch('/webhooks/:id', validate(updateWebhookEndpointSchema), async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const endpointId = c.req.param('id')
+  const input = c.req.valid('json')
+  const result = await updateWebhookEndpoint(db, endpointId, userId, input)
+  if (!result) throw new NotFoundError()
+  await emitEvent(db, {
+    action: 'webhook.update',
+    entityId: endpointId,
+    entityType: 'webhook_endpoint',
+    userId,
+  })
+  return c.json({ ok: true })
+})
+
+protectedApp.delete('/webhooks/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const endpointId = c.req.param('id')
+  await deleteWebhookEndpoint(db, endpointId, userId)
+  await emitEvent(db, {
+    action: 'webhook.delete',
+    entityId: endpointId,
+    entityType: 'webhook_endpoint',
+    userId,
+  })
+  return c.json({ ok: true })
+})
+
+protectedApp.post('/webhooks/:id/test', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const endpointId = c.req.param('id')
+  const endpoint = await getWebhookEndpoint(db, endpointId, userId)
+  if (!endpoint) throw new NotFoundError()
+  const result = await sendTestWebhook(db, {
+    id: endpoint.id,
+    secret: endpoint.secret as string,
+    url: endpoint.url as string,
+  })
+  return c.json(result)
+})
+
+protectedApp.get('/webhooks/:id/deliveries', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const endpointId = c.req.param('id')
+  const endpoint = await getWebhookEndpoint(db, endpointId, userId)
+  if (!endpoint) throw new NotFoundError()
+  const limit = Number(c.req.query('limit') ?? '50')
+  const deliveries = await listWebhookDeliveries(db, endpointId, Math.min(limit, 100))
+  return c.json({ deliveries })
 })
 
 // ── Comments (auth required) ──────────────────────────────────────────
@@ -5317,6 +5419,28 @@ adminApp.get('/billing/invoices', async (c) => {
     .offset(offset)
 
   return c.json({ invoices, limit, page })
+})
+
+adminApp.get('/webhooks/deliveries', async (c) => {
+  const { db } = c.get('services')
+  const eventType = c.req.query('eventType')
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '50')))
+  const status = c.req.query('status')
+
+  const deliveries = await listAllDeliveries(db, {
+    eventType: eventType ?? undefined,
+    limit,
+    status: status ?? undefined,
+  })
+  return c.json({ deliveries })
+})
+
+adminApp.post('/webhooks/:deliveryId/retry', async (c) => {
+  const { db } = c.get('services')
+  const deliveryId = c.req.param('deliveryId')
+  const result = await retryWebhookDelivery(db, deliveryId)
+  if (!result) throw new NotFoundError()
+  return c.json(result)
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────

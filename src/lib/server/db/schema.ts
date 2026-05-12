@@ -1115,4 +1115,74 @@ export const apiKeyUsageLogRelations = relations(apiKeyUsageLog, ({ one }) => ({
   apiKey: one(apiKey, { fields: [apiKeyUsageLog.apiKeyId], references: [apiKey.id] }),
 }))
 
+export const webhookEndpoint = sqliteTable(
+  'webhook_endpoint',
+  {
+    active: integer('active', { mode: 'boolean' }).default(true).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    description: text('description'),
+    events: text('events', { mode: 'json' }).$type<string[]>().notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    secret: text('secret').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    url: text('url').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('webhook_endpoint_user_idx').on(table.userId),
+    index('webhook_endpoint_active_idx').on(table.active),
+  ]
+)
+
+export const webhookEndpointRelations = relations(webhookEndpoint, ({ one }) => ({
+  user: one(user, { fields: [webhookEndpoint.userId], references: [user.id] }),
+}))
+
+export const webhookDelivery = sqliteTable(
+  'webhook_delivery',
+  {
+    attemptCount: integer('attempt_count').default(0).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    endpointId: text('endpoint_id')
+      .notNull()
+      .references(() => webhookEndpoint.id, { onDelete: 'cascade' }),
+    eventType: text('event_type').notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
+    payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+    responseBody: text('response_body'),
+    statusCode: integer('status_code'),
+    status: text('status', { enum: ['failed', 'pending', 'retrying', 'success'] })
+      .default('pending')
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index('webhook_delivery_endpoint_idx').on(table.endpointId),
+    index('webhook_delivery_status_idx').on(table.status, table.createdAt),
+    index('webhook_delivery_event_type_idx').on(table.eventType, table.createdAt),
+  ]
+)
+
+export const webhookDeliveryRelations = relations(webhookDelivery, ({ one }) => ({
+  endpoint: one(webhookEndpoint, {
+    fields: [webhookDelivery.endpointId],
+    references: [webhookEndpoint.id],
+  }),
+}))
+
 export * from './auth.schema'
