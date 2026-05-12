@@ -1,4 +1,4 @@
-import { contactSchema } from '$lib/validators/contact'
+import { appealSchema, contactSchema } from '$lib/validators/contact'
 import { describe, expect, it } from 'vitest'
 
 describe(contactSchema, () => {
@@ -49,5 +49,50 @@ describe(contactSchema, () => {
     expect(data.name).toBe('John')
     expect(data.subject).toBe('Question')
     expect(data.message).toBe('A valid message here')
+  })
+})
+
+describe('appealSchema', () => {
+  it('accepts valid appeal', () => {
+    const result = appealSchema.safeParse({
+      email: 'banned@example.com',
+      message: 'I believe my ban was a mistake',
+      name: 'John Doe',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('trims whitespace from all fields', () => {
+    const result = appealSchema.safeParse({
+      email: '  test@example.com  ',
+      message: '  Please review  ',
+      name: '  Jane  ',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.email).toBe('test@example.com')
+      expect(result.data.name).toBe('Jane')
+      expect(result.data.message).toBe('Please review')
+    }
+  })
+
+  it('rejects missing email', () => {
+    const result = appealSchema.safeParse({ message: 'Hello', name: 'Jane' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing message', () => {
+    const result = appealSchema.safeParse({ email: 'a@b.com', name: 'Jane' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing name', () => {
+    const result = appealSchema.safeParse({ email: 'a@b.com', message: 'Hello' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects whitespace-only fields', () => {
+    const result = appealSchema.safeParse({ email: '   ', message: '   ', name: '   ' })
+    expect(result.success).toBe(false)
   })
 })

@@ -1,4 +1,11 @@
-import { bio, timezone, updateProfileSchema } from '$lib/validators/profile'
+import {
+  bio,
+  notificationPreferenceSchema,
+  onboardingSchema,
+  reactivateAccountSchema,
+  timezone,
+  updateProfileSchema,
+} from '$lib/validators/profile'
 import { describe, expect, it } from 'vitest'
 
 describe(updateProfileSchema, () => {
@@ -112,5 +119,130 @@ describe(timezone, () => {
   it('rejects a string over 50 chars', () => {
     const result = timezone.safeParse('a'.repeat(51))
     expect(result.success).toBeFalsy()
+  })
+})
+
+describe('onboardingSchema', () => {
+  it('accepts step and completed', () => {
+    const result = onboardingSchema.safeParse({ completed: true, step: 2 })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts step only', () => {
+    const result = onboardingSchema.safeParse({ step: 0 })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts completed only', () => {
+    const result = onboardingSchema.safeParse({ completed: false })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts empty object', () => {
+    const result = onboardingSchema.safeParse({})
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects step below 0', () => {
+    const result = onboardingSchema.safeParse({ step: -1 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects step above 3', () => {
+    const result = onboardingSchema.safeParse({ step: 4 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects non-integer step', () => {
+    const result = onboardingSchema.safeParse({ step: 1.5 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects non-boolean completed', () => {
+    const result = onboardingSchema.safeParse({ completed: 'yes' })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('reactivateAccountSchema', () => {
+  it('accepts valid email and password', () => {
+    const result = reactivateAccountSchema.safeParse({
+      email: 'user@test.com',
+      password: 'secret123',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects missing email', () => {
+    const result = reactivateAccountSchema.safeParse({ password: 'secret' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing password', () => {
+    const result = reactivateAccountSchema.safeParse({ email: 'user@test.com' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects empty email', () => {
+    const result = reactivateAccountSchema.safeParse({ email: '', password: 'secret' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects empty password', () => {
+    const result = reactivateAccountSchema.safeParse({ email: 'user@test.com', password: '' })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('notificationPreferenceSchema', () => {
+  it('accepts valid email preference', () => {
+    const result = notificationPreferenceSchema.safeParse({
+      channel: 'email',
+      enabled: true,
+      type: 'blog_post',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts valid in_app preference', () => {
+    const result = notificationPreferenceSchema.safeParse({
+      channel: 'in_app',
+      enabled: false,
+      type: 'newsletter',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects invalid channel', () => {
+    const result = notificationPreferenceSchema.safeParse({
+      channel: 'sms',
+      enabled: true,
+      type: 'test',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing channel', () => {
+    const result = notificationPreferenceSchema.safeParse({ enabled: true, type: 'test' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing enabled', () => {
+    const result = notificationPreferenceSchema.safeParse({ channel: 'email', type: 'test' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing type', () => {
+    const result = notificationPreferenceSchema.safeParse({ channel: 'email', enabled: true })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects empty type string', () => {
+    const result = notificationPreferenceSchema.safeParse({
+      channel: 'email',
+      enabled: true,
+      type: '',
+    })
+    expect(result.success).toBe(false)
   })
 })

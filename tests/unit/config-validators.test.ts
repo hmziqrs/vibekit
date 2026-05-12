@@ -1,5 +1,6 @@
 import {
   createAnnouncementSchema,
+  resolveConfigSchema,
   updateAnnouncementSchema,
   updateConfigSchema,
 } from '$lib/validators/config'
@@ -135,6 +136,31 @@ describe('update announcement schema', () => {
 
   it('rejects invalid type', () => {
     const result = updateAnnouncementSchema.safeParse({ type: 'unknown' })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('resolveConfigSchema', () => {
+  it('accepts valid keys array', () => {
+    const result = resolveConfigSchema.safeParse({ keys: ['a', 'b'] })
+    expect(result.success).toBe(true)
+  })
+
+  it('defaults to empty array when omitted', () => {
+    const result = resolveConfigSchema.safeParse({})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.keys).toEqual([])
+    }
+  })
+
+  it('accepts empty keys array', () => {
+    const result = resolveConfigSchema.safeParse({ keys: [] })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects non-string keys', () => {
+    const result = resolveConfigSchema.safeParse({ keys: [123] })
     expect(result.success).toBe(false)
   })
 })
