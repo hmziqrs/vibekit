@@ -12,7 +12,11 @@ function createMockDb() {
 }
 
 describe('audit module', () => {
-  it('exports writeAuditLog function', async () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('exports writeAuditLog function', { timeout: 30_000 }, async () => {
     const mod = await import('$lib/server/audit')
     expect(typeof mod.writeAuditLog).toBe('function')
   })

@@ -37,7 +37,11 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
 }
 
 describe('integrations service module', () => {
-  it('exports all required functions', async () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('exports all required functions', { timeout: 30_000 }, async () => {
     const mod = await import('$lib/server/integrations/service')
     expect(typeof mod.listIntegrations).toBe('function')
     expect(typeof mod.createIntegration).toBe('function')

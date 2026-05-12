@@ -14,7 +14,7 @@ export function renderEmail(title: string, bodyHtml: string, previewText = ''): 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  ${previewText ? `<title>${previewText}</title>` : ''}
+  ${previewText ? `<title>${escapeHtml(previewText)}</title>` : ''}
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: ${BG_COLOR}; }
     a { color: ${BRAND_COLOR}; }
