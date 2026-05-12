@@ -1,0 +1,1401 @@
+openapi: 3.1.0
+info:
+  title: Vibekit API
+  description: |
+    The Vibekit API provides programmatic access to manage your SaaS application.
+    All endpoints require authentication via session cookies or API keys.
+  version: 1.0.0
+  contact:
+    name: Vibekit Support
+    url: https://vibekit.dev/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://vibekit.dev
+    description: Production
+  - url: http://localhost:5173
+    description: Local development
+
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+
+tags:
+  - name: Authentication
+    description: Session-based auth and API key management
+  - name: Items
+    description: CRUD operations for user items
+  - name: Blog
+    description: Blog post management (admin only)
+  - name: Users
+    description: User management (admin only)
+  - name: Comments
+    description: Comment listing and moderation
+  - name: Notifications
+    description: Push and in-app notifications
+  - name: Organizations
+    description: Organization CRUD, membership, and RBAC
+  - name: Teams
+    description: Team management within organizations
+  - name: Webhooks
+    description: Webhook endpoint management and delivery logs
+  - name: API Keys
+    description: API key CRUD, rotation, and usage tracking
+  - name: Billing
+    description: Plans, subscriptions, and invoices
+  - name: Reports
+    description: Content reporting and moderation
+  - name: Analytics
+    description: Page view and reading analytics
+  - name: Newsletter
+    description: Newsletter subscription management
+  - name: Search
+    description: Blog search functionality
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Session cookie set by Better Auth after login
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'API key with prefix: vk_*'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        status:
+          type: integer
+          description: HTTP status code
+      required:
+        - error
+    PaginationMeta:
+      type: object
+      properties:
+        hasMore:
+          type: boolean
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+    Item:
+      type: object
+      properties:
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+    BlogPost:
+      type: object
+      properties:
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        authorId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        coverImage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        excerpt:
+          type: string
+          nullable: true
+        id:
+          type: string
+          format: uuid
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        slug:
+          type: string
+        status:
+          type: string
+          enum: [archived, draft, published]
+        tags:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    User:
+      type: object
+      properties:
+        banned:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        email:
+          type: string
+          format: email
+        id:
+          type: string
+          format: uuid
+        image:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [admin, user]
+    Organization:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    Team:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        orgId:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    WebhookEndpoint:
+      type: object
+      properties:
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        events:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+          format: uuid
+        secret:
+          type: string
+          description: Only returned on creation
+        url:
+          type: string
+          format: uri
+    WebhookDelivery:
+      type: object
+      properties:
+        attemptCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        endpointId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        id:
+          type: string
+          format: uuid
+        nextRetryAt:
+          type: string
+          format: date-time
+          nullable: true
+        responseBody:
+          type: string
+          nullable: true
+        statusCode:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [failed, pending, retrying, success]
+    ApiKey:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        id:
+          type: string
+          format: uuid
+        keyPrefix:
+          type: string
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+    Notification:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        read:
+          type: boolean
+        title:
+          type: string
+        type:
+          type: string
+    BillingPlan:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        currency:
+          type: string
+        description:
+          type: string
+          nullable: true
+        features:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+          format: uuid
+        interval:
+          type: string
+          enum: [month, year]
+        isActive:
+          type: boolean
+        name:
+          type: string
+        priceInCents:
+          type: integer
+        slug:
+          type: string
+
+paths:
+  # ── Health ──────────────────────────────────────────────
+  /api/health:
+    get:
+      tags: [Authentication]
+      summary: Health check
+      description: Returns API health status
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  timestamp:
+                    type: string
+
+  # ── Items ───────────────────────────────────────────────
+  /api/items:
+    get:
+      tags: [Items]
+      summary: List items
+      description: Retrieve all items owned by the authenticated user
+      responses:
+        '200':
+          description: List of items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+    post:
+      tags: [Items]
+      summary: Create item
+      description: Create a new item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                title:
+                  type: string
+              required:
+                - title
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/items/{id}:
+    get:
+      tags: [Items]
+      summary: Get item
+      description: Retrieve a single item by ID (must be owned by user)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+    patch:
+      tags: [Items]
+      summary: Update item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                title:
+                  type: string
+      responses:
+        '200':
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+    delete:
+      tags: [Items]
+      summary: Delete item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item deleted
+
+  # ── API Keys ────────────────────────────────────────────
+  /api/api-keys:
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      description: Retrieve all API keys owned by the authenticated user
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKey'
+    post:
+      tags: [API Keys]
+      summary: Create API key
+      description: Create a new API key with specified scopes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expiresAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - items.read
+                      - items.write
+                      - blog.read
+                      - blog.write
+                      - users.read
+                      - orgs.read
+                      - orgs.write
+                      - teams.read
+                      - teams.write
+                      - webhooks.read
+                      - webhooks.write
+                      - billing.read
+                      - analytics.read
+              required:
+                - name
+                - scopes
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  key:
+                    type: string
+                    description: Full API key (only shown once)
+                  keyPrefix:
+                    type: string
+
+  /api/api-keys/{id}:
+    patch:
+      tags: [API Keys]
+      summary: Update API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated
+
+  /api/api-keys/{id}/rotate:
+    post:
+      tags: [API Keys]
+      summary: Rotate API key
+      description: Generate a new key value while keeping the same ID and settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key rotated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  keyPrefix:
+                    type: string
+
+  /api/api-keys/{id}/revoke:
+    post:
+      tags: [API Keys]
+      summary: Revoke API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key revoked
+
+  /api/api-keys/{id}/usage:
+    get:
+      tags: [API Keys]
+      summary: Get API key usage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usage logs
+
+  # ── Webhooks ────────────────────────────────────────────
+  /api/webhooks:
+    get:
+      tags: [Webhooks]
+      summary: List webhook endpoints
+      responses:
+        '200':
+          description: List of endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoints:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookEndpoint'
+    post:
+      tags: [Webhooks]
+      summary: Create webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  maxLength: 200
+                events:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 50
+                url:
+                  type: string
+                  format: uri
+              required:
+                - events
+                - url
+      responses:
+        '201':
+          description: Endpoint created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  secret:
+                    type: string
+                  url:
+                    type: string
+
+  /api/webhooks/{id}:
+    patch:
+      tags: [Webhooks]
+      summary: Update webhook endpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                description:
+                  type: string
+                events:
+                  type: array
+                  items:
+                    type: string
+                url:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Webhooks]
+      summary: Delete webhook endpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  /api/webhooks/{id}/test:
+    post:
+      tags: [Webhooks]
+      summary: Send test webhook
+      description: Sends a webhook.test event to the endpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test sent
+
+  /api/webhooks/{id}/deliveries:
+    get:
+      tags: [Webhooks]
+      summary: List deliveries for endpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Delivery history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookDelivery'
+
+  # ── Organizations ───────────────────────────────────────
+  /api/orgs:
+    get:
+      tags: [Organizations]
+      summary: List organizations
+      description: List all organizations the authenticated user belongs to
+      responses:
+        '200':
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+    post:
+      tags: [Organizations]
+      summary: Create organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - name
+      responses:
+        '201':
+          description: Organization created
+
+  /api/orgs/{orgId}:
+    get:
+      tags: [Organizations]
+      summary: Get organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organization details
+    patch:
+      tags: [Organizations]
+      summary: Update organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Organizations]
+      summary: Delete organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  /api/orgs/{orgId}/members:
+    get:
+      tags: [Organizations]
+      summary: List organization members
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member list
+
+  /api/orgs/{orgId}/members/invite:
+    post:
+      tags: [Organizations]
+      summary: Invite member
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [admin, member, owner, viewer]
+              required:
+                - email
+                - role
+      responses:
+        '200':
+          description: Invitation sent
+
+  # ── Teams ───────────────────────────────────────────────
+  /api/orgs/{orgId}/teams:
+    get:
+      tags: [Teams]
+      summary: List teams
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of teams
+    post:
+      tags: [Teams]
+      summary: Create team
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                name:
+                  type: string
+              required:
+                - name
+      responses:
+        '201':
+          description: Team created
+
+  /api/orgs/{orgId}/teams/{teamId}:
+    get:
+      tags: [Teams]
+      summary: Get team
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team details
+    patch:
+      tags: [Teams]
+      summary: Update team
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Teams]
+      summary: Delete team
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  # ── Blog ────────────────────────────────────────────────
+  /api/blog:
+    get:
+      tags: [Blog]
+      summary: List blog posts
+      description: Retrieve blog posts with pagination, filtering, and sorting (admin only)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [archived, draft, published]
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: ['-createdAt', '-publishedAt', 'createdAt', 'publishedAt']
+            default: '-createdAt'
+        - name: tag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list of posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BlogPost'
+                  total:
+                    type: integer
+    post:
+      tags: [Blog]
+      summary: Create blog post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                coverImage:
+                  type: string
+                excerpt:
+                  type: string
+                slug:
+                  type: string
+                status:
+                  type: string
+                  enum: [draft, published]
+                tags:
+                  type: array
+                  items:
+                    type: string
+                title:
+                  type: string
+              required:
+                - title
+      responses:
+        '201':
+          description: Post created
+
+  /api/blog/search:
+    get:
+      tags: [Search]
+      summary: Search blog posts
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results
+
+  # ── Notifications ───────────────────────────────────────
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+
+  /api/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Get unread count
+      responses:
+        '200':
+          description: Unread notification count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /api/notifications/read-all:
+    patch:
+      tags: [Notifications]
+      summary: Mark all as read
+      responses:
+        '200':
+          description: All notifications marked as read
+
+  /api/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Marked as read
+
+  # ── Billing ─────────────────────────────────────────────
+  /api/billing/plans:
+    get:
+      tags: [Billing]
+      summary: List billing plans
+      security: []
+      description: List all active billing plans (public endpoint)
+      responses:
+        '200':
+          description: List of plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BillingPlan'
+
+  /api/billing/subscription:
+    get:
+      tags: [Billing]
+      summary: Get current subscription
+      responses:
+        '200':
+          description: Current subscription details
+
+  /api/billing/checkout:
+    post:
+      tags: [Billing]
+      summary: Create checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cancelUrl:
+                  type: string
+                planId:
+                  type: string
+                successUrl:
+                  type: string
+              required:
+                - planId
+      responses:
+        '200':
+          description: Checkout session URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+
+  # ── Newsletter ──────────────────────────────────────────
+  /api/newsletter/subscribe:
+    post:
+      tags: [Newsletter]
+      summary: Subscribe to newsletter
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        '200':
+          description: Subscribed (confirmation email sent)
+        '429':
+          description: Rate limited
+
+  # ── Analytics ───────────────────────────────────────────
+  /api/analytics/view:
+    post:
+      tags: [Analytics]
+      summary: Record page view
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                referrer:
+                  type: string
+                title:
+                  type: string
+              required:
+                - path
+      responses:
+        '200':
+          description: Recorded
+
+  # ── Reports ─────────────────────────────────────────────
+  /api/reports:
+    post:
+      tags: [Reports]
+      summary: Create content report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  type: string
+                  enum: [harassment, illegal_content, other, spam]
+                entityId:
+                  type: string
+                entityType:
+                  type: string
+                reason:
+                  type: string
+              required:
+                - entityId
+                - entityType
+                - category
+                - reason
+      responses:
+        '201':
+          description: Report created
+
+  # ── Admin: Users ────────────────────────────────────────
+  /api/admin/users:
+    get:
+      tags: [Users]
+      summary: List users (admin)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+  /api/admin/users/{id}/ban:
+    post:
+      tags: [Users]
+      summary: Ban user (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration:
+                  type: integer
+                  description: Duration in hours (optional, permanent if omitted)
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: User banned
+
+  # ── Admin: Webhooks ─────────────────────────────────────
+  /api/admin/webhooks/deliveries:
+    get:
+      tags: [Webhooks]
+      summary: List all deliveries (admin)
+      parameters:
+        - name: eventType
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [failed, pending, retrying, success]
+      responses:
+        '200':
+          description: All deliveries across all endpoints
+
+  /api/admin/webhooks/{deliveryId}/retry:
+    post:
+      tags: [Webhooks]
+      summary: Retry delivery (admin)
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delivery retried
+        '404':
+          description: Delivery not found
