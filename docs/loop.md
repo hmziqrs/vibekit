@@ -213,13 +213,13 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Deployment safety (blue-green or canary deploys, automatic rollback on error spike, deploy locks, maintenance mode during migrations)
 
 #### Testing & Quality
-- [ ] Test infrastructure (Vitest config optimization, test database setup/teardown, mock patterns for D1/R2/KV, test fixtures factory)
-- [ ] Unit test coverage (critical business logic: auth flows, billing calculations, permission checks, data transformations)
-- [ ] Integration tests (API route tests with real D1, auth flow E2E, webhook processing, payment flow happy path + failures)
-- [ ] E2E tests (Playwright: signup → verify → login → use feature → logout, admin flows, billing flows, cross-browser)
-- [ ] Visual regression testing (screenshot comparison on key pages, component storybook, responsive breakpoint checks)
-- [ ] Performance testing (load testing API endpoints, D1 query performance benchmarks, worker CPU time limits testing)
-- [ ] Security testing (OWASP ZAP scan, dependency audit automation, secret leak detection in git history, CSRF/XSS regression tests)
+- [x] Test infrastructure (Vitest config optimization, test database setup/teardown, mock patterns for D1/R2/KV, test fixtures factory)
+- [x] Unit test coverage (critical business logic: auth flows, billing calculations, permission checks, data transformations)
+- [x] Integration tests (API route tests with real D1, auth flow E2E, webhook processing, payment flow happy path + failures)
+- [x] E2E tests (Playwright: signup → verify → login → use feature → logout, admin flows, billing flows, cross-browser)
+- [x] Visual regression testing (screenshot comparison on key pages, component storybook, responsive breakpoint checks)
+- [x] Performance testing (load testing API endpoints, D1 query performance benchmarks, worker CPU time limits testing)
+- [x] Security testing (OWASP ZAP scan, dependency audit automation, secret leak detection in git history, CSRF/XSS regression tests)
 
 #### Analytics & Tracking
 - [ ] Analytics foundation (event tracking architecture, privacy-first: no cookies without consent, anonymize IPs, respect Do Not Track)
