@@ -37,11 +37,17 @@ export interface ListResult {
   truncated: boolean
 }
 
+export interface PresignedUrlOptions {
+  expiresIn?: number // seconds, default 3600
+  contentType?: string
+}
+
 export interface StorageClient {
   put(key: string, body: ReadableStream | Uint8Array | Blob, opts?: PutOptions): Promise<PutResult>
   get(key: string): Promise<StoredObject | null>
   delete(key: string): Promise<void>
   list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult>
+  getPresignedUrl(key: string, options?: PresignedUrlOptions): Promise<string>
 }
 
 export interface EmailMessage {

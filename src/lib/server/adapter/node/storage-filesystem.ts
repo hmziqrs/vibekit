@@ -167,5 +167,13 @@ export function createNodeStorage(): StorageClient {
         url: `/cdn/blog/${key}`,
       }
     },
+
+    async getPresignedUrl(
+      key: string,
+      _options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      // Local dev: just return the CDN URL directly
+      return `/cdn/blog/${key}`
+    },
   }
 }
