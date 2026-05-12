@@ -22,26 +22,19 @@
   // svelte-ignore state_referenced_locally
   let captionInput = $state(caption)
 
+  const PROVIDER_DISPLAY: Record<string, string> = {
+    facebook: 'Facebook',
+    'github-gist': 'GitHub Gist',
+    instagram: 'Instagram',
+    reddit: 'Reddit',
+    tiktok: 'TikTok',
+    twitter: 'X / Twitter',
+    vimeo: 'Vimeo',
+    youtube: 'YouTube',
+  }
+
   let isGist = $derived(provider === 'github-gist')
-  let displayProvider = $derived(
-    provider === 'github-gist'
-      ? 'GitHub Gist'
-      : provider === 'twitter'
-        ? 'X / Twitter'
-        : provider === 'youtube'
-          ? 'YouTube'
-          : provider === 'vimeo'
-            ? 'Vimeo'
-            : provider === 'instagram'
-              ? 'Instagram'
-              : provider === 'tiktok'
-                ? 'TikTok'
-                : provider === 'reddit'
-                  ? 'Reddit'
-                  : provider === 'facebook'
-                    ? 'Facebook'
-                    : provider,
-  )
+  let displayProvider = $derived(PROVIDER_DISPLAY[provider] ?? provider)
 
   function saveCaption() {
     editingCaption = false
