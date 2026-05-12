@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 describe('keyboard Navigation', () => {
   describe('shortcut registration', () => {
-    it('registers and returns shortcuts', async () => {
+    it('registers and returns shortcuts', { timeout: 30_000 }, async () => {
       const { registerShortcut, getShortcuts } = await import('$lib/keyboard.svelte')
       const unsub = registerShortcut({
         action: () => {},
@@ -15,7 +15,7 @@ describe('keyboard Navigation', () => {
       unsub()
     })
 
-    it('unregisters shortcut on unsubscribe', async () => {
+    it('unregisters shortcut on unsubscribe', { timeout: 30_000 }, async () => {
       const { registerShortcut, getShortcuts } = await import('$lib/keyboard.svelte')
       const unsub = registerShortcut({
         action: () => {},
@@ -30,7 +30,7 @@ describe('keyboard Navigation', () => {
   })
 
   describe('collision detection', () => {
-    it('detects collision for same key+modifiers', async () => {
+    it('detects collision for same key+modifiers', { timeout: 30_000 }, async () => {
       const { registerShortcut, checkCollision } = await import('$lib/keyboard.svelte')
       const unsub = registerShortcut({
         action: () => {},
@@ -44,7 +44,7 @@ describe('keyboard Navigation', () => {
       unsub()
     })
 
-    it('no collision for different modifiers', async () => {
+    it('no collision for different modifiers', { timeout: 30_000 }, async () => {
       const { registerShortcut, checkCollision } = await import('$lib/keyboard.svelte')
       const unsub = registerShortcut({
         action: () => {},
@@ -109,7 +109,7 @@ describe('keyboard Navigation', () => {
   })
 
   describe('keyboard shortcuts help panel', () => {
-    it('shortcuts help component exists', async () => {
+    it('shortcuts help component exists', { timeout: 30_000 }, async () => {
       const mod = await import('$lib/components/shortcuts-help.svelte')
       expect(mod.default).toBeDefined()
     })

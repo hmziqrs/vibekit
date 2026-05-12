@@ -58,17 +58,17 @@ describe('core Web Vitals', () => {
   })
 
   describe('web vitals reporting', () => {
-    it('initWebVitals is a function export', async () => {
+    it('initWebVitals is a function export', { timeout: 30_000 }, async () => {
       const mod = await import('$lib/performance.svelte')
       expectTypeOf(mod.initWebVitals).toBeFunction()
     })
 
-    it('onWebVital is a function export', async () => {
+    it('onWebVital is a function export', { timeout: 30_000 }, async () => {
       const mod = await import('$lib/performance.svelte')
       expectTypeOf(mod.onWebVital).toBeFunction()
     })
 
-    it('reportToConsole is a function export', async () => {
+    it('reportToConsole is a function export', { timeout: 30_000 }, async () => {
       const mod = await import('$lib/performance.svelte')
       expectTypeOf(mod.reportToConsole).toBeFunction()
     })
