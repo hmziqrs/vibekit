@@ -145,7 +145,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Link card / oEmbed support (Twitter, YouTube, GitHub gists, embed provider detection, oEmbed discovery, conditional rendering)
   - [x] SEO preview (Google/social card preview in editor sidebar)
   - [x] Full-text content search (admin side minimum, searches title + slug + excerpt + contentBody across admin, editor, and public surfaces)
-  - [ ] Scheduled publishing (set future publishedAt, cron promotes drafts)
+  - [x] Scheduled publishing (set future publishedAt, cron promotes drafts)
   - [ ] Related posts by tag overlap on single post page
   - [x] Copy-as-markdown option when viewing a post
   - [ ] Series/collection support (group posts into named series with ordering)

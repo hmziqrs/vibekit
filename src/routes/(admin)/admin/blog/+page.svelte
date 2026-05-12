@@ -14,6 +14,7 @@
     excerpt: string | null
     id: string
     publishedAt: string | null
+    scheduledAt: string | null
     slug: string
     status: string
     title: string
@@ -39,6 +40,7 @@
     deleted: 'bg-white/[0.06] text-text-muted',
     draft: 'bg-yellow-500/15 text-yellow-400',
     published: 'bg-green-500/15 text-green-400',
+    scheduled: 'bg-blue-500/15 text-blue-400',
     trash: 'bg-white/[0.06] text-text-muted',
   }
 
@@ -137,6 +139,7 @@
   const tabs = [
     { label: 'All', value: 'all' },
     { label: 'Draft', value: 'draft' },
+    { label: 'Scheduled', value: 'scheduled' },
     { label: 'Published', value: 'published' },
     { label: 'Archived', value: 'archived' },
     { label: 'Trash', value: 'trash' },
@@ -254,7 +257,11 @@
           colorMap={statusColors}
         />
       {:else if columnKey === 'publishedAt'}
-        <span class="text-text-muted">{formatDate(row.publishedAt as string | null)}</span>
+        {#if row.status === 'scheduled' && row.scheduledAt}
+          <span class="text-blue-400">{formatDate(row.scheduledAt as string)}</span>
+        {:else}
+          <span class="text-text-muted">{formatDate(row.publishedAt as string | null)}</span>
+        {/if}
       {:else if columnKey === 'createdAt'}
         <span class="text-text-muted">{formatDate(row.createdAt as string)}</span>
       {:else if columnKey === 'actions'}

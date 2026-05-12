@@ -41,10 +41,11 @@ export const blogPost = sqliteTable(
       .$defaultFn(() => uuid()),
     ogImageUrl: text('og_image_url'),
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    scheduledAt: integer('scheduled_at', { mode: 'timestamp_ms' }),
     seoDescription: text('seo_description'),
     seoTitle: text('seo_title'),
     slug: text('slug').notNull().unique(),
-    status: text('status', { enum: ['draft', 'published', 'archived'] })
+    status: text('status', { enum: ['draft', 'published', 'archived', 'scheduled'] })
       .default('draft')
       .notNull(),
     title: text('title').notNull(),

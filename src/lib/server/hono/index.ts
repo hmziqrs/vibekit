@@ -71,6 +71,7 @@ import {
   isNull,
   like,
   lt,
+  lte,
   or,
   sql,
   type SQL,
@@ -886,7 +887,7 @@ blogApp.get('/', async (c) => {
   const q = c.req.query('q')?.trim()
   const rawSort = c.req.query('sort') ?? 'createdAt:desc'
 
-  const validStatuses = ['draft', 'published', 'archived'] as const
+  const validStatuses = ['draft', 'published', 'archived', 'scheduled'] as const
   const isTrash = rawStatus === 'trash'
   const filterStatus = validStatuses.includes(rawStatus as (typeof validStatuses)[number])
     ? (rawStatus as (typeof validStatuses)[number])
@@ -939,6 +940,7 @@ blogApp.get('/', async (c) => {
         excerpt: blogPost.excerpt,
         id: blogPost.id,
         publishedAt: blogPost.publishedAt,
+        scheduledAt: blogPost.scheduledAt,
         slug: blogPost.slug,
         status: blogPost.status,
         title: blogPost.title,
@@ -996,7 +998,9 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
 
   await writeAuditLog(db, {
     action: 'blog.create',
-    details: { slug, status, title },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug, status, title },
     userId: currentUser.id,
   })
 
@@ -1035,6 +1039,7 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
   if (data.status !== undefined) updates.status = data.status
   if (data.canonicalUrl !== undefined) updates.canonicalUrl = data.canonicalUrl
   if (data.ogImageUrl !== undefined) updates.ogImageUrl = data.ogImageUrl
+  if (data.scheduledAt !== undefined) updates.scheduledAt = data.scheduledAt as Date | null
 
   if (data.slug !== undefined && data.slug !== existing.slug) {
     await db.insert(blogPostSlugHistory).values({ id: uuid(), oldSlug: existing.slug, postId: id })
@@ -1043,6 +1048,10 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
 
   if (data.status === 'published' && !existing.publishedAt) {
     updates.publishedAt = new Date()
+  }
+
+  if (data.status === 'scheduled' && data.scheduledAt) {
+    updates.scheduledAt = data.scheduledAt as Date
   }
 
   await db.update(blogPost).set(updates).where(eq(blogPost.id, id))
@@ -1072,7 +1081,9 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
 
   await writeAuditLog(db, {
     action: 'blog.update',
-    details: { id, slug: (updates.slug as string) ?? existing.slug, title: existing.title },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug: (updates.slug as string) ?? existing.slug, title: existing.title },
     userId: c.get('user').id,
   })
 
@@ -1097,7 +1108,9 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
 
   await writeAuditLog(db, {
     action: 'blog.delete',
-    details: { id, slug: existing.slug, title: existing.title },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug: existing.slug, title: existing.title },
     userId: c.get('user').id,
   })
 
@@ -1126,7 +1139,9 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
 
   await writeAuditLog(db, {
     action: 'blog.publish',
-    details: { id, slug: existing.slug },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug: existing.slug },
     userId: c.get('user').id,
   })
 
@@ -1155,7 +1170,9 @@ blogApp.post('/:id/unpublish', withRateLimit('blog-mutate'), async (c) => {
 
   await writeAuditLog(db, {
     action: 'blog.unpublish',
-    details: { id, slug: existing.slug },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug: existing.slug },
     userId: c.get('user').id,
   })
 
@@ -1184,7 +1201,9 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
 
   await writeAuditLog(db, {
     action: 'blog.archive',
-    details: { id, slug: existing.slug },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug: existing.slug },
     userId: c.get('user').id,
   })
 
@@ -1213,7 +1232,9 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
 
   await writeAuditLog(db, {
     action: 'blog.restore',
-    details: { id, slug: existing.slug },
+    entityId: id,
+    entityType: 'blog_post',
+    metadata: { slug: existing.slug },
     userId: c.get('user').id,
   })
 
@@ -2219,6 +2240,59 @@ app.post('/api/admin/cleanup', async (c) => {
       users: deletedUsers.length,
     },
   })
+})
+
+// ── Scheduled Publishing ──────────────────────────────────────────────
+
+app.post('/api/admin/publish-scheduled', async (c) => {
+  const cronSecret = c.req.header('x-cron-secret')
+  const currentUser = c.get('user')
+  const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
+
+  if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
+    throw new ForbiddenError()
+  }
+
+  const { db } = c.get('services')
+  const now = new Date()
+
+  const due = await db
+    .select({ id: blogPost.id, slug: blogPost.slug, title: blogPost.title })
+    .from(blogPost)
+    .where(
+      and(
+        eq(blogPost.status, 'scheduled'),
+        isNull(blogPost.deletedAt),
+        isNotNull(blogPost.scheduledAt),
+        lte(blogPost.scheduledAt, now)
+      )
+    )
+
+  if (due.length === 0) {
+    return c.json({ published: 0 })
+  }
+
+  const ids = due.map((p) => p.id)
+
+  await db
+    .update(blogPost)
+    .set({ publishedAt: now, scheduledAt: null, status: 'published', updatedAt: now })
+    .where(and(eq(blogPost.status, 'scheduled'), inArray(blogPost.id, ids)))
+
+  await Promise.all([
+    ...due.map((post) => c.get('services').cache.purgeBlog(post.slug)),
+    ...due.map((post) =>
+      writeAuditLog(db, {
+        action: 'blog.publish',
+        entityId: post.id,
+        entityType: 'blog_post',
+        metadata: { reason: 'scheduled', slug: post.slug, title: post.title },
+        userId: 'system',
+      })
+    ),
+  ])
+
+  return c.json({ posts: due.map((p) => p.slug), published: due.length })
 })
 
 // ── Organizations (auth required) ─────────────────────────────────────

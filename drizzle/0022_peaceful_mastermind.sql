@@ -1,0 +1,1 @@
+ALTER TABLE `blog_post` ADD `scheduled_at` integer;

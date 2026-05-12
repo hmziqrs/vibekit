@@ -294,17 +294,14 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
         .limit(1)
 
       if (row?.value === 'true') {
-        return new Response(
-          JSON.stringify({
+        return Response.json(
+          {
             error: {
               code: 'MAINTENANCE_MODE',
               message: 'System is under maintenance. Please try again later.',
             },
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 503,
-          }
+          },
+          { status: 503 }
         )
       }
     } catch {

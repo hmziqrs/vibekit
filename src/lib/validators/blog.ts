@@ -28,7 +28,7 @@ export const createPostSchema = z.object({
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
   slug,
-  status: z.enum(['draft', 'published', 'archived']).default('draft'),
+  status: z.enum(['draft', 'published', 'archived', 'scheduled']).default('draft'),
   tagIds: z.array(z.string()).optional(),
   title: z.string().min(1, 'Title is required').max(200, 'Title is too long').trim(),
 })
@@ -39,10 +39,16 @@ export const updatePostSchema = z.object({
   coverImageUrl: urlOrPath,
   excerpt: z.string().max(500).trim().optional().nullable(),
   ogImageUrl: urlOrPath,
+  scheduledAt: z
+    .string()
+    .datetime()
+    .optional()
+    .nullable()
+    .transform((v) => (v ? new Date(v) : v === null ? null : undefined)),
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
   slug: slug.optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
+  status: z.enum(['draft', 'published', 'archived', 'scheduled']).optional(),
   tagIds: z.array(z.string()).optional(),
   title: z.string().min(1).max(200).trim().optional(),
 })
