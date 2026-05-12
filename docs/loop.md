@@ -187,7 +187,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Storage adapter abstraction (R2 primary, S3-compatible fallback, local dev storage, presigned URLs for direct upload)
 
 #### Search
-- [ ] Full-text search infrastructure (Algolia/Meilisearch/Typesense integration, index management, relevance tuning)
+- [x] Full-text search infrastructure (Algolia/Meilisearch/Typesense integration, index management, relevance tuning)
 - [ ] Search UI (autocomplete/suggestions, faceted filters, search result previews, keyboard navigation, recent searches)
 - [ ] Content indexing (blog posts, user content, admin content — incremental updates on mutation)
 

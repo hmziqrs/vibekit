@@ -139,6 +139,8 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
 } from '$lib/server/push'
+import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
+import { createSearchService } from '$lib/server/search/service'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import {
@@ -215,6 +217,7 @@ import {
   toggleFeatureFlagSchema,
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
+import { indexDocumentSchema, searchSchema } from '$lib/validators/search'
 import { createUploadSessionSchema, listUploadSessionsSchema } from '$lib/validators/upload'
 import {
   WEBHOOK_EVENT_TYPES,
@@ -471,6 +474,24 @@ app.post('/api/appeal', async (c) => {
   }
 
   return c.json({ success: true })
+})
+
+// ── Search (public) ───────────────────────────────────────────────────
+
+app.get('/api/search', async (c) => {
+  const services = c.get('services')
+  if (!services) return c.json({ hits: [], query: '', total: 0 })
+  const q = c.req.query('q')?.trim() ?? ''
+  const limit = Math.min(50, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const offset = Math.max(0, Number(c.req.query('offset') ?? '0'))
+  const types = c.req.query('types')?.split(',').filter(Boolean)
+
+  if (!q || q.length < 2) return c.json({ hits: [], query: q, total: 0 })
+
+  const adapter = createD1SearchAdapter(services.db)
+  const searchService = createSearchService(adapter)
+  const results = await searchService.search(q, { entityTypes: types, limit, offset })
+  return c.json({ ...results, query: q })
 })
 
 // ── Newsletter (public) ───────────────────────────────────────────────
@@ -6117,6 +6138,26 @@ adminApp.post('/media/bulk-delete', async (c) => {
     await services.storage.delete(key)
   }
   return c.json({ deleted: keys.length })
+})
+
+// ── Admin Search Index ────────────────────────────────────────────────
+
+adminApp.post('/search/index', validate(indexDocumentSchema), async (c) => {
+  const { db } = c.get('services')
+  const input = c.req.valid('json')
+  const adapter = createD1SearchAdapter(db)
+  const searchService = createSearchService(adapter)
+  await searchService.indexEntity(input)
+  return c.json({ indexed: true })
+})
+
+adminApp.delete('/search/index', async (c) => {
+  const { db } = c.get('services')
+  const body = await c.req.json<{ entityId: string; entityType: string }>()
+  const adapter = createD1SearchAdapter(db)
+  const searchService = createSearchService(adapter)
+  await searchService.deleteEntity(body.entityId, body.entityType)
+  return c.json({ deleted: true })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
