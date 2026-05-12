@@ -20,6 +20,7 @@
     { href: '/admin/blog', icon: 'blog', label: 'Blog' },
     { href: '/admin/moderation', icon: 'moderation', label: 'Moderation' },
     { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
+    { href: '/admin/integrations', icon: 'webhooks', label: 'Integrations' },
     { href: '/admin/webhooks', icon: 'webhooks', label: 'Webhooks' },
     { href: '/admin/settings', icon: 'settings', label: 'Settings' },
   ]

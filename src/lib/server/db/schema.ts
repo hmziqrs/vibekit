@@ -1185,4 +1185,50 @@ export const webhookDeliveryRelations = relations(webhookDelivery, ({ one }) => 
   }),
 }))
 
+export const integration = sqliteTable(
+  'integration',
+  {
+    accessToken: text('access_token').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    externalAccountId: text('external_account_id'),
+    id: text('id')
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => uuid()),
+    lastError: text('last_error'),
+    lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }),
+    metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
+    organizationId: text('organization_id').references(() => organization.id, {
+      onDelete: 'cascade',
+    }),
+    provider: text('provider').notNull(),
+    refreshToken: text('refresh_token'),
+    scopes: text('scopes', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    status: text('status', { mode: 'text' }).notNull().default('active'),
+    tokenExpiresAt: integer('token_expires_at', { mode: 'timestamp_ms' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('integration_user_idx').on(table.userId),
+    index('integration_org_idx').on(table.organizationId),
+    index('integration_provider_idx').on(table.provider, table.status),
+  ]
+)
+
+export const integrationRelations = relations(integration, ({ one }) => ({
+  organization: one(organization, {
+    fields: [integration.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [integration.userId],
+    references: [user.id],
+  }),
+}))
+
 export * from './auth.schema'

@@ -69,6 +69,7 @@
     "@tiptap/html": "^3.23.1",
     "@tiptap/starter-kit": "^3.23.1",
     "@tiptap/suggestion": "^3.23.1",
+    "arctic": "^3.7.0",
     "better-sqlite3": "^12.9.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

@@ -79,6 +79,23 @@ import {
 } from '$lib/server/errors'
 import { emitEvent } from '$lib/server/events'
 import {
+  consumeOAuthState,
+  exchangeCodeForTokens,
+  generateOAuthParams,
+  generateOAuthState,
+  getAuthorizationUrl,
+} from '$lib/server/integrations/oauth'
+import type { OAuthState } from '$lib/server/integrations/oauth'
+import { getAvailableProviders, getProvider } from '$lib/server/integrations/providers'
+import {
+  checkIntegrationHealth,
+  createIntegration,
+  disconnectIntegration,
+  getIntegration,
+  listAllIntegrations,
+  listIntegrations,
+} from '$lib/server/integrations/service'
+import {
   createBroadcast,
   createNotification,
   getNotificationPreferences,
@@ -1828,6 +1845,148 @@ protectedApp.get('/webhooks/:id/deliveries', async (c) => {
   const limit = Number(c.req.query('limit') ?? '50')
   const deliveries = await listWebhookDeliveries(db, endpointId, Math.min(limit, 100))
   return c.json({ deliveries })
+})
+
+// ── Integrations (auth required) ────────────────────────────────────────
+
+protectedApp.get('/integrations/providers', async (c) => {
+  const { env } = c.get('services')
+  const providers = getAvailableProviders(env as Record<string, string | undefined>)
+  return c.json({ providers })
+})
+
+protectedApp.get('/integrations', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const integrations = await listIntegrations(db, userId)
+  return c.json({ integrations })
+})
+
+protectedApp.post('/integrations/connect/:provider', async (c) => {
+  const { db, env } = c.get('services')
+  const { id: userId } = c.get('user')
+  const provider = c.req.param('provider')
+
+  if (!getProvider(provider)) {
+    throw new NotFoundError()
+  }
+
+  const { codeVerifier, state: oauthState } = generateOAuthParams()
+  const stateData: OAuthState & { codeVerifier: string } = {
+    codeVerifier,
+    provider,
+    userId,
+  }
+  const state = generateOAuthState(stateData)
+
+  const baseUrl = env.ORIGIN ?? 'http://localhost:5173'
+  const authorizeUrl = getAuthorizationUrl(
+    provider,
+    state,
+    codeVerifier,
+    env as Record<string, string | undefined>,
+    baseUrl
+  )
+
+  return c.json({ url: authorizeUrl.toString() })
+})
+
+protectedApp.delete('/integrations/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const integrationId = c.req.param('id')
+  const result = await disconnectIntegration(db, integrationId, userId)
+  if (!result) throw new NotFoundError()
+  return c.json({ ok: true })
+})
+
+protectedApp.post('/integrations/:id/refresh', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const integrationId = c.req.param('id')
+  const record = await getIntegration(db, integrationId, userId)
+  if (!record) throw new NotFoundError()
+  const result = await checkIntegrationHealth(db, integrationId)
+  return c.json(result)
+})
+
+protectedApp.get('/integrations/:id/status', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const integrationId = c.req.param('id')
+  const record = await getIntegration(db, integrationId, userId)
+  if (!record) throw new NotFoundError()
+  const result = await checkIntegrationHealth(db, integrationId)
+  return c.json(result)
+})
+
+// OAuth callback (public — validates state token)
+app.get('/api/integrations/callback/:provider', async (c) => {
+  const code = c.req.query('code')
+  const state = c.req.query('state')
+  if (!code || !state) return c.json({ error: 'Missing code or state' }, 400)
+
+  const stateData = consumeOAuthState(state)
+  if (!stateData) return c.json({ error: 'Invalid or expired state' }, 400)
+  if (stateData.provider !== c.req.param('provider')) {
+    return c.json({ error: 'Provider mismatch' }, 400)
+  }
+
+  const { db, env } = c.get('services')
+
+  const codeVerifier = stateData.codeVerifier
+
+  if (!codeVerifier) return c.json({ error: 'Missing code verifier' }, 400)
+
+  try {
+    const baseUrl = env.ORIGIN ?? 'http://localhost:5173'
+    const tokens = await exchangeCodeForTokens(
+      stateData.provider,
+      code,
+      codeVerifier,
+      env as Record<string, string | undefined>,
+      baseUrl
+    )
+
+    const expiresAt = tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : undefined
+
+    const scopes = tokens.scope ? tokens.scope.split(' ') : []
+
+    const result = await createIntegration(db, {
+      accessToken: tokens.accessToken,
+      expiresAt,
+      provider: stateData.provider,
+      refreshToken: tokens.refreshToken,
+      scopes,
+      userId: stateData.userId,
+    })
+
+    const redirectUrl = stateData.redirectUrl ?? '/app/settings/integrations'
+    return c.redirect(redirectUrl)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Token exchange failed'
+    return c.json({ error: message }, 500)
+  }
+})
+
+// Admin integration routes
+adminApp.get('/admin/integrations', async (c) => {
+  const { db } = c.get('services')
+  const query = c.req.query()
+  const integrations = await listAllIntegrations(db, {
+    limit: Math.min(Number(query.limit ?? '50'), 100),
+    provider: query.provider,
+    status: query.status,
+  })
+  return c.json({ integrations })
+})
+
+adminApp.post('/admin/integrations/:id/health', async (c) => {
+  const { db } = c.get('services')
+  const integrationId = c.req.param('id')
+  const result = await checkIntegrationHealth(db, integrationId)
+  if (!result) throw new NotFoundError()
+  return c.json(result)
 })
 
 // ── Comments (auth required) ──────────────────────────────────────────
