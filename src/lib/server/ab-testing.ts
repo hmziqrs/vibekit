@@ -33,8 +33,9 @@ export async function listExperiments(db: DbClient, options?: { status?: string 
       .from(abExperiment)
       .where(and(...conditions))
       .orderBy(desc(abExperiment.createdAt))
+      .limit(200)
   }
-  return db.select().from(abExperiment).orderBy(desc(abExperiment.createdAt))
+  return db.select().from(abExperiment).orderBy(desc(abExperiment.createdAt)).limit(200)
 }
 
 export async function getExperiment(db: DbClient, key: string) {
@@ -140,6 +141,7 @@ export async function assignVariant(
     .select()
     .from(abAssignment)
     .where(and(...existingConditions))
+    .limit(1)
 
   if (existing.length > 0) {
     const assignment = existing[0] as Record<string, unknown>

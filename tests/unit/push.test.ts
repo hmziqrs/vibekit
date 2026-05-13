@@ -44,7 +44,10 @@ function createMockDb(
     insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(subscriptions),
+        limit: vi.fn().mockResolvedValue(subscriptions),
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue(subscriptions),
+        }),
       }),
     }),
   } as never

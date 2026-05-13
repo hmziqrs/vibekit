@@ -313,11 +313,22 @@ describe('ab-testing service', () => {
     // select().from(abEvent).where() → counts
     let selectCallCount = 0
     const fromFn = vi.fn().mockImplementation(() => ({
+      limit: vi.fn().mockImplementation(function (this: unknown) {
+        return this
+      }),
+      orderBy: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue(expRows),
+      }),
       where: vi.fn().mockImplementation(() => {
         selectCallCount++
-        // First call = getExperiment, second call = getExperimentVariants (in assignVariant)
-        if (selectCallCount === 1) return Promise.resolve(expRows)
-        return Promise.resolve(variants)
+        const limitFn = vi.fn().mockResolvedValue(selectCallCount === 1 ? expRows : variants)
+        // Return a thenable so `await` works directly, plus .limit() for chaining
+        const result = selectCallCount === 1 ? expRows : variants
+        const chainable = { limit: limitFn }
+        // Make it thenable (awaitable)
+        chainable.then = (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve)
+        chainable.catch = (reject: (v: unknown) => unknown) => Promise.resolve(result).catch(reject)
+        return chainable
       }),
     }))
 

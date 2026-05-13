@@ -44,7 +44,7 @@ export async function unsubscribeFromPush(db: AppDb, endpoint: string) {
 }
 
 export async function getUserPushSubscriptions(db: AppDb, userId: string) {
-  return db.select().from(pushSubscription).where(eq(pushSubscription.userId, userId))
+  return db.select().from(pushSubscription).where(eq(pushSubscription.userId, userId)).limit(50)
 }
 
 export async function sendPushNotification(
