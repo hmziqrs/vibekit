@@ -481,8 +481,8 @@ app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
         name,
         subject: 'Ban Appeal',
       })
-    } catch {
-      // Email failure should not fail the appeal submission
+    } catch (e) {
+      console.error('Failed to send ban appeal email:', e)
     }
   }
 
@@ -600,11 +600,9 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
       await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, async () => {
         await handleBounce(db, emailAddress)
       })
-    } catch {
-      // Email failure should not fail the re-subscription
+    } catch (e) {
+      console.error('Failed to send newsletter re-subscription email:', e)
     }
-
-    return c.json({ message: 'Check your inbox to confirm your subscription' })
   }
 
   // New subscriber
@@ -628,8 +626,8 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, async () => {
       await handleBounce(db, emailAddress)
     })
-  } catch {
-    // Email failure should not fail the subscription
+  } catch (e) {
+    console.error('Failed to send newsletter confirmation email:', e)
   }
 
   return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)
@@ -3319,8 +3317,8 @@ blogApp.post(
             siteName: extractMeta(html, 'og:site_name') || (oembed.provider_name as string),
             title: ogTitle || (oembed.title as string),
           })
-        } catch {
-          // OEmbed fetch failed, fall through to OG scraping
+        } catch (e) {
+          console.error('OEmbed fetch failed:', e)
         }
       }
 
