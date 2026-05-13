@@ -47,7 +47,8 @@ export function createS3Storage(): StorageClient {
           etag: result.ETag ?? undefined,
           size: result.ContentLength ?? undefined,
         }
-      } catch {
+      } catch (err) {
+        console.error(`S3 get failed for key "${key}":`, err)
         return null
       }
     },

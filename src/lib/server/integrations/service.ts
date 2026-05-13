@@ -135,7 +135,8 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
       if (!healthResult) {
         newStatus = 'error'
       }
-    } catch {
+    } catch (err) {
+      console.error(`Integration health check failed for ${record.provider}:`, err)
       newStatus = 'error'
     }
   }

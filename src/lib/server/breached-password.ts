@@ -53,7 +53,8 @@ export async function isBreachedPassword(
     cache.set(hash, { breached, expiresAt: Date.now() + CACHE_TTL_MS })
 
     return { breached, checked: true }
-  } catch {
+  } catch (err) {
+    console.error('Breached password check failed:', err)
     return { breached: false, checked: false }
   }
 }
