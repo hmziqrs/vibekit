@@ -11,7 +11,7 @@ function parseClampInt(
 ): number {
   if (!value) return fallback
   const n = Number(value)
-  if (!Number.isFinite(n)) return fallback
+  if (!Number.isInteger(n)) return fallback
   return Math.min(max, Math.max(min, n))
 }
 

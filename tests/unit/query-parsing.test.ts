@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 function parsePositiveInt(value: string | null | undefined, fallback: number): number {
   if (!value) return fallback
   const n = Number(value)
-  return Number.isFinite(n) && n > 0 ? n : fallback
+  return Number.isInteger(n) && n > 0 ? n : fallback
 }
 
 function parseClampInt(
@@ -15,7 +15,7 @@ function parseClampInt(
 ): number {
   if (!value) return fallback
   const n = Number(value)
-  if (!Number.isFinite(n)) return fallback
+  if (!Number.isInteger(n)) return fallback
   return Math.min(max, Math.max(min, n))
 }
 
@@ -50,8 +50,8 @@ describe('parsePositiveInt', () => {
     expect(parsePositiveInt(undefined, 1)).toBe(1)
   })
 
-  it('handles decimal strings by truncating', () => {
-    expect(parsePositiveInt('3.7', 1)).toBe(3.7)
+  it('rejects decimal strings', () => {
+    expect(parsePositiveInt('3.7', 1)).toBe(1)
   })
 
   it('uses the provided fallback', () => {

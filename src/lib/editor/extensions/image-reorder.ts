@@ -74,7 +74,7 @@ export const ImageReorder = Extension.create({
             removeIndicators(document)
 
             const sourcePos = Number(posStr)
-            if (!Number.isFinite(sourcePos)) return false
+            if (!Number.isInteger(sourcePos)) return false
 
             const coords = { x: event.clientX, y: event.clientY }
             const result = view.posAtCoords(coords)
