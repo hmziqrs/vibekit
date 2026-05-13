@@ -47,7 +47,10 @@ export function createD1SearchAdapter(db: {
     ): Promise<{ hits: SearchResult[]; total: number }> {
       const limit = options?.limit ?? 20
       const offset = options?.offset ?? 0
-      const sanitized = query.replace(/["*]/g, '').trim()
+      const sanitized = query
+        .replace(/["*()^]/g, '')
+        .replace(/\b(AND|OR|NOT|NEAR)\b/gi, '')
+        .trim()
 
       if (!sanitized) return { hits: [], total: 0 }
 

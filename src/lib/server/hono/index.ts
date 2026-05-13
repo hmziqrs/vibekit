@@ -463,9 +463,9 @@ app.get('/api/comments/:postId', async (c) => {
 
   const replyMap = new Map<string, typeof replies>()
   for (const reply of replies) {
-    const pid = reply.parentId!
-    if (!replyMap.has(pid)) replyMap.set(pid, [])
-    replyMap.get(pid)!.push(reply)
+    if (!reply.parentId) continue
+    if (!replyMap.has(reply.parentId)) replyMap.set(reply.parentId, [])
+    replyMap.get(reply.parentId)!.push(reply)
   }
 
   const totalResult = await db
@@ -6250,7 +6250,7 @@ adminApp.get('/media', async (c) => {
     const prefixes = mimeMap[type] ?? []
     result.items = result.items.filter(
       (item: { contentType?: string }) =>
-        item.contentType && prefixes.some((p) => item.contentType!.startsWith(p))
+        item.contentType && prefixes.some((p) => item.contentType.startsWith(p))
     )
   }
 

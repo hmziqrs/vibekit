@@ -81,12 +81,12 @@ export async function sendPushNotification(
       }
       return null
     })
-    .filter(Boolean)
+    .filter((s): s is (typeof subs)[0] => s !== null)
 
   if (invalidSubs.length > 0) {
     await Promise.all(
       invalidSubs.map((sub) =>
-        db.delete(pushSubscription).where(eq(pushSubscription.endpoint, sub!.endpoint))
+        db.delete(pushSubscription).where(eq(pushSubscription.endpoint, sub.endpoint))
       )
     )
   }
