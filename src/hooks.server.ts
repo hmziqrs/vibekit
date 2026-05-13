@@ -153,8 +153,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           const resBody: Record<string, unknown> = await resClone.json()
           const resUser = resBody.user as Record<string, unknown> | undefined
           userId = typeof resUser?.id === 'string' ? resUser.id : undefined
-        } catch {
+        } catch (err) {
           // Response parsing failed — skip security event without userId
+          console.error('Failed to parse auth response for security event:', err)
         }
 
         if (userId) {
@@ -185,8 +186,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
                 userId,
               })
             }
-          } catch {
+          } catch (err) {
             // New device detection failed — non-critical, don't block login
+            console.error('New device detection failed:', err)
           }
         }
 
@@ -311,6 +313,7 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
       }
     } catch {
       // Config table may not exist yet (migration pending) — allow through
+      console.info('Maintenance mode check skipped (config unavailable)')
     }
   }
 
