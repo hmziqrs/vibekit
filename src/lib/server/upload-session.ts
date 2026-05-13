@@ -97,11 +97,7 @@ export async function failUploadSession(db: AppDb, sessionId: string) {
     .where(eq(uploadSession.id, sessionId))
 }
 
-export async function listUploadSessions(
-  db: AppDb,
-  userId: string,
-  options?: { status?: string }
-) {
+export async function listUploadSessions(db: AppDb, userId: string, options?: { status?: string }) {
   const conditions = [eq(uploadSession.userId, userId)]
   if (options?.status) {
     conditions.push(eq(uploadSession.status, options.status))

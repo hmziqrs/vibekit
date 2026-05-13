@@ -1,6 +1,6 @@
 import { blogPost, item } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
+import type { AppDb } from '$lib/server/services/types'
 import { eq, isNull } from 'drizzle-orm'
 
 import type { SearchDocument } from './types'
