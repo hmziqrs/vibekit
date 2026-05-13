@@ -151,6 +151,7 @@ export function initWebVitals(): void {
 }
 
 export function reportToConsole(): () => void {
+  if (!import.meta.env.DEV) return () => {}
   return onWebVital((metric) => {
     const color =
       metric.rating === 'good'

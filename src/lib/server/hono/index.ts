@@ -352,14 +352,26 @@ app.post('/api/config/resolve', withRateLimit('config-resolve', 30, 60_000), asy
   return c.json(resolved)
 })
 
+const VALID_IMAGE_FORMATS = ['avif', 'webp'] as const
+const VALID_IMAGE_FITS = ['contain', 'cover', 'crop', 'scale-down'] as const
+
 // Public: image URL builder (returns transformed URL)
 app.get('/api/image/:key', async (c) => {
   const key = decodeURIComponent(c.req.param('key'))
-  const width = Number(c.req.query('w')) || undefined
-  const height = Number(c.req.query('h')) || undefined
-  const format = c.req.query('f') as 'avif' | 'webp' | undefined
-  const fit = c.req.query('fit') as 'contain' | 'cover' | 'crop' | 'scale-down' | undefined
-  const quality = Number(c.req.query('q')) || undefined
+  const widthRaw = parseClampInt(c.req.query('w'), 0, 1, 4096)
+  const heightRaw = parseClampInt(c.req.query('h'), 0, 1, 4096)
+  const width = widthRaw > 0 ? widthRaw : undefined
+  const height = heightRaw > 0 ? heightRaw : undefined
+  const formatRaw = c.req.query('f')
+  const format = VALID_IMAGE_FORMATS.includes(formatRaw as 'avif' | 'webp')
+    ? (formatRaw as 'avif' | 'webp')
+    : undefined
+  const fitRaw = c.req.query('fit')
+  const fit = VALID_IMAGE_FITS.includes(fitRaw as 'contain' | 'cover' | 'crop' | 'scale-down')
+    ? (fitRaw as 'contain' | 'cover' | 'crop' | 'scale-down')
+    : undefined
+  const qualityRaw = parseClampInt(c.req.query('q'), 0, 1, 100)
+  const quality = qualityRaw > 0 ? qualityRaw : undefined
 
   const originalUrl = `/cdn/blog/${key}`
   const url = buildImageUrl(originalUrl, { fit, format, height, quality, width })
@@ -371,7 +383,10 @@ app.get('/api/image/:key', async (c) => {
 // Public: image srcset builder
 app.get('/api/image/:key/srcset', async (c) => {
   const key = decodeURIComponent(c.req.param('key'))
-  const format = c.req.query('f') as 'avif' | 'webp' | undefined
+  const formatRaw = c.req.query('f')
+  const format = VALID_IMAGE_FORMATS.includes(formatRaw as 'avif' | 'webp')
+    ? (formatRaw as 'avif' | 'webp')
+    : undefined
 
   const originalUrl = `/cdn/blog/${key}`
   const srcset = buildSrcset(originalUrl, undefined, { format })
@@ -1304,8 +1319,8 @@ protectedApp.post('/uploads/session/:id/chunk', async (c) => {
   const session = await getUploadSession(db, sessionId)
   if (!session || (session.userId as string) !== userId) throw new NotFoundError()
 
-  const chunkIndex = Number(c.req.query('index') ?? '0')
-  if (Number.isNaN(chunkIndex) || chunkIndex < 0) {
+  const chunkIndex = parseClampInt(c.req.query('index'), 0, 0)
+  if (chunkIndex < 0) {
     throw new BadRequestError('Invalid chunk index')
   }
 
@@ -6073,7 +6088,7 @@ adminApp.get('/integrations', async (c) => {
   const { db } = c.get('services')
   const query = c.req.query()
   const integrations = await listAllIntegrations(db, {
-    limit: Math.min(Number(query.limit ?? '50'), 100),
+    limit: parseClampInt(query.limit, 50, 1, 100),
     provider: query.provider,
     status: query.status,
   })
