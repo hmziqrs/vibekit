@@ -2,6 +2,15 @@ import { and, desc, eq, sql } from 'drizzle-orm'
 
 import type { SearchAdapter, SearchDocument, SearchResult } from './types'
 
+function safeParseJson(value: string | null | undefined): Record<string, unknown> {
+  if (!value) return {}
+  try {
+    return JSON.parse(value)
+  } catch {
+    return {}
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any
 
@@ -69,7 +78,7 @@ export function createD1SearchAdapter(db: DbClient): SearchAdapter {
         content: row.content as string,
         entityId: row.entity_id as string,
         entityType: row.entity_type as string,
-        metadata: JSON.parse((row.metadata as string) ?? '{}'),
+        metadata: safeParseJson(row.metadata as string),
         score: -(row.rank as number),
         title: row.title as string,
       }))

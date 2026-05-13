@@ -248,4 +248,14 @@ describe('renderWelcome', () => {
     expect(result.html).not.toContain('<img src=x')
     expect(result.html).toContain('&lt;img')
   })
+
+  it('escapes double quotes in contact email for mailto', () => {
+    const result = renderContactNotification({
+      email: '"injection"@test.com',
+      message: 'Hi',
+      name: 'User',
+      subject: 'Test',
+    })
+    expect(result.html).toContain('&quot;injection&quot;')
+  })
 })

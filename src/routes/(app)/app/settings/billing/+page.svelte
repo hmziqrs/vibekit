@@ -28,6 +28,15 @@
   let changing = $state(false)
   let canceling = $state(false)
 
+  function tryParseFeatures(features: string | null): string[] {
+    if (!features) return []
+    try {
+      return JSON.parse(features)
+    } catch {
+      return []
+    }
+  }
+
   const queryClient = useQueryClient()
 
   const plansQuery = createQuery(() => ({
@@ -203,9 +212,9 @@
             {#if plan.description}
               <p class="mt-1 text-[13px] text-text-muted">{plan.description}</p>
             {/if}
-            {#if plan.features}
+            {#if tryParseFeatures(plan.features).length > 0}
               <ul class="mt-3 space-y-1">
-                {#each JSON.parse(plan.features) as feature}
+                {#each tryParseFeatures(plan.features) as feature}
                   <li class="flex items-center gap-2 text-[12px] text-text-muted">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-400">
                       <polyline points="20 6 9 17 4 12" />
