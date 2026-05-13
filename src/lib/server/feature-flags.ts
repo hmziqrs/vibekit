@@ -12,9 +12,6 @@ export async function listFeatureFlags(
   db: AppDb,
   options?: { enabled?: boolean; environment?: string }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const conditions = []
   if (options?.enabled !== undefined) {
     conditions.push(eq(featureFlag.enabled, options.enabled))
@@ -26,21 +23,18 @@ export async function listFeatureFlags(
   }
 
   if (conditions.length > 0) {
-    return dbAny
+    return db
       .select()
       .from(featureFlag)
       .where(and(...conditions))
       .orderBy(desc(featureFlag.createdAt))
   }
 
-  return dbAny.select().from(featureFlag).orderBy(desc(featureFlag.createdAt))
+  return db.select().from(featureFlag).orderBy(desc(featureFlag.createdAt))
 }
 
 export async function getFeatureFlag(db: AppDb, key: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny.select().from(featureFlag).where(eq(featureFlag.key, key))
+  const rows = await db.select().from(featureFlag).where(eq(featureFlag.key, key))
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
@@ -58,11 +52,9 @@ export async function createFeatureFlag(
     rolloutPercentage?: number
   }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
   const id = uuid()
 
-  await dbAny.insert(featureFlag).values({
+  await db.insert(featureFlag).values({
     cohortRules: input.cohortRules ?? {},
     createdAt: new Date(),
     dependencies: input.dependencies ?? [],
@@ -94,9 +86,6 @@ export async function updateFeatureFlag(
     rolloutPercentage?: number
   }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const existing = await getFeatureFlag(db, key)
   if (!existing) return null
 
@@ -110,24 +99,19 @@ export async function updateFeatureFlag(
   if (input.dependencies !== undefined) updates.dependencies = input.dependencies
   if (input.environment !== undefined) updates.environment = input.environment
 
-  await dbAny.update(featureFlag).set(updates).where(eq(featureFlag.key, key))
+  await db.update(featureFlag).set(updates).where(eq(featureFlag.key, key))
   return { key }
 }
 
 export async function deleteFeatureFlag(db: AppDb, key: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-  await dbAny.delete(featureFlag).where(eq(featureFlag.key, key))
+  await db.delete(featureFlag).where(eq(featureFlag.key, key))
 }
 
 export async function toggleFeatureFlag(db: AppDb, key: string, enabled: boolean) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const existing = await getFeatureFlag(db, key)
   if (!existing) return null
 
-  await dbAny
+  await db
     .update(featureFlag)
     .set({ enabled, killSwitch: false, updatedAt: new Date() })
     .where(eq(featureFlag.key, key))
@@ -136,13 +120,10 @@ export async function toggleFeatureFlag(db: AppDb, key: string, enabled: boolean
 }
 
 export async function activateKillSwitch(db: AppDb, key: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const existing = await getFeatureFlag(db, key)
   if (!existing) return null
 
-  await dbAny
+  await db
     .update(featureFlag)
     .set({ enabled: false, killSwitch: true, updatedAt: new Date() })
     .where(eq(featureFlag.key, key))

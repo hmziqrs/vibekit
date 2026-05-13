@@ -1,4 +1,5 @@
 import { apiKey, apiKeyUsageLog } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 
@@ -20,17 +21,7 @@ async function hashKey(key: string): Promise<string> {
 }
 
 export async function createApiKey(
-  db: {
-    delete: (typeof import('$lib/server/db/schema'))['apiKey'] extends undefined
-      ? never
-      : (table: typeof apiKey) => { where: (cond: unknown) => Promise<void> }
-    insert: (table: typeof apiKey) => { values: (vals: unknown) => Promise<void> }
-    select: () => {
-      from: (table: typeof apiKey) => {
-        where: (cond: unknown) => Promise<{ keyHash: string }[]>
-      }
-    }
-  },
+  db: AppDb,
   userId: string,
   input: { expiresAt?: number; name: string; rateLimit?: number; scopes: string[] }
 ) {
@@ -38,10 +29,7 @@ export async function createApiKey(
   const keyHash = await hashKey(fullKey)
   const id = uuid()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny.insert(apiKey).values({
+  await db.insert(apiKey).values({
     expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
     id,
     keyHash,
@@ -58,13 +46,7 @@ export async function createApiKey(
 }
 
 export async function validateApiKey(
-  db: {
-    select: () => {
-      from: (table: typeof apiKey) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-  },
+  db: AppDb,
   bearerToken: string
 ): Promise<{
   id: string
@@ -77,10 +59,7 @@ export async function validateApiKey(
 } | null> {
   const keyHash = await hashKey(bearerToken)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny
+  const rows = await db
     .select()
     .from(apiKey)
     .where(and(eq(apiKey.keyHash, keyHash), isNull(apiKey.revokedAt)))
@@ -113,18 +92,8 @@ export async function validateApiKey(
   }
 }
 
-export async function touchApiKey(
-  db: {
-    update: (table: typeof apiKey) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
-  keyId: string
-) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny
+export async function touchApiKey(db: AppDb, keyId: string) {
+  await db
     .update(apiKey)
     .set({
       lastUsedAt: new Date(),
@@ -134,9 +103,7 @@ export async function touchApiKey(
 }
 
 export async function logApiKeyUsage(
-  db: {
-    insert: (table: typeof apiKeyUsageLog) => { values: (vals: unknown) => Promise<void> }
-  },
+  db: AppDb,
   input: {
     apiKeyId: string
     endpoint: string
@@ -146,10 +113,7 @@ export async function logApiKeyUsage(
     userAgent?: string
   }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny.insert(apiKeyUsageLog).values({
+  await db.insert(apiKeyUsageLog).values({
     apiKeyId: input.apiKeyId,
     createdAt: new Date(),
     endpoint: input.endpoint,
@@ -161,21 +125,8 @@ export async function logApiKeyUsage(
   })
 }
 
-export async function listApiKeys(
-  db: {
-    select: () => {
-      from: (table: typeof apiKey) => {
-        where: (cond: unknown) => Promise<unknown[]>
-        orderBy: (col: unknown) => Promise<unknown[]>
-      }
-    }
-  },
-  userId: string
-) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  return dbAny
+export async function listApiKeys(db: AppDb, userId: string) {
+  return db
     .select({
       createdAt: apiKey.createdAt,
       expiresAt: apiKey.expiresAt,
@@ -194,23 +145,11 @@ export async function listApiKeys(
 }
 
 export async function rotateApiKey(
-  db: {
-    select: () => {
-      from: (table: typeof apiKey) => {
-        where: (cond: unknown) => Promise<unknown[]>
-      }
-    }
-    update: (table: typeof apiKey) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   keyId: string,
   userId: string
 ): Promise<{ id: string; key: string; keyPrefix: string } | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny
+  const rows = await db
     .select()
     .from(apiKey)
     .where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId), isNull(apiKey.revokedAt)))
@@ -221,27 +160,13 @@ export async function rotateApiKey(
   const { fullKey, keyPrefix } = generateKey()
   const keyHash = await hashKey(fullKey)
 
-  await dbAny
-    .update(apiKey)
-    .set({ keyHash, keyPrefix, requestCount: 0 })
-    .where(eq(apiKey.id, keyId))
+  await db.update(apiKey).set({ keyHash, keyPrefix, requestCount: 0 }).where(eq(apiKey.id, keyId))
 
   return { id: keyId, key: fullKey, keyPrefix }
 }
 
-export async function revokeApiKey(
-  db: {
-    update: (table: typeof apiKey) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
-  keyId: string,
-  userId: string
-): Promise<boolean> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny
+export async function revokeApiKey(db: AppDb, keyId: string, userId: string): Promise<boolean> {
+  await db
     .update(apiKey)
     .set({ revokedAt: new Date() })
     .where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId), isNull(apiKey.revokedAt)))
@@ -249,32 +174,16 @@ export async function revokeApiKey(
   return true
 }
 
-export async function deleteApiKey(
-  db: {
-    delete: (table: typeof apiKey) => { where: (cond: unknown) => Promise<void> }
-  },
-  keyId: string,
-  userId: string
-) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny.delete(apiKey).where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId)))
+export async function deleteApiKey(db: AppDb, keyId: string, userId: string) {
+  await db.delete(apiKey).where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId)))
 }
 
 export async function updateApiKey(
-  db: {
-    update: (table: typeof apiKey) => {
-      set: (vals: unknown) => { where: (cond: unknown) => Promise<void> }
-    }
-  },
+  db: AppDb,
   keyId: string,
   userId: string,
   input: { name?: string; rateLimit?: number | null; scopes?: string[] }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const updates: Record<string, unknown> = {}
   if (input.name !== undefined) updates.name = input.name
   if (input.rateLimit !== undefined) updates.rateLimit = input.rateLimit
@@ -282,28 +191,14 @@ export async function updateApiKey(
 
   if (Object.keys(updates).length === 0) return
 
-  await dbAny
+  await db
     .update(apiKey)
     .set(updates)
     .where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId), isNull(apiKey.revokedAt)))
 }
 
-export async function getApiKeyUsage(
-  db: {
-    select: () => {
-      from: (table: typeof apiKeyUsageLog) => {
-        where: (cond: unknown) => Promise<unknown[]>
-        orderBy: (col: unknown) => { limit: (n: number) => Promise<unknown[]> }
-      }
-    }
-  },
-  keyId: string,
-  limit = 50
-) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  return dbAny
+export async function getApiKeyUsage(db: AppDb, keyId: string, limit = 50) {
+  return db
     .select()
     .from(apiKeyUsageLog)
     .where(eq(apiKeyUsageLog.apiKeyId, keyId))

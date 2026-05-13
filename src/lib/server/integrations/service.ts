@@ -7,9 +7,6 @@ import { getProvider } from './providers'
 import type { IntegrationStatus } from './providers'
 
 export async function listIntegrations(db: AppDb, userId: string, organizationId?: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const conditions = organizationId
     ? and(
         or(eq(integration.userId, userId), eq(integration.organizationId, organizationId)),
@@ -17,7 +14,7 @@ export async function listIntegrations(db: AppDb, userId: string, organizationId
       )
     : and(eq(integration.userId, userId), eq(integration.status, 'active'))
 
-  return dbAny.select().from(integration).where(conditions).orderBy(desc(integration.createdAt))
+  return db.select().from(integration).where(conditions).orderBy(desc(integration.createdAt))
 }
 
 export async function createIntegration(
@@ -34,11 +31,9 @@ export async function createIntegration(
     userId: string
   }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
   const id = uuid()
 
-  await dbAny.insert(integration).values({
+  await db.insert(integration).values({
     accessToken: input.accessToken,
     createdAt: new Date(),
     externalAccountId: input.externalAccountId ?? null,
@@ -68,10 +63,7 @@ export async function updateIntegrationTokens(
     refreshToken?: string
   }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny
+  await db
     .update(integration)
     .set({
       accessToken: input.accessToken,
@@ -85,10 +77,7 @@ export async function updateIntegrationTokens(
 }
 
 export async function disconnectIntegration(db: AppDb, integrationId: string, userId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny
+  const rows = await db
     .select()
     .from(integration)
     .where(and(eq(integration.id, integrationId), eq(integration.userId, userId)))
@@ -96,7 +85,7 @@ export async function disconnectIntegration(db: AppDb, integrationId: string, us
   const existing = rows[0] as { id: string } | undefined
   if (!existing) return null
 
-  await dbAny
+  await db
     .update(integration)
     .set({
       accessToken: '',
@@ -111,10 +100,7 @@ export async function disconnectIntegration(db: AppDb, integrationId: string, us
 }
 
 export async function getIntegration(db: AppDb, integrationId: string, userId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny
+  const rows = await db
     .select()
     .from(integration)
     .where(and(eq(integration.id, integrationId), eq(integration.userId, userId)))
@@ -123,10 +109,7 @@ export async function getIntegration(db: AppDb, integrationId: string, userId: s
 }
 
 export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny.select().from(integration).where(eq(integration.id, integrationId))
+  const rows = await db.select().from(integration).where(eq(integration.id, integrationId))
 
   const record = rows[0] as
     | {
@@ -142,12 +125,10 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
 
   let newStatus: IntegrationStatus = 'active'
 
-  // Check if token is expired
   if (record.tokenExpiresAt && new Date(record.tokenExpiresAt) < new Date()) {
     newStatus = 'expired'
   }
 
-  // Try a lightweight health check against the provider
   const provider = getProvider(record.provider)
   if (provider && record.accessToken) {
     try {
@@ -160,7 +141,7 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
     }
   }
 
-  await dbAny
+  await db
     .update(integration)
     .set({
       lastSyncedAt: new Date(),
@@ -173,15 +154,12 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
 }
 
 async function pingProvider(provider: string, _accessToken: string): Promise<boolean> {
-  // Lightweight health check per provider
   switch (provider) {
     case 'github':
     case 'slack':
     case 'discord':
     case 'notion':
     case 'linear': {
-      // These require actual API calls in production
-      // For now, return true if we have a token
       return true
     }
     default: {
@@ -194,8 +172,6 @@ export async function listAllIntegrations(
   db: AppDb,
   options?: { limit?: number; provider?: string; status?: string }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
   const limit = options?.limit ?? 50
 
   const conditions = []
@@ -207,7 +183,7 @@ export async function listAllIntegrations(
   }
 
   if (conditions.length > 0) {
-    return dbAny
+    return db
       .select()
       .from(integration)
       .where(and(...conditions))
@@ -215,5 +191,5 @@ export async function listAllIntegrations(
       .limit(limit)
   }
 
-  return dbAny.select().from(integration).orderBy(desc(integration.createdAt)).limit(limit)
+  return db.select().from(integration).orderBy(desc(integration.createdAt)).limit(limit)
 }
