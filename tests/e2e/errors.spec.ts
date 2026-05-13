@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { expect, test } from 'vitest'
 
 test.describe('error handling', () => {
   test('nonexistent page returns 404', async ({ page }) => {

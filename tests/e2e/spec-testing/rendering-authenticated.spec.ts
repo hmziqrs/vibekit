@@ -1,5 +1,4 @@
 import { test } from '@playwright/test'
-import { test } from 'vitest'
 
 import { runRenderingAudit } from './audit'
 import { ROUTES } from './manifest'

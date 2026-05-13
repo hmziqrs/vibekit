@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { expect, test } from 'vitest'
 
 test.describe('public pages', () => {
   test('homepage loads with hero text', async ({ page }) => {

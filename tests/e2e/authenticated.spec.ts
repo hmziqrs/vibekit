@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { expect, test } from 'vitest'
 
 import { ADMIN, USER, assertOnLogin, login, logout } from './helpers/auth'
 
