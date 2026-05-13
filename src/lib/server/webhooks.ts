@@ -46,10 +46,7 @@ export async function createWebhookEndpoint(
   const id = uuid()
   const secret = generateSecret()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny.insert(webhookEndpoint).values({
+  await db.insert(webhookEndpoint).values({
     active: true,
     createdAt: new Date(),
     description: input.description ?? null,
@@ -65,10 +62,7 @@ export async function createWebhookEndpoint(
 }
 
 export async function listWebhookEndpoints(db: AppDb, userId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  return dbAny
+  return db
     .select()
     .from(webhookEndpoint)
     .where(eq(webhookEndpoint.userId, userId))
@@ -81,10 +75,7 @@ export async function updateWebhookEndpoint(
   userId: string,
   input: { active?: boolean; description?: string; events?: string[]; url?: string }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny
+  const rows = await db
     .select()
     .from(webhookEndpoint)
     .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
@@ -98,25 +89,19 @@ export async function updateWebhookEndpoint(
   if (input.description !== undefined) updates.description = input.description
   if (input.active !== undefined) updates.active = input.active
 
-  await dbAny.update(webhookEndpoint).set(updates).where(eq(webhookEndpoint.id, endpointId))
+  await db.update(webhookEndpoint).set(updates).where(eq(webhookEndpoint.id, endpointId))
 
   return { id: endpointId }
 }
 
 export async function deleteWebhookEndpoint(db: AppDb, endpointId: string, userId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  await dbAny
+  await db
     .delete(webhookEndpoint)
     .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
 }
 
 export async function getWebhookEndpoint(db: AppDb, endpointId: string, userId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny
+  const rows = await db
     .select()
     .from(webhookEndpoint)
     .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
@@ -142,10 +127,8 @@ export async function deliverWebhook(
   const signature = await hmacSign(payloadStr, endpoint.secret, occurredAt)
 
   // Create delivery record as pending
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
 
-  await dbAny.insert(webhookDelivery).values({
+  await db.insert(webhookDelivery).values({
     attemptCount: 0,
     createdAt: new Date(),
     endpointId: endpoint.id,
@@ -176,7 +159,7 @@ export async function deliverWebhook(
     const responseBody = await response.text().catch(() => '')
 
     if (response.ok) {
-      await dbAny
+      await db
         .update(webhookDelivery)
         .set({
           attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
@@ -193,7 +176,7 @@ export async function deliverWebhook(
     const attemptCount = 1
     const shouldRetry = attemptCount < MAX_RETRIES
 
-    await dbAny
+    await db
       .update(webhookDelivery)
       .set({
         attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
@@ -211,7 +194,7 @@ export async function deliverWebhook(
     const attemptCount = 1
     const shouldRetry = attemptCount < MAX_RETRIES
 
-    await dbAny
+    await db
       .update(webhookDelivery)
       .set({
         attemptCount: sql`${webhookDelivery.attemptCount} + 1`,
@@ -230,14 +213,8 @@ export async function dispatchWebhooksForEvent(
   eventType: string,
   data: Record<string, unknown>
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   // Find all active endpoints subscribed to this event type (or with wildcard '*')
-  const endpoints = await dbAny
-    .select()
-    .from(webhookEndpoint)
-    .where(eq(webhookEndpoint.active, true))
+  const endpoints = await db.select().from(webhookEndpoint).where(eq(webhookEndpoint.active, true))
 
   const matching = (
     endpoints as { events: string[]; id: string; secret: string; url: string }[]
@@ -254,10 +231,7 @@ export async function dispatchWebhooksForEvent(
 }
 
 export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  const rows = await dbAny.select().from(webhookDelivery).where(eq(webhookDelivery.id, deliveryId))
+  const rows = await db.select().from(webhookDelivery).where(eq(webhookDelivery.id, deliveryId))
 
   const delivery = rows[0] as
     | {
@@ -272,7 +246,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
 
   if (!delivery || delivery.status === 'success') return null
 
-  const endpointRows = await dbAny
+  const endpointRows = await db
     .select()
     .from(webhookEndpoint)
     .where(eq(webhookEndpoint.id, delivery.endpointId))
@@ -301,7 +275,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
 
     const responseBody = await response.text().catch(() => '')
 
-    await dbAny
+    await db
       .update(webhookDelivery)
       .set({
         attemptCount,
@@ -314,7 +288,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
       .where(eq(webhookDelivery.id, deliveryId))
 
     if (!response.ok && shouldRetry) {
-      await dbAny
+      await db
         .update(webhookDelivery)
         .set({
           nextRetryAt: new Date(Date.now() + getBackoffDelay(attemptCount)),
@@ -324,7 +298,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
 
     return { id: deliveryId, status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed' }
   } catch {
-    await dbAny
+    await db
       .update(webhookDelivery)
       .set({
         attemptCount,
@@ -339,10 +313,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
 }
 
 export async function listWebhookDeliveries(db: AppDb, endpointId: string, limit = 50) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
-  return dbAny
+  return db
     .select()
     .from(webhookDelivery)
     .where(eq(webhookDelivery.endpointId, endpointId))
@@ -354,11 +325,8 @@ export async function listAllDeliveries(
   db: AppDb,
   options?: { eventType?: string; limit?: number; status?: string }
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dbAny = db as any
-
   const limit = options?.limit ?? 50
-  let query = dbAny.select().from(webhookDelivery)
+  let query = db.select().from(webhookDelivery)
 
   const conditions = []
   if (options?.eventType) {
