@@ -970,7 +970,8 @@ app.post('/billing/webhooks/stripe', async (c) => {
     }
 
     return c.json({ received: true })
-  } catch {
+  } catch (err) {
+    console.error('Webhook processing failed:', err)
     return c.json({ error: 'Webhook processing failed' }, 500)
   }
 })
@@ -1283,9 +1284,10 @@ protectedApp.post('/upload-avatar', async (c) => {
   try {
     const { db } = c.get('services')
     await db.update(user).set({ image: imageUrl }).where(eq(user.id, userId))
-  } catch {
+  } catch (err) {
+    console.error('Failed to update avatar in DB:', err)
     // Clean up uploaded file if DB update fails
-    await storage.delete(key).catch((err) => console.error('Failed to clean up avatar:', err))
+    await storage.delete(key).catch((cleanupErr) => console.error('Failed to clean up avatar:', cleanupErr))
     throw new Error('Failed to update avatar')
   }
 
