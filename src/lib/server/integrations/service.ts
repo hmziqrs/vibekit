@@ -3,8 +3,7 @@ import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, or } from 'drizzle-orm'
 
-import { getProvider } from './providers'
-import type { IntegrationStatus } from './providers'
+import { getProvider, type IntegrationStatus } from './providers'
 
 export async function listIntegrations(db: AppDb, userId: string, organizationId?: string) {
   const conditions = organizationId

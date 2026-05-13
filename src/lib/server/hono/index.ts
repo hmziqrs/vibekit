@@ -849,7 +849,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
     const body = await c.req.text()
     let event: Awaited<ReturnType<typeof verifyWebhookSignature>>
     try {
-      event = await verifyWebhookSignature(stripe, body, signature, webhookSecret)
+      event = await verifyWebhookSignature(stripe, { body, signature, webhookSecret })
     } catch {
       return c.json({ error: 'Invalid signature' }, 400)
     }

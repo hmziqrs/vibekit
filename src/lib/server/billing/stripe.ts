@@ -89,10 +89,8 @@ export async function listPaymentMethods(stripe: Stripe, customerId: string) {
 
 export async function verifyWebhookSignature(
   stripe: Stripe,
-  body: string | Buffer,
-  signature: string,
-  webhookSecret: string
+  input: { body: string | Buffer; signature: string; webhookSecret: string }
 ) {
-  const event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  const event = stripe.webhooks.constructEvent(input.body, input.signature, input.webhookSecret)
   return event
 }

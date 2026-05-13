@@ -283,12 +283,11 @@ describe('verifyWebhookSignature', () => {
     const mockEvent = { type: 'checkout.session.completed' }
     mockConstructEvent.mockReturnValue(mockEvent)
 
-    const event = await verifyWebhookSignature(
-      createMockStripe(),
-      '{"type":"test"}',
-      'sig_header_value',
-      'whsec_123'
-    )
+    const event = await verifyWebhookSignature(createMockStripe(), {
+      body: '{"type":"test"}',
+      signature: 'sig_header_value',
+      webhookSecret: 'whsec_123',
+    })
 
     expect(mockConstructEvent).toHaveBeenCalledWith(
       '{"type":"test"}',
@@ -305,7 +304,11 @@ describe('verifyWebhookSignature', () => {
     })
 
     await expect(
-      verifyWebhookSignature(createMockStripe(), 'body', 'bad_sig', 'whsec_123')
+      verifyWebhookSignature(createMockStripe(), {
+        body: 'body',
+        signature: 'bad_sig',
+        webhookSecret: 'whsec_123',
+      })
     ).rejects.toThrow('Invalid signature')
   })
 
@@ -316,7 +319,11 @@ describe('verifyWebhookSignature', () => {
     })
 
     await expect(
-      verifyWebhookSignature(createMockStripe(), 'body', 'sig', 'wrong_secret')
+      verifyWebhookSignature(createMockStripe(), {
+        body: 'body',
+        signature: 'sig',
+        webhookSecret: 'wrong_secret',
+      })
     ).rejects.toThrow('No signatures found')
   })
 
@@ -328,12 +335,11 @@ describe('verifyWebhookSignature', () => {
     }
     mockConstructEvent.mockReturnValue(event)
 
-    const result = await verifyWebhookSignature(
-      createMockStripe(),
-      'raw_body',
-      'valid_sig',
-      'whsecret'
-    )
+    const result = await verifyWebhookSignature(createMockStripe(), {
+      body: 'raw_body',
+      signature: 'valid_sig',
+      webhookSecret: 'whsecret',
+    })
 
     expect(result.type).toBe('invoice.payment_succeeded')
     expect(result.data.object.id).toBe('evt_123')

@@ -1,7 +1,7 @@
 import { configVersion, systemConfig } from '$lib/server/db/schema'
 import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 export async function getConfigValue(db: AppDb, key: string, environment?: string) {
   // First try environment-specific value

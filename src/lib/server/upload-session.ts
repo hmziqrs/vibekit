@@ -1,7 +1,7 @@
 import { uploadSession } from '$lib/server/db/schema'
 import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
-import { and, desc, eq, lt, sql } from 'drizzle-orm'
+import { and, desc, eq, lt } from 'drizzle-orm'
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
