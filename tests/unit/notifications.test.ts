@@ -164,4 +164,118 @@ describe('createBroadcast', () => {
     // 2 insert calls: batch of 100 + batch of 50
     expect(db._insertFn).toHaveBeenCalledTimes(2)
   })
+
+  it('broadcasts to admins target', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
+    const db = createMockDb()
+    const getUserIds = vi.fn().mockResolvedValue(['admin-1', 'admin-2'])
+
+    const count = await createBroadcast(
+      db,
+      {
+        target: 'admins',
+        title: 'Admin Notice',
+      },
+      getUserIds
+    )
+
+    expect(getUserIds).toHaveBeenCalledWith('admins')
+    expect(count).toBe(2)
+    expect(db._insertFn).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('setNotificationPreference', () => {
+  it('updates existing preference', async () => {
+    const { setNotificationPreference } = await import('$lib/server/notifications')
+    const updateWhereFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            get: vi.fn().mockResolvedValue({ id: 'pref-1' }),
+          }),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: updateWhereFn }),
+      }),
+      insert: vi.fn(),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    await setNotificationPreference(db, {
+      channel: 'in_app',
+      enabled: false,
+      type: 'billing',
+      userId: 'user-1',
+    })
+
+    expect(updateWhereFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('inserts new preference when none exists', async () => {
+    const { setNotificationPreference } = await import('$lib/server/notifications')
+    const insertValuesFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            get: vi.fn().mockResolvedValue(null),
+          }),
+        }),
+      }),
+      update: vi.fn(),
+      insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    await setNotificationPreference(db, {
+      channel: 'email',
+      enabled: true,
+      type: 'marketing',
+      userId: 'user-2',
+    })
+
+    expect(insertValuesFn).toHaveBeenCalledTimes(1)
+    const inserted = insertValuesFn.mock.calls[0][0] as Record<string, unknown>
+    expect(inserted.channel).toBe('email')
+    expect(inserted.enabled).toBe(true)
+    expect(inserted.type).toBe('marketing')
+  })
+})
+
+describe('getNotificationPreferences', () => {
+  it('returns preferences for user', async () => {
+    const { getNotificationPreferences } = await import('$lib/server/notifications')
+    const mockPrefs = [
+      { channel: 'in_app', enabled: true, type: 'general' },
+      { channel: 'email', enabled: false, type: 'billing' },
+    ]
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(mockPrefs),
+        }),
+      }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    const prefs = await getNotificationPreferences(db, 'user-1')
+
+    expect(prefs).toEqual(mockPrefs)
+    expect(prefs).toHaveLength(2)
+  })
+
+  it('returns empty array when no preferences', async () => {
+    const { getNotificationPreferences } = await import('$lib/server/notifications')
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    const prefs = await getNotificationPreferences(db, 'user-no-prefs')
+
+    expect(prefs).toEqual([])
+  })
 })

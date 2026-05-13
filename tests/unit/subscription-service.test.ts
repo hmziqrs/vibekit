@@ -432,3 +432,198 @@ describe('getBillingOverview', () => {
     expect(overview.planDistribution).toEqual([])
   })
 })
+
+describe('changeSubscriptionPlan success paths', () => {
+  it('logs upgraded event when new plan costs more', async () => {
+    const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1) return Promise.resolve({ planId: 'plan-starter' })
+      if (callIdx === 2) return Promise.resolve({ priceInCents: 0 })
+      if (callIdx === 3) return Promise.resolve({ priceInCents: 2900 })
+      return Promise.resolve(null)
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn, get: getFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+
+    const insertValuesFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
+      select: selectFn,
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    await changeSubscriptionPlan(db, 'sub-1', 'plan-pro')
+
+    const eventArg = insertValuesFn.mock.calls[0][0] as Record<string, unknown>
+    expect(eventArg.type).toBe('upgraded')
+    expect(eventArg.fromPlanId).toBe('plan-starter')
+    expect(eventArg.toPlanId).toBe('plan-pro')
+  })
+
+  it('logs downgraded event when new plan costs less', async () => {
+    const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1) return Promise.resolve({ planId: 'plan-pro' })
+      if (callIdx === 2) return Promise.resolve({ priceInCents: 2900 })
+      if (callIdx === 3) return Promise.resolve({ priceInCents: 0 })
+      return Promise.resolve(null)
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn, get: getFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+
+    const insertValuesFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
+      select: selectFn,
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    await changeSubscriptionPlan(db, 'sub-1', 'plan-starter')
+
+    const eventArg = insertValuesFn.mock.calls[0][0] as Record<string, unknown>
+    expect(eventArg.type).toBe('downgraded')
+  })
+
+  it('logs downgraded when plans cost the same', async () => {
+    const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1) return Promise.resolve({ planId: 'plan-a' })
+      if (callIdx === 2) return Promise.resolve({ priceInCents: 2900 })
+      if (callIdx === 3) return Promise.resolve({ priceInCents: 2900 })
+      return Promise.resolve(null)
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn, get: getFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+
+    const insertValuesFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
+      select: selectFn,
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    await changeSubscriptionPlan(db, 'sub-1', 'plan-b')
+
+    const eventArg = insertValuesFn.mock.calls[0][0] as Record<string, unknown>
+    expect(eventArg.type).toBe('downgraded')
+  })
+
+  it('handles old plan not found (defaults to downgraded)', async () => {
+    const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1) return Promise.resolve({ planId: 'plan-old' })
+      if (callIdx === 2) return Promise.resolve(null)
+      if (callIdx === 3) return Promise.resolve({ priceInCents: 1000 })
+      return Promise.resolve(null)
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn, get: getFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+
+    const insertValuesFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
+      select: selectFn,
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    } as unknown as import('$lib/server/services/types').AppDb
+
+    await changeSubscriptionPlan(db, 'sub-1', 'plan-new')
+
+    const eventArg = insertValuesFn.mock.calls[0][0] as Record<string, unknown>
+    expect(eventArg.type).toBe('downgraded')
+  })
+})
+
+describe('calculateProration edge cases', () => {
+  let calculateProration: (input: {
+    currentPeriodEnd: Date
+    currentPeriodStart: Date
+    newPlanPriceInCents: number
+    oldPlanPriceInCents: number
+  }) => number
+
+  beforeAll(async () => {
+    const mod = await import('$lib/server/billing/subscription-service')
+    calculateProration = mod.calculateProration
+  })
+
+  it('returns 0 when switching from expensive to free plan mid-period', () => {
+    const periodStart = new Date('2026-05-01')
+    const periodEnd = new Date('2026-06-01')
+    vi.useFakeTimers({ now: new Date('2026-05-15') })
+
+    const result = calculateProration({
+      currentPeriodEnd: periodEnd,
+      currentPeriodStart: periodStart,
+      newPlanPriceInCents: 0,
+      oldPlanPriceInCents: 2900,
+    })
+
+    expect(result).toBe(0)
+    vi.useRealTimers()
+  })
+
+  it('returns new plan price exactly at period end', () => {
+    const periodStart = new Date('2026-05-01')
+    const periodEnd = new Date('2026-06-01')
+    vi.useFakeTimers({ now: periodEnd })
+
+    const result = calculateProration({
+      currentPeriodEnd: periodEnd,
+      currentPeriodStart: periodStart,
+      newPlanPriceInCents: 4900,
+      oldPlanPriceInCents: 2900,
+    })
+
+    expect(result).toBe(4900)
+    vi.useRealTimers()
+  })
+
+  it('returns 0 when credit exceeds new plan price', () => {
+    const periodStart = new Date('2026-05-01')
+    const periodEnd = new Date('2026-06-01')
+    vi.useFakeTimers({ now: new Date('2026-05-02') })
+
+    const result = calculateProration({
+      currentPeriodEnd: periodEnd,
+      currentPeriodStart: periodStart,
+      newPlanPriceInCents: 500,
+      oldPlanPriceInCents: 10000,
+    })
+
+    expect(result).toBe(0)
+    vi.useRealTimers()
+  })
+
+  it('handles exact period boundary (remainingMs == 0)', () => {
+    const periodStart = new Date('2026-05-01T00:00:00Z')
+    const periodEnd = new Date('2026-05-01T00:00:00Z')
+    const result = calculateProration({
+      currentPeriodEnd: periodEnd,
+      currentPeriodStart: periodStart,
+      newPlanPriceInCents: 2900,
+      oldPlanPriceInCents: 2900,
+    })
+
+    expect(result).toBe(2900)
+  })
+})

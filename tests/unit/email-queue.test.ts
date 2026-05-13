@@ -156,4 +156,105 @@ describe('EmailQueue', () => {
     errorSpy.mockRestore()
     vi.useRealTimers()
   })
+
+  it('retries when send resolves with ok: false (non-exception failure)', async () => {
+    const { EmailQueue } = await import('$lib/server/email/queue')
+    const client = {
+      send: vi.fn().mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce({ ok: true }),
+    }
+    vi.useFakeTimers()
+    const queue = new EmailQueue(client)
+
+    queue.enqueue(
+      {
+        from: 'noreply@vibekit.com',
+        html: '<p>Soft fail</p>',
+        subject: 'Test',
+        to: 'soft@test.com',
+      },
+      { maxRetries: 3 }
+    )
+
+    // First attempt returns ok: false
+    await vi.advanceTimersByTimeAsync(0)
+    expect(client.send).toHaveBeenCalledTimes(1)
+
+    // Retry should happen after delay
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(client.send).toHaveBeenCalledTimes(2)
+
+    vi.useRealTimers()
+  })
+
+  it('calls onFinalFailure when send consistently returns ok: false', async () => {
+    const { EmailQueue } = await import('$lib/server/email/queue')
+    const client = {
+      send: vi.fn().mockResolvedValue({ ok: false }),
+    }
+    vi.useFakeTimers()
+    const onFinalFailure = vi.fn().mockResolvedValue(undefined)
+    const queue = new EmailQueue(client)
+
+    queue.enqueue(
+      {
+        from: 'noreply@vibekit.com',
+        html: '<p>Permanent soft fail</p>',
+        subject: 'Test',
+        to: 'permsoft@test.com',
+      },
+      { maxRetries: 2, onFinalFailure }
+    )
+
+    // Attempt 1
+    await vi.advanceTimersByTimeAsync(0)
+    expect(client.send).toHaveBeenCalledTimes(1)
+
+    // Attempt 2 (retry 1)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(client.send).toHaveBeenCalledTimes(2)
+
+    // onFinalFailure should have been called
+    expect(onFinalFailure).toHaveBeenCalledTimes(1)
+
+    vi.useRealTimers()
+  })
+
+  it('uses default maxRetries of 3 when not specified', async () => {
+    const { EmailQueue } = await import('$lib/server/email/queue')
+    const client = {
+      send: vi.fn().mockRejectedValue(new Error('fail')),
+    }
+    vi.useFakeTimers()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onFinalFailure = vi.fn().mockResolvedValue(undefined)
+    const queue = new EmailQueue(client)
+
+    queue.enqueue(
+      {
+        from: 'noreply@vibekit.com',
+        html: '<p>Default</p>',
+        subject: 'Test',
+        to: 'default@test.com',
+      },
+      { onFinalFailure }
+    )
+
+    // Attempt 1
+    await vi.advanceTimersByTimeAsync(0)
+    expect(client.send).toHaveBeenCalledTimes(1)
+
+    // Attempt 2 (retry 1)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(client.send).toHaveBeenCalledTimes(2)
+
+    // Attempt 3 (retry 2)
+    await vi.advanceTimersByTimeAsync(4000)
+    expect(client.send).toHaveBeenCalledTimes(3)
+
+    // Should be final failure now (3 attempts = default maxRetries)
+    expect(onFinalFailure).toHaveBeenCalledTimes(1)
+
+    errorSpy.mockRestore()
+    vi.useRealTimers()
+  })
 })
