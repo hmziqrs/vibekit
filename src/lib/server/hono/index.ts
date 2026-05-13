@@ -1239,7 +1239,8 @@ protectedApp.post('/upload-avatar', async (c) => {
   }
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-  const key = `avatars/${userId}.${ext}`
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg'
+  const key = `avatars/${userId}.${safeExt}`
   const buffer = await file.arrayBuffer()
 
   await storage.put(key, new Uint8Array(buffer), {
@@ -3226,6 +3227,9 @@ blogApp.post(
 
 blogApp.delete('/media/:key', withRateLimit('blog-mutate'), async (c) => {
   const key = decodeURIComponent(c.req.param('key'))
+  if (!key.startsWith('blog/') || key.includes('..')) {
+    throw new BadRequestError('Invalid media key')
+  }
   await c.get('services').storage.delete(key)
   return c.json({ success: true })
 })
