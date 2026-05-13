@@ -627,3 +627,69 @@ describe('calculateProration edge cases', () => {
     expect(result).toBe(2900)
   })
 })
+
+describe('checkUsageLimit', () => {
+  function createCheckMock(getResult: unknown) {
+    const getFn = vi.fn().mockResolvedValue(getResult)
+    const limitFn = vi.fn().mockReturnValue({ get: getFn })
+    const orderByFn = vi.fn().mockReturnValue({ get: getFn, limit: limitFn })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn, orderBy: orderByFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+    return {
+      db: { select: selectFn } as unknown as import('$lib/server/services/types').AppDb,
+      getFn,
+    }
+  }
+
+  it('returns not exceeded when user has no subscription', async () => {
+    const { checkUsageLimit } = await import('$lib/server/billing/subscription-service')
+    const { db, getFn } = createCheckMock(null)
+    getFn.mockResolvedValue(null)
+
+    const result = await checkUsageLimit(db, {
+      metricType: 'api_calls',
+      periodEnd: new Date('2026-06-01'),
+      periodStart: new Date('2026-05-01'),
+      userId: 'user-no-sub',
+    })
+
+    expect(result.exceeded).toBe(false)
+    expect(result.limit).toBeNull()
+    expect(result.current).toBe(0)
+  })
+
+  it('returns not exceeded for inactive subscription', async () => {
+    const { checkUsageLimit } = await import('$lib/server/billing/subscription-service')
+    const { db, getFn } = createCheckMock(null)
+    getFn.mockResolvedValueOnce({ planId: 'plan-1', status: 'canceled' })
+
+    const result = await checkUsageLimit(db, {
+      metricType: 'api_calls',
+      periodEnd: new Date('2026-06-01'),
+      periodStart: new Date('2026-05-01'),
+      userId: 'user-canceled',
+    })
+
+    expect(result.exceeded).toBe(false)
+    expect(result.limit).toBeNull()
+  })
+
+  it('returns not exceeded when plan has no limits defined', async () => {
+    const { checkUsageLimit } = await import('$lib/server/billing/subscription-service')
+    const { db, getFn } = createCheckMock(null)
+    getFn
+      .mockResolvedValueOnce({ planId: 'plan-custom', status: 'active' })
+      .mockResolvedValueOnce({ slug: 'enterprise', features: null })
+
+    const result = await checkUsageLimit(db, {
+      metricType: 'api_calls',
+      periodEnd: new Date('2026-06-01'),
+      periodStart: new Date('2026-05-01'),
+      userId: 'user-enterprise',
+    })
+
+    expect(result.exceeded).toBe(false)
+    expect(result.limit).toBeNull()
+  })
+})

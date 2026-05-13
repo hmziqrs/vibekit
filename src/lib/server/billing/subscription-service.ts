@@ -258,6 +258,7 @@ export async function recordUsage(
   })
 }
 
+// eslint-disable-next-line max-params
 export async function getUsageForPeriod(
   db: AppDb,
   subId: string,
@@ -274,6 +275,59 @@ export async function getUsageForPeriod(
         lte(usageRecord.periodEnd, periodEnd)
       )
     )
+}
+
+// Default plan limits for the built-in plans. Extend or override per deployment.
+const DEFAULT_PLAN_LIMITS: Record<string, Record<string, number>> = {
+  pro: { api_calls: 50_000, storage: 10_000 },
+  starter: { api_calls: 1000, storage: 100 },
+}
+
+function parsePlanLimits(planSlug: string, featuresJson: string | null): Record<string, number> {
+  if (featuresJson) {
+    try {
+      const parsed = JSON.parse(featuresJson)
+      // If features contains a "limits" object, use it
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'limits' in parsed) {
+        return (parsed as Record<string, unknown>).limits as Record<string, number>
+      }
+    } catch {
+      // Fall through to defaults
+    }
+  }
+  return DEFAULT_PLAN_LIMITS[planSlug] ?? {}
+}
+
+export async function checkUsageLimit(
+  db: AppDb,
+  input: {
+    metricType: 'api_calls' | 'requests' | 'seats' | 'storage'
+    periodEnd: Date
+    periodStart: Date
+    userId: string
+  }
+): Promise<{ current: number; exceeded: boolean; limit: number | null }> {
+  const sub = await getUserSubscription(db, input.userId)
+  if (!sub || (sub.status !== 'active' && sub.status !== 'trialing')) {
+    return { current: 0, exceeded: false, limit: null }
+  }
+
+  const plan = await getPlanById(db, sub.planId)
+  if (!plan) {
+    return { current: 0, exceeded: false, limit: null }
+  }
+
+  const limits = parsePlanLimits(plan.slug, plan.features as string | null)
+  const metricLimit = limits[input.metricType]
+
+  if (!metricLimit) {
+    return { current: 0, exceeded: false, limit: null }
+  }
+
+  const usage = await getUsageForPeriod(db, sub.id, input.periodStart, input.periodEnd)
+  const current = usage.reduce((sum, r) => sum + (r.quantity as number), 0)
+
+  return { current, exceeded: current >= metricLimit, limit: metricLimit }
 }
 
 export async function getBillingOverview(db: AppDb) {
