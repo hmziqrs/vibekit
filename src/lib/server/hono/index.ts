@@ -1760,7 +1760,9 @@ protectedApp.post('/billing/portal', async (c) => {
 
   const body = await c.req.json<{ returnUrl: string }>().catch(() => ({ returnUrl: '' }))
   if (!body.returnUrl) throw new BadRequestError('returnUrl is required')
-  if (!body.returnUrl.startsWith('/') && !body.returnUrl.startsWith(env.ORIGIN)) {
+  const isRelative = body.returnUrl.startsWith('/') && !body.returnUrl.startsWith('//')
+  const isSameOrigin = !!env.ORIGIN && body.returnUrl.startsWith(env.ORIGIN)
+  if (!isRelative && !isSameOrigin) {
     throw new BadRequestError('returnUrl must be a relative path')
   }
   const { createBillingPortalSession } = await import('$lib/server/billing/stripe')
