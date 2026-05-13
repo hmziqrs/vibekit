@@ -835,7 +835,12 @@ app.post('/billing/webhooks/stripe', async (c) => {
 
   try {
     const body = await c.req.text()
-    const event = await verifyWebhookSignature(stripe, body, signature, webhookSecret)
+    let event: Awaited<ReturnType<typeof verifyWebhookSignature>>
+    try {
+      event = await verifyWebhookSignature(stripe, body, signature, webhookSecret)
+    } catch {
+      return c.json({ error: 'Invalid signature' }, 400)
+    }
 
     const { db } = c.get('services')
     switch (event.type) {
@@ -924,7 +929,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
 
     return c.json({ received: true })
   } catch {
-    return c.json({ error: 'Invalid signature' }, 400)
+    return c.json({ error: 'Webhook processing failed' }, 500)
   }
 })
 
