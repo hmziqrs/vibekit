@@ -192,10 +192,20 @@
     }
   }
 
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+  }
+
   function highlightMatch(text: string, term: string): string {
-    if (!term) return text
-    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)})`, 'gi')
-    return text.replace(regex, '<mark class="bg-brand/20 text-text-primary rounded px-0.5">$1</mark>')
+    const escaped = escapeHtml(text)
+    if (!term) return escaped
+    const escapedTerm = escapeHtml(term)
+    const regex = new RegExp(`(${escapedTerm.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)})`, 'gi')
+    return escaped.replace(regex, '<mark class="bg-brand/20 text-text-primary rounded px-0.5">$1</mark>')
   }
 </script>
 

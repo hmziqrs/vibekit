@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { sanitizeHtml } from '$lib/editor/utils/clean-paste'
+
   interface Props {
     articleId: string
     articleSlug: string
@@ -13,6 +15,8 @@
     content,
     onUpdateAttrs,
   }: Props = $props()
+
+  const safeContent = $derived(sanitizeHtml(content))
 </script>
 
 <div class="my-3 rounded-lg border border-brand/30 bg-brand/5 overflow-hidden" contenteditable="false">
@@ -33,7 +37,7 @@
   </div>
   {#if content}
     <div class="px-4 py-3 text-sm text-text-secondary prose-sm">
-      {@html content}
+      {@html safeContent}
     </div>
   {:else}
     <div class="px-4 py-3 text-sm text-text-faint italic">
