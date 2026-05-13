@@ -325,7 +325,7 @@ const app = new Hono()
   })
 
 // Public: resolve config values (safe keys only)
-app.post('/api/config/resolve', async (c) => {
+app.post('/api/config/resolve', withRateLimit('config-resolve', 30, 60_000), async (c) => {
   const services = c.get('services')
   if (!services) return c.json({})
   const parsed = resolveConfigSchema.safeParse(await c.req.json().catch(() => ({})))
@@ -670,7 +670,7 @@ app.get('/api/newsletter/confirm', async (c) => {
   return c.redirect('/blog?newsletter=confirmed')
 })
 
-app.post('/api/newsletter/unsubscribe', async (c) => {
+app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) => {
   const parsed = unsubscribeSchema.safeParse(await c.req.json().catch(() => ({})))
   const token = (parsed.success ? parsed.data.token : undefined) ?? c.req.query('token')
   if (!token) return c.json({ error: { message: 'Missing token' } }, 400)

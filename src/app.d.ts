@@ -28,4 +28,10 @@ declare global {
     // Interface PageData {}
     // Interface PageState {}
   }
+
+  interface Window {
+    Scalar?: {
+      createApiReference(element: HTMLElement, options: Record<string, unknown>): void
+    }
+  }
 }

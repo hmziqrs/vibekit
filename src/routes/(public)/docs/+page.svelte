@@ -64,8 +64,7 @@ items = response.json()`,
     if (activeTab === 'reference' && scalarLoaded) {
       const tryInit = () => {
         const container = document.getElementById('scalar-container')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const {Scalar} = (window as any)
+        const Scalar = window.Scalar
         if (container && Scalar) {
           // Clear any existing content
           container.innerHTML = ''
