@@ -36,7 +36,7 @@ import {
   recordUsage,
   updatePlan,
 } from '$lib/server/billing/subscription-service'
-import { getConfigHistory, resolveConfig, setConfigValue } from '$lib/server/config-service'
+import { getConfigHistory, resolveConfig } from '$lib/server/config-service'
 import {
   account as accountTable,
   passkey,
@@ -44,12 +44,6 @@ import {
 } from '$lib/server/db/auth.schema'
 import {
   announcement,
-  apiKey,
-  apiKeyUsageLog,
-  abAssignment,
-  abEvent,
-  abExperiment,
-  abVariant,
   blogPost,
   blogPostRevision,
   blogPostView,
@@ -62,30 +56,21 @@ import {
   comment,
   contactSubmission,
   contentReport,
-  configVersion,
-  featureFlag,
   impersonationSession,
   notification,
-  notificationPreference,
   invoice,
   item,
   auditLog,
   organization,
   organizationInvitation,
   organizationMember,
-  paymentMethod,
-  pushSubscription,
   securityEvent,
   subscription,
-  subscriptionPlan,
   systemConfig,
   team,
   teamActivity,
   teamMember,
   user,
-  uploadSession,
-  webhookDelivery,
-  webhookEndpoint,
 } from '$lib/server/db/schema'
 import { handleBounce } from '$lib/server/email/bounce-handler'
 import { createEmailService } from '$lib/server/email/index'
@@ -151,11 +136,8 @@ import { createSearchService } from '$lib/server/search/service'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
 import {
-  cleanupExpiredSessions,
-  completeUploadSession,
   createUploadSession,
   deleteUploadSession,
-  failUploadSession,
   getUploadProgress,
   getUploadSession,
   listUploadSessions,
@@ -223,7 +205,7 @@ import {
   impersonateUserSchema,
   stopImpersonateSchema,
 } from '$lib/validators/admin'
-import { createApiKeySchema, rotateApiKeySchema, updateApiKeySchema } from '$lib/validators/api-key'
+import { createApiKeySchema, updateApiKeySchema } from '$lib/validators/api-key'
 import {
   checkoutSessionSchema,
   changePlanSchema,
@@ -240,7 +222,7 @@ import {
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
 import { pushSubscribeSchema, pushUnsubscribeSchema } from '$lib/validators/push'
-import { deleteSearchIndexSchema, indexDocumentSchema, searchSchema } from '$lib/validators/search'
+import { deleteSearchIndexSchema, indexDocumentSchema } from '$lib/validators/search'
 import {
   bulkDeleteMediaSchema,
   createUploadSessionSchema,
@@ -249,7 +231,6 @@ import {
 import {
   WEBHOOK_EVENT_TYPES,
   createWebhookEndpointSchema,
-  listDeliveriesSchema,
   updateWebhookEndpointSchema,
 } from '$lib/validators/webhook'
 import { zValidator } from '@hono/zod-validator'
@@ -1173,7 +1154,7 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
     userId: c.get('user').id,
   })
 
-  deindexEntity(db, id, 'item').catch((e) =>
+  deindexEntity(db, id, 'item').catch((error) =>
     console.error('Search deindex failed (item delete):', error)
   )
 
@@ -2327,7 +2308,7 @@ protectedApp.get('/integrations', async (c) => {
 })
 
 protectedApp.post('/integrations/connect/:provider', async (c) => {
-  const { db, env } = c.get('services')
+  const { env } = c.get('services')
   const { id: userId } = c.get('user')
   const provider = c.req.param('provider')
 
@@ -2335,7 +2316,7 @@ protectedApp.post('/integrations/connect/:provider', async (c) => {
     throw new NotFoundError()
   }
 
-  const { codeVerifier, state: oauthState } = generateOAuthParams()
+  const { codeVerifier } = generateOAuthParams()
   const stateData: OAuthState & { codeVerifier: string } = {
     codeVerifier,
     provider,
@@ -2416,7 +2397,7 @@ app.get('/api/integrations/callback/:provider', async (c) => {
 
     const scopes = tokens.scope ? tokens.scope.split(' ') : []
 
-    const result = await createIntegration(db, {
+    await createIntegration(db, {
       accessToken: tokens.accessToken,
       expiresAt,
       provider: stateData.provider,
@@ -3083,7 +3064,7 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  deindexEntity(db, id, 'blog_post').catch((e) =>
+  deindexEntity(db, id, 'blog_post').catch((error) =>
     console.error('Search deindex failed (blog delete):', error)
   )
 
@@ -3184,7 +3165,7 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  deindexEntity(db, id, 'blog_post').catch((e) =>
+  deindexEntity(db, id, 'blog_post').catch((error) =>
     console.error('Search deindex failed (blog archive):', error)
   )
 
