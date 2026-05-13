@@ -291,6 +291,7 @@ import {
 import type { OrgEnv, ProtectedEnv, TeamEnv } from './types'
 
 function parsePositiveInt(value: string | null | undefined, fallback: number): number {
+  if (!value) return fallback
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
@@ -301,6 +302,7 @@ function parseClampInt(
   min = 1,
   max = 100
 ): number {
+  if (!value) return fallback
   const n = Number(value)
   if (!Number.isFinite(n)) return fallback
   return Math.min(max, Math.max(min, n))
