@@ -861,6 +861,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
         const clientRef = session.client_reference_id
         const subId = session.subscription as string | null
         const customerId = session.customer as string | null
+        const metadata = session.metadata as Record<string, string> | null
 
         if (clientRef && subId) {
           const existingSub = await db
@@ -870,7 +871,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             .get()
 
           if (!existingSub) {
-            const planId = 'plan_pro' // Default plan for checkout
+            const planId = metadata?.planId ?? 'plan_pro'
             await createSubscription(db, {
               currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
               currentPeriodStart: new Date(),
@@ -885,18 +886,14 @@ app.post('/billing/webhooks/stripe', async (c) => {
       }
       case 'customer.subscription.updated': {
         const sub = event.data.object
+        const validStatuses = ['active', 'canceled', 'incomplete', 'past_due', 'paused', 'trialing']
+        const status = validStatuses.includes(sub.status) ? sub.status : 'paused'
         await db
           .update(subscription)
           .set({
             currentPeriodEnd: new Date(sub.current_period_end * 1000),
             currentPeriodStart: new Date(sub.current_period_start * 1000),
-            status: sub.status as
-              | 'active'
-              | 'canceled'
-              | 'incomplete'
-              | 'past_due'
-              | 'paused'
-              | 'trialing',
+            status,
           })
           .where(eq(subscription.stripeSubscriptionId, sub.id))
         break
