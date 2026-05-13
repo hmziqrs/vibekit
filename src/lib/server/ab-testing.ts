@@ -1,4 +1,5 @@
 import { abAssignment, abEvent, abExperiment, abVariant } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, sql } from 'drizzle-orm'
 
@@ -14,10 +15,7 @@ export interface ExperimentResult {
   zScore: number | null
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DbClient = any
-
-export async function listExperiments(db: DbClient, options?: { status?: string }) {
+export async function listExperiments(db: AppDb, options?: { status?: string }) {
   const conditions = []
   if (options?.status) {
     conditions.push(
@@ -38,13 +36,13 @@ export async function listExperiments(db: DbClient, options?: { status?: string 
   return db.select().from(abExperiment).orderBy(desc(abExperiment.createdAt)).limit(200)
 }
 
-export async function getExperiment(db: DbClient, key: string) {
+export async function getExperiment(db: AppDb, key: string) {
   const rows = await db.select().from(abExperiment).where(eq(abExperiment.key, key))
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
 export async function createExperiment(
-  db: DbClient,
+  db: AppDb,
   input: {
     description?: string
     key: string
@@ -85,7 +83,7 @@ export async function createExperiment(
 }
 
 export async function updateExperiment(
-  db: DbClient,
+  db: AppDb,
   key: string,
   input: {
     description?: string
@@ -111,16 +109,16 @@ export async function updateExperiment(
   return { key }
 }
 
-export async function deleteExperiment(db: DbClient, key: string) {
+export async function deleteExperiment(db: AppDb, key: string) {
   await db.delete(abExperiment).where(eq(abExperiment.key, key))
 }
 
-export async function getExperimentVariants(db: DbClient, experimentId: string) {
+export async function getExperimentVariants(db: AppDb, experimentId: string) {
   return db.select().from(abVariant).where(eq(abVariant.experimentId, experimentId))
 }
 
 export async function assignVariant(
-  db: DbClient,
+  db: AppDb,
   experimentKey: string,
   input: { sessionId?: string; userId?: string }
 ) {
@@ -193,7 +191,7 @@ export async function assignVariant(
 }
 
 export async function recordEvent(
-  db: DbClient,
+  db: AppDb,
   input: {
     eventName: string
     eventType: string
@@ -220,7 +218,7 @@ export async function recordEvent(
 }
 
 export async function getExperimentResults(
-  db: DbClient,
+  db: AppDb,
   experimentKey: string
 ): Promise<ExperimentResult[]> {
   const experiment = await getExperiment(db, experimentKey)

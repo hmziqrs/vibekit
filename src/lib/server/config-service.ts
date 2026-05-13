@@ -1,11 +1,9 @@
 import { configVersion, systemConfig } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, sql } from 'drizzle-orm'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DbClient = any
-
-export async function getConfigValue(db: DbClient, key: string, environment?: string) {
+export async function getConfigValue(db: AppDb, key: string, environment?: string) {
   // First try environment-specific value
   if (environment) {
     const envRows = await db
@@ -21,7 +19,7 @@ export async function getConfigValue(db: DbClient, key: string, environment?: st
 }
 
 export async function setConfigValue(
-  db: DbClient,
+  db: AppDb,
   input: {
     changedBy?: string
     description?: string
@@ -70,7 +68,7 @@ export async function setConfigValue(
 }
 
 export async function getConfigHistory(
-  db: DbClient,
+  db: AppDb,
   key?: string,
   options?: { limit?: number; offset?: number }
 ) {
@@ -100,7 +98,7 @@ export async function getConfigHistory(
     .offset(offset)
 }
 
-export async function resolveConfig(db: DbClient, keys: string[], environment?: string) {
+export async function resolveConfig(db: AppDb, keys: string[], environment?: string) {
   const result: Record<string, string> = {}
 
   for (const key of keys) {

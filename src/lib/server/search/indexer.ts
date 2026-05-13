@@ -1,11 +1,14 @@
 import { blogPost, item } from '$lib/server/db/schema'
+import type { AppDb } from '$lib/server/services/types'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
 import { eq, isNull } from 'drizzle-orm'
 
 import type { SearchDocument } from './types'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DbClient = any
+type DbClient = AppDb & {
+  all: (query: unknown) => Promise<unknown[]>
+  run: (query: unknown) => Promise<void>
+}
 
 function getAdapter(db: DbClient) {
   return createD1SearchAdapter(db)
