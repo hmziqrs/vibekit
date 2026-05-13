@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 import type {
   ListResult,
@@ -47,10 +48,19 @@ export function createS3Storage(): StorageClient {
           etag: result.ETag ?? undefined,
           size: result.ContentLength ?? undefined,
         }
-      } catch (err) {
-        console.error(`S3 get failed for key "${key}":`, err)
+      } catch (error) {
+        console.error(`S3 get failed for key "${key}":`, error)
         return null
       }
+    },
+
+    async getPresignedUrl(
+      key: string,
+      options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+        expiresIn: options?.expiresIn ?? 3600,
+      })
     },
 
     async list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult> {
