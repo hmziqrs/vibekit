@@ -290,6 +290,22 @@ import {
 } from './middleware'
 import type { OrgEnv, ProtectedEnv, TeamEnv } from './types'
 
+function parsePositiveInt(value: string | null | undefined, fallback: number): number {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+function parseClampInt(
+  value: string | null | undefined,
+  fallback: number,
+  min = 1,
+  max = 100
+): number {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(max, Math.max(min, n))
+}
+
 const validate = <T extends z.ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
     if (!result.success) {
@@ -367,8 +383,8 @@ app.get('/api/image/:key/srcset', async (c) => {
 app.get('/api/comments/:postId', async (c) => {
   const { db } = c.get('services')
   const postId = c.req.param('postId')
-  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
-  const limit = Math.min(50, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
   const offset = (page - 1) * limit
 
   // Get top-level approved comments
@@ -537,8 +553,8 @@ app.get('/api/search', async (c) => {
   const services = c.get('services')
   if (!services) return c.json({ hits: [], query: '', total: 0 })
   const q = c.req.query('q')?.trim() ?? ''
-  const limit = Math.min(50, Math.max(1, Number(c.req.query('limit') ?? '20')))
-  const offset = Math.max(0, Number(c.req.query('offset') ?? '0'))
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
+  const offset = parseClampInt(c.req.query('offset'), 0, 0, 10000)
   const types = c.req.query('types')?.split(',').filter(Boolean)
 
   if (!q || q.length < 2) return c.json({ hits: [], query: q, total: 0 })
@@ -1148,7 +1164,7 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
 protectedApp.get('/security-events', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
 
   const events = await db
     .select()
@@ -1165,7 +1181,7 @@ protectedApp.get('/security-events', async (c) => {
 protectedApp.get('/audit-log', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
 
   const entries = await db
     .select({
@@ -1572,8 +1588,8 @@ app.post('/api/account/reactivate', withRateLimit('reactivate', 5, 60_000), asyn
 protectedApp.get('/notifications', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const page = Math.max(1, Number(c.req.query('page') || '1'))
-  const limit = Math.min(50, Math.max(1, Number(c.req.query('limit') || '20')))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
   const offset = (page - 1) * limit
 
   const [rows, countResult] = await Promise.all([
@@ -2017,7 +2033,7 @@ protectedApp.get('/api-keys/:id/usage', async (c) => {
   if (!userKeys.some((k) => k.id === keyId)) {
     throw new NotFoundError()
   }
-  const limit = Number(c.req.query('limit') ?? '50')
+  const limit = parseClampInt(c.req.query('limit'), 50, 1, 200)
   const usage = await getApiKeyUsage(db, keyId, Math.min(limit, 200))
   return c.json({ usage })
 })
@@ -2164,7 +2180,7 @@ protectedApp.get('/webhooks/:id/deliveries', async (c) => {
   const endpointId = c.req.param('id')
   const endpoint = await getWebhookEndpoint(db, endpointId, userId)
   if (!endpoint) throw new NotFoundError()
-  const limit = Number(c.req.query('limit') ?? '50')
+  const limit = parseClampInt(c.req.query('limit'), 50, 1, 200)
   const deliveries = await listWebhookDeliveries(db, endpointId, Math.min(limit, 100))
   return c.json({ deliveries })
 })
@@ -2576,7 +2592,7 @@ blogApp.get('/search', async (c) => {
 blogApp.get('/media', async (c) => {
   const prefix = c.req.query('prefix') || undefined
   const cursor = c.req.query('cursor') || undefined
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+  const limit = parseClampInt(c.req.query('limit'), 50, 1, 100)
 
   const result = await c.get('services').storage.list(prefix, cursor, limit)
   return c.json(result)
@@ -2601,7 +2617,7 @@ blogApp.get('/:id/content', async (c) => {
 blogApp.get('/', async (c) => {
   const { db } = c.get('services')
   const rawStatus = c.req.query('status') ?? ''
-  const page = Math.max(1, Number(c.req.query('page') || '1'))
+  const page = parsePositiveInt(c.req.query('page'), 1)
   const limit = 20
   const offset = (page - 1) * limit
   const q = c.req.query('q')?.trim()
@@ -3236,7 +3252,7 @@ blogApp.delete('/media/:key', withRateLimit('blog-mutate'), async (c) => {
 blogApp.get('/:id/revisions', async (c) => {
   const { db } = c.get('services')
   const id = c.req.param('id')
-  const page = Math.max(1, Number(c.req.query('page') ?? 1))
+  const page = parsePositiveInt(c.req.query('page'), 1)
   const limit = 20
   const offset = (page - 1) * limit
 
@@ -3500,8 +3516,8 @@ adminApp.get('/users', async (c) => {
   const { db } = c.get('services')
   const statusParam = c.req.query('status')
   const search = c.req.query('search')
-  const page = Math.max(1, Number(c.req.query('page') ?? 1))
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? 20)))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
   const offset = (page - 1) * limit
 
   const conditions = [isNull(user.deletedAt)]
@@ -3905,8 +3921,8 @@ adminApp.post('/users/:id/stop-impersonate', validate(stopImpersonateSchema), as
 
 adminApp.get('/reports', async (c) => {
   const { db } = c.get('services')
-  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
   const offset = (page - 1) * limit
   const statusFilter = c.req.query('status')
   const entityTypeFilter = c.req.query('entityType')
@@ -5085,7 +5101,7 @@ teamApp.get(
   async (c) => {
     const { db } = c.get('services')
     const teamRow = c.get('team') as { id: string }
-    const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+    const page = parsePositiveInt(c.req.query('page'), 1)
     const limit = 50
     const offset = (page - 1) * limit
 
@@ -5406,8 +5422,8 @@ adminApp.patch(
 adminApp.get('/config/history', async (c) => {
   const { db } = c.get('services')
   const key = c.req.query('key') ?? undefined
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '50')))
-  const offset = Math.max(0, Number(c.req.query('offset') ?? '0'))
+  const limit = parseClampInt(c.req.query('limit'), 50, 1, 100)
+  const offset = parseClampInt(c.req.query('offset'), 0, 0, 10000)
   const versions = await getConfigHistory(db, key, { limit, offset })
   return c.json({ versions })
 })
@@ -5423,7 +5439,7 @@ adminApp.post('/config/resolve', validate(resolveConfigSchema), async (c) => {
 // Admin: list announcements
 adminApp.get('/announcements', async (c) => {
   const { db } = c.get('services')
-  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
+  const page = parsePositiveInt(c.req.query('page'), 1)
   const limit = 20
   const offset = (page - 1) * limit
 
@@ -5559,8 +5575,8 @@ adminApp.get('/newsletter/subscribers', async (c) => {
     | 'unsubscribed'
     | 'bounced'
     | undefined
-  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '25')))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 25, 1, 100)
   const offset = (page - 1) * limit
 
   const conditions = statusFilter ? eq(newsletterSubscriber.status, statusFilter) : undefined
@@ -5779,8 +5795,8 @@ adminApp.get('/comments', async (c) => {
     | 'rejected'
     | 'spam'
     | undefined
-  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '25')))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 25, 1, 100)
   const offset = (page - 1) * limit
 
   const conditions = statusFilter ? eq(comment.status, statusFilter) : undefined
@@ -6014,8 +6030,8 @@ adminApp.get('/billing/overview', async (c) => {
 
 adminApp.get('/billing/invoices', async (c) => {
   const { db } = c.get('services')
-  const page = Math.max(1, Number(c.req.query('page') ?? '1'))
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '20')))
+  const page = parsePositiveInt(c.req.query('page'), 1)
+  const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
   const offset = (page - 1) * limit
 
   const invoices = await db
@@ -6031,7 +6047,7 @@ adminApp.get('/billing/invoices', async (c) => {
 adminApp.get('/webhooks/deliveries', async (c) => {
   const { db } = c.get('services')
   const eventType = c.req.query('eventType')
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '50')))
+  const limit = parseClampInt(c.req.query('limit'), 50, 1, 100)
   const status = c.req.query('status')
 
   const deliveries = await listAllDeliveries(db, {
@@ -6198,7 +6214,7 @@ adminApp.get('/media', async (c) => {
   const services = c.get('services')
   const prefix = c.req.query('prefix') || undefined
   const cursor = c.req.query('cursor') || undefined
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+  const limit = parseClampInt(c.req.query('limit'), 50, 1, 100)
   const type = c.req.query('type') // Image, video, audio, document
 
   const result = await services.storage.list(prefix, cursor, limit)
