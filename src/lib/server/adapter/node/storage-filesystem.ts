@@ -53,8 +53,8 @@ export function createNodeStorage(): StorageClient {
           const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as Record<string, string>
           contentType = meta['contentType'] ?? contentType
           cacheControl = meta['cacheControl'] ?? cacheControl
-        } catch {
-          // Ignore malformed metadata
+        } catch (error) {
+          console.error('Failed to parse storage metadata:', error)
         }
       }
 

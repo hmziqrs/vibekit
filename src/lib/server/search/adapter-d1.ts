@@ -6,7 +6,8 @@ function safeParseJson(value: string | null | undefined): Record<string, unknown
   if (!value) return {}
   try {
     return JSON.parse(value)
-  } catch {
+  } catch (error) {
+    console.error('Failed to parse JSON in search adapter:', error)
     return {}
   }
 }
