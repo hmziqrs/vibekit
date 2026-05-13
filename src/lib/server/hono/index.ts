@@ -1050,7 +1050,7 @@ protectedApp.post('/items', validate(createItemSchema), async (c) => {
     userId: currentUser.id,
   })
 
-  indexItem(db, created.id).catch(() => {})
+  indexItem(db, created.id).catch((e) => console.error('Search index failed (item create):', e))
 
   return c.json({ item: created }, 201)
 })
@@ -1106,7 +1106,7 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
     userId: currentUser.id,
   })
 
-  indexItem(db, id).catch(() => {})
+  indexItem(db, id).catch((e) => console.error('Search index failed (item update):', e))
 
   return c.json({
     item: {
@@ -1141,7 +1141,9 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
     userId: c.get('user').id,
   })
 
-  deindexEntity(db, id, 'item').catch(() => {})
+  deindexEntity(db, id, 'item').catch((e) =>
+    console.error('Search deindex failed (item delete):', e)
+  )
 
   return new Response(null, { status: 204 })
 })
@@ -2717,7 +2719,7 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
     userId: currentUser.id,
   })
 
-  indexBlogPost(db, id).catch(() => {})
+  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog create):', e))
 
   return c.json({ id }, 201)
 })
@@ -3003,7 +3005,7 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch(() => {})
+  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog update):', e))
 
   return c.json({ success: true })
 })
@@ -3032,7 +3034,9 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  deindexEntity(db, id, 'blog_post').catch(() => {})
+  deindexEntity(db, id, 'blog_post').catch((e) =>
+    console.error('Search deindex failed (blog delete):', e)
+  )
 
   return c.json({ success: true })
 })
@@ -3065,7 +3069,7 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch(() => {})
+  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog publish):', e))
 
   return c.json({ success: true })
 })
@@ -3129,7 +3133,9 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  deindexEntity(db, id, 'blog_post').catch(() => {})
+  deindexEntity(db, id, 'blog_post').catch((e) =>
+    console.error('Search deindex failed (blog archive):', e)
+  )
 
   return c.json({ success: true })
 })
@@ -3162,7 +3168,7 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch(() => {})
+  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog restore):', e))
 
   return c.json({ success: true })
 })

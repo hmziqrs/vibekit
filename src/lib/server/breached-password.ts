@@ -22,7 +22,9 @@ export function clearBreachedCache() {
   cache.clear()
 }
 
-export async function isBreachedPassword(password: string): Promise<boolean> {
+export async function isBreachedPassword(
+  password: string
+): Promise<{ breached: boolean; checked: boolean }> {
   const hash = sha1(password)
   const prefix = hash.slice(0, 5)
   const suffix = hash.slice(5)
@@ -30,7 +32,7 @@ export async function isBreachedPassword(password: string): Promise<boolean> {
   cleanupCache()
   const cached = cache.get(hash)
   if (cached) {
-    return cached.breached
+    return { breached: cached.breached, checked: true }
   }
 
   try {
@@ -39,7 +41,7 @@ export async function isBreachedPassword(password: string): Promise<boolean> {
     })
 
     if (!response.ok) {
-      return false
+      return { breached: false, checked: false }
     }
 
     const text = await response.text()
@@ -50,8 +52,8 @@ export async function isBreachedPassword(password: string): Promise<boolean> {
 
     cache.set(hash, { breached, expiresAt: Date.now() + CACHE_TTL_MS })
 
-    return breached
+    return { breached, checked: true }
   } catch {
-    return false
+    return { breached: false, checked: false }
   }
 }
