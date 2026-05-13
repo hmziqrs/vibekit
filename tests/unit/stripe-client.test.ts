@@ -297,4 +297,45 @@ describe('verifyWebhookSignature', () => {
     )
     expect(event).toEqual(mockEvent)
   })
+
+  it('throws when signature is invalid', async () => {
+    const { verifyWebhookSignature } = await import('$lib/server/billing/stripe')
+    mockConstructEvent.mockImplementation(() => {
+      throw new Error('Invalid signature')
+    })
+
+    await expect(
+      verifyWebhookSignature(createMockStripe(), 'body', 'bad_sig', 'whsec_123')
+    ).rejects.toThrow('Invalid signature')
+  })
+
+  it('throws when webhook secret is wrong', async () => {
+    const { verifyWebhookSignature } = await import('$lib/server/billing/stripe')
+    mockConstructEvent.mockImplementation(() => {
+      throw new Error('No signatures found matching the expected signature')
+    })
+
+    await expect(
+      verifyWebhookSignature(createMockStripe(), 'body', 'sig', 'wrong_secret')
+    ).rejects.toThrow('No signatures found')
+  })
+
+  it('returns event data for valid signature', async () => {
+    const { verifyWebhookSignature } = await import('$lib/server/billing/stripe')
+    const event = {
+      data: { object: { id: 'evt_123' } },
+      type: 'invoice.payment_succeeded',
+    }
+    mockConstructEvent.mockReturnValue(event)
+
+    const result = await verifyWebhookSignature(
+      createMockStripe(),
+      'raw_body',
+      'valid_sig',
+      'whsecret'
+    )
+
+    expect(result.type).toBe('invoice.payment_succeeded')
+    expect(result.data.object.id).toBe('evt_123')
+  })
 })
