@@ -464,8 +464,9 @@ app.get('/api/comments/:postId', async (c) => {
   const replyMap = new Map<string, typeof replies>()
   for (const reply of replies) {
     if (!reply.parentId) continue
-    if (!replyMap.has(reply.parentId)) replyMap.set(reply.parentId, [])
-    replyMap.get(reply.parentId)!.push(reply)
+    const arr = replyMap.get(reply.parentId) ?? []
+    replyMap.set(reply.parentId, arr)
+    arr.push(reply)
   }
 
   const totalResult = await db
@@ -5685,7 +5686,7 @@ adminApp.delete('/newsletter/subscribers/:id', async (c) => {
 
 adminApp.get('/analytics/overview', async (c) => {
   const { db } = c.get('services')
-  const days = parseInt(c.req.query('days') ?? '30')
+  const days = parseClampInt(c.req.query('days'), 30, 1, 365)
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
   const [totalViews, uniqueVisitors, completedReads, topPosts, referrers] = await Promise.all([
@@ -5744,7 +5745,7 @@ adminApp.get('/analytics/overview', async (c) => {
 adminApp.get('/analytics/posts/:postId', async (c) => {
   const { db } = c.get('services')
   const postId = c.req.param('postId')
-  const days = parseInt(c.req.query('days') ?? '30')
+  const days = parseClampInt(c.req.query('days'), 30, 1, 365)
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
   const [views, uniqueVisitors, completedReads, avgReadTime, dailyViews] = await Promise.all([
