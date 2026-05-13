@@ -1759,6 +1759,9 @@ protectedApp.post('/billing/portal', async (c) => {
 
   const body = await c.req.json<{ returnUrl: string }>().catch(() => ({ returnUrl: '' }))
   if (!body.returnUrl) throw new BadRequestError('returnUrl is required')
+  if (!body.returnUrl.startsWith('/') && !body.returnUrl.startsWith(env.ORIGIN)) {
+    throw new BadRequestError('returnUrl must be a relative path')
+  }
   const { createBillingPortalSession } = await import('$lib/server/billing/stripe')
   const session = await createBillingPortalSession(stripe, {
     customerId: sub.stripeCustomerId,
@@ -1871,7 +1874,13 @@ protectedApp.post('/push/subscribe', validate(pushSubscribeSchema), async (c) =>
 
 protectedApp.post('/push/unsubscribe', validate(pushUnsubscribeSchema), async (c) => {
   const { db } = c.get('services')
+  const { id: userId } = c.get('user')
   const body = c.req.valid('json')
+
+  const subs = await getUserPushSubscriptions(db, userId)
+  if (!subs.some((s) => s.endpoint === body.endpoint)) {
+    throw new NotFoundError()
+  }
 
   await unsubscribeFromPush(db, body.endpoint)
   return c.json({ success: true })
@@ -2004,6 +2013,10 @@ protectedApp.get('/api-keys/:id/usage', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const keyId = c.req.param('id')
+  const userKeys = await listApiKeys(db, userId)
+  if (!userKeys.some((k) => k.id === keyId)) {
+    throw new NotFoundError()
+  }
   const limit = Number(c.req.query('limit') ?? '50')
   const usage = await getApiKeyUsage(db, keyId, Math.min(limit, 200))
   return c.json({ usage })
