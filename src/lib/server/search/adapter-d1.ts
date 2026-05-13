@@ -43,14 +43,17 @@ export function createD1SearchAdapter(db: DbClient): SearchAdapter {
       if (!sanitized) return { hits: [], total: 0 }
 
       const typeFilter = options?.entityTypes?.length
-        ? `AND entity_type IN (${options.entityTypes.map((t) => `'${t}'`).join(',')})`
-        : ''
+        ? sql`AND entity_type IN (${sql.join(
+            options.entityTypes.map((t) => sql`${t}`),
+            sql`, `
+          )})`
+        : sql``
 
       const results = await db.all(sql`
         SELECT entity_type, entity_id, title, content, metadata, rank
         FROM search_index
         WHERE search_index MATCH ${sanitized + '*'}
-        ${sql.raw(typeFilter)}
+        ${typeFilter}
         ORDER BY rank
         LIMIT ${limit} OFFSET ${offset}
       `)
@@ -59,7 +62,7 @@ export function createD1SearchAdapter(db: DbClient): SearchAdapter {
         SELECT COUNT(*) as total
         FROM search_index
         WHERE search_index MATCH ${sanitized + '*'}
-        ${sql.raw(typeFilter)}
+        ${typeFilter}
       `)
 
       const hits: SearchResult[] = (results as Record<string, unknown>[]).map((row) => ({
