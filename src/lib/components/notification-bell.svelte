@@ -58,8 +58,8 @@
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    } catch (e) {
-      console.error('Failed to mark notification as read', e)
+    } catch (error) {
+      console.error('Failed to mark notification as read', error)
     }
   }
 
@@ -86,8 +86,8 @@
     try {
       await fetch('/api/notifications/read-all', { method: 'PATCH' })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    } catch (e) {
-      console.error('Failed to mark all notifications as read', e)
+    } catch (error) {
+      console.error('Failed to mark all notifications as read', error)
     }
   }
 

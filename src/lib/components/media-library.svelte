@@ -116,8 +116,8 @@
       if (!res.ok) throw new Error('Upload failed')
       const { key } = (await res.json()) as { key: string; url: string }
       items = [{ contentType: file.type, key, lastModified: new Date().toISOString(), size: file.size }, ...items]
-    } catch (e) {
-      console.error('Failed to upload file', e)
+    } catch (error) {
+      console.error('Failed to upload file', error)
       uploadError = 'Upload failed'
     } finally {
       uploading = false

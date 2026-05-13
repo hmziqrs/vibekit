@@ -18,8 +18,8 @@
       if (recorded && vid) {
         viewId = vid
       }
-    } catch (e) {
-      console.error('Failed to record page view', e)
+    } catch (error) {
+      console.error('Failed to record page view', error)
     }
   }
 
@@ -45,8 +45,8 @@
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
-    } catch (e) {
-      console.error('Failed to send reading progress', e)
+    } catch (error) {
+      console.error('Failed to send reading progress', error)
     }
   }
 

@@ -36,8 +36,8 @@
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       recentSearches = stored ? JSON.parse(stored) : []
-    } catch (e) {
-      console.error('Failed to load recent searches', e)
+    } catch (error) {
+      console.error('Failed to load recent searches', error)
       recentSearches = []
     }
   }
@@ -49,8 +49,8 @@
     recentSearches = updated
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    } catch (e) {
-      console.error('Failed to save recent searches', e)
+    } catch (error) {
+      console.error('Failed to save recent searches', error)
     }
   }
 
@@ -58,8 +58,8 @@
     recentSearches = []
     try {
       localStorage.removeItem(STORAGE_KEY)
-    } catch (e) {
-      console.error('Failed to clear recent searches', e)
+    } catch (error) {
+      console.error('Failed to clear recent searches', error)
     }
   }
 
@@ -81,8 +81,8 @@
         results = data.hits ?? []
         total = data.total ?? 0
       }
-    } catch (e) {
-      console.error('Failed to search', e)
+    } catch (error) {
+      console.error('Failed to search', error)
       results = []
       total = 0
     } finally {

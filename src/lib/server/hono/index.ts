@@ -331,11 +331,11 @@ const validate = <T extends z.ZodType>(schema: T) =>
 const app = new Hono()
   .use('*', secureHeaders(), withServices, withSession)
   .on(['POST', 'GET'], '/api/auth/*', (c) => c.get('auth').handler(c.req.raw))
-  .onError((err, c) => {
-    if (isAppError(err)) {
-      return c.json(err.toJSON(), err.status as ContentfulStatusCode)
+  .onError((error, c) => {
+    if (isAppError(error)) {
+      return c.json(error.toJSON(), error.status as ContentfulStatusCode)
     }
-    console.error(err)
+    console.error(error)
     return c.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
       500
@@ -515,8 +515,8 @@ app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
         name,
         subject: 'Ban Appeal',
       })
-    } catch (e) {
-      console.error('Failed to send ban appeal email:', e)
+    } catch (error) {
+      console.error('Failed to send ban appeal email:', error)
     }
   }
 
@@ -634,8 +634,8 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
       await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, async () => {
         await handleBounce(db, emailAddress)
       })
-    } catch (e) {
-      console.error('Failed to send newsletter re-subscription email:', e)
+    } catch (error) {
+      console.error('Failed to send newsletter re-subscription email:', error)
     }
   }
 
@@ -660,8 +660,8 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, async () => {
       await handleBounce(db, emailAddress)
     })
-  } catch (e) {
-    console.error('Failed to send newsletter confirmation email:', e)
+  } catch (error) {
+    console.error('Failed to send newsletter confirmation email:', error)
   }
 
   return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)
@@ -971,8 +971,8 @@ app.post('/billing/webhooks/stripe', async (c) => {
     }
 
     return c.json({ received: true })
-  } catch (err) {
-    console.error('Webhook processing failed:', err)
+  } catch (error) {
+    console.error('Webhook processing failed:', error)
     return c.json({ error: 'Webhook processing failed' }, 500)
   }
 })
@@ -1080,7 +1080,9 @@ protectedApp.post('/items', validate(createItemSchema), async (c) => {
     userId: currentUser.id,
   })
 
-  indexItem(db, created.id).catch((e) => console.error('Search index failed (item create):', e))
+  indexItem(db, created.id).catch((error) =>
+    console.error('Search index failed (item create):', error)
+  )
 
   return c.json({ item: created }, 201)
 })
@@ -1136,7 +1138,7 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
     userId: currentUser.id,
   })
 
-  indexItem(db, id).catch((e) => console.error('Search index failed (item update):', e))
+  indexItem(db, id).catch((error) => console.error('Search index failed (item update):', error))
 
   return c.json({
     item: {
@@ -1172,7 +1174,7 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
   })
 
   deindexEntity(db, id, 'item').catch((e) =>
-    console.error('Search deindex failed (item delete):', e)
+    console.error('Search deindex failed (item delete):', error)
   )
 
   return new Response(null, { status: 204 })
@@ -1285,12 +1287,10 @@ protectedApp.post('/upload-avatar', async (c) => {
   try {
     const { db } = c.get('services')
     await db.update(user).set({ image: imageUrl }).where(eq(user.id, userId))
-  } catch (err) {
-    console.error('Failed to update avatar in DB:', err)
+  } catch (error) {
+    console.error('Failed to update avatar in DB:', error)
     // Clean up uploaded file if DB update fails
-    await storage
-      .delete(key)
-      .catch((cleanupErr) => console.error('Failed to clean up avatar:', cleanupErr))
+    await storage.delete(key).catch((error) => console.error('Failed to clean up avatar:', error))
     throw new Error('Failed to update avatar')
   }
 
@@ -2768,7 +2768,7 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
     userId: currentUser.id,
   })
 
-  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog create):', e))
+  indexBlogPost(db, id).catch((error) => console.error('Search index failed (blog create):', error))
 
   return c.json({ id }, 201)
 })
@@ -3054,7 +3054,7 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog update):', e))
+  indexBlogPost(db, id).catch((error) => console.error('Search index failed (blog update):', error))
 
   return c.json({ success: true })
 })
@@ -3084,7 +3084,7 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
   })
 
   deindexEntity(db, id, 'blog_post').catch((e) =>
-    console.error('Search deindex failed (blog delete):', e)
+    console.error('Search deindex failed (blog delete):', error)
   )
 
   return c.json({ success: true })
@@ -3118,7 +3118,9 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog publish):', e))
+  indexBlogPost(db, id).catch((error) =>
+    console.error('Search index failed (blog publish):', error)
+  )
 
   return c.json({ success: true })
 })
@@ -3183,7 +3185,7 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
   })
 
   deindexEntity(db, id, 'blog_post').catch((e) =>
-    console.error('Search deindex failed (blog archive):', e)
+    console.error('Search deindex failed (blog archive):', error)
   )
 
   return c.json({ success: true })
@@ -3217,7 +3219,9 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch((e) => console.error('Search index failed (blog restore):', e))
+  indexBlogPost(db, id).catch((error) =>
+    console.error('Search index failed (blog restore):', error)
+  )
 
   return c.json({ success: true })
 })
@@ -3371,8 +3375,8 @@ blogApp.post(
             siteName: extractMeta(html, 'og:site_name') || (oembed.provider_name as string),
             title: ogTitle || (oembed.title as string),
           })
-        } catch (e) {
-          console.error('OEmbed fetch failed:', e)
+        } catch (error) {
+          console.error('OEmbed fetch failed:', error)
         }
       }
 

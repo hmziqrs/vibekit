@@ -153,9 +153,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           const resBody: Record<string, unknown> = await resClone.json()
           const resUser = resBody.user as Record<string, unknown> | undefined
           userId = typeof resUser?.id === 'string' ? resUser.id : undefined
-        } catch (err) {
+        } catch (error) {
           // Response parsing failed — skip security event without userId
-          console.error('Failed to parse auth response for security event:', err)
+          console.error('Failed to parse auth response for security event:', error)
         }
 
         if (userId) {
@@ -186,9 +186,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
                 userId,
               })
             }
-          } catch (err) {
+          } catch (error) {
             // New device detection failed — non-critical, don't block login
-            console.error('New device detection failed:', err)
+            console.error('New device detection failed:', error)
           }
         }
 

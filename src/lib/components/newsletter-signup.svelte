@@ -34,8 +34,8 @@
         status = 'error'
         message = data.error?.message ?? 'Something went wrong. Please try again.'
       }
-    } catch (e) {
-      console.error('Failed to subscribe to newsletter', e)
+    } catch (error) {
+      console.error('Failed to subscribe to newsletter', error)
       status = 'error'
       message = 'Network error. Please try again.'
     }

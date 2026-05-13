@@ -189,8 +189,8 @@ export async function deliverWebhook(
       .where(eq(webhookDelivery.id, id))
 
     return { id, status: shouldRetry ? ('retrying' as const) : ('failed' as const) }
-  } catch (err) {
-    console.error(`Webhook delivery ${id} failed:`, err)
+  } catch (error) {
+    console.error(`Webhook delivery ${id} failed:`, error)
     const attemptCount = 1
     const shouldRetry = attemptCount < MAX_RETRIES
 
@@ -297,8 +297,8 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
     }
 
     return { id: deliveryId, status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed' }
-  } catch (err) {
-    console.error(`Webhook delivery ${deliveryId} retry failed:`, err)
+  } catch (error) {
+    console.error(`Webhook delivery ${deliveryId} retry failed:`, error)
     await db
       .update(webhookDelivery)
       .set({
