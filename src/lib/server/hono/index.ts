@@ -1287,7 +1287,9 @@ protectedApp.post('/upload-avatar', async (c) => {
   } catch (err) {
     console.error('Failed to update avatar in DB:', err)
     // Clean up uploaded file if DB update fails
-    await storage.delete(key).catch((cleanupErr) => console.error('Failed to clean up avatar:', cleanupErr))
+    await storage
+      .delete(key)
+      .catch((cleanupErr) => console.error('Failed to clean up avatar:', cleanupErr))
     throw new Error('Failed to update avatar')
   }
 
