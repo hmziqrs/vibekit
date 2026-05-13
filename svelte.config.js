@@ -23,7 +23,7 @@ const config = {
         'frame-ancestors': ['none'],
         'img-src': ['self', 'data:', 'blob:', 'https:'],
         'object-src': ['none'],
-        'script-src': ['self', 'https://static.cloudflareinsights.com'],
+        'script-src': ['self', 'https://static.cloudflareinsights.com', 'https://cdn.jsdelivr.net'],
         'style-src': ['self', 'unsafe-inline'],
       },
       mode: 'auto',

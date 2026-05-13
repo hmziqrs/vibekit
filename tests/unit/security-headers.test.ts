@@ -107,4 +107,9 @@ describe('svelteKit CSP configuration', () => {
     const configSource = readFileSync(resolve(process.cwd(), 'svelte.config.js'), 'utf8')
     expect(configSource).toContain('https://static.cloudflareinsights.com')
   })
+
+  it('allows jsdelivr CDN for Scalar API docs', () => {
+    const configSource = readFileSync(resolve(process.cwd(), 'svelte.config.js'), 'utf8')
+    expect(configSource).toContain('https://cdn.jsdelivr.net')
+  })
 })
