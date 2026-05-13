@@ -1,8 +1,11 @@
 import {
   getPermissions,
   getRoleLevel,
+  getTeamPermissions,
   hasPermission,
+  hasTeamPermission,
   ORG_ACTIONS,
+  TEAM_ACTIONS,
   type OrgRole,
 } from '$lib/permissions'
 import { describe, expect, it } from 'vitest'
@@ -235,5 +238,72 @@ describe(getPermissions, () => {
     const perms = getPermissions('admin')
     const knownSet = new Set(ORG_ACTIONS)
     expect(perms.every((p) => knownSet.has(p))).toBe(true)
+  })
+})
+
+describe('team permission checks', () => {
+  it('org owner can perform any team action without team role', () => {
+    const results = TEAM_ACTIONS.map((action) => hasTeamPermission('owner', null, action))
+    expect(results.every(Boolean)).toBe(true)
+  })
+
+  it('org admin can perform any team action without team role', () => {
+    const results = TEAM_ACTIONS.map((action) => hasTeamPermission('admin', null, action))
+    expect(results.every(Boolean)).toBe(true)
+  })
+
+  it('org member can create and read teams without team role', () => {
+    expect(hasTeamPermission('member', null, 'team.read')).toBe(true)
+    expect(hasTeamPermission('member', null, 'team.members.read')).toBe(true)
+    expect(hasTeamPermission('member', null, 'team.create')).toBe(true)
+    expect(hasTeamPermission('member', null, 'team.update')).toBe(false)
+    expect(hasTeamPermission('member', null, 'team.delete')).toBe(false)
+  })
+
+  it('team lead can manage team settings', () => {
+    expect(hasTeamPermission('member', 'lead', 'team.settings.update')).toBe(true)
+    expect(hasTeamPermission('member', 'lead', 'team.update')).toBe(true)
+    expect(hasTeamPermission('member', 'lead', 'team.members.manage')).toBe(true)
+    expect(hasTeamPermission('member', 'lead', 'team.members.add')).toBe(true)
+  })
+
+  it('team member can only read', () => {
+    expect(hasTeamPermission('member', 'member', 'team.read')).toBe(true)
+    expect(hasTeamPermission('member', 'member', 'team.members.read')).toBe(true)
+    expect(hasTeamPermission('member', 'member', 'team.update')).toBe(false)
+    expect(hasTeamPermission('member', 'member', 'team.settings.update')).toBe(false)
+  })
+
+  it('org viewer has minimal team permissions', () => {
+    expect(hasTeamPermission('viewer', null, 'team.read')).toBe(true)
+    expect(hasTeamPermission('viewer', null, 'team.members.read')).toBe(true)
+    expect(hasTeamPermission('viewer', null, 'team.create')).toBe(false)
+    expect(hasTeamPermission('viewer', null, 'team.delete')).toBe(false)
+  })
+
+  it('team lead role adds permissions on top of org member', () => {
+    expect(hasTeamPermission('member', 'lead', 'team.delete')).toBe(false)
+    expect(hasTeamPermission('member', 'lead', 'team.settings.read')).toBe(true)
+  })
+})
+
+describe('team permission listing', () => {
+  it('combines org and team role permissions', () => {
+    const perms = getTeamPermissions('member', 'lead')
+    expect(perms).toContain('team.settings.update')
+    expect(perms).toContain('team.read')
+    expect(perms).not.toContain('team.delete')
+  })
+
+  it('returns only org permissions when no team role', () => {
+    const perms = getTeamPermissions('member', null)
+    expect(perms).toContain('team.read')
+    expect(perms).toContain('team.create')
+    expect(perms).not.toContain('team.update')
+  })
+
+  it('returns all for org owner with no team role', () => {
+    const perms = getTeamPermissions('owner', null)
+    expect(perms).toHaveLength(TEAM_ACTIONS.length)
   })
 })
