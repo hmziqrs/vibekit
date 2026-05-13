@@ -17,9 +17,7 @@ function parseClampInt(
 
 function validateFormat(raw: string | null | undefined) {
   if (!raw) return undefined
-  return VALID_IMAGE_FORMATS.includes(raw as 'avif' | 'webp')
-    ? (raw as 'avif' | 'webp')
-    : undefined
+  return VALID_IMAGE_FORMATS.includes(raw as 'avif' | 'webp') ? (raw as 'avif' | 'webp') : undefined
 }
 
 function validateFit(raw: string | null | undefined) {
