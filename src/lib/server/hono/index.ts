@@ -4068,7 +4068,7 @@ adminApp.patch('/reports/:id', validate(resolveReportSchema), async (c) => {
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-app.post('/api/admin/cleanup', async (c) => {
+app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async (c) => {
   const cronSecret = c.req.header('x-cron-secret')
   const currentUser = c.get('user')
   const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
@@ -4139,7 +4139,7 @@ app.post('/api/admin/cleanup', async (c) => {
 
 // ── Scheduled Publishing ──────────────────────────────────────────────
 
-app.post('/api/admin/publish-scheduled', async (c) => {
+app.post('/api/admin/publish-scheduled', withRateLimit('admin-publish', 5, 60_000), async (c) => {
   const cronSecret = c.req.header('x-cron-secret')
   const currentUser = c.get('user')
   const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
@@ -4271,8 +4271,8 @@ orgApp.post('/', validate(createOrganizationSchema), async (c) => {
 
 // Get org details
 orgApp.get('/:orgId', withOrgMembership, requirePermission('org.read'), async (c) => {
-  const org = c.get('organization' as never) as typeof organization.$inferSelect
-  const membership = c.get('membership' as never) as typeof organizationMember.$inferSelect
+  const org = c.get('organization') as typeof organization.$inferSelect
+  const membership = c.get('membership') as typeof organizationMember.$inferSelect
 
   return c.json({
     membership: {
@@ -4302,7 +4302,7 @@ orgApp.patch(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
 
     const newSlug = generateSlug(parsed.name)
     if (newSlug !== org.slug) {
@@ -4342,7 +4342,7 @@ orgApp.patch(
 orgApp.delete('/:orgId', withOrgMembership, requirePermission('org.delete'), async (c) => {
   const { db } = c.get('services')
   const currentUser = c.get('user')
-  const org = c.get('organization' as never) as typeof organization.$inferSelect
+  const org = c.get('organization') as typeof organization.$inferSelect
 
   await db
     .update(organization)
@@ -4370,7 +4370,7 @@ orgApp.get(
   requirePermission('org.members.read'),
   async (c) => {
     const { db } = c.get('services')
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
 
     const members = await db
       .select({
@@ -4401,7 +4401,7 @@ orgApp.patch(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
     const memberId = c.req.param('memberId')
 
     const [targetMember] = await db
@@ -4457,7 +4457,7 @@ orgApp.delete(
   async (c) => {
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
     const memberId = c.req.param('memberId')
 
     const [targetMember] = await db
@@ -4512,7 +4512,7 @@ orgApp.post(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
 
     const [existingMember] = await db
       .select({ id: organizationMember.id })
@@ -4581,7 +4581,7 @@ orgApp.post(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
 
     const [newOwnerMember] = await db
       .select()
@@ -4652,7 +4652,7 @@ orgApp.get(
   withOrgMembership,
   requirePermission('org.read'),
   async (c) => {
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
     const { db } = c.get('services')
     const sub = await getOrgSubscription(db, org.id)
     return c.json({ subscription: sub })
@@ -4664,7 +4664,7 @@ orgApp.post(
   withOrgMembership,
   requirePermission('org.update'),
   async (c) => {
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
     const user = c.get('user')
     const body = await c.req
       .json<{ cancelUrl: string; planId: string; successUrl: string }>()
@@ -4697,7 +4697,7 @@ orgApp.post(
   withOrgMembership,
   requirePermission('org.update'),
   async (c) => {
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
     const body = await c.req.json<{ newPlanId: string }>().catch(() => ({ newPlanId: '' }))
     if (!body.newPlanId) throw new BadRequestError('newPlanId is required')
     const { db } = c.get('services')
@@ -4718,7 +4718,7 @@ orgApp.get(
   withOrgMembership,
   requirePermission('org.read'),
   async (c) => {
-    const org = c.get('organization' as never) as typeof organization.$inferSelect
+    const org = c.get('organization') as typeof organization.$inferSelect
     const { db } = c.get('services')
 
     const invoices = await db
@@ -4738,7 +4738,7 @@ const teamApp = new Hono<TeamEnv>().use('*', requireUser)
 // List teams in org
 teamApp.get('/', withOrgMembership, requirePermission('org.read'), async (c) => {
   const { db } = c.get('services')
-  const org = c.get('organization' as never) as { id: string }
+  const org = c.get('organization') as { id: string }
 
   const teams = await db
     .select({
@@ -4766,7 +4766,7 @@ teamApp.post(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const org = c.get('organization' as never) as { id: string }
+    const org = c.get('organization') as { id: string }
 
     const id = uuid()
     await db.insert(team).values({
@@ -4801,8 +4801,8 @@ teamApp.get(
   withTeamMembership,
   requireTeamPermission('team.read'),
   async (c) => {
-    const teamRow = c.get('team' as never) as typeof team.$inferSelect
-    const teamMembershipRow = c.get('teamMembership' as never) as {
+    const teamRow = c.get('team') as typeof team.$inferSelect
+    const teamMembershipRow = c.get('teamMembership') as {
       id: string
       joinedAt: Date
       role: string
@@ -4842,7 +4842,7 @@ teamApp.patch(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const teamRow = c.get('team' as never) as { id: string }
+    const teamRow = c.get('team') as { id: string }
 
     await db
       .update(team)
@@ -4875,7 +4875,7 @@ teamApp.delete(
   async (c) => {
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const teamRow = c.get('team' as never) as { id: string; name: string }
+    const teamRow = c.get('team') as { id: string; name: string }
 
     await db
       .update(team)
@@ -4905,7 +4905,7 @@ teamApp.get(
   requireTeamPermission('team.members.read'),
   async (c) => {
     const { db } = c.get('services')
-    const teamRow = c.get('team' as never) as { id: string }
+    const teamRow = c.get('team') as { id: string }
 
     const members = await db
       .select({
@@ -4937,8 +4937,8 @@ teamApp.post(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const teamRow = c.get('team' as never) as { id: string }
-    const org = c.get('organization' as never) as { id: string }
+    const teamRow = c.get('team') as { id: string }
+    const org = c.get('organization') as { id: string }
 
     const [existingMember] = await db
       .select({ id: organizationMember.id })
@@ -4995,7 +4995,7 @@ teamApp.patch(
     const parsed = c.req.valid('json')
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const teamRow = c.get('team' as never) as { id: string }
+    const teamRow = c.get('team') as { id: string }
     const memberId = c.req.param('memberId')
 
     const [targetMember] = await db
@@ -5030,7 +5030,7 @@ teamApp.delete(
   async (c) => {
     const { db } = c.get('services')
     const currentUser = c.get('user')
-    const teamRow = c.get('team' as never) as { id: string }
+    const teamRow = c.get('team') as { id: string }
     const memberId = c.req.param('memberId')
 
     const [targetMember] = await db
@@ -5068,7 +5068,7 @@ teamApp.get(
   requireTeamPermission('team.read'),
   async (c) => {
     const { db } = c.get('services')
-    const teamRow = c.get('team' as never) as { id: string }
+    const teamRow = c.get('team') as { id: string }
     const page = Math.max(1, Number(c.req.query('page') ?? '1'))
     const limit = 50
     const offset = (page - 1) * limit
