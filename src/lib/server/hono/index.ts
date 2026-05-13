@@ -554,7 +554,9 @@ app.get('/api/search', async (c) => {
 // ── Newsletter (public) ───────────────────────────────────────────────
 
 app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), async (c) => {
-  const body = await c.req.json<{ email?: string; name?: string; source?: string }>()
+  const body = await c.req
+    .json<{ email?: string; name?: string; source?: string }>()
+    .catch(() => ({}))
   const parsed = subscribeSchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ error: { message: parsed.error.issues.map((i) => i.message).join(', ') } }, 400)
@@ -1755,7 +1757,8 @@ protectedApp.post('/billing/portal', async (c) => {
     throw new BadRequestError('No billing account found')
   }
 
-  const body = await c.req.json<{ returnUrl: string }>()
+  const body = await c.req.json<{ returnUrl: string }>().catch(() => ({ returnUrl: '' }))
+  if (!body.returnUrl) throw new BadRequestError('returnUrl is required')
   const { createBillingPortalSession } = await import('$lib/server/billing/stripe')
   const session = await createBillingPortalSession(stripe, {
     customerId: sub.stripeCustomerId,
@@ -4659,7 +4662,10 @@ orgApp.post(
   async (c) => {
     const org = c.get('organization' as never) as typeof organization.$inferSelect
     const user = c.get('user')
-    const body = await c.req.json<{ cancelUrl: string; planId: string; successUrl: string }>()
+    const body = await c.req
+      .json<{ cancelUrl: string; planId: string; successUrl: string }>()
+      .catch(() => ({ cancelUrl: '', planId: '', successUrl: '' }))
+    if (!body.planId) throw new BadRequestError('planId is required')
     const { db } = c.get('services')
 
     const plan = await getPlanById(db, body.planId)
@@ -4688,7 +4694,8 @@ orgApp.post(
   requirePermission('org.update'),
   async (c) => {
     const org = c.get('organization' as never) as typeof organization.$inferSelect
-    const body = await c.req.json<{ newPlanId: string }>()
+    const body = await c.req.json<{ newPlanId: string }>().catch(() => ({ newPlanId: '' }))
+    if (!body.newPlanId) throw new BadRequestError('newPlanId is required')
     const { db } = c.get('services')
 
     const sub = await getOrgSubscription(db, org.id)
