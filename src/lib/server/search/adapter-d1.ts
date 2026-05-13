@@ -11,9 +11,10 @@ function safeParseJson(value: string | null | undefined): Record<string, unknown
   }
 }
 
-export function createD1SearchAdapter(
-  db: { all: (query: unknown) => Promise<unknown[]>; run: (query: unknown) => Promise<void> }
-): SearchAdapter {
+export function createD1SearchAdapter(db: {
+  all: (query: unknown) => Promise<unknown[]>
+  run: (query: unknown) => Promise<void>
+}): SearchAdapter {
   return {
     async delete(entityId: string, entityType: string): Promise<void> {
       await db.run(sql`
