@@ -21,7 +21,8 @@ export function isValidUrl(url: string): boolean {
     }
     const parsed = new URL(normalizeUrl(trimmed))
     return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-  } catch {
+  } catch (e) {
+    console.error('Failed to validate URL', e)
     return false
   }
 }

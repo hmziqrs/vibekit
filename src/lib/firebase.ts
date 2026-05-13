@@ -34,7 +34,8 @@ export async function initFirebase(configJson: string): Promise<boolean> {
     }
 
     return true
-  } catch {
+  } catch (e) {
+    console.error('Failed to initialize Firebase', e)
     return false
   }
 }

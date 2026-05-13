@@ -42,7 +42,8 @@
       }
 
       onUpload(data.url!)
-    } catch {
+    } catch (e) {
+      console.error('Failed to upload image', e)
       error = 'Network error'
     } finally {
       uploading = false

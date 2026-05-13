@@ -58,8 +58,8 @@
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    } catch {
-      // Silently ignore — will show as unread until next refresh
+    } catch (e) {
+      console.error('Failed to mark notification as read', e)
     }
   }
 
@@ -86,8 +86,8 @@
     try {
       await fetch('/api/notifications/read-all', { method: 'PATCH' })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    } catch {
-      // Silently ignore — will show as unread until next refresh
+    } catch (e) {
+      console.error('Failed to mark all notifications as read', e)
     }
   }
 

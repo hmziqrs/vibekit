@@ -18,8 +18,8 @@
       if (recorded && vid) {
         viewId = vid
       }
-    } catch {
-      // Silent fail — analytics should never break the page
+    } catch (e) {
+      console.error('Failed to record page view', e)
     }
   }
 
@@ -45,8 +45,8 @@
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
-    } catch {
-      // Silent fail
+    } catch (e) {
+      console.error('Failed to send reading progress', e)
     }
   }
 

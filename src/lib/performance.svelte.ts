@@ -49,8 +49,8 @@ function observeLCP(): void {
       }
     })
     po.observe({ buffered: true, type: 'largest-contentful-paint' })
-  } catch {
-    // PerformanceObserver not supported
+  } catch (e) {
+    console.error('Failed to observe LCP', e)
   }
 }
 
@@ -97,8 +97,8 @@ function observeCLS(): void {
       })
     })
     po.observe({ buffered: true, type: 'layout-shift' })
-  } catch {
-    // PerformanceObserver not supported
+  } catch (e) {
+    console.error('Failed to observe CLS', e)
   }
 }
 
@@ -131,8 +131,8 @@ function observeINP(): void {
         })
       }
     })
-  } catch {
-    // PerformanceObserver not supported
+  } catch (e) {
+    console.error('Failed to observe INP', e)
   }
 }
 

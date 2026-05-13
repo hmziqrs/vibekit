@@ -93,7 +93,8 @@
       }
       ({ nextCursor } = data)
       hasMore = data.truncated ?? false
-    } catch {
+    } catch (e) {
+      console.error('Failed to load media', e)
       error = 'Failed to load media'
     } finally {
       loading = false
@@ -115,7 +116,8 @@
       if (!res.ok) throw new Error('Upload failed')
       const { key } = (await res.json()) as { key: string; url: string }
       items = [{ contentType: file.type, key, lastModified: new Date().toISOString(), size: file.size }, ...items]
-    } catch {
+    } catch (e) {
+      console.error('Failed to upload file', e)
       uploadError = 'Upload failed'
     } finally {
       uploading = false

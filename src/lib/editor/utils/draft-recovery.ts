@@ -4,8 +4,8 @@ export function saveDraft(id: string, json: object): void {
   try {
     const data = { json, savedAt: Date.now() }
     localStorage.setItem(DRAFT_KEY_PREFIX + id, JSON.stringify(data))
-  } catch {
-    // Storage full or unavailable
+  } catch (e) {
+    console.error('Failed to save draft', e)
   }
 }
 
@@ -14,7 +14,8 @@ export function loadDraft(id: string): { json: object; savedAt: number } | null 
     const raw = localStorage.getItem(DRAFT_KEY_PREFIX + id)
     if (!raw) return null
     return JSON.parse(raw)
-  } catch {
+  } catch (e) {
+    console.error('Failed to load draft', e)
     return null
   }
 }
@@ -22,8 +23,8 @@ export function loadDraft(id: string): { json: object; savedAt: number } | null 
 export function clearDraft(id: string): void {
   try {
     localStorage.removeItem(DRAFT_KEY_PREFIX + id)
-  } catch {
-    // Storage unavailable
+  } catch (e) {
+    console.error('Failed to clear draft', e)
   }
 }
 
