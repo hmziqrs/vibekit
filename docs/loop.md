@@ -176,7 +176,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Gap: Tax configuration — no tax calculation
 - [x] Payment webhooks (Stripe webhook handler, idempotent processing with eventId dedup)
 - [x] Gap: Missing webhook events — added 6 more: trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired
-- [ ] Gap: Failure recovery — no retry, no dead letter queue
+- [x] Gap: Failure recovery — stripeWebhookEvent now tracks status/retryCount/nextRetryAt/errorMessage; catch block records failures; admin endpoints for viewing and retrying failed events
 
 #### Notifications & Communication
 <!-- Audit: notifications-audit.md — 2026-05-14 -->
@@ -232,11 +232,11 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 <!-- Audit: i18n-audit.md — 2026-05-15 -->
 - [x] i18n completion (83 translation keys defined, Paraglide runtime, HTML lang/dir attributes, language switcher component)
 - [x] i18n tooling (missing translation detection script, ICU message format, key parity tests)
-- [ ] Gap: Only 2 of 83 translation keys used in UI (all pages hardcoded English)
+- [x] Gap: Translation keys wired in app sidebar, admin sidebar, and search dialog components; i18n check added to CI pipeline
 - [x] Gap: 27 components replaced hardcoded 'en-US' date/number formatting with locale-aware formatDate/formatNumber from $lib/i18n.svelte
 - [ ] Gap: No RTL-aware CSS (15+ hardcoded directional classes)
 - [x] Gap: Language switcher moved into app and admin sidebar navigation (user section)
-- [ ] Gap: i18n check script not in CI pipeline
+- [x] Gap: i18n check script added to GitHub Actions CI pipeline
 - [x] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
 - [x] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
 

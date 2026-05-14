@@ -22,9 +22,9 @@ type: project
 | Dunning emails             | **NOT IMPLEMENTED** | Zero billing email templates                                                                                                                                                                                          |
 | Metered billing            | **PARTIAL**         | Local DB tracking only; never reported to Stripe                                                                                                                                                                      |
 | Usage tracking             | **PARTIAL**         | API endpoint exists but nothing auto-tracks usage                                                                                                                                                                     |
-| Quota enforcement          | **NON-FUNCTIONAL**  | `checkUsageLimit()` defined but never called                                                                                                                                                                          |
+| Quota enforcement          | **FIXED**           | `checkUsageLimit()` now called in POST /billing/usage; rejects over-limit                                                                                                                                             |
 | Overage handling           | **NOT IMPLEMENTED** | No overage pricing or automatic upgrade prompts                                                                                                                                                                       |
-| Usage dashboard for users  | **NOT IMPLEMENTED** | No GET usage endpoint, no UI component                                                                                                                                                                                |
+| Usage dashboard for users  | **FIXED**           | GET /billing/usage endpoint returns current usage and limits                                                                                                                                                          |
 | Revenue metrics            | **FIXED**           | MRR/ARR/ARPU/net revenue 30d/churned count/trial count in `getBillingOverview()`                                                                                                                                      |
 | Failed payment queue       | **PARTIAL**         | Invoices listable but no dedicated queue or bulk retry                                                                                                                                                                |
 | Refund processing          | **NOT IMPLEMENTED** | No code, only marketing text on pricing page                                                                                                                                                                          |
@@ -32,8 +32,8 @@ type: project
 | Tax configuration          | **NOT IMPLEMENTED** | No tax fields, no calculation, no Stripe Tax                                                                                                                                                                          |
 | Stripe webhook handler     | **PARTIAL**         | 11 events handled (added trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired); still missing customer.updated, payment_method.updated, invoice.upcoming |
 | Idempotent processing      | **COMPLETE**        | Unique constraint on eventId + pre-check                                                                                                                                                                              |
-| Event logging              | **PARTIAL**         | Webhook events logged; errors only to console                                                                                                                                                                         |
-| Failure recovery           | **NOT IMPLEMENTED** | No retry, no dead letter queue, no transaction safety                                                                                                                                                                 |
+| Event logging              | **FIXED**           | Webhook events logged with status/retryCount/errorMessage; failed events recorded in DB                                                                                                                               |
+| Failure recovery           | **FIXED**           | stripeWebhookEvent now tracks status/retryCount/nextRetryAt/errorMessage; catch block records failures with retry metadata; admin endpoints for viewing and retrying failed events                                    |
 
 ## Critical Gaps
 
@@ -43,8 +43,7 @@ type: project
 
 2. ~~**`calculateProration()` is dead code**~~ — **FIXED**. Now called in `changeSubscriptionPlan()`, returns `{ prorationAmountInCents }` in the API response, and stored in subscription event metadata.
 
-3. **`checkUsageLimit()` is dead code** — Defined at subscription-service.ts:301-331 but never called.
-   - **Fix**: Add as middleware or call from API route handlers that consume metered resources.
+3. ~~**`checkUsageLimit()` is dead code**~~ — **FIXED**. Now called in POST /billing/usage; rejects requests that would exceed plan limits.
 
 4. **No dunning emails** — Payment failures, trial endings, and past-due status trigger no notifications.
    - **Fix**: Create billing email templates and trigger from webhook handlers.
