@@ -1,6 +1,13 @@
 import type { EmailClient, EmailResult } from '../services/types'
 import { EmailQueue } from './queue'
 import {
+  renderPaymentFailed,
+  renderPaymentSucceeded,
+  renderPlanChanged,
+  renderSubscriptionCanceled,
+  renderTrialEndingSoon,
+} from './templates/billing'
+import {
   renderContactNotification,
   type ContactNotificationData,
 } from './templates/contact-notification'
@@ -81,6 +88,88 @@ export class EmailService {
       from: 'Vibekit <noreply@vibekit.com>',
       html,
       subject: 'Welcome to Vibekit!',
+      text,
+      to: email,
+    })
+  }
+
+  async sendPaymentFailed(
+    email: string,
+    userName: string,
+    planName: string,
+    retryDate?: string
+  ): Promise<EmailResult> {
+    const { html, text } = renderPaymentFailed(userName, planName, retryDate)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: 'Payment failed — action required',
+      text,
+      to: email,
+    })
+  }
+
+  async sendPaymentSucceeded(
+    email: string,
+    userName: string,
+    planName: string,
+    amount: string,
+    periodEnd: string
+  ): Promise<EmailResult> {
+    const { html, text } = renderPaymentSucceeded(userName, planName, amount, periodEnd)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: `Payment receipt — ${amount}`,
+      text,
+      to: email,
+    })
+  }
+
+  async sendSubscriptionCanceled(
+    email: string,
+    userName: string,
+    planName: string,
+    endDate: string
+  ): Promise<EmailResult> {
+    const { html, text } = renderSubscriptionCanceled(userName, planName, endDate)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: 'Subscription canceled',
+      text,
+      to: email,
+    })
+  }
+
+  async sendTrialEndingSoon(
+    email: string,
+    userName: string,
+    planName: string,
+    trialEndDate: string
+  ): Promise<EmailResult> {
+    const { html, text } = renderTrialEndingSoon(userName, planName, trialEndDate)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: `Your ${planName} trial ends soon`,
+      text,
+      to: email,
+    })
+  }
+
+  async sendPlanChanged(
+    email: string,
+    userName: string,
+    oldPlanName: string,
+    newPlanName: string,
+    effectiveDate: string
+  ): Promise<EmailResult> {
+    const { html, text } = renderPlanChanged(userName, oldPlanName, newPlanName, effectiveDate)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: `Subscription updated — ${newPlanName}`,
       text,
       to: email,
     })

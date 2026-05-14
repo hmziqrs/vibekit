@@ -71,6 +71,7 @@ import {
   securityEvent,
   stripeWebhookEvent,
   subscription,
+  subscriptionPlan,
   systemConfig,
   team,
   teamActivity,
@@ -966,6 +967,36 @@ app.post('/billing/webhooks/stripe', async (c) => {
           .update(subscription)
           .set({ canceledAt: new Date(), status: 'canceled' })
           .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
+        try {
+          const [subRow] = await db
+            .select({ planId: subscription.planId, userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
+          if (subRow?.userId) {
+            const [userRow] = await db
+              .select({ email: user.email, name: user.name })
+              .from(user)
+              .where(eq(user.id, subRow.userId))
+            if (userRow?.email) {
+              const [planRow] = await db
+                .select({ name: subscriptionPlan.name })
+                .from(subscriptionPlan)
+                .where(eq(subscriptionPlan.id, subRow.planId))
+              const endDate = sub.current_period_end
+                ? new Date(Number(sub.current_period_end) * 1000).toLocaleDateString()
+                : 'now'
+              const emailService = createEmailService(c.get('services').email)
+              await emailService.sendSubscriptionCanceled(
+                userRow.email,
+                userRow.name || 'there',
+                planRow?.name ?? 'Unknown',
+                endDate
+              )
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to send cancellation email:', emailError)
+        }
         break
       }
       case 'invoice.payment_succeeded': {
@@ -999,6 +1030,40 @@ app.post('/billing/webhooks/stripe', async (c) => {
           subscriptionId: inv.subscription ? String(inv.subscription) : null,
           userId: invoiceUserId,
         })
+        try {
+          if (invoiceUserId) {
+            const [userRow] = await db
+              .select({ email: user.email, name: user.name })
+              .from(user)
+              .where(eq(user.id, invoiceUserId))
+            if (userRow?.email && inv.subscription) {
+              const [subRow] = await db
+                .select({ planId: subscription.planId })
+                .from(subscription)
+                .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+              const [planRow] = subRow
+                ? await db
+                    .select({ name: subscriptionPlan.name })
+                    .from(subscriptionPlan)
+                    .where(eq(subscriptionPlan.id, subRow.planId))
+                : []
+              const amount = `$${(Number(inv.amount_paid) / 100).toFixed(2)}`
+              const periodEnd = inv.period_end
+                ? new Date(Number(inv.period_end) * 1000).toLocaleDateString()
+                : 'next billing cycle'
+              const emailService = createEmailService(c.get('services').email)
+              await emailService.sendPaymentSucceeded(
+                userRow.email,
+                userRow.name || 'there',
+                planRow?.name ?? 'Unknown',
+                amount,
+                periodEnd
+              )
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to send payment receipt email:', emailError)
+        }
         break
       }
       case 'invoice.payment_failed': {
@@ -1039,6 +1104,38 @@ app.post('/billing/webhooks/stripe', async (c) => {
           subscriptionId: inv.subscription ? String(inv.subscription) : null,
           userId: invoiceUserId,
         })
+        try {
+          if (invoiceUserId) {
+            const [userRow] = await db
+              .select({ email: user.email, name: user.name })
+              .from(user)
+              .where(eq(user.id, invoiceUserId))
+            if (userRow?.email && inv.subscription) {
+              const [subRow] = await db
+                .select({ planId: subscription.planId })
+                .from(subscription)
+                .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+              const [planRow] = subRow
+                ? await db
+                    .select({ name: subscriptionPlan.name })
+                    .from(subscriptionPlan)
+                    .where(eq(subscriptionPlan.id, subRow.planId))
+                : []
+              const retryDate = inv.next_payment_attempt
+                ? new Date(Number(inv.next_payment_attempt) * 1000).toLocaleDateString()
+                : undefined
+              const emailService = createEmailService(c.get('services').email)
+              await emailService.sendPaymentFailed(
+                userRow.email,
+                userRow.name || 'there',
+                planRow?.name ?? 'Unknown',
+                retryDate
+              )
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to send payment failed email:', emailError)
+        }
         break
       }
       case 'customer.subscription.trial_will_end': {
@@ -1048,7 +1145,36 @@ app.post('/billing/webhooks/stripe', async (c) => {
           .update(subscription)
           .set({ status: 'trialing' })
           .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
-        // TODO: Send trial-ending notification email to user
+        try {
+          const [subRow] = await db
+            .select({ planId: subscription.planId, userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
+          if (subRow?.userId) {
+            const [userRow] = await db
+              .select({ email: user.email, name: user.name })
+              .from(user)
+              .where(eq(user.id, subRow.userId))
+            if (userRow?.email) {
+              const [planRow] = await db
+                .select({ name: subscriptionPlan.name })
+                .from(subscriptionPlan)
+                .where(eq(subscriptionPlan.id, subRow.planId))
+              const trialEndDate = sub.trial_end
+                ? new Date(Number(sub.trial_end) * 1000).toLocaleDateString()
+                : 'soon'
+              const emailService = createEmailService(c.get('services').email)
+              await emailService.sendTrialEndingSoon(
+                userRow.email,
+                userRow.name || 'there',
+                planRow?.name ?? 'Unknown',
+                trialEndDate
+              )
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to send trial ending email:', emailError)
+        }
         break
       }
       case 'customer.subscription.created': {
