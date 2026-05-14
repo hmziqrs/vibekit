@@ -1037,14 +1037,18 @@ export const stripeWebhookEvent = sqliteTable('stripe_webhook_event', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
+  errorMessage: text('error_message'),
   eventId: text('event_id').notNull().unique(),
   eventType: text('event_type').notNull(),
   id: text('id')
     .primaryKey()
     .$defaultFn(() => uuid()),
-  processedAt: integer('processed_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
+  nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
+  processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
+  retryCount: integer('retry_count').notNull().default(0),
+  status: text('status', { enum: ['failed', 'pending', 'processed', 'retrying'] })
+    .notNull()
+    .default('pending'),
 })
 
 // ── Push Notifications ─────────────────────────────────────────────────

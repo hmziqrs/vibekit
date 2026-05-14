@@ -1,6 +1,12 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
 
-import { subscription, subscriptionEvent, subscriptionPlan, usageRecord } from '../db/schema'
+import {
+  subscription,
+  subscriptionEvent,
+  subscriptionPlan,
+  stripeWebhookEvent,
+  usageRecord,
+} from '../db/schema'
 import type { AppDb } from '../services/types'
 import { uuid } from '../uuid'
 
@@ -414,4 +420,74 @@ export function calculateProration(input: {
   const remainingFraction = remainingMs / totalMs
   const unusedCredit = Math.round(input.oldPlanPriceInCents * remainingFraction)
   return Math.max(0, input.newPlanPriceInCents - unusedCredit)
+}
+
+const MAX_RETRIES = 5
+const BACKOFF_BASE_MS = 1000
+
+function getBackoffDelay(attemptCount: number): number {
+  return Math.min(BACKOFF_BASE_MS * 5 ** attemptCount, 60_000)
+}
+
+export async function getFailedStripeWebhooks(db: AppDb) {
+  return db
+    .select()
+    .from(stripeWebhookEvent)
+    .where(sql`${stripeWebhookEvent.status} IN ('failed', 'retrying')`)
+    .orderBy(desc(stripeWebhookEvent.createdAt))
+}
+
+export async function getRetryableStripeWebhooks(db: AppDb) {
+  const now = new Date()
+  return db
+    .select()
+    .from(stripeWebhookEvent)
+    .where(
+      and(sql`${stripeWebhookEvent.status} = 'retrying'`, lte(stripeWebhookEvent.nextRetryAt, now))
+    )
+    .orderBy(stripeWebhookEvent.nextRetryAt)
+}
+
+export async function retryStripeWebhook(
+  db: AppDb,
+  eventId: string
+): Promise<{ message: string; success: boolean }> {
+  const record = await db
+    .select()
+    .from(stripeWebhookEvent)
+    .where(eq(stripeWebhookEvent.id, eventId))
+    .get()
+
+  if (!record) {
+    return { message: 'Event not found', success: false }
+  }
+
+  if (record.status === 'processed') {
+    return { message: 'Event already processed', success: false }
+  }
+
+  if (record.retryCount >= MAX_RETRIES) {
+    return { message: 'Max retries exceeded', success: false }
+  }
+
+  const nextRetryDelay = getBackoffDelay(record.retryCount)
+  const nextRetryCount = record.retryCount + 1
+  const shouldRetry = nextRetryCount < MAX_RETRIES
+
+  await db
+    .update(stripeWebhookEvent)
+    .set({
+      errorMessage: null,
+      nextRetryAt: new Date(Date.now() + nextRetryDelay),
+      retryCount: nextRetryCount,
+      status: shouldRetry ? 'retrying' : 'failed',
+    })
+    .where(eq(stripeWebhookEvent.id, eventId))
+
+  return {
+    message: shouldRetry
+      ? `Queued for retry (${nextRetryCount}/${MAX_RETRIES})`
+      : `Final attempt (${nextRetryCount}/${MAX_RETRIES})`,
+    success: true,
+  }
 }

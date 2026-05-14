@@ -30,11 +30,13 @@ import {
   getActivePlans,
   getAllPlans,
   getBillingOverview,
+  getFailedStripeWebhooks,
   getOrgSubscription,
   getPlanById,
   getUserSubscription,
   reactivateSubscription,
   recordUsage,
+  retryStripeWebhook,
   updatePlan,
 } from '$lib/server/billing/subscription-service'
 import { getConfigHistory, resolveConfig } from '$lib/server/config-service'
@@ -883,24 +885,28 @@ app.post('/billing/webhooks/stripe', async (c) => {
     return c.json({ error: 'Missing signature' }, 400)
   }
 
+  let event: Awaited<ReturnType<typeof verifyWebhookSignature>> | undefined
+  let existingEvent: { id: string; retryCount: number; status: string | null } | undefined
+  const { db } = c.get('services')
   try {
     const body = await c.req.text()
-    let event: Awaited<ReturnType<typeof verifyWebhookSignature>>
     try {
       event = await verifyWebhookSignature(stripe, { body, signature, webhookSecret })
     } catch {
       return c.json({ error: 'Invalid signature' }, 400)
     }
 
-    const { db } = c.get('services')
-
     // Idempotency: check if this Stripe event was already processed
-    const existingEvent = await db
-      .select({ id: stripeWebhookEvent.id })
+    existingEvent = await db
+      .select({
+        id: stripeWebhookEvent.id,
+        retryCount: stripeWebhookEvent.retryCount,
+        status: stripeWebhookEvent.status,
+      })
       .from(stripeWebhookEvent)
       .where(eq(stripeWebhookEvent.eventId, event.id))
       .get()
-    if (existingEvent) {
+    if (existingEvent?.status === 'processed') {
       return c.json({ duplicate: true, received: true })
     }
 
@@ -1098,7 +1104,9 @@ app.post('/billing/webhooks/stripe', async (c) => {
               isDefault: false,
               last4: card ? String(card.last4) : null,
               stripePaymentMethodId: String(pm.id),
-              type: String(pm.type),
+              type: (String(pm.type) === 'bank_transfer' ? 'bank_transfer' : 'card') as
+                | 'card'
+                | 'bank_transfer',
               userId: subRow.userId,
             })
           }
@@ -1130,15 +1138,53 @@ app.post('/billing/webhooks/stripe', async (c) => {
     }
 
     // Record the processed event for idempotency
-    await db.insert(stripeWebhookEvent).values({
-      eventId: event.id,
-      eventType: event.type,
-      id: uuid(),
-    })
+    const now = new Date()
+    if (existingEvent) {
+      await db
+        .update(stripeWebhookEvent)
+        .set({ errorMessage: null, processedAt: now, status: 'processed' })
+        .where(eq(stripeWebhookEvent.id, existingEvent.id))
+    } else {
+      await db.insert(stripeWebhookEvent).values({
+        eventId: event.id,
+        eventType: event.type,
+        id: uuid(),
+        processedAt: now,
+        status: 'processed',
+      })
+    }
 
     return c.json({ received: true })
   } catch (error) {
     console.error('Webhook processing failed:', error)
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    try {
+      const MAX_RETRIES = 5
+      const retryCount = existingEvent?.retryCount ?? 0
+      const shouldRetry = retryCount < MAX_RETRIES
+      const nextRetryDelay = shouldRetry ? Math.min(1000 * 5 ** retryCount, 60_000) : null
+      if (existingEvent) {
+        await db
+          .update(stripeWebhookEvent)
+          .set({
+            errorMessage: message,
+            nextRetryAt: nextRetryDelay ? new Date(Date.now() + nextRetryDelay) : null,
+            retryCount: retryCount + 1,
+            status: shouldRetry ? 'retrying' : 'failed',
+          })
+          .where(eq(stripeWebhookEvent.id, existingEvent.id))
+      } else if (event) {
+        await db.insert(stripeWebhookEvent).values({
+          errorMessage: message,
+          eventId: event.id,
+          eventType: event.type,
+          id: uuid(),
+          status: 'failed',
+        })
+      }
+    } catch (dbError) {
+      console.error('Failed to record webhook failure:', dbError)
+    }
     return c.json({ error: 'Webhook processing failed' }, 500)
   }
 })
@@ -6407,6 +6453,22 @@ adminApp.get('/billing/invoices', async (c) => {
     .offset(offset)
 
   return c.json({ invoices, limit, page })
+})
+
+adminApp.get('/billing/stripe-events', async (c) => {
+  const { db } = c.get('services')
+  const events = await getFailedStripeWebhooks(db)
+  return c.json({ events })
+})
+
+adminApp.post('/billing/stripe-events/:id/retry', async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+  const result = await retryStripeWebhook(db, id)
+  if (!result.success) {
+    return c.json({ error: result.message }, 400)
+  }
+  return c.json(result)
 })
 
 adminApp.get('/webhooks/deliveries', async (c) => {

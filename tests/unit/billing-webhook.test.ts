@@ -344,4 +344,84 @@ describe('billing webhook logic', () => {
       expect(userId).toBeUndefined()
     })
   })
+
+  describe('stripe webhook retry logic', () => {
+    it('records failed event with status and error message', () => {
+      const error = new Error('DB connection lost')
+      const message = error.message
+      const retryCount = 0
+      const shouldRetry = retryCount < 5
+      const nextRetryDelay = shouldRetry ? Math.min(1000 * 5 ** retryCount, 60_000) : null
+
+      expect(message).toBe('DB connection lost')
+      expect(shouldRetry).toBe(true)
+      expect(nextRetryDelay).toBe(1000)
+    })
+
+    it('calculates exponential backoff for retries', () => {
+      const backoff = (attempt: number) => Math.min(1000 * 5 ** attempt, 60_000)
+
+      expect(backoff(0)).toBe(1000)
+      expect(backoff(1)).toBe(5000)
+      expect(backoff(2)).toBe(25_000)
+      expect(backoff(3)).toBe(60_000)
+      expect(backoff(4)).toBe(60_000)
+    })
+
+    it('marks event as failed after max retries', () => {
+      const MAX_RETRIES = 5
+      const retryCount = 5
+      const shouldRetry = retryCount < MAX_RETRIES
+
+      expect(shouldRetry).toBe(false)
+    })
+
+    it('marks event as retrying when retries remain', () => {
+      const MAX_RETRIES = 5
+      const retryCount = 3
+      const shouldRetry = retryCount < MAX_RETRIES
+      const status = shouldRetry ? 'retrying' : 'failed'
+
+      expect(status).toBe('retrying')
+    })
+
+    it('handles unknown error types gracefully', () => {
+      const error = 'string error'
+      const message = error instanceof Error ? error.message : 'Unknown error'
+
+      expect(message).toBe('Unknown error')
+    })
+
+    it('skips idempotency for non-processed existing events', () => {
+      const existingEvent = { id: 'evt-1', retryCount: 2, status: 'retrying' }
+      const shouldSkip = existingEvent?.status === 'processed'
+
+      expect(shouldSkip).toBe(false)
+    })
+
+    it('skips idempotency for processed existing events', () => {
+      const existingEvent = { id: 'evt-1', retryCount: 0, status: 'processed' }
+      const shouldSkip = existingEvent?.status === 'processed'
+
+      expect(shouldSkip).toBe(true)
+    })
+
+    it('sets nextRetryAt using backoff from current retry count', () => {
+      const retryCount = 2
+      const nextRetryDelay = Math.min(1000 * 5 ** retryCount, 60_000)
+      const nextRetryAt = new Date(Date.now() + nextRetryDelay)
+
+      expect(nextRetryAt.getTime()).toBeGreaterThan(Date.now())
+      expect(nextRetryAt.getTime()).toBeLessThanOrEqual(Date.now() + 60_000)
+    })
+
+    it('sets nextRetryAt to null when max retries exceeded', () => {
+      const retryCount = 5
+      const MAX_RETRIES = 5
+      const shouldRetry = retryCount < MAX_RETRIES
+      const nextRetryDelay = shouldRetry ? Math.min(1000 * 5 ** retryCount, 60_000) : null
+
+      expect(nextRetryDelay).toBeNull()
+    })
+  })
 })

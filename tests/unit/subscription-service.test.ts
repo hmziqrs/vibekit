@@ -1071,3 +1071,135 @@ describe('getUsageForPeriod', () => {
     expect(result).toEqual(records)
   })
 })
+
+describe('getFailedStripeWebhooks', () => {
+  it('returns failed and retrying events ordered by createdAt desc', async () => {
+    const { getFailedStripeWebhooks } = await import('$lib/server/billing/subscription-service')
+    const events = [
+      { id: 'evt-1', status: 'failed', eventType: 'invoice.payment_failed' },
+      { id: 'evt-2', status: 'retrying', eventType: 'customer.subscription.updated' },
+    ]
+    const orderByFn = vi.fn().mockResolvedValue(events)
+    const whereFn = vi.fn().mockReturnValue({ orderBy: orderByFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown as AppDb
+
+    const result = await getFailedStripeWebhooks(db)
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(orderByFn).toHaveBeenCalled()
+    expect(result).toEqual(events)
+  })
+})
+
+describe('retryStripeWebhook', () => {
+  it('returns error when event not found', async () => {
+    const { retryStripeWebhook } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue(null)
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown as AppDb
+
+    const result = await retryStripeWebhook(db, 'nonexistent')
+
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('Event not found')
+  })
+
+  it('returns error when event already processed', async () => {
+    const { retryStripeWebhook } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({
+      id: 'evt-1',
+      retryCount: 0,
+      status: 'processed',
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown as AppDb
+
+    const result = await retryStripeWebhook(db, 'evt-1')
+
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('Event already processed')
+  })
+
+  it('returns error when max retries exceeded', async () => {
+    const { retryStripeWebhook } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({
+      id: 'evt-1',
+      retryCount: 5,
+      status: 'failed',
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown as AppDb
+
+    const result = await retryStripeWebhook(db, 'evt-1')
+
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('Max retries exceeded')
+  })
+
+  it('queues retry when retries remain', async () => {
+    const { retryStripeWebhook } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({
+      id: 'evt-1',
+      retryCount: 2,
+      status: 'retrying',
+    })
+    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+    const updateFn = vi.fn().mockReturnValue({ set: setFn })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+      update: updateFn,
+    } as unknown as AppDb
+
+    const result = await retryStripeWebhook(db, 'evt-1')
+
+    expect(result.success).toBe(true)
+    expect(result.message).toContain('Queued for retry')
+    expect(setFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retryCount: 3,
+        status: 'retrying',
+      })
+    )
+  })
+
+  it('marks as failed on final attempt', async () => {
+    const { retryStripeWebhook } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({
+      id: 'evt-1',
+      retryCount: 4,
+      status: 'retrying',
+    })
+    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+    const updateFn = vi.fn().mockReturnValue({ set: setFn })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+      update: updateFn,
+    } as unknown as AppDb
+
+    const result = await retryStripeWebhook(db, 'evt-1')
+
+    expect(result.success).toBe(true)
+    expect(result.message).toContain('Final attempt')
+    expect(setFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'failed',
+      })
+    )
+  })
+})
