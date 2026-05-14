@@ -1029,6 +1029,22 @@ export const paymentMethodRelations = relations(paymentMethod, ({ one }) => ({
   user: one(user, { fields: [paymentMethod.userId], references: [user.id] }),
 }))
 
+// ── Stripe Webhook Events (idempotency) ──────────────────────────────
+
+export const stripeWebhookEvent = sqliteTable('stripe_webhook_event', {
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  eventId: text('event_id').notNull().unique(),
+  eventType: text('event_type').notNull(),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  processedAt: integer('processed_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+})
+
 // ── Push Notifications ─────────────────────────────────────────────────
 
 export const pushSubscription = sqliteTable(

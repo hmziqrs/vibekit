@@ -65,6 +65,7 @@ import {
   organizationInvitation,
   organizationMember,
   securityEvent,
+  stripeWebhookEvent,
   subscription,
   systemConfig,
   team,
@@ -879,6 +880,17 @@ app.post('/billing/webhooks/stripe', async (c) => {
     }
 
     const { db } = c.get('services')
+
+    // Idempotency: check if this Stripe event was already processed
+    const existingEvent = await db
+      .select({ id: stripeWebhookEvent.id })
+      .from(stripeWebhookEvent)
+      .where(eq(stripeWebhookEvent.eventId, event.id))
+      .get()
+    if (existingEvent) {
+      return c.json({ duplicate: true, received: true })
+    }
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object
@@ -1011,6 +1023,13 @@ app.post('/billing/webhooks/stripe', async (c) => {
         break
       }
     }
+
+    // Record the processed event for idempotency
+    await db.insert(stripeWebhookEvent).values({
+      eventId: event.id,
+      eventType: event.type,
+      id: uuid(),
+    })
 
     return c.json({ received: true })
   } catch (error) {

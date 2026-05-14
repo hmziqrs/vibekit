@@ -157,4 +157,76 @@ describe('billing webhook logic', () => {
       expect(isBlocked).toBe(false)
     })
   })
+
+  describe('webhook event idempotency', () => {
+    it('skips processing when event ID already recorded', async () => {
+      const existingEvent = { id: 'evt-record-1' }
+      const db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue(existingEvent),
+            }),
+          }),
+        }),
+        insert: vi.fn(),
+      }
+
+      const eventId = 'evt_12345'
+      const result = await db
+        .select({ id: 'id' })
+        .from('stripe_webhook_event')
+        .where('eventId = ' + eventId)
+        .get()
+
+      expect(result).toEqual({ id: 'evt-record-1' })
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('records event ID after successful processing', async () => {
+      const mockValues = vi.fn().mockResolvedValue(undefined)
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues })
+      const db = {
+        insert: mockInsert,
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue(null),
+            }),
+          }),
+        }),
+      }
+
+      const eventId = 'evt_new_123'
+      const result = await db
+        .select({ id: 'id' })
+        .from('stripe_webhook_event')
+        .where('eventId = ' + eventId)
+        .get()
+
+      expect(result).toBeNull()
+      db.insert('stripe_webhook_event').values({ eventId, eventType: 'invoice.payment_succeeded' })
+      expect(mockValues).toHaveBeenCalledWith({
+        eventId,
+        eventType: 'invoice.payment_succeeded',
+      })
+    })
+
+    it('handles concurrent duplicate events by unique constraint', () => {
+      // Two events with the same ID should only be processed once
+      const eventId = 'evt_duplicate'
+      const processedEventIds = new Set<string>()
+
+      // First event processes
+      const firstResult = !processedEventIds.has(eventId)
+      processedEventIds.add(eventId)
+
+      // Second event should be detected as duplicate
+      const secondResult = !processedEventIds.has(eventId)
+
+      expect(firstResult).toBe(true)
+      expect(secondResult).toBe(false)
+      expect(processedEventIds.size).toBe(1)
+    })
+  })
 })

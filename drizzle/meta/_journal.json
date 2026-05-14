@@ -169,6 +169,20 @@
       "when": 1778737531651,
       "tag": "0023_lonely_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1778739503743,
+      "tag": "0024_military_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1778743352460,
+      "tag": "0025_fancy_sentinel",
+      "breakpoints": true
     }
   ]
 }
