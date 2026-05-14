@@ -467,6 +467,7 @@ items = response.json()`,
           <a
             href="/openapi.yaml"
             target="_blank"
+            rel="noopener"
             class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-deep"
           >
             <svg

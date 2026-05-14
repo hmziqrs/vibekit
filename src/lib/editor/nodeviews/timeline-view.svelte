@@ -63,6 +63,7 @@
           type="button"
           class="mt-1 shrink-0 text-text-muted hover:text-destructive"
           onclick={() => removeEntry(i)}
+          aria-label="Remove entry"
         >
           <Trash2 size={14} />
         </button>

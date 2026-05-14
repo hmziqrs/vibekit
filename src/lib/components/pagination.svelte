@@ -50,6 +50,7 @@
       onclick={() => onPageChange(1)}
       disabled={currentPage <= 1}
       class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+      aria-label="First page"
     >
       <ChevronsLeft size={14} />
     </button>
@@ -57,6 +58,7 @@
       onclick={() => onPageChange(currentPage - 1)}
       disabled={currentPage <= 1}
       class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+      aria-label="Previous page"
     >
       <ChevronLeft size={14} />
     </button>
@@ -80,6 +82,7 @@
       onclick={() => onPageChange(currentPage + 1)}
       disabled={currentPage >= totalPages}
       class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+      aria-label="Next page"
     >
       <ChevronRight size={14} />
     </button>
@@ -87,6 +90,7 @@
       onclick={() => onPageChange(totalPages)}
       disabled={currentPage >= totalPages}
       class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+      aria-label="Last page"
     >
       <ChevronsRight size={14} />
     </button>

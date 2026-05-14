@@ -68,13 +68,13 @@
         {#if data.q}
           <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-[12px] text-text-muted">
             Search: "{data.q}"
-            <button onclick={() => clearFilter('q')} class="text-text-faint hover:text-text-primary">&times;</button>
+            <button onclick={() => clearFilter('q')} class="text-text-faint hover:text-text-primary" aria-label="Clear search filter">&times;</button>
           </span>
         {/if}
         {#if data.tag}
           <span class="inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-3 py-1 text-[12px] text-brand">
             Tag: {data.tag}
-            <button onclick={() => clearFilter('tag')} class="text-brand/60 hover:text-brand">&times;</button>
+            <button onclick={() => clearFilter('tag')} class="text-brand/60 hover:text-brand" aria-label="Clear tag filter">&times;</button>
           </span>
         {/if}
       </div>
