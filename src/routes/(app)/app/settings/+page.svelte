@@ -61,6 +61,23 @@
   let pushLoading = $state(false)
   let pushError = $state('')
 
+  // Consent management state
+  let consentStatus = $state<'accepted' | 'declined' | null>(null)
+
+  function refreshConsent() {
+    consentStatus = localStorage.getItem('consent') as 'accepted' | 'declined' | null
+  }
+
+  function withdrawConsent() {
+    localStorage.removeItem('consent')
+    consentStatus = null
+  }
+
+  function grantConsent() {
+    localStorage.setItem('consent', 'accepted')
+    consentStatus = 'accepted'
+  }
+
   async function initPush() {
     pushSupported = 'serviceWorker' in navigator && 'PushManager' in window
     if (pushSupported) {
@@ -317,6 +334,7 @@
   $effect(() => {
     loadPasskeys()
     initPush()
+    refreshConsent()
   })
 
   // Connected accounts state
@@ -1158,18 +1176,18 @@
       Manage your cookie and analytics preferences. Analytics help us improve your experience.
     </p>
     <div class="mt-4 flex items-center gap-3">
-      {#if typeof localStorage !== 'undefined' && localStorage.getItem('consent') === 'accepted'}
+      {#if consentStatus === 'accepted'}
         <span class="text-[13px] text-text-secondary">Status: <span class="text-green-400">Accepted</span></span>
         <button
-          onclick={() => { localStorage.removeItem('consent'); location.reload() }}
+          onclick={withdrawConsent}
           class="rounded-lg border border-white/10 px-3 py-1.5 text-[13px] text-text-secondary transition-colors hover:text-text-primary"
         >
           Withdraw Consent
         </button>
-      {:else if typeof localStorage !== 'undefined' && localStorage.getItem('consent') === 'declined'}
+      {:else if consentStatus === 'declined'}
         <span class="text-[13px] text-text-secondary">Status: <span class="text-text-muted">Declined</span></span>
         <button
-          onclick={() => { localStorage.setItem('consent', 'accepted'); location.reload() }}
+          onclick={grantConsent}
           class="rounded-lg bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
         >
           Accept Analytics
