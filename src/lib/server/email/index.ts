@@ -7,6 +7,7 @@ import {
 import { renderEmailVerification } from './templates/email-verification'
 import { renderNewsletterConfirm } from './templates/newsletter-confirm'
 import { renderPasswordReset } from './templates/password-reset'
+import { renderWelcome } from './templates/welcome'
 
 export class EmailService {
   private queue: EmailQueue
@@ -71,6 +72,17 @@ export class EmailService {
       subject: `Contact: ${data.subject}`,
       text,
       to: data.email,
+    })
+  }
+
+  async sendWelcome(email: string, userName: string): Promise<EmailResult> {
+    const { html, text } = renderWelcome(userName)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: 'Welcome to Vibekit!',
+      text,
+      to: email,
     })
   }
 }

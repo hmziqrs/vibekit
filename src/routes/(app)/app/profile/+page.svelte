@@ -85,8 +85,8 @@
       }
     },
     validators: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onSubmit: updateProfileSchema as any,
+      // TanStack Form validator type doesn't accept Zod v4 schemas with nullable/optional fields directly
+      onSubmit: updateProfileSchema as never,
     },
   }))
 

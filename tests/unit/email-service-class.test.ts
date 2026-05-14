@@ -131,4 +131,20 @@ describe('EmailService', () => {
 
     expect(mockSend).toHaveBeenCalledTimes(1)
   })
+
+  it('sendWelcome calls sendImmediate with correct fields', async () => {
+    const { createEmailService } = await import('$lib/server/email')
+    const service = createEmailService({ send: mockSend } as never)
+
+    const result = await service.sendWelcome('new@test.com', 'Alice')
+
+    expect(mockSend).toHaveBeenCalledTimes(1)
+    const msg = mockSend.mock.calls[0][0]
+    expect(msg.to).toBe('new@test.com')
+    expect(msg.subject).toBe('Welcome to Vibekit!')
+    expect(msg.from).toBe('Vibekit <noreply@vibekit.com>')
+    expect(msg.html).toContain('Alice')
+    expect(msg.text).toContain('Alice')
+    expect((result as unknown as { success: boolean }).success).toBe(true)
+  })
 })
