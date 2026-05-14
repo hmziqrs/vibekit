@@ -108,8 +108,8 @@
         method: 'POST',
       })
       if (!res.ok) throw new Error('Failed to save subscription')
-    } catch (e) {
-      pushError = e instanceof Error ? e.message : 'Failed to enable push'
+    } catch (error) {
+      pushError = error instanceof Error ? error.message : 'Failed to enable push'
     } finally {
       pushLoading = false
     }
@@ -129,8 +129,8 @@
         })
         await subscription.unsubscribe()
       }
-    } catch (e) {
-      pushError = e instanceof Error ? e.message : 'Failed to disable push'
+    } catch (error) {
+      pushError = error instanceof Error ? error.message : 'Failed to disable push'
     } finally {
       pushLoading = false
     }

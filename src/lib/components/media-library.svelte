@@ -93,9 +93,8 @@
       }
       ({ nextCursor } = data)
       hasMore = data.truncated ?? false
-      // oxlint-disable-next-line catch-error-name
-    } catch (e) {
-      console.error('Failed to load media', e)
+    } catch (err) {
+      console.error('Failed to load media', err)
       error = 'Failed to load media'
     } finally {
       loading = false

@@ -42,9 +42,8 @@
       }
 
       onUpload(data.url!)
-      // oxlint-disable-next-line catch-error-name
-    } catch (e) {
-      console.error('Failed to upload image', e)
+    } catch (err) {
+      console.error('Failed to upload image', err)
       error = 'Network error'
     } finally {
       uploading = false

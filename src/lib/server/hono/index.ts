@@ -1978,36 +1978,46 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
 
 // ── Push Notifications (auth required) ──────────────────────────────────
 
-protectedApp.post('/push/subscribe', validate(pushSubscribeSchema), async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const body = c.req.valid('json')
+protectedApp.post(
+  '/push/subscribe',
+  withRateLimit('push-subscribe', 10, 60_000),
+  validate(pushSubscribeSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const body = c.req.valid('json')
 
-  const userAgent = c.req.header('user-agent')
-  await subscribeToPush(db, {
-    auth: body.auth,
-    endpoint: body.endpoint,
-    p256dh: body.p256dh,
-    userAgent: userAgent ?? undefined,
-    userId,
-  })
+    const userAgent = c.req.header('user-agent')
+    await subscribeToPush(db, {
+      auth: body.auth,
+      endpoint: body.endpoint,
+      p256dh: body.p256dh,
+      userAgent: userAgent ?? undefined,
+      userId,
+    })
 
-  return c.json({ success: true }, 201)
-})
-
-protectedApp.post('/push/unsubscribe', validate(pushUnsubscribeSchema), async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const body = c.req.valid('json')
-
-  const subs = await getUserPushSubscriptions(db, userId)
-  if (!subs.some((s) => s.endpoint === body.endpoint)) {
-    throw new NotFoundError()
+    return c.json({ success: true }, 201)
   }
+)
 
-  await unsubscribeFromPush(db, body.endpoint)
-  return c.json({ success: true })
-})
+protectedApp.post(
+  '/push/unsubscribe',
+  withRateLimit('push-unsubscribe', 10, 60_000),
+  validate(pushUnsubscribeSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const body = c.req.valid('json')
+
+    const subs = await getUserPushSubscriptions(db, userId)
+    if (!subs.some((s) => s.endpoint === body.endpoint)) {
+      throw new NotFoundError()
+    }
+
+    await unsubscribeFromPush(db, body.endpoint)
+    return c.json({ success: true })
+  }
+)
 
 protectedApp.get('/push/subscriptions', async (c) => {
   const { db } = c.get('services')
