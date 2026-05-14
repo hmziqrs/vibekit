@@ -128,7 +128,7 @@ describe('billing webhook logic', () => {
 
   describe('checkout planId validation', () => {
     it('rejects checkout without planId in metadata', () => {
-      const metadata = null
+      const metadata = null as Record<string, unknown> | null
       const planId = metadata?.planId
 
       expect(planId).toBeUndefined()

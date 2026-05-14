@@ -1,4 +1,5 @@
 import { calculateZTest } from '$lib/server/ab-testing'
+import type { DrizzleDb } from '$lib/server/services/types'
 import {
   assignVariantSchema,
   createExperimentSchema,
@@ -6,7 +7,12 @@ import {
   recordEventSchema,
   updateExperimentSchema,
 } from '$lib/validators/ab-testing'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+
+type ExperimentMockDb = DrizzleDb & {
+  _insertFn: Mock
+  _setFn: Mock
+}
 
 describe('a/B Testing Validators', () => {
   describe('createExperimentSchema', () => {
@@ -344,7 +350,7 @@ describe('ab-testing service', () => {
       insert: insertFn,
       select: vi.fn().mockReturnValue({ from: fromFn }),
       update: updateFn,
-    } as unknown
+    } as unknown as ExperimentMockDb
   }
 
   describe('getExperiment', () => {
@@ -472,7 +478,7 @@ describe('ab-testing service', () => {
 
       const db = {
         select: vi.fn().mockReturnValue({ from: fromFn }),
-      } as unknown
+      } as unknown as DrizzleDb
 
       const results = await getExperimentResults(db, 'test-exp')
       expect(results).toHaveLength(2)

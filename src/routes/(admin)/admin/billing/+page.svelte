@@ -63,7 +63,7 @@
       }
       queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to update plan status.'
+      mutationError = error instanceof Error ? error.message : 'Failed to update plan status.'
     }
   }
 
@@ -77,7 +77,7 @@
       }
       queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to delete plan.'
+      mutationError = error instanceof Error ? error.message : 'Failed to delete plan.'
     }
   }
 
@@ -107,7 +107,7 @@
       showCreatePlan = false
       queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to create plan.'
+      mutationError = error instanceof Error ? error.message : 'Failed to create plan.'
     }
   }
 

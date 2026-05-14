@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDelete = vi.fn()
@@ -45,7 +46,7 @@ function createMockDb(
         }),
       }),
     }),
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 beforeEach(() => {

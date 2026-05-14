@@ -2,10 +2,10 @@
   import { getContext } from 'svelte'
   import type { AuthContext } from '$lib/auth.svelte'
   import { goto } from '$app/navigation'
-  import { bio, displayName, onboardingSchema, timezone as timezoneValidator } from '$lib/validators/profile'
+  import { bio as bioValidator, displayName as displayNameValidator, onboardingSchema, timezone as timezoneValidator } from '$lib/validators/profile'
   import { z } from 'zod/v4'
 
-  const onboardingProfileSchema = z.object({ bio, displayName })
+  const onboardingProfileSchema = z.object({ bio: bioValidator, displayName: displayNameValidator })
   const onboardingTimezoneSchema = z.object({ timezone: timezoneValidator })
 
   const auth = getContext<AuthContext>('auth')

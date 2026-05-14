@@ -433,7 +433,7 @@ test.describe('auth redirection', () => {
     await page.goto('/login', { waitUntil: 'networkidle' })
     // Should show login form or redirect to app if already authenticated
     const url = page.url()
-    expect(url).toContain('/login').or.toContain('/app')
+    expect(url === '/login' || url.includes('/app')).toBe(true)
   })
 
   test('register page loads', async ({ page }) => {

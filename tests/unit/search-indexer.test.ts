@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the D1 search adapter
@@ -11,7 +12,13 @@ vi.mock('$lib/server/search/adapter-d1', () => ({
   }),
 }))
 
-function createMockDb(rows: Record<string, unknown>[] = []) {
+type MockDb = DrizzleDb & {
+  _fromFn: ReturnType<typeof vi.fn>
+  _limitFn: ReturnType<typeof vi.fn>
+  _whereFn: ReturnType<typeof vi.fn>
+}
+
+function createMockDb(rows: Record<string, unknown>[] = []): MockDb {
   const limitFn = vi.fn().mockResolvedValue(rows)
   const whereFn = vi.fn().mockReturnValue({ limit: limitFn })
   const fromFn = vi.fn().mockReturnValue({ where: whereFn })
@@ -21,7 +28,7 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
     _limitFn: limitFn,
     _whereFn: whereFn,
     select: vi.fn().mockReturnValue({ from: fromFn }),
-  } as unknown
+  } as unknown as MockDb
 }
 
 beforeEach(() => {

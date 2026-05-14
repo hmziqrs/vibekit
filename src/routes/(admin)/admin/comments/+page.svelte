@@ -94,7 +94,7 @@
         mutationError = 'Failed to moderate comment. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to moderate comment.'
+      mutationError = error instanceof Error ? error.message : 'Failed to moderate comment.'
     }
   }
 
@@ -112,7 +112,7 @@
         mutationError = 'Failed to delete comment. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to delete comment.'
+      mutationError = error instanceof Error ? error.message : 'Failed to delete comment.'
     }
   }
 
@@ -135,7 +135,7 @@
         mutationError = 'Some comments failed to update. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Bulk moderation failed.'
+      mutationError = error instanceof Error ? error.message : 'Bulk moderation failed.'
     }
   }
 

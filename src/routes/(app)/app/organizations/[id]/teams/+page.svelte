@@ -77,7 +77,7 @@
       createName = ''
       createDescription = ''
       showCreateForm = false
-    } catch (caught) {
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
       error = caught instanceof Error ? caught.message : 'Failed to create team'
     } finally {
       creating = false

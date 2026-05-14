@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
+type Bucket = Parameters<
+  typeof import('$lib/server/adapter/cloudflare/storage-r2').createCloudflareStorage
+>[0]
+
 function createMockR2Bucket() {
   return {
     createSignedUrl: vi
@@ -22,7 +26,7 @@ describe('createCloudflareStorage', () => {
   it('deletes a key from the bucket', async () => {
     const { createCloudflareStorage } = await import('$lib/server/adapter/cloudflare/storage-r2')
     const bucket = createMockR2Bucket()
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     await storage.delete('test-key')
     expect(bucket.delete).toHaveBeenCalledWith('test-key')
@@ -31,7 +35,7 @@ describe('createCloudflareStorage', () => {
   it('returns null when object does not exist', async () => {
     const { createCloudflareStorage } = await import('$lib/server/adapter/cloudflare/storage-r2')
     const bucket = createMockR2Bucket()
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     const result = await storage.get('nonexistent')
     expect(result).toBeNull()
@@ -47,7 +51,7 @@ describe('createCloudflareStorage', () => {
       httpMetadata: { cacheControl: 'max-age=3600', contentType: 'image/png' },
       size: 2048,
     })
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     const result = await storage.get('images/photo.png')
     expect(result).toStrictEqual({
@@ -68,7 +72,7 @@ describe('createCloudflareStorage', () => {
       httpMetadata: {},
       size: 100,
     })
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     const result = await storage.get('some-file')
     expect(result?.contentType).toBe('application/octet-stream')
@@ -90,7 +94,7 @@ describe('createCloudflareStorage', () => {
       ],
       truncated: false,
     })
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     const result = await storage.list('images/', 'page-1', 10)
     expect(bucket.list).toHaveBeenCalledWith({
@@ -113,7 +117,7 @@ describe('createCloudflareStorage', () => {
       objects: [],
       truncated: true,
     })
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     const result = await storage.list('prefix/')
     expect(result.truncated).toBe(true)
@@ -124,7 +128,7 @@ describe('createCloudflareStorage', () => {
     const { createCloudflareStorage } = await import('$lib/server/adapter/cloudflare/storage-r2')
     const bucket = createMockR2Bucket()
     bucket.list.mockResolvedValue({ cursor: null, objects: [], truncated: false })
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     await storage.list()
     expect(bucket.list).toHaveBeenCalledWith({
@@ -137,7 +141,7 @@ describe('createCloudflareStorage', () => {
   it('puts an object with metadata', async () => {
     const { createCloudflareStorage } = await import('$lib/server/adapter/cloudflare/storage-r2')
     const bucket = createMockR2Bucket()
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
     const body = new Uint8Array([1, 2, 3])
 
     const result = await storage.put('test/file.txt', body, {
@@ -157,7 +161,7 @@ describe('createCloudflareStorage', () => {
   it('creates a signed URL with default expiry', async () => {
     const { createCloudflareStorage } = await import('$lib/server/adapter/cloudflare/storage-r2')
     const bucket = createMockR2Bucket()
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     const url = await storage.getPresignedUrl('private/file.pdf')
     expect(bucket.createSignedUrl).toHaveBeenCalledWith('private/file.pdf', {
@@ -169,7 +173,7 @@ describe('createCloudflareStorage', () => {
   it('creates a signed URL with custom expiry', async () => {
     const { createCloudflareStorage } = await import('$lib/server/adapter/cloudflare/storage-r2')
     const bucket = createMockR2Bucket()
-    const storage = createCloudflareStorage(bucket as unknown as R2Bucket)
+    const storage = createCloudflareStorage(bucket as unknown as Bucket)
 
     await storage.getPresignedUrl('file.pdf', { expiresIn: 7200 })
     expect(bucket.createSignedUrl).toHaveBeenCalledWith('file.pdf', {

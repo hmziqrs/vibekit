@@ -53,25 +53,25 @@ describe('Profile bio field', () => {
 
 describe('Organization leave endpoint', () => {
   it('should block owner from leaving', () => {
-    const role = 'owner'
+    const role = 'owner' as string as string
     const canLeave = role !== 'owner'
     expect(canLeave).toBe(false)
   })
 
   it('should allow member to leave', () => {
-    const role = 'member'
+    const role = 'member' as string
     const canLeave = role !== 'owner'
     expect(canLeave).toBe(true)
   })
 
   it('should allow admin to leave', () => {
-    const role = 'admin'
+    const role = 'admin' as string
     const canLeave = role !== 'owner'
     expect(canLeave).toBe(true)
   })
 
   it('should allow viewer to leave', () => {
-    const role = 'viewer'
+    const role = 'viewer' as string
     const canLeave = role !== 'owner'
     expect(canLeave).toBe(true)
   })

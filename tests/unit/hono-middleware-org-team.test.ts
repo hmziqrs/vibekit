@@ -7,8 +7,9 @@ import {
   withOrgMembership,
   withTeamMembership,
 } from '$lib/server/hono/middleware'
-import type { OrgEnv, TeamEnv, Variables } from '$lib/server/hono/types'
-import { Hono, type StatusCode } from 'hono'
+import type { Env, OrgEnv, TeamEnv, Variables } from '$lib/server/hono/types'
+import { Hono, type Schema } from 'hono'
+import type { BlankEnv } from 'hono/types'
 import { describe, expect, it, vi } from 'vitest'
 
 type TestUser = NonNullable<Variables['user']>
@@ -32,16 +33,16 @@ function mockServices(dbOverrides: Record<string, unknown> = {}): TestServices {
   return { db: dbOverrides } as unknown as TestServices
 }
 
-function withErrorHandler(app: Hono<OrgEnv | TeamEnv>) {
-  return app.onError((err, c) => {
+function withErrorHandler<E extends BlankEnv = Env>(app: unknown) {
+  return (app as Hono<BlankEnv, Schema, '/'>).onError((err: unknown, c) => {
     if (isAppError(err)) {
-      return c.json(err.toJSON(), err.status as StatusCode)
+      return c.json(err.toJSON(), err.status as never)
     }
     return c.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
-      500 as StatusCode
+      500 as never
     )
-  })
+  }) as unknown as Hono<E, Schema, '/'>
 }
 
 function createMockDb(responses: unknown[]) {

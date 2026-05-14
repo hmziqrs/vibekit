@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
 
 function createMockDb(rows: Record<string, unknown>[] = []) {
@@ -20,7 +21,7 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
     insert: insertFn,
     select: selectFn,
     update: updateFn,
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 describe('feature-flag service module', () => {

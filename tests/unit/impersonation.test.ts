@@ -13,13 +13,13 @@ describe('impersonation session validation', () => {
 
   it('rejects impersonating yourself', () => {
     const currentUserId = 'admin-1'
-    const targetId = 'admin-1'
+    const targetId = currentUserId
     expect(currentUserId === targetId).toBe(true)
   })
 
   it('allows impersonating different user', () => {
-    const currentUserId = 'admin-1'
-    const targetId = 'user-1'
+    const currentUserId = 'admin-1' as string
+    const targetId = 'user-1' as string
     expect(currentUserId === targetId).toBe(false)
   })
 

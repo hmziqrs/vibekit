@@ -40,8 +40,8 @@ describe('ban validation', () => {
   })
 
   it('can ban a different user', () => {
-    const currentUserId = 'admin-1'
-    const targetId = 'user-1'
+    const currentUserId = 'admin-1' as string
+    const targetId = 'user-1' as string
     expect(currentUserId === targetId).toBe(false)
   })
 })

@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock audit module
@@ -19,7 +20,7 @@ describe('events module', () => {
   it('writes audit log with correct input', async () => {
     const { emitEvent } = await import('$lib/server/events')
     const { writeAuditLog } = await import('$lib/server/audit')
-    const db = {} as unknown
+    const db = {} as unknown as DrizzleDb
 
     await emitEvent(db, {
       action: 'user.created',
@@ -42,7 +43,7 @@ describe('events module', () => {
   it('passes metadata to audit log', async () => {
     const { emitEvent } = await import('$lib/server/events')
     const { writeAuditLog } = await import('$lib/server/audit')
-    const db = {} as unknown
+    const db = {} as unknown as DrizzleDb
 
     await emitEvent(db, {
       action: 'item.updated',
@@ -63,7 +64,7 @@ describe('events module', () => {
   it('dispatches webhooks for the event', async () => {
     const { emitEvent } = await import('$lib/server/events')
     const { dispatchWebhooksForEvent } = await import('$lib/server/webhooks')
-    const db = {} as unknown
+    const db = {} as unknown as DrizzleDb
 
     await emitEvent(db, {
       action: 'blog.published',
@@ -90,7 +91,7 @@ describe('events module', () => {
       new Error('Connection refused')
     )
 
-    const db = {} as unknown
+    const db = {} as unknown as DrizzleDb
 
     await expect(
       emitEvent(db, {
@@ -116,7 +117,7 @@ describe('events module', () => {
       new Error('Timeout')
     )
 
-    const db = {} as unknown
+    const db = {} as unknown as DrizzleDb
 
     await emitEvent(db, {
       action: 'user.deleted',

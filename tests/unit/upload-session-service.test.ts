@@ -1,4 +1,10 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+type MockDb = DrizzleDb & {
+  _insertFn: ReturnType<typeof vi.fn>
+  _setFn: ReturnType<typeof vi.fn>
+}
 
 vi.mock('$lib/server/db/schema', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -43,7 +49,7 @@ describe('upload-session service', () => {
     vi.resetModules()
   })
 
-  function createMockDb(session: Record<string, unknown> | null = null) {
+  function createMockDb(session: Record<string, unknown> | null = null): MockDb {
     const rows = session ? [session] : []
     const setFn = vi.fn<() => { where: ReturnType<typeof vi.fn> }>().mockReturnValue({
       where: vi.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
@@ -69,7 +75,7 @@ describe('upload-session service', () => {
           }),
       }),
       update: vi.fn<() => { set: ReturnType<typeof vi.fn> }>().mockReturnValue({ set: setFn }),
-    } as unknown
+    } as unknown as MockDb
   }
 
   describe('createUploadSession', () => {

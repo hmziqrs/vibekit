@@ -1,4 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { DrizzleDb } from '$lib/server/services/types'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+
+type ApiKeyMockDb = DrizzleDb & {
+  _insertFn: Mock
+  _setFn: Mock
+}
 
 vi.mock('$lib/server/db/schema', () => ({
   apiKey: {
@@ -63,7 +69,7 @@ describe('api-keys', () => {
         from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(keys) }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    } as unknown
+    } as unknown as ApiKeyMockDb
   }
 
   function createMockDbWithOrder(keys: Record<string, unknown>[] = []) {
@@ -83,7 +89,7 @@ describe('api-keys', () => {
         }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    } as unknown
+    } as unknown as ApiKeyMockDb
   }
 
   describe('createApiKey', () => {

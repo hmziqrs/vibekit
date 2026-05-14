@@ -1,6 +1,13 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-function createMockDb(overrides: Record<string, unknown> = {}) {
+interface MockDb extends DrizzleDb {
+  _insertFn: ReturnType<typeof vi.fn>
+  _insertValues: ReturnType<typeof vi.fn>
+  _onConflictDoUpdateFn: ReturnType<typeof vi.fn>
+}
+
+function createMockDb(overrides: Record<string, unknown> = {}): MockDb {
   const onConflictDoUpdateFn = vi.fn().mockResolvedValue(undefined)
   const _insertValues = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateFn })
   const _insertFn = vi.fn().mockReturnValue({ values: _insertValues })
@@ -18,7 +25,7 @@ function createMockDb(overrides: Record<string, unknown> = {}) {
       }),
     }),
     ...overrides,
-  } as unknown
+  } as unknown as MockDb
 }
 
 beforeEach(() => {
@@ -193,7 +200,7 @@ describe('createBroadcast', () => {
 
     await createBroadcast(
       db,
-      { body: 'Body text', title: 'Broadcast', type: 'warning' },
+      { body: 'Body text', target: 'all', title: 'Broadcast', type: 'warning' },
       getUserIds
     )
 

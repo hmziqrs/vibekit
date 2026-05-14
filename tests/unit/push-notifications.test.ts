@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock web-push before importing the module
@@ -48,7 +49,7 @@ function createMockDb() {
         where: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
       }),
     }),
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 describe('configureWebPush', () => {

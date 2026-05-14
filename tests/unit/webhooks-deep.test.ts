@@ -1,4 +1,10 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+type MockDb = DrizzleDb & {
+  _insertFn: ReturnType<typeof vi.fn>
+  _setFn: ReturnType<typeof vi.fn>
+}
 
 vi.mock('$lib/server/db/schema', () => ({
   webhookDelivery: {
@@ -36,7 +42,7 @@ describe('webhooks', () => {
     vi.resetModules()
   })
 
-  function createMockDb(endpoints: Record<string, unknown>[] = []) {
+  function createMockDb(endpoints: Record<string, unknown>[] = []): MockDb {
     const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
 
     return {
@@ -53,7 +59,7 @@ describe('webhooks', () => {
         }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    } as unknown
+    } as unknown as MockDb
   }
 
   function makeEndpoint(overrides: Record<string, unknown> = {}): Record<string, unknown> {

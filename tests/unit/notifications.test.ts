@@ -1,6 +1,14 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-function createMockDb(preferenceEnabled = true) {
+type MockDb = DrizzleDb & {
+  _getFn: ReturnType<typeof vi.fn>
+  _insertFn: ReturnType<typeof vi.fn>
+  _onConflictDoUpdateFn: ReturnType<typeof vi.fn>
+  _valuesFn: ReturnType<typeof vi.fn>
+}
+
+function createMockDb(preferenceEnabled = true): MockDb {
   const getFn = vi
     .fn()
     .mockResolvedValue(preferenceEnabled ? { enabled: true } : { enabled: false })
@@ -28,7 +36,7 @@ function createMockDb(preferenceEnabled = true) {
         where: vi.fn().mockReturnValue(selectWhereResult),
       }),
     }),
-  } as unknown
+  } as unknown as MockDb
 }
 
 beforeEach(() => {
@@ -236,7 +244,7 @@ describe('getNotificationPreferences', () => {
           where: vi.fn().mockResolvedValue(mockPrefs),
         }),
       }),
-    } as unknown
+    } as unknown as DrizzleDb
 
     const prefs = await getNotificationPreferences(db, 'user-1')
 
@@ -252,7 +260,7 @@ describe('getNotificationPreferences', () => {
           where: vi.fn().mockResolvedValue([]),
         }),
       }),
-    } as unknown
+    } as unknown as DrizzleDb
 
     const prefs = await getNotificationPreferences(db, 'user-1')
 

@@ -71,14 +71,14 @@
         >
           <form.Field name="name">
             {#snippet children(field)}
-              <TanstackField {field} label="Name" placeholder="Your name" />
+              <TanstackField field={field as never} label="Name" placeholder="Your name" />
             {/snippet}
           </form.Field>
 
           <form.Field name="email">
             {#snippet children(field)}
               <TanstackField
-                {field}
+                field={field as never}
                 label="Email address"
                 type="email"
                 placeholder="you@example.com"

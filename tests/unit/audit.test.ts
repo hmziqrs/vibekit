@@ -1,4 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { DrizzleDb } from '$lib/server/services/types'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+
+type AuditMockDb = DrizzleDb & {
+  _insertFn: Mock
+  _valuesFn: Mock
+}
 
 function createMockDb() {
   const valuesFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
@@ -8,7 +14,7 @@ function createMockDb() {
     _insertFn: insertFn,
     _valuesFn: valuesFn,
     insert: insertFn,
-  } as unknown
+  } as unknown as AuditMockDb
 }
 
 describe('audit module', () => {

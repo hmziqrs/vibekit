@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import {
   createFeatureFlagSchema,
   evaluateFlagSchema,
@@ -6,7 +7,12 @@ import {
   toggleFeatureFlagSchema,
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+
+type FlagMockDb = DrizzleDb & {
+  _setFn: Mock
+  _updateFn: Mock
+}
 
 describe('feature Flag Validators', () => {
   describe('createFeatureFlagSchema', () => {
@@ -294,7 +300,7 @@ describe('feature-flags service', () => {
         from: vi.fn().mockReturnValue({ where: whereFn }),
       }),
       update: updateFn,
-    } as unknown
+    } as unknown as FlagMockDb
   }
 
   function makeFlag(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
@@ -455,7 +461,7 @@ describe('feature-flags service', () => {
       })
       const db = {
         select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) }),
-      } as unknown
+      } as unknown as DrizzleDb
       expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(false)
     })
   })
@@ -472,7 +478,7 @@ describe('feature-flags service', () => {
       })
       const db = {
         select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) }),
-      } as unknown
+      } as unknown as DrizzleDb
       const result = await evaluateMultipleFlags(db, ['flag-a', 'flag-b'])
       expect(result['flag-a']).toBe(true)
       expect(result['flag-b']).toBe(false)

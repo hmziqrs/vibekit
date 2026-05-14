@@ -140,7 +140,7 @@
       }
     } catch (error) {
       resolving = false
-      mutationError = error instanceof Error ? e.message : 'Failed to resolve report.'
+      mutationError = error instanceof Error ? error.message : 'Failed to resolve report.'
     }
   }
 

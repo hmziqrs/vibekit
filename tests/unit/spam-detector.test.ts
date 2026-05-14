@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
@@ -22,7 +23,7 @@ function createMockDb(recentComment?: object, recentCount?: { count: number }) {
         }),
       }),
     }),
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 function createRateLimitedDb(recentCount: number) {
@@ -57,7 +58,7 @@ function createRateLimitedDb(recentCount: number) {
         }),
       }),
     }),
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 function createDuplicateDb() {
@@ -79,7 +80,7 @@ function createDuplicateDb() {
         }),
       }),
     }),
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 describe('spam-detector module', () => {

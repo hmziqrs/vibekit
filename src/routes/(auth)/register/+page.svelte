@@ -77,7 +77,7 @@
         <form.Field name="name">
           {#snippet children(field)}
             <TanstackField
-              {field}
+              field={field as never}
               label="Name"
               placeholder="Your name"
               autocomplete="name"
@@ -88,7 +88,7 @@
         <form.Field name="email">
           {#snippet children(field)}
             <TanstackField
-              {field}
+              field={field as never}
               label="Email"
               type="email"
               placeholder="you@example.com"
@@ -100,7 +100,7 @@
         <form.Field name="password">
           {#snippet children(field)}
             <TanstackField
-              {field}
+              field={field as never}
               label="Password"
               type="password"
               placeholder="Create a password"
@@ -113,7 +113,7 @@
         <form.Field name="confirmPassword">
           {#snippet children(field)}
             <TanstackField
-              {field}
+              field={field as never}
               label="Confirm Password"
               type="password"
               placeholder="Confirm your password"

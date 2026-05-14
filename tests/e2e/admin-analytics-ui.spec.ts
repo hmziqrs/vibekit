@@ -50,9 +50,7 @@ test.describe('admin analytics page', () => {
     )
     await page.goto('/admin/analytics', { waitUntil: 'networkidle' })
     await expect(page.getByText(/failed to load/i)).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByRole('button', { name: /try again/i }))
-      .first()
-      .toBeVisible()
+    await expect(page.getByRole('button', { name: /try again/i }).first()).toBeVisible()
   })
 
   test('date range buttons trigger refetch', async ({ page }) => {

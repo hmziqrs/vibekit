@@ -185,19 +185,19 @@ describe('organization role hierarchy', () => {
   })
 
   it('admin can manage members but not transfer', () => {
-    const role = 'admin'
+    const role = 'admin' as string
     const canTransfer = role === 'owner'
     expect(canTransfer).toBe(false)
   })
 
   it('member can only read and participate', () => {
-    const role = 'member'
+    const role = 'member' as string
     const canAdmin = role === 'owner' || role === 'admin'
     expect(canAdmin).toBe(false)
   })
 
   it('viewer has read-only access', () => {
-    const role = 'viewer'
+    const role = 'viewer' as string
     const canWrite = role === 'owner' || role === 'admin' || role === 'member'
     expect(canWrite).toBe(false)
   })

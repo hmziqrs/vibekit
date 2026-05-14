@@ -95,7 +95,7 @@
         <form.Field name="name">
           {#snippet children(field)}
             <TanstackField
-              {field}
+              field={field as never}
               label="Name"
               placeholder="Item name"
             />
@@ -105,7 +105,7 @@
         <form.Field name="description">
           {#snippet children(field)}
             <TanstackField
-              {field}
+              field={field as never}
               label="Description"
               type="textarea"
               rows={4}

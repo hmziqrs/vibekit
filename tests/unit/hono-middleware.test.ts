@@ -6,7 +6,8 @@ import {
   withRateLimit,
 } from '$lib/server/hono/middleware'
 import type { Env, ProtectedEnv, Variables } from '$lib/server/hono/types'
-import { Hono } from 'hono'
+import { Hono, type Schema } from 'hono'
+import type { BlankEnv } from 'hono/types'
 import { describe, expect, it, vi } from 'vitest'
 
 type TestUser = NonNullable<Variables['user']>
@@ -30,14 +31,14 @@ function mockServices(): TestServices {
   return {} as unknown as TestServices
 }
 
-function withErrorHandler(app: Hono<Env | ProtectedEnv>) {
-  return app.onError((err: unknown, c: { json: (body: unknown, status: number) => unknown }) => {
+function withErrorHandler<E extends BlankEnv = Env>(app: Hono<E, Schema, '/'>) {
+  return app.onError((err: unknown, c) => {
     if (isAppError(err)) {
-      return c.json(err.toJSON(), err.status)
+      return c.json(err.toJSON(), err.status as 400)
     }
     return c.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
-      500 as unknown
+      500 as never
     )
   })
 }

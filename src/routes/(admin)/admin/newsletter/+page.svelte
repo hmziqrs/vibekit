@@ -94,7 +94,7 @@
         mutationError = 'Failed to delete subscriber. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to delete subscriber.'
+      mutationError = error instanceof Error ? error.message : 'Failed to delete subscriber.'
     }
   }
 

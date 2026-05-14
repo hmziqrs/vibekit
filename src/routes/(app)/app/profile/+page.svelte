@@ -219,14 +219,14 @@
         >
           <form.Field name="name">
             {#snippet children(field)}
-              <TanstackField {field} label="Name" maxlength={100} placeholder="Enter your name" />
+              <TanstackField field={field as never} label="Name" maxlength={100} placeholder="Enter your name" />
             {/snippet}
           </form.Field>
 
           <form.Field name="displayName">
             {#snippet children(field)}
               <TanstackField
-                {field}
+                field={field as never}
                 label="Display Name"
                 maxlength={100}
                 placeholder="Public display name (optional)"

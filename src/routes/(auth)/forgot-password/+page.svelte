@@ -78,7 +78,7 @@
           <form.Field name="email">
             {#snippet children(field)}
               <TanstackField
-                {field}
+                field={field as never}
                 label="Email"
                 type="email"
                 placeholder="you@example.com"

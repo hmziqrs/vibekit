@@ -1,4 +1,15 @@
+import type { AppDb } from '$lib/server/services/types'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+
+type MockDb = AppDb & {
+  _allFn: ReturnType<typeof vi.fn>
+  _getFn: ReturnType<typeof vi.fn>
+  _insertFn: ReturnType<typeof vi.fn>
+  _setFn: ReturnType<typeof vi.fn>
+  _updateFn: ReturnType<typeof vi.fn>
+  _valuesFn: ReturnType<typeof vi.fn>
+  _whereFn: ReturnType<typeof vi.fn>
+}
 
 function createMockDb(
   opts: {
@@ -6,7 +17,7 @@ function createMockDb(
     rows?: object[]
     subRow?: object | null
   } = {}
-) {
+): MockDb {
   const { planRow = null, rows = [], subRow = null } = opts
 
   const getFn = vi.fn().mockResolvedValue(planRow)
@@ -42,7 +53,7 @@ function createMockDb(
     insert: insertFn,
     select: vi.fn().mockReturnValue({ from: fromFn }),
     update: updateFn,
-  } as unknown
+  } as unknown as MockDb
 }
 
 describe('subscription-service module', () => {
@@ -272,7 +283,7 @@ describe('changeSubscriptionPlan', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown
+    } as unknown as AppDb
 
     await expect(changeSubscriptionPlan(db, 'sub-1', 'plan-missing')).rejects.toThrow(
       'New plan not found'
@@ -455,7 +466,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown
+    } as unknown as AppDb
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-pro')
 
@@ -486,7 +497,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown
+    } as unknown as AppDb
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-starter')
 
@@ -515,7 +526,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown
+    } as unknown as AppDb
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-b')
 
@@ -544,7 +555,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown
+    } as unknown as AppDb
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-new')
 
@@ -637,7 +648,7 @@ describe('checkUsageLimit', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const selectFn = vi.fn().mockReturnValue({ from: fromFn })
     return {
-      db: { select: selectFn } as unknown,
+      db: { select: selectFn } as unknown as AppDb,
       getFn,
     }
   }
@@ -719,7 +730,7 @@ describe('checkUsageLimit', () => {
     })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await checkUsageLimit(db, {
       metricType: 'api_calls',
@@ -759,7 +770,7 @@ describe('checkUsageLimit', () => {
     })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await checkUsageLimit(db, {
       metricType: 'api_calls',
@@ -782,7 +793,7 @@ describe('getActivePlans', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getActivePlans(db)
 
@@ -797,7 +808,7 @@ describe('getAllPlans', () => {
     const fromFn = vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue(undefined) })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     await getAllPlans(db)
 
@@ -813,7 +824,7 @@ describe('getPlanBySlug', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getPlanBySlug(db, 'pro')
 
@@ -828,7 +839,7 @@ describe('getPlanBySlug', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getPlanBySlug(db, 'nonexistent')
 
@@ -844,7 +855,7 @@ describe('getPlanById', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getPlanById(db, 'plan-1')
 
@@ -859,7 +870,7 @@ describe('getPlanById', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getPlanById(db, 'nonexistent')
 
@@ -877,7 +888,7 @@ describe('getUserSubscription', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getUserSubscription(db, 'user-1')
 
@@ -895,7 +906,7 @@ describe('getUserSubscription', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getUserSubscription(db, 'user-none')
 
@@ -915,7 +926,7 @@ describe('getOrgSubscription', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getOrgSubscription(db, 'org-1')
 
@@ -932,7 +943,7 @@ describe('getSubscriptionById', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getSubscriptionById(db, 'sub-1')
 
@@ -947,7 +958,7 @@ describe('getSubscriptionById', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const result = await getSubscriptionById(db, 'nonexistent')
 
@@ -966,7 +977,7 @@ describe('getUsageForPeriod', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const db = {
       select: vi.fn().mockReturnValue({ from: fromFn }),
-    } as unknown
+    } as unknown as AppDb
 
     const start = new Date('2026-05-01')
     const end = new Date('2026-06-01')

@@ -129,7 +129,7 @@
       editingValue = ''
       configQuery.refetch()
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to save config'
+      mutationError = error instanceof Error ? error.message : 'Failed to save config'
     } finally {
       savingConfig = false
     }
@@ -173,7 +173,7 @@
       newEndsAt = ''
       announcementsQuery.refetch()
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to create announcement'
+      mutationError = error instanceof Error ? error.message : 'Failed to create announcement'
     } finally {
       creating = false
     }
@@ -194,7 +194,7 @@
       }
       announcementsQuery.refetch()
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to update announcement'
+      mutationError = error instanceof Error ? error.message : 'Failed to update announcement'
     } finally {
       togglingId = null
     }
@@ -213,7 +213,7 @@
       showDeleteDialog = false
       announcementsQuery.refetch()
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to delete announcement'
+      mutationError = error instanceof Error ? error.message : 'Failed to delete announcement'
     }
   }
 

@@ -53,7 +53,7 @@
         mutationError = 'Failed to change role. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to change role.'
+      mutationError = error instanceof Error ? error.message : 'Failed to change role.'
     }
   }
 
@@ -73,7 +73,7 @@
         mutationError = 'Failed to update user status. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to update user status.'
+      mutationError = error instanceof Error ? error.message : 'Failed to update user status.'
     }
   }
 
@@ -91,7 +91,7 @@
         mutationError = 'Failed to delete user. Please try again.'
       }
     } catch (error) {
-      mutationError = error instanceof Error ? e.message : 'Failed to delete user.'
+      mutationError = error instanceof Error ? error.message : 'Failed to delete user.'
     }
   }
 

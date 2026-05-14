@@ -91,7 +91,7 @@
           <form.Field name="password">
             {#snippet children(field)}
               <TanstackField
-                {field}
+                field={field as never}
                 label="New password"
                 type="password"
                 placeholder="Enter new password"
@@ -104,7 +104,7 @@
           <form.Field name="confirmPassword">
             {#snippet children(field)}
               <TanstackField
-                {field}
+                field={field as never}
                 label="Confirm new password"
                 type="password"
                 placeholder="Confirm new password"

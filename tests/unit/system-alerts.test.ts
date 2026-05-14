@@ -1,3 +1,4 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
 // eslint-disable-next-line unicorn/no-class
@@ -30,7 +31,7 @@ function createMockDb(selectResult?: unknown[]) {
   return {
     insert: insertFn,
     select: selectFn,
-  } as unknown
+  } as unknown as DrizzleDb
 }
 
 describe('notification preference logic', () => {
