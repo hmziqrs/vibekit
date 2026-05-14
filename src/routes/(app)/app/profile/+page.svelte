@@ -176,7 +176,7 @@
     {/if}
 
     <!-- Role & Member Since (read-only) -->
-    <div class="mb-6 grid grid-cols-2 gap-4">
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
         <p class="text-[11px] uppercase tracking-wider text-text-subtle">Role</p>
         <p class="mt-1 text-[14px] font-medium capitalize text-text-primary">

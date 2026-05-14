@@ -73,7 +73,7 @@
   }
 </script>
 
-<div class="overflow-hidden rounded-lg border border-border">
+<div class="overflow-x-auto rounded-lg border border-border">
   <table class="w-full border-collapse">
     <thead>
       <tr class="bg-surface-deep">

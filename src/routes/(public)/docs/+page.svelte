@@ -372,7 +372,7 @@ items = response.json()`,
           </div>
 
           <h4 class="mt-4 text-sm font-semibold text-text-primary">Available Scopes</h4>
-          <div class="mt-2 grid grid-cols-2 gap-2 text-sm">
+          <div class="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             {#each [
               { desc: 'Read items', scope: 'items.read' },
               { desc: 'Create/update items', scope: 'items.write' },

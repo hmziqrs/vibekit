@@ -277,8 +277,7 @@
 
     <!-- Content -->
     {#if loading}
-      <div class="grid grid-cols-4 gap-3">
-        {#each Array(8) as _}
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <div class="aspect-square animate-pulse rounded-lg bg-muted"></div>
         {/each}
       </div>
@@ -289,7 +288,7 @@
     {:else if filteredItems().length === 0}
       <p class="py-8 text-center text-[13px] text-text-muted">No files match your search.</p>
     {:else if viewMode === 'grid'}
-      <div class="grid grid-cols-4 gap-3 max-h-[70vh] overflow-y-auto">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 max-h-[70vh] overflow-y-auto">
         {#each filteredItems() as item (item.key)}
           <div class="group relative overflow-hidden rounded-lg border border-border transition-all hover:border-brand hover:ring-1 hover:ring-brand">
             <button onclick={() => previewItem = item} class="aspect-square w-full bg-surface" aria-label="Preview {item.key}">

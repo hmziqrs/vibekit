@@ -762,7 +762,7 @@
           <p class="mt-1 text-[12px] text-text-muted">
             Store these codes in a safe place. Each can only be used once.
           </p>
-          <div class="mt-2 grid grid-cols-2 gap-1">
+          <div class="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
             {#each backupCodes as code}
               <p class="font-mono text-[12px] text-text-secondary">{code}</p>
             {/each}
@@ -814,7 +814,7 @@
         {#if showBackupCodes && backupCodes.length > 0}
           <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
             <p class="text-[13px] font-medium text-text-primary">New backup codes</p>
-            <div class="mt-2 grid grid-cols-2 gap-1">
+            <div class="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
               {#each backupCodes as code}
                 <p class="font-mono text-[12px] text-text-secondary">{code}</p>
               {/each}
