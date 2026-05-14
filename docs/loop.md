@@ -235,7 +235,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Gap: Only 2 of 83 translation keys used in UI (all pages hardcoded English)
 - [x] Gap: 27 components replaced hardcoded 'en-US' date/number formatting with locale-aware formatDate/formatNumber from $lib/i18n.svelte
 - [ ] Gap: No RTL-aware CSS (15+ hardcoded directional classes)
-- [ ] Gap: Language switcher not in navigation (placed at bottom of body)
+- [x] Gap: Language switcher moved into app and admin sidebar navigation (user section)
 - [ ] Gap: i18n check script not in CI pipeline
 - [x] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
 - [x] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
