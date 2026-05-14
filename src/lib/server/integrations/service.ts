@@ -128,16 +128,18 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
     newStatus = 'expired'
   }
 
-  const provider = getProvider(record.provider)
-  if (provider && record.accessToken) {
-    try {
-      const healthResult = await pingProvider(record.provider, record.accessToken)
-      if (!healthResult) {
+  if (newStatus !== 'expired') {
+    const provider = getProvider(record.provider)
+    if (provider && record.accessToken) {
+      try {
+        const healthResult = await pingProvider(record.provider, record.accessToken)
+        if (!healthResult) {
+          newStatus = 'error'
+        }
+      } catch (error) {
+        console.error(`Integration health check failed for ${record.provider}:`, error)
         newStatus = 'error'
       }
-    } catch (error) {
-      console.error(`Integration health check failed for ${record.provider}:`, error)
-      newStatus = 'error'
     }
   }
 
@@ -153,18 +155,55 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
   return { id: integrationId, provider: record.provider, status: newStatus }
 }
 
-async function pingProvider(provider: string, _accessToken: string): Promise<boolean> {
-  switch (provider) {
-    case 'github':
-    case 'slack':
-    case 'discord':
-    case 'notion':
-    case 'linear': {
-      return true
+async function pingProvider(provider: string, accessToken: string): Promise<boolean> {
+  const headers = { Authorization: `Bearer ${accessToken}` }
+  try {
+    switch (provider) {
+      case 'github': {
+        const res = await fetch('https://api.github.com/user', {
+          headers: { ...headers, 'User-Agent': 'Vibekit' },
+          signal: AbortSignal.timeout(5000),
+        })
+        return res.ok
+      }
+      case 'slack': {
+        const res = await fetch('https://slack.com/api/auth.test', {
+          headers,
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!res.ok) return false
+        const data = (await res.json()) as { ok?: boolean }
+        return data.ok === true
+      }
+      case 'discord': {
+        const res = await fetch('https://discord.com/api/v10/users/@me', {
+          headers,
+          signal: AbortSignal.timeout(5000),
+        })
+        return res.ok
+      }
+      case 'notion': {
+        const res = await fetch('https://api.notion.com/v1/users/me', {
+          headers: { ...headers, 'Notion-Version': '2022-06-28' },
+          signal: AbortSignal.timeout(5000),
+        })
+        return res.ok
+      }
+      case 'linear': {
+        const res = await fetch('https://api.linear.app/graphql', {
+          body: JSON.stringify({ query: '{ viewer { id } }' }),
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          method: 'POST',
+          signal: AbortSignal.timeout(5000),
+        })
+        return res.ok
+      }
+      default: {
+        return false
+      }
     }
-    default: {
-      return false
-    }
+  } catch {
+    return false
   }
 }
 

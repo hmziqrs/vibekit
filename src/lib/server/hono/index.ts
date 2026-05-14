@@ -130,8 +130,10 @@ import {
   deindexEntity,
   indexBlogPost,
   indexItem,
+  indexUser,
   reindexAllBlogPosts,
   reindexAllItems,
+  reindexAllUsers,
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
 import { detectSpam } from '$lib/server/spam-detector'
@@ -3789,6 +3791,11 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
     await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
   }
 
+  // Re-index user in search
+  indexUser(db, targetId).catch((error) =>
+    console.error('Search index failed (user update):', error)
+  )
+
   return c.json({ user: updated })
 })
 
@@ -6505,8 +6512,12 @@ adminApp.delete('/search/index', validate(deleteSearchIndexSchema), async (c) =>
 
 adminApp.post('/search/reindex', async (c) => {
   const { db } = c.get('services')
-  const [blogCount, itemCount] = await Promise.all([reindexAllBlogPosts(db), reindexAllItems(db)])
-  return c.json({ blogPosts: blogCount, items: itemCount })
+  const [blogCount, itemCount, userCount] = await Promise.all([
+    reindexAllBlogPosts(db),
+    reindexAllItems(db),
+    reindexAllUsers(db),
+  ])
+  return c.json({ blogPosts: blogCount, items: itemCount, users: userCount })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { blogPost, item } from '$lib/server/db/schema'
+import { blogPost, item, user } from '$lib/server/db/schema'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { eq, isNull } from 'drizzle-orm'
@@ -145,6 +145,68 @@ export async function reindexAllItems(db: DrizzleDb): Promise<number> {
       await getAdapter(db).index(document)
       count++
     }
+  }
+  return count
+}
+
+export async function indexUser(db: DrizzleDb, userId: string): Promise<void> {
+  const rows = await db
+    .select({
+      bio: user.bio,
+      displayName: user.displayName,
+      email: user.email,
+      id: user.id,
+      name: user.name,
+    })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1)
+
+  const row = rows[0] as
+    | {
+        bio: string | null
+        displayName: string | null
+        email: string
+        id: string
+        name: string | null
+      }
+    | undefined
+  if (!row) return
+
+  const document: SearchDocument = {
+    content: [row.displayName ?? '', row.name ?? '', row.email, row.bio ?? ''].join('\n'),
+    entityId: row.id,
+    entityType: 'user',
+    metadata: { email: row.email },
+    title: row.displayName ?? row.name ?? row.email,
+  }
+
+  await getAdapter(db).index(document)
+}
+
+export async function reindexAllUsers(db: DrizzleDb): Promise<number> {
+  const users = await db
+    .select({
+      bio: user.bio,
+      displayName: user.displayName,
+      email: user.email,
+      id: user.id,
+      name: user.name,
+    })
+    .from(user)
+
+  let count = 0
+  for (const row of users) {
+    const document: SearchDocument = {
+      content: [row.displayName ?? '', row.name ?? '', row.email, row.bio ?? ''].join('\n'),
+      entityId: row.id,
+      entityType: 'user',
+      metadata: { email: row.email },
+      title: row.displayName ?? row.name ?? row.email,
+    }
+    // oxlint-disable-next-line no-await-in-loop
+    await getAdapter(db).index(document)
+    count++
   }
   return count
 }
