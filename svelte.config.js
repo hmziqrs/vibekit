@@ -18,7 +18,9 @@ const config = {
     csp: {
       directives: {
         'base-uri': ['self'],
+        'connect-src': ['self'],
         'default-src': ['self'],
+        'font-src': ['self', 'https://cdn.jsdelivr.net'],
         'form-action': ['self'],
         'frame-ancestors': ['none'],
         'img-src': ['self', 'data:', 'blob:', 'https:'],

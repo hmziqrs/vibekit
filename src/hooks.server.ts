@@ -30,12 +30,12 @@ const handleParaglide: Handle = ({ event, resolve }) =>
   })
 
 const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
-  const response = await resolve(event)
-
   // Skip for API responses (they set their own headers)
   if (event.url.pathname.startsWith('/api/')) {
-    return response
+    return resolve(event)
   }
+
+  const response = await resolve(event)
 
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')

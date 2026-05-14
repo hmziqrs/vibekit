@@ -134,7 +134,12 @@ import {
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
 import { detectSpam } from '$lib/server/spam-detector'
-import { generateStorageKey, validateImageUpload, validateMediaUpload } from '$lib/server/upload'
+import {
+  generateStorageKey,
+  validateFileSignature,
+  validateImageUpload,
+  validateMediaUpload,
+} from '$lib/server/upload'
 import {
   createUploadSession,
   deleteUploadSession,
@@ -3437,6 +3442,11 @@ blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
     throw new BadRequestError(validationError)
   }
 
+  const sigError = await validateFileSignature(file)
+  if (sigError) {
+    throw new BadRequestError(sigError)
+  }
+
   const key = generateStorageKey(file.name)
   const result = await c.get('services').storage.put(key, file.stream(), {
     contentType: file.type,
@@ -3855,6 +3865,11 @@ adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
   const validationError = validateImageUpload(file)
   if (validationError) {
     throw new BadRequestError(validationError)
+  }
+
+  const sigError = await validateFileSignature(file)
+  if (sigError) {
+    throw new BadRequestError(sigError)
   }
 
   const key = generateStorageKey(file.name)
@@ -6331,6 +6346,9 @@ adminApp.post('/media/upload', withRateLimit('upload', 10, 60_000), async (c) =>
 
   const validationError = validateMediaUpload(file)
   if (validationError) throw new BadRequestError(validationError)
+
+  const sigError = await validateFileSignature(file)
+  if (sigError) throw new BadRequestError(sigError)
 
   const key = generateStorageKey(file.name)
   const arrayBuffer = await file.arrayBuffer()

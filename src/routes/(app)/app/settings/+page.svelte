@@ -1,4 +1,5 @@
 <script lang="ts">
+  import QRCode from 'qrcode'
   import { authClient } from '$lib/auth-client'
   import { z } from 'zod/v4'
   import { createForm } from '@tanstack/svelte-form'
@@ -27,6 +28,7 @@
   let twoFactorError = $state('')
   let twoFactorLoading = $state(false)
   let totpUri = $state('')
+  let qrDataUrl = $state('')
   let backupCodes = $state<string[]>([])
   let verifyCode = $state('')
   let disablePassword = $state('')
@@ -34,6 +36,17 @@
   let showBackupCodes = $state(false)
   let enablePassword = $state('')
   let showEnableConfirm = $state(false)
+
+  // Generate QR code client-side when TOTP URI changes
+  $effect(() => {
+    if (totpUri) {
+      QRCode.toDataURL(totpUri, { margin: 2, width: 200 }).then(
+        (url) => (qrDataUrl = url),
+      )
+    } else {
+      qrDataUrl = ''
+    }
+  })
 
   // Passkey state
   let passkeyLoading = $state(false)
@@ -641,13 +654,19 @@
           </p>
           <div class="mt-3 flex flex-col items-center gap-2">
             <div class="rounded-lg bg-white p-3">
-              <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encodeURIComponent(totpUri)}"
-                alt="TOTP QR Code"
-                width="200"
-                height="200"
-                class="h-[200px] w-[200px]"
-              />
+              {#if qrDataUrl}
+                <img
+                  src={qrDataUrl}
+                  alt="TOTP QR Code"
+                  width="200"
+                  height="200"
+                  class="h-[200px] w-[200px]"
+                />
+              {:else}
+                <div class="flex h-[200px] w-[200px] items-center justify-center text-text-muted">
+                  Generating QR code...
+                </div>
+              {/if}
             </div>
             <details class="w-full">
               <summary class="cursor-pointer text-[12px] text-text-muted hover:text-text-primary">
