@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { checkoutSessionSchema } from '$lib/validators/billing'
 
   interface Plan {
     currency: string
@@ -78,12 +79,15 @@
   async function handleSubscribe(planId: string) {
     changing = true
     try {
+      const payload = {
+        cancelUrl: window.location.href,
+        planId,
+        successUrl: window.location.href,
+      }
+      const parsed = checkoutSessionSchema.safeParse(payload)
+      if (!parsed.success) return
       const res = await fetch('/api/billing/checkout', {
-        body: JSON.stringify({
-          cancelUrl: window.location.href,
-          planId,
-          successUrl: window.location.href,
-        }),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })

@@ -2,6 +2,11 @@
   import { getContext } from 'svelte'
   import type { AuthContext } from '$lib/auth.svelte'
   import { goto } from '$app/navigation'
+  import { bio, displayName, onboardingSchema, timezone as timezoneValidator } from '$lib/validators/profile'
+  import { z } from 'zod/v4'
+
+  const onboardingProfileSchema = z.object({ bio, displayName })
+  const onboardingTimezoneSchema = z.object({ timezone: timezoneValidator })
 
   const auth = getContext<AuthContext>('auth')
 
@@ -27,8 +32,10 @@
   const stepTitles = ['Welcome', 'Profile', 'Timezone', 'All Set']
 
   async function saveStep(step: number) {
+    const parsed = onboardingSchema.safeParse({ step })
+    if (!parsed.success) throw new Error('Invalid step')
     const res = await fetch('/api/user/onboarding', {
-      body: JSON.stringify({ step }),
+      body: JSON.stringify(parsed.data),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     })
@@ -39,8 +46,10 @@
     saving = true
     error = ''
     try {
+      const parsed = onboardingSchema.safeParse({ completed: true })
+      if (!parsed.success) throw new Error('Invalid input')
       const res = await fetch('/api/user/onboarding', {
-        body: JSON.stringify({ completed: true }),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
@@ -57,8 +66,10 @@
     saving = true
     error = ''
     try {
+      const parsed = onboardingSchema.safeParse({ completed: true })
+      if (!parsed.success) throw new Error('Invalid input')
       const res = await fetch('/api/user/onboarding', {
-        body: JSON.stringify({ completed: true }),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
@@ -72,11 +83,19 @@
   }
 
   async function saveProfileAndNext() {
-    saving = true
     error = ''
+    const parsed = onboardingProfileSchema.safeParse({
+      bio: bio || null,
+      displayName: displayName || null,
+    })
+    if (!parsed.success) {
+      error = parsed.error.issues[0]?.message ?? 'Invalid input'
+      return
+    }
+    saving = true
     try {
       const res = await fetch('/api/auth/update-user', {
-        body: JSON.stringify({ bio: bio || null, displayName: displayName || null }),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
@@ -91,11 +110,16 @@
   }
 
   async function saveTimezoneAndNext() {
-    saving = true
     error = ''
+    const parsed = onboardingTimezoneSchema.safeParse({ timezone: timezone || null })
+    if (!parsed.success) {
+      error = parsed.error.issues[0]?.message ?? 'Invalid timezone'
+      return
+    }
+    saving = true
     try {
       const res = await fetch('/api/auth/update-user', {
-        body: JSON.stringify({ timezone: timezone || null }),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
