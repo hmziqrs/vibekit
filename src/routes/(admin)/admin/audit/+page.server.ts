@@ -1,6 +1,6 @@
 import { auditLog, user } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
-import { desc, eq, like } from 'drizzle-orm'
+import { desc, eq, like, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -30,9 +30,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .limit(limit)
     .offset(offset)
 
-  const totalRows = await db.select().from(auditLog).where(actionFilter)
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(auditLog)
+    .where(actionFilter)
 
-  const totalPages = Math.ceil(totalRows.length / limit)
+  const totalPages = Math.ceil(Number(count) / limit)
 
   return { logs, page, totalPages }
 }

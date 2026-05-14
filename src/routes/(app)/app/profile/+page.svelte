@@ -68,6 +68,7 @@
     onSubmit: async ({ value }: { value: { name: string; bio?: string | null; displayName?: string | null; timezone?: string | null } }) => {
       try {
         const res = await authClient.updateUser({
+          bio: value.bio || null,
           displayName: value.displayName || null,
           name: value.name.trim(),
           timezone: value.timezone || null,

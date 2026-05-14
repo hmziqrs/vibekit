@@ -68,7 +68,16 @@ export async function createWebhookEndpoint(
 
 export async function listWebhookEndpoints(db: DrizzleDb, userId: string) {
   return db
-    .select()
+    .select({
+      active: webhookEndpoint.active,
+      createdAt: webhookEndpoint.createdAt,
+      description: webhookEndpoint.description,
+      events: webhookEndpoint.events,
+      id: webhookEndpoint.id,
+      updatedAt: webhookEndpoint.updatedAt,
+      url: webhookEndpoint.url,
+      userId: webhookEndpoint.userId,
+    })
     .from(webhookEndpoint)
     .where(eq(webhookEndpoint.userId, userId))
     .orderBy(desc(webhookEndpoint.createdAt))

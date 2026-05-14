@@ -150,7 +150,7 @@
     endpointsQuery.refetch()
   }
 
-  async function testEndpoint(id: string, secret: string, url: string) {
+  async function testEndpoint(id: string) {
     testLoading = true
     try {
       const res = await fetch(`/api/webhooks/${id}/test`, { method: 'POST' })
@@ -365,12 +365,12 @@
                 {/if}
               </div>
               <p class="mt-1.5 text-[12px] text-text-faint">
-                Created {formatDate(endpoint.createdAt)} · Prefix: {endpoint.secret.slice(0, 12)}...
+                Created {formatDate(endpoint.createdAt)}
               </p>
             </div>
             <div class="flex gap-2">
               <button
-                onclick={() => testEndpoint(endpoint.id, endpoint.secret, endpoint.url)}
+                onclick={() => testEndpoint(endpoint.id)}
                 disabled={testLoading}
                 class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] text-text-secondary hover:bg-white/5"
               >

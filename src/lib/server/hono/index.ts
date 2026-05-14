@@ -2492,7 +2492,7 @@ protectedApp.post(
     await db.insert(comment).values({
       authorId: currentUser.id,
       content: parsed.content,
-      htmlContent: parsed.content, // Stored as plain text for now
+      htmlContent: null,
       id,
       ipAddress: c.req.header('cf-connecting-ip') ?? null,
       moderatedAt: commentStatus !== 'pending' ? new Date() : null,
@@ -4193,6 +4193,9 @@ adminApp.patch('/reports/:id', validate(resolveReportSchema), async (c) => {
 })
 
 // ── Admin Cleanup ────────────────────────────────────────────────────
+// These endpoints are on the base `app` router (not `adminApp`) because they
+// accept both cron requests (via x-cron-secret header, no session) and admin
+// user requests (via session auth).
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
