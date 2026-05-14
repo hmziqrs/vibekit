@@ -1,4 +1,4 @@
-<script lang="ts" generics="TField extends FieldApi<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>">
+<script lang="ts" generics="TField extends FieldApi<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown>">
   import type { FieldApi, StandardSchemaV1Issue } from '@tanstack/form-core'
   import { Input } from '$lib/components/ui/input'
   import { Label } from '$lib/components/ui/label'

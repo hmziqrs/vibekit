@@ -3,13 +3,9 @@
   import { createForm } from '@tanstack/svelte-form'
   import { extractFormError } from '$lib/form-utils'
   import TanstackField from '$lib/components/tanstack-field.svelte'
-  import { z } from 'zod/v4'
+  import { createItemSchema } from '$lib/validators/item'
 
-  const formSchema = z.object({
-    description: z.string().max(500),
-    name: z.string().min(1, 'Name is required').max(100).trim(),
-  })
-  type FormInput = z.infer<typeof formSchema>
+  type FormInput = { description: string; name: string }
 
   const form = createForm(() => ({
     defaultValues: {
@@ -42,7 +38,7 @@
       }
     },
     validators: {
-      onSubmit: formSchema,
+      onSubmit: createItemSchema as never,
     },
   }))
 </script>

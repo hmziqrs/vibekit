@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { updateOrganizationSchema } from '$lib/validators/organization'
 
   interface OrgDetail {
     membership: { id: string; joinedAt: string; role: string }
@@ -44,16 +45,20 @@
   })
 
   async function saveSettings() {
-    if (!editName.trim()) return
-    saving = true
     saveError = ''
     saveSuccess = false
+    const parsed = updateOrganizationSchema.safeParse({
+      description: editDescription || null,
+      name: editName,
+    })
+    if (!parsed.success) {
+      saveError = parsed.error.issues[0]?.message ?? 'Invalid input'
+      return
+    }
+    saving = true
 
     const res = await fetch(`/api/orgs/${orgId}`, {
-      body: JSON.stringify({
-        description: editDescription || null,
-        name: editName,
-      }),
+      body: JSON.stringify(parsed.data),
       headers: { 'Content-Type': 'application/json' },
       method: 'PATCH',
     })

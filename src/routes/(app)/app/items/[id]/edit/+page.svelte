@@ -9,7 +9,6 @@
   import { createForm } from '@tanstack/svelte-form'
   import type { ItemData } from '$lib/types'
   import { extractFormError } from '$lib/form-utils'
-  import { z } from 'zod/v4'
 
   const itemId = $derived(page.params.id ?? '')
   const queryClient = useQueryClient()
@@ -25,11 +24,7 @@
   }))
 
   let lastItemId = $state('')
-  const formSchema = z.object({
-    description: z.string().max(500),
-    name: z.string().min(1, 'Name is required').max(100).trim(),
-  })
-  type FormInput = z.infer<typeof formSchema>
+  type FormInput = { description: string; name: string }
 
   const form = createForm(() => ({
     defaultValues: {
@@ -55,7 +50,7 @@
       }
     },
     validators: {
-      onSubmit: formSchema,
+      onSubmit: updateItemSchema as never,
     },
   }))
 

@@ -3,6 +3,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
   import { hasPermission, type OrgRole } from '$lib/permissions'
+  import { inviteMemberSchema } from '$lib/validators/organization'
 
   interface OrgDetail {
     membership: { id: string; joinedAt: string; role: string }
@@ -66,13 +67,17 @@
   )
 
   async function inviteMember() {
-    if (!inviteEmail.trim()) return
-    inviting = true
     inviteError = ''
     inviteSuccess = ''
+    const parsed = inviteMemberSchema.safeParse({ email: inviteEmail, role: inviteRole })
+    if (!parsed.success) {
+      inviteError = parsed.error.issues[0]?.message ?? 'Invalid input'
+      return
+    }
+    inviting = true
 
     const res = await fetch(`/api/orgs/${orgId}/members/invite`, {
-      body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      body: JSON.stringify(parsed.data),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     })

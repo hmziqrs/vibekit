@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { createOrganizationSchema } from '$lib/validators/organization'
 
   interface OrgMembership {
     description: string | null
@@ -29,12 +30,19 @@
   }))
 
   async function createOrg() {
-    if (!createName.trim()) return
-    creating = true
     error = ''
+    const parsed = createOrganizationSchema.safeParse({
+      description: createDescription || undefined,
+      name: createName,
+    })
+    if (!parsed.success) {
+      error = parsed.error.issues[0]?.message ?? 'Invalid input'
+      return
+    }
+    creating = true
 
     const res = await fetch('/api/orgs', {
-      body: JSON.stringify({ description: createDescription || undefined, name: createName }),
+      body: JSON.stringify(parsed.data),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     })

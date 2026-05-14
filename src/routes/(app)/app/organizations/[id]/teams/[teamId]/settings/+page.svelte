@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { hasTeamPermission, type OrgRole, type TeamRole } from '$lib/permissions'
+  import { updateTeamSchema } from '$lib/validators/team'
 
   interface TeamDetail {
     team: {
@@ -80,15 +81,19 @@
   })
 
   async function saveTeam() {
-    if (!editName.trim()) return
-    saving = true
     saveError = ''
+    const parsed = updateTeamSchema.safeParse({
+      description: editDescription || null,
+      name: editName,
+    })
+    if (!parsed.success) {
+      saveError = parsed.error.issues[0]?.message ?? 'Invalid input'
+      return
+    }
+    saving = true
 
     const res = await fetch(`/api/orgs/${orgId}/teams/${teamId}`, {
-      body: JSON.stringify({
-        description: editDescription || null,
-        name: editName,
-      }),
+      body: JSON.stringify(parsed.data),
       headers: { 'Content-Type': 'application/json' },
       method: 'PATCH',
     })
