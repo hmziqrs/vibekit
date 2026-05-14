@@ -78,6 +78,10 @@ export const authConfig = {
     window: 60,
   },
   secret: env.BETTER_AUTH_SECRET,
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days — forces re-auth periodically
+    updateAge: 60 * 60 * 24, // Refresh session every 24 hours
+  },
   socialProviders: {
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? {

@@ -39,6 +39,8 @@
             form: res.error.message ?? 'Failed to reset password.',
           }
         }
+        // Revoke all other sessions to prevent session hijacking after password reset
+        await authClient.revokeOtherSessions().catch(() => {})
         done = true
         message = 'Password reset successfully. You can now sign in.'
         return null
