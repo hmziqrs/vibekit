@@ -5,7 +5,7 @@
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import { createItemSchema } from '$lib/validators/item'
 
-  type FormInput = { description: string; name: string }
+  interface FormInput { description: string; name: string }
 
   const form = createForm(() => ({
     defaultValues: {

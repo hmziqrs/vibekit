@@ -24,7 +24,7 @@
   }))
 
   let lastItemId = $state('')
-  type FormInput = { description: string; name: string }
+  interface FormInput { description: string; name: string }
 
   const form = createForm(() => ({
     defaultValues: {

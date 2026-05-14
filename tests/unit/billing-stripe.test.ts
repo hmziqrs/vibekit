@@ -44,7 +44,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
 
-      const result = await createCheckoutSession(mockStripe as any, {
+      const result = await createCheckoutSession(mockStripe as never, {
         cancelUrl: 'https://app.test.com/cancel',
         mode: 'subscription',
         priceId: 'price_abc',
@@ -67,7 +67,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
 
-      await createCheckoutSession(mockStripe as any, {
+      await createCheckoutSession(mockStripe as never, {
         cancelUrl: '/cancel',
         customerEmail: 'user@test.com',
         mode: 'payment',
@@ -87,7 +87,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
 
-      await createCheckoutSession(mockStripe as any, {
+      await createCheckoutSession(mockStripe as never, {
         cancelUrl: '/cancel',
         priceId: 'price_pro',
         successUrl: '/success',
@@ -106,7 +106,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
 
-      await createCheckoutSession(mockStripe as any, {
+      await createCheckoutSession(mockStripe as never, {
         cancelUrl: '/cancel',
         planId: 'plan_pro',
         priceId: 'price_pro',
@@ -125,7 +125,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
 
-      await createCheckoutSession(mockStripe as any, {
+      await createCheckoutSession(mockStripe as never, {
         cancelUrl: '/cancel',
         priceId: 'price_pro',
         successUrl: '/success',
@@ -141,7 +141,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
 
-      await createCheckoutSession(mockStripe as any, {
+      await createCheckoutSession(mockStripe as never, {
         cancelUrl: '/cancel',
         priceId: 'price_abc',
         successUrl: '/success',
@@ -159,7 +159,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createBillingPortalSession } = await import('$lib/server/billing/stripe')
 
-      const result = await createBillingPortalSession(mockStripe as any, {
+      const result = await createBillingPortalSession(mockStripe as never, {
         customerId: 'cus_123',
         returnUrl: 'https://app.test.com/billing',
       })
@@ -177,7 +177,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCustomer } = await import('$lib/server/billing/stripe')
 
-      const result = await createCustomer(mockStripe as any, {
+      const result = await createCustomer(mockStripe as never, {
         email: 'user@test.com',
         name: 'Test User',
         userId: 'user-1',
@@ -195,7 +195,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { createCustomer } = await import('$lib/server/billing/stripe')
 
-      await createCustomer(mockStripe as any, {
+      await createCustomer(mockStripe as never, {
         email: 'user@test.com',
         userId: 'user-1',
       })
@@ -213,7 +213,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { listPaymentMethods } = await import('$lib/server/billing/stripe')
 
-      const result = await listPaymentMethods(mockStripe as any, 'cus_123')
+      const result = await listPaymentMethods(mockStripe as never, 'cus_123')
 
       expect(result).toEqual([
         {
@@ -239,7 +239,7 @@ describe('billing stripe module', () => {
       })
       const { listPaymentMethods } = await import('$lib/server/billing/stripe')
 
-      const result = await listPaymentMethods(mockStripe as any, 'cus_123')
+      const result = await listPaymentMethods(mockStripe as never, 'cus_123')
 
       expect(result).toEqual([])
     })
@@ -254,7 +254,7 @@ describe('billing stripe module', () => {
       })
       const { listPaymentMethods } = await import('$lib/server/billing/stripe')
 
-      const result = await listPaymentMethods(mockStripe as any, 'cus_123')
+      const result = await listPaymentMethods(mockStripe as never, 'cus_123')
 
       expect(result).toEqual([
         {
@@ -274,7 +274,7 @@ describe('billing stripe module', () => {
       const mockStripe = createMockStripe()
       const { verifyWebhookSignature } = await import('$lib/server/billing/stripe')
 
-      const result = await verifyWebhookSignature(mockStripe as any, {
+      const result = await verifyWebhookSignature(mockStripe as never, {
         body: '{"type":"test"}',
         signature: 't=123,v1=abc',
         webhookSecret: 'whsec_test',
