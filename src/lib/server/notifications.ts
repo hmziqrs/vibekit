@@ -48,11 +48,10 @@ export async function createBroadcast(
   getUserIds: (target: 'admins' | 'all') => Promise<string[]>
 ): Promise<number> {
   const userIds = await getUserIds(input.target)
-  const filteredIds: string[] = []
-  for (const uid of userIds) {
-    const enabled = await isInAppEnabled(db, uid, 'broadcast')
-    if (enabled) filteredIds.push(uid)
-  }
+  const enabledChecks = await Promise.all(
+    userIds.map((uid) => isInAppEnabled(db, uid, 'broadcast'))
+  )
+  const filteredIds = userIds.filter((_, i) => enabledChecks[i])
 
   const values = filteredIds.map((userId) => ({
     body: input.body ?? null,
