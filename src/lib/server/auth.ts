@@ -3,6 +3,8 @@ import { env } from '$env/dynamic/private'
 import { createLogger } from '$lib/server/logger'
 import { passkey } from '@better-auth/passkey'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+
+declare const __ADAPTER__: string
 import { betterAuth } from 'better-auth/minimal'
 import { twoFactor } from 'better-auth/plugins'
 import { sveltekitCookies } from 'better-auth/svelte-kit'

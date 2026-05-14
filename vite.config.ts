@@ -16,10 +16,20 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-tanstack': ['@tanstack/svelte-query', '@tanstack/svelte-form'],
-          'vendor-tiptap': ['@tiptap/core', '@tiptap/starter-kit', '@tiptap/extension-image'],
-          'vendor-hono': ['hono'],
+        manualChunks(id) {
+          if (id.includes('@tanstack/svelte-query') || id.includes('@tanstack/svelte-form')) {
+            return 'vendor-tanstack'
+          }
+          if (
+            id.includes('@tiptap/core') ||
+            id.includes('@tiptap/starter-kit') ||
+            id.includes('@tiptap/extension-image')
+          ) {
+            return 'vendor-tiptap'
+          }
+          if (id.includes('hono')) {
+            return 'vendor-hono'
+          }
         },
       },
     },

@@ -10,7 +10,8 @@ interface R2BucketWithSignedUrl extends R2Bucket {
   createSignedUrl(key: string, options: { expiresIn: number }): Promise<string>
 }
 
-export function createCloudflareStorage(bucket: R2BucketWithSignedUrl): StorageClient {
+export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
+  const signedBucket = bucket as R2BucketWithSignedUrl
   return {
     async delete(key: string): Promise<void> {
       await bucket.delete(key)
@@ -32,7 +33,7 @@ export function createCloudflareStorage(bucket: R2BucketWithSignedUrl): StorageC
       key: string,
       options?: { contentType?: string; expiresIn?: number }
     ): Promise<string> {
-      const url = await bucket.createSignedUrl(key, {
+      const url = await signedBucket.createSignedUrl(key, {
         expiresIn: options?.expiresIn ?? 3600,
       })
       return url
