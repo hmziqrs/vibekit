@@ -91,6 +91,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Error pages (custom 400/403/404/500/503 pages, brand-consistent design, helpful recovery actions, no raw stack traces in production)
 
 #### Auth & Security
+<!-- Audit: auth-security-audit.md — 2026-05-14 -->
 - [x] Auth security hardening (session fixation, CSRF tokens, cookie flags, token rotation, brute-force protection on login/register)
 - [x] Password security (breached password check via HaveIBeenPwned API, password strength estimator, password strength UI component, enhanced password validator)
 - [x] Two-factor authentication (TOTP apps, backup/recovery codes, remember device, 2FA enforcement per-role/per-org)
@@ -103,6 +104,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Input sanitization & validation (DOMPurify for all HTML rendering, SQL injection prevention audit, XSS surface review, upload file type validation)
 
 #### Core User Features
+<!-- Audit: core-user-features-audit.md — 2026-05-14 -->
 - [x] User profile & settings (avatar upload, display name, bio, timezone, language preference, notification preferences, delete account flow)
 - [x] User account lifecycle (email verification flow, account deactivation vs deletion, data retention policy, re-enable flow, grace period before permanent deletion)
 - [x] User banning system (temporary/permanent ban with reason, appeal flow, automatic content unpublish on ban, ban evasion detection via email/IP)
@@ -111,12 +113,14 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Dashboard (activity feed, quick actions, usage metrics, recent items, workspace overview, customizable widgets)
 
 #### Organizations & Teams
+<!-- Audit: organizations-teams-audit.md — 2026-05-14 -->
 - [x] Organizations & teams (org CRUD, member management, role assignment, team-scoped resources, org settings, transfer ownership)
 - [x] RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance in org hierarchy)
 - [x] Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)
 - [x] Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)
 
 #### Admin & Moderation
+<!-- Audit: admin-moderation-audit.md — 2026-05-14 -->
 - [x] Admin dashboard (system health, user growth metrics, revenue overview, active sessions, error rates, search/filter capabilities)
 - [x] Admin user management (user list with search/filter, user detail view, impersonation, manual actions, bulk operations)
 - [x] Admin sudo / impersonation mode (admin acts on behalf of user with full audit trail, time-limited sessions, explicit reason logging)
@@ -126,6 +130,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Maintenance mode & scheduled broadcasts (global downtime banners, planned maintenance notices, user notification, auto-enable/disable)
 
 #### Blog Platform
+<!-- Audit: blog-platform-audit.md — 2026-05-14 -->
 - [x] Blog platform — full-fledged publishing system:
   - [x] Markdown editor with toolbar, split-pane preview, keyboard shortcuts (Milkdown / TipTap / CodeMirror+preview)
   - [x] Inline image upload-insert flow inside the editor body (upload to R2 → insert markdown image syntax)
@@ -154,6 +159,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Analytics per post (view count, referrer tracking, reading completion)
 
 #### Billing & Payments
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)
 - [x] Payment processing (Stripe integration, payment method management, invoice generation, payment failure handling, dunning emails)
 - [x] Usage-based billing (metered billing, usage tracking, quota enforcement, overage handling, usage dashboard for users)
@@ -161,6 +167,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Payment webhooks (Stripe webhook handler, idempotent processing, event logging, failure recovery)
 
 #### Notifications & Communication
+<!-- Audit: notifications-audit.md — 2026-05-14 -->
 - [x] In-app notification system (notification bell, real-time updates, read/unread state, notification types, bulk actions, notification preferences)
 - [x] System-to-user alerts (payment receipts, admin warnings, broadcast announcements, account status changes)
 - [x] Email infrastructure (template system with preview, transactional emails, email queue with retries, bounce handling, unsubscribe flow)
@@ -169,6 +176,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Slack/Discord integration (workspace notifications, command slash commands, webhook delivery, channel-specific alerts)
 
 #### API & Integrations
+<!-- Audit: api-integrations-audit.md — 2026-05-14 -->
 - [x] API key management (scoped tokens, key rotation, usage logging, key revocation, per-key rate limits)
 - [x] Webhooks & event bus (outbound webhook delivery, retry with exponential backoff, event subscription UI, payload signing, delivery logs)
 - [x] Public API documentation (OpenAPI spec generation, interactive API explorer, code examples in multiple languages, authentication guide)
@@ -176,34 +184,40 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Zapier/n8n connector (expose actions and triggers for no-code automation platforms)
 
 #### Feature Management
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] Feature flags & kill switches (gradual rollout by %/cohort, instant disable without deploy, A/B testing support, flag dependencies)
 - [x] A/B testing framework (experiment definition, variant assignment, metric tracking, statistical significance calculation)
 - [x] Configuration service (runtime config without redeploy, environment-specific overrides, config versioning)
 
 #### File Storage & Media
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] File upload pipeline (chunked uploads for large files, progress tracking, upload resumption, file type validation, virus scanning)
 - [x] Media library (file browser, thumbnail generation, metadata extraction, search/filter, folder organization, bulk operations)
 - [x] Image processing (resize/crop on upload, format conversion to WebP/AVIF, responsive image srcset generation, CDN URL generation)
 - [x] Storage adapter abstraction (R2 primary, S3-compatible fallback, local dev storage, presigned URLs for direct upload)
 
 #### Search
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] Full-text search infrastructure (Algolia/Meilisearch/Typesense integration, index management, relevance tuning)
 - [x] Search UI (autocomplete/suggestions, faceted filters, search result previews, keyboard navigation, recent searches)
 - [x] Content indexing (blog posts, user content, admin content — incremental updates on mutation)
 
 #### SEO & Performance
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] SEO foundation (meta tags, Open Graph, Twitter cards, canonical URLs, sitemap.xml, robots.txt, structured data/JSON-LD)
 - [x] Performance optimization (code splitting audit, bundle analysis, lazy loading images/components, font optimization, critical CSS)
 - [x] Caching strategy (Cache API usage review, stale-while-revalidate patterns, cache invalidation on mutation, edge caching rules)
 - [x] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)
 
 #### i18n & Accessibility
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] i18n completion (all user-facing strings extracted, RTL support verification, plural rules, date/number formatting per locale, language switcher)
 - [x] i18n tooling (missing translation detection, translation key linting, icu message format support, translation workflow for contributors)
 - [x] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
 - [x] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
 
 #### Infrastructure & DevOps
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] CI/CD pipeline (GitHub Actions: lint → typecheck → test → build → preview deploy → production deploy, branch protection rules)
 - [x] Staging environment (preview deploys per PR, environment variable management, smoke tests on staging)
 - [x] Monitoring & observability (structured logging, error tracking Sentry integration, performance monitoring, uptime checks)
@@ -213,6 +227,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Deployment safety (blue-green or canary deploys, automatic rollback on error spike, deploy locks, maintenance mode during migrations)
 
 #### Testing & Quality
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] Test infrastructure (Vitest config optimization, test database setup/teardown, mock patterns for D1/R2/KV, test fixtures factory)
 - [x] Unit test coverage (critical business logic: auth flows, billing calculations, permission checks, data transformations)
 - [x] Integration tests (API route tests with real D1, auth flow E2E, webhook processing, payment flow happy path + failures)
@@ -222,12 +237,14 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Security testing (OWASP ZAP scan, dependency audit automation, secret leak detection in git history, CSRF/XSS regression tests)
 
 #### Analytics & Tracking
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] Analytics foundation (event tracking architecture, privacy-first: no cookies without consent, anonymize IPs, respect Do Not Track)
 - [x] Product analytics (page views, feature usage funnels, user retention cohorts, conversion tracking signup → activation → paid)
 - [x] Infrastructure analytics (worker execution time, D1 query latency percentiles, R2 bandwidth, cache hit rates, error rate trending)
 - [x] Analytics dashboard (admin view with filters, date range selector, export to CSV, scheduled reports)
 
 #### Compliance & Privacy
+<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
 - [x] GDPR compliance (consent management banner, data processing disclosure, right to access/deletion/portability automation, DPA documentation)
 - [x] Privacy controls (cookie consent management, tracking opt-out, data retention policies with auto-deletion, privacy policy version tracking)
 - [x] Terms of service (versioned ToS, acceptance tracking, change notification, enforce re-acceptance on major updates)
