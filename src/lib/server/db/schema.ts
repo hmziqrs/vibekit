@@ -1,6 +1,6 @@
 import { uuid } from '$lib/server/uuid'
 import { relations, sql } from 'drizzle-orm'
-import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 import { user } from './auth.schema'
 
@@ -256,7 +256,7 @@ export const organization = sqliteTable(
     ownerId: text('owner_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    slug: text('slug').notNull().unique(),
+    slug: text('slug').notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
@@ -265,6 +265,7 @@ export const organization = sqliteTable(
   (table) => [
     index('organization_owner_id_idx').on(table.ownerId),
     index('organization_slug_deleted_idx').on(table.slug, table.deletedAt),
+    uniqueIndex('organization_slug_active_idx').on(table.slug, table.deletedAt),
   ]
 )
 
@@ -290,6 +291,7 @@ export const organizationMember = sqliteTable(
   (table) => [
     index('org_member_org_id_idx').on(table.organizationId),
     index('org_member_user_id_idx').on(table.userId),
+    uniqueIndex('org_member_user_org_idx').on(table.userId, table.organizationId),
   ]
 )
 
@@ -368,6 +370,7 @@ export const teamMember = sqliteTable(
   (table) => [
     index('team_member_team_id_idx').on(table.teamId),
     index('team_member_user_id_idx').on(table.userId),
+    uniqueIndex('team_member_user_team_idx').on(table.userId, table.teamId),
   ]
 )
 

@@ -162,6 +162,13 @@
       "when": 1778552098779,
       "tag": "0022_peaceful_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1778737531651,
+      "tag": "0023_lonely_zarda",
+      "breakpoints": true
     }
   ]
 }

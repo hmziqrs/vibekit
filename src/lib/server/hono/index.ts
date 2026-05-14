@@ -4353,49 +4353,54 @@ orgApp.get('/', async (c) => {
 })
 
 // Create organization
-orgApp.post('/', validate(createOrganizationSchema), async (c) => {
-  const parsed = c.req.valid('json')
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
+orgApp.post(
+  '/',
+  withRateLimit('org-create', 10, 60_000),
+  validate(createOrganizationSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
 
-  const slug = generateSlug(parsed.name)
+    const slug = generateSlug(parsed.name)
 
-  const existing = await db
-    .select({ id: organization.id })
-    .from(organization)
-    .where(and(eq(organization.slug, slug), isNull(organization.deletedAt)))
-    .get()
+    const existing = await db
+      .select({ id: organization.id })
+      .from(organization)
+      .where(and(eq(organization.slug, slug), isNull(organization.deletedAt)))
+      .get()
 
-  if (existing) {
-    throw new ConflictError('Organization slug already exists')
+    if (existing) {
+      throw new ConflictError('Organization slug already exists')
+    }
+
+    const id = uuid()
+    await db.insert(organization).values({
+      description: parsed.description ?? null,
+      id,
+      name: parsed.name,
+      ownerId: currentUser.id,
+      slug,
+    })
+
+    await db.insert(organizationMember).values({
+      joinedAt: new Date(),
+      organizationId: id,
+      role: 'owner',
+      userId: currentUser.id,
+    })
+
+    await writeAuditLog(db, {
+      action: 'organization.create',
+      entityId: id,
+      entityType: 'organization',
+      metadata: { name: parsed.name, slug },
+      userId: currentUser.id,
+    })
+
+    return c.json({ id, name: parsed.name, slug }, 201)
   }
-
-  const id = uuid()
-  await db.insert(organization).values({
-    description: parsed.description ?? null,
-    id,
-    name: parsed.name,
-    ownerId: currentUser.id,
-    slug,
-  })
-
-  await db.insert(organizationMember).values({
-    joinedAt: new Date(),
-    organizationId: id,
-    role: 'owner',
-    userId: currentUser.id,
-  })
-
-  await writeAuditLog(db, {
-    action: 'organization.create',
-    entityId: id,
-    entityType: 'organization',
-    metadata: { name: parsed.name, slug },
-    userId: currentUser.id,
-  })
-
-  return c.json({ id, name: parsed.name, slug }, 201)
-})
+)
 
 // Get org details
 orgApp.get('/:orgId', withOrgMembership, requirePermission('org.read'), async (c) => {
@@ -4630,11 +4635,36 @@ orgApp.delete(
   }
 )
 
+// Leave organization
+orgApp.post('/:orgId/leave', withOrgMembership, requirePermission('org.leave'), async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const org = c.get('organization') as typeof organization.$inferSelect
+  const membership = c.get('membership') as typeof organizationMember.$inferSelect
+
+  if (membership.role === 'owner') {
+    throw new ForbiddenError('Organization owner cannot leave. Transfer ownership first.')
+  }
+
+  await db.delete(organizationMember).where(eq(organizationMember.id, membership.id))
+
+  await writeAuditLog(db, {
+    action: 'organization.member.leave',
+    entityId: membership.id,
+    entityType: 'organization_member',
+    metadata: { organizationId: org.id },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
+})
+
 // Invite member
 orgApp.post(
   '/:orgId/members/invite',
   withOrgMembership,
   requirePermission('org.members.invite'),
+  withRateLimit('org-invite', 20, 60_000),
   validate(inviteMemberSchema),
   async (c) => {
     const parsed = c.req.valid('json')
