@@ -86,4 +86,38 @@ test.describe('notifications page', () => {
     expect(data).toHaveProperty('total')
     expect(Array.isArray(data.notifications)).toBe(true)
   })
+
+  test('shows error state with retry button when fetch fails', async ({ page }) => {
+    // Intercept the notifications API to return a 500 error
+    await page.route('**/api/notifications**', (route) =>
+      route.fulfill({ body: 'Internal Server Error', status: 500 })
+    )
+
+    await page.goto('/app/notifications', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+
+    // Should show the error state with retry button
+    await expect(page.getByText('Failed to load notifications')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
+  })
+
+  test('shows mutation error when mark-all-read fails', async ({ page }) => {
+    await page.goto('/app/notifications', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+
+    // Wait for notifications to load
+    await page.waitForTimeout(1000)
+
+    // Intercept the mark-all-read endpoint to fail
+    await page.route('**/api/notifications/read-all', (route) =>
+      route.fulfill({ body: 'Forbidden', status: 403 })
+    )
+
+    await page.getByRole('button', { name: 'Mark all read' }).click()
+
+    // Should show mutation error
+    await expect(page.getByText('Failed to mark all notifications as read')).toBeVisible({
+      timeout: 10_000,
+    })
+  })
 })
