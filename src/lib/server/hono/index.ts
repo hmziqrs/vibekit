@@ -23,6 +23,7 @@ import { getStripeClient, verifyWebhookSignature } from '$lib/server/billing/str
 import {
   cancelSubscription,
   changeSubscriptionPlan,
+  checkUsageLimit,
   createPlan,
   createSubscription,
   deactivatePlan,
@@ -2053,6 +2054,28 @@ protectedApp.get('/billing/invoices', async (c) => {
   return c.json({ invoices })
 })
 
+protectedApp.get('/billing/usage', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sub = await getUserSubscription(db, userId)
+  if (!sub) throw new BadRequestError('No active subscription')
+
+  const metricTypes = ['api_calls', 'storage'] as const
+  const usage = await Promise.all(
+    metricTypes.map(async (metricType) => {
+      const result = await checkUsageLimit(db, {
+        metricType,
+        periodEnd: sub.currentPeriodEnd,
+        periodStart: sub.currentPeriodStart,
+        userId,
+      })
+      return { ...result, metricType }
+    })
+  )
+
+  return c.json({ usage })
+})
+
 protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
@@ -2060,6 +2083,19 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
 
   const sub = await getUserSubscription(db, userId)
   if (!sub) throw new BadRequestError('No active subscription')
+
+  const limitCheck = await checkUsageLimit(db, {
+    metricType: parsed.metricType,
+    periodEnd: sub.currentPeriodEnd,
+    periodStart: sub.currentPeriodStart,
+    userId,
+  })
+
+  if (limitCheck.exceeded) {
+    throw new BadRequestError(
+      `Usage limit exceeded for ${parsed.metricType}: ${limitCheck.current}/${limitCheck.limit}`
+    )
+  }
 
   await recordUsage(db, {
     metricType: parsed.metricType,
@@ -2069,7 +2105,10 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
     subscriptionId: sub.id,
   })
 
-  return c.json({ success: true })
+  return c.json({
+    remaining: (limitCheck.limit ?? 0) - limitCheck.current - parsed.quantity,
+    success: true,
+  })
 })
 
 // ── Push Notifications (auth required) ──────────────────────────────────
