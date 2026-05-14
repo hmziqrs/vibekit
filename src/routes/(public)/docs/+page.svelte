@@ -257,7 +257,7 @@ items = response.json()`,
           <div class="rounded-lg border border-white/[0.06] bg-surface p-5">
             <h3 class="font-semibold text-text-primary">Response Format</h3>
             <p class="mt-2 text-sm text-text-muted">All responses are JSON:</p>
-            <div class="mt-2 rounded-md bg-surface-deep p-3 font-mono text-xs text-text-secondary">
+            <div class="mt-2 overflow-x-auto rounded-md bg-surface-deep p-3 font-mono text-xs text-text-secondary">
               <pre>{"{\n  \"Content-Type\": \"application/json\"\n}"}</pre>
             </div>
           </div>
@@ -282,7 +282,7 @@ items = response.json()`,
 
           <div class="rounded-lg border border-white/[0.06] bg-surface p-5">
             <h3 class="font-semibold text-text-primary">Error Format</h3>
-            <div class="mt-2 rounded-md bg-surface-deep p-3 font-mono text-xs text-text-secondary">
+            <div class="mt-2 overflow-x-auto rounded-md bg-surface-deep p-3 font-mono text-xs text-text-secondary">
               <pre>{"{\n  \"error\": \"Not found\",\n  \"status\": 404\n}"}</pre>
             </div>
           </div>
@@ -324,7 +324,7 @@ items = response.json()`,
             When users log in through the web UI, a session cookie is automatically set. This method
             is used by the dashboard and is suitable for same-origin requests from the browser.
           </p>
-          <div class="mt-4 rounded-md bg-surface-deep p-4 font-mono text-sm text-text-secondary">
+          <div class="mt-4 overflow-x-auto rounded-md bg-surface-deep p-4 font-mono text-sm text-text-secondary">
             <pre>{"Cookie: better-auth.session_token=..."}</pre>
           </div>
           <p class="mt-3 text-xs text-text-subtle">
@@ -359,7 +359,7 @@ items = response.json()`,
           </p>
 
           <h4 class="mt-4 text-sm font-semibold text-text-primary">Creating an API Key</h4>
-          <div class="mt-2 rounded-md bg-surface-deep p-4 font-mono text-sm text-text-secondary">
+          <div class="mt-2 overflow-x-auto rounded-md bg-surface-deep p-4 font-mono text-sm text-text-secondary">
             <pre>{"curl -X POST https://vibekit.dev/api/api-keys \\\n  -H 'Content-Type: application/json' \\\n  -H 'Cookie: better-auth.session_token=...' \\\n  -d '{\n    \"name\": \"My Integration\",\n    \"scopes\": [\"items.read\", \"items.write\"]\n  }'"}</pre>
           </div>
 
@@ -367,7 +367,7 @@ items = response.json()`,
           <p class="mt-1 text-sm text-text-muted">
             Include the key in the <code class="text-brand">Authorization</code> header:
           </p>
-          <div class="mt-2 rounded-md bg-surface-deep p-4 font-mono text-sm text-text-secondary">
+          <div class="mt-2 overflow-x-auto rounded-md bg-surface-deep p-4 font-mono text-sm text-text-secondary">
             <pre>{"Authorization: Bearer vk_abc123..."}</pre>
           </div>
 
@@ -433,7 +433,7 @@ items = response.json()`,
             <p class="text-text-secondary">
               <strong class="text-text-primary">Headers:</strong>
             </p>
-            <div class="rounded-md bg-surface-deep p-3 font-mono text-xs text-text-secondary">
+            <div class="overflow-x-auto rounded-md bg-surface-deep p-3 font-mono text-xs text-text-secondary">
               <pre
                 >{"X-Webhook-Signature: sha256=<hex>\nX-Webhook-Timestamp: <unix_timestamp>\nX-Webhook-ID: <delivery_id>"}</pre
               >
