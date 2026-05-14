@@ -686,7 +686,9 @@ export const notificationPreference = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [index('notification_pref_user_type_idx').on(table.userId, table.type, table.channel)]
+  (table) => [
+    uniqueIndex('notification_pref_user_type_idx').on(table.userId, table.type, table.channel),
+  ]
 )
 
 export const notificationPreferenceRelations = relations(notificationPreference, ({ one }) => ({
@@ -1066,7 +1068,7 @@ export const pushSubscription = sqliteTable(
   },
   (table) => [
     index('push_sub_user_idx').on(table.userId),
-    index('push_sub_endpoint_idx').on(table.endpoint),
+    uniqueIndex('push_sub_endpoint_idx').on(table.endpoint),
   ]
 )
 

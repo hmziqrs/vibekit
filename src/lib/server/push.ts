@@ -23,18 +23,21 @@ export async function subscribeToPush(
     userId: string
   }
 ) {
-  // Remove existing subscription for this endpoint
-  await db.delete(pushSubscription).where(eq(pushSubscription.endpoint, input.endpoint))
-
   const id = uuid()
-  await db.insert(pushSubscription).values({
-    auth: input.auth,
-    endpoint: input.endpoint,
-    id,
-    p256dh: input.p256dh,
-    userAgent: input.userAgent ?? null,
-    userId: input.userId,
-  })
+  await db
+    .insert(pushSubscription)
+    .values({
+      auth: input.auth,
+      endpoint: input.endpoint,
+      id,
+      p256dh: input.p256dh,
+      userAgent: input.userAgent ?? null,
+      userId: input.userId,
+    })
+    .onConflictDoUpdate({
+      set: { auth: input.auth, p256dh: input.p256dh, userAgent: input.userAgent ?? null },
+      target: [pushSubscription.endpoint],
+    })
 
   return { id }
 }

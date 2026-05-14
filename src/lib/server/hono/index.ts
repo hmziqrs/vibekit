@@ -2599,14 +2599,14 @@ protectedApp.post(
       .where(eq(blogPost.id, postId))
       .get()
     if (postAuthor && postAuthor.authorId !== currentUser.id) {
-      await createNotification(db, {
+      createNotification(db, {
         body: `New comment on "${postAuthor.title}"`,
         entityId: id,
         entityType: 'comment',
         title: 'New comment on your post',
         type: 'info',
         userId: postAuthor.authorId,
-      })
+      }).catch((error) => console.error('Failed to send comment notification:', error))
     }
 
     return c.json({ id, status }, 201)
@@ -4662,14 +4662,14 @@ orgApp.patch(
       userId: currentUser.id,
     })
 
-    await createNotification(db, {
+    createNotification(db, {
       body: `Your role in "${org.name}" was changed from ${targetMember.role} to ${parsed.role}`,
       entityId: org.id,
       entityType: 'organization',
       title: 'Role updated',
       type: 'info',
       userId: targetMember.userId,
-    })
+    }).catch((error) => console.error('Failed to send role notification:', error))
 
     return c.json({ success: true })
   }
@@ -4715,14 +4715,14 @@ orgApp.delete(
       userId: currentUser.id,
     })
 
-    await createNotification(db, {
+    createNotification(db, {
       body: `You were removed from "${org.name}"`,
       entityId: org.id,
       entityType: 'organization',
       title: 'Removed from organization',
       type: 'warning',
       userId: targetMember.userId,
-    })
+    }).catch((error) => console.error('Failed to send removal notification:', error))
 
     return c.json({ success: true })
   }
@@ -4883,14 +4883,14 @@ orgApp.post(
       userId: currentUser.id,
     })
 
-    await createNotification(db, {
+    createNotification(db, {
       body: `Ownership of "${org.name}" was transferred to you`,
       entityId: org.id,
       entityType: 'organization',
       title: 'Organization ownership transferred',
       type: 'success',
       userId: parsed.newOwnerId,
-    })
+    }).catch((error) => console.error('Failed to send transfer notification:', error))
 
     return c.json({ success: true })
   }
@@ -5457,14 +5457,14 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
     .limit(1)
 
   if (org) {
-    await createNotification(db, {
+    createNotification(db, {
       body: `${currentUser.name ?? currentUser.email} accepted your invitation to join "${org.name}"`,
       entityId: invitation.organizationId,
       entityType: 'organization',
       title: 'Invitation accepted',
       type: 'success',
       userId: invitation.invitedBy,
-    })
+    }).catch((error) => console.error('Failed to send invitation notification:', error))
   }
 
   return c.json({ organizationId: invitation.organizationId, success: true })
@@ -6123,14 +6123,14 @@ adminApp.patch('/comments/:id/moderate', validate(moderateCommentSchema), async 
 
   // Notify comment author
   if (parsed.status === 'approved') {
-    await createNotification(db, {
+    createNotification(db, {
       body: 'Your comment has been approved',
       entityId: id,
       entityType: 'comment',
       title: 'Comment approved',
       type: 'success',
       userId: existing.authorId,
-    })
+    }).catch((error) => console.error('Failed to send approval notification:', error))
   }
 
   return c.json({ success: true })

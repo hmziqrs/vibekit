@@ -1,7 +1,7 @@
 import { notification, notificationPreference } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 
 type NotificationType = 'error' | 'info' | 'success' | 'warning'
 
@@ -48,10 +48,22 @@ export async function createBroadcast(
   getUserIds: (target: 'admins' | 'all') => Promise<string[]>
 ): Promise<number> {
   const userIds = await getUserIds(input.target)
-  const enabledChecks = await Promise.all(
-    userIds.map((uid) => isInAppEnabled(db, uid, 'broadcast'))
-  )
-  const filteredIds = userIds.filter((_, i) => enabledChecks[i])
+  if (userIds.length === 0) return 0
+
+  // Bulk preference check — single query instead of N+1
+  const prefs = await db
+    .select({ enabled: notificationPreference.enabled, userId: notificationPreference.userId })
+    .from(notificationPreference)
+    .where(
+      and(
+        inArray(notificationPreference.userId, userIds),
+        eq(notificationPreference.type, 'broadcast'),
+        eq(notificationPreference.channel, 'in_app')
+      )
+    )
+
+  const disabledUserIds = new Set(prefs.filter((p) => !p.enabled).map((p) => p.userId))
+  const filteredIds = userIds.filter((uid) => !disabledUserIds.has(uid))
 
   const values = filteredIds.map((userId) => ({
     body: input.body ?? null,
@@ -111,31 +123,21 @@ export async function setNotificationPreference(
   db: DrizzleDb,
   input: { channel: 'email' | 'in_app'; enabled: boolean; type: string; userId: string }
 ): Promise<void> {
-  const existing = await db
-    .select({ id: notificationPreference.id })
-    .from(notificationPreference)
-    .where(
-      and(
-        eq(notificationPreference.userId, input.userId),
-        eq(notificationPreference.type, input.type),
-        eq(notificationPreference.channel, input.channel)
-      )
-    )
-    .get()
-
-  // oxlint-disable-next-line unicorn/prefer-ternary
-  if (existing) {
-    await db
-      .update(notificationPreference)
-      .set({ enabled: input.enabled })
-      .where(eq(notificationPreference.id, existing.id))
-  } else {
-    await db.insert(notificationPreference).values({
+  await db
+    .insert(notificationPreference)
+    .values({
       channel: input.channel,
       enabled: input.enabled,
       id: uuid(),
       type: input.type,
       userId: input.userId,
     })
-  }
+    .onConflictDoUpdate({
+      set: { enabled: input.enabled },
+      target: [
+        notificationPreference.userId,
+        notificationPreference.type,
+        notificationPreference.channel,
+      ],
+    })
 }

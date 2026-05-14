@@ -36,9 +36,13 @@ function createMockDb() {
     delete: vi.fn<() => { where: () => Promise<void> }>().mockReturnValue({
       where: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     }),
-    insert: vi.fn<() => { values: () => Promise<void> }>().mockReturnValue({
-      values: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
-    }),
+    insert: vi
+      .fn<() => { values: () => { onConflictDoUpdate: () => Promise<void> } }>()
+      .mockReturnValue({
+        values: vi.fn<() => { onConflictDoUpdate: () => Promise<void> }>().mockReturnValue({
+          onConflictDoUpdate: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        }),
+      }),
     select: vi.fn<() => { from: () => { where: () => Promise<unknown[]> } }>().mockReturnValue({
       from: vi.fn<() => { where: () => Promise<unknown[]> }>().mockReturnValue({
         where: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
@@ -59,7 +63,7 @@ describe('configureWebPush', () => {
 })
 
 describe('subscribeToPush', () => {
-  it('removes existing subscription before creating new one', async () => {
+  it('upserts subscription with onConflictDoUpdate', async () => {
     const db = createMockDb()
     await subscribeToPush(db, {
       auth: 'auth-key',
@@ -68,8 +72,6 @@ describe('subscribeToPush', () => {
       userId: 'user-1',
     })
 
-    // Should delete existing, then insert new
-    expect(db.delete).toHaveBeenCalledWith(pushSubscription)
     expect(db.insert).toHaveBeenCalledWith(pushSubscription)
   })
 

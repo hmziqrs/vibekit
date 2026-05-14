@@ -30,18 +30,13 @@ vi.mock('$lib/server/uuid', () => ({
 function createMockDb(
   subscriptions: Array<{ auth: string; endpoint: string; p256dh: string }> = []
 ) {
-  const whereChain = {
-    delete: mockDelete.mockReturnThis(),
-    get: vi.fn().mockResolvedValue(null),
-    insert: mockInsert.mockReturnThis(),
-    select: mockSelect.mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-  }
-
   return {
     delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-    insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      }),
+    }),
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue(subscriptions),
@@ -77,7 +72,7 @@ describe('subscribeToPush', () => {
     vi.resetModules()
   })
 
-  it('deletes existing subscription for endpoint then inserts new one', async () => {
+  it('upserts subscription for endpoint', async () => {
     const { subscribeToPush } = await import('$lib/server/push')
     const db = createMockDb()
 
@@ -90,7 +85,6 @@ describe('subscribeToPush', () => {
     })
 
     expect(result.id).toBe('test-uuid-123')
-    expect(db.delete).toHaveBeenCalled()
     expect(db.insert).toHaveBeenCalled()
   })
 

@@ -1,21 +1,15 @@
-import {
-  createBroadcast,
-  createNotification,
-  getNotificationPreferences,
-  setNotificationPreference,
-} from '$lib/server/notifications'
-import type { DrizzleDb } from '$lib/server/services/types'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-function createMockDb(
-  overrides: Record<string, unknown> = {}
-): DrizzleDb & { _insertValues: ReturnType<typeof vi.fn> } {
-  const _insertValues = vi.fn().mockResolvedValue(undefined)
+function createMockDb(overrides: Record<string, unknown> = {}) {
+  const onConflictDoUpdateFn = vi.fn().mockResolvedValue(undefined)
+  const _insertValues = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateFn })
+  const _insertFn = vi.fn().mockReturnValue({ values: _insertValues })
+
   return {
+    _insertFn,
     _insertValues,
-    insert: vi.fn().mockReturnValue({
-      values: _insertValues,
-    }),
+    _onConflictDoUpdateFn: onConflictDoUpdateFn,
+    insert: _insertFn,
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -23,18 +17,17 @@ function createMockDb(
         }),
       }),
     }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue({ rowsAffected: 1 }),
-      }),
-    }),
     ...overrides,
-  } as unknown as DrizzleDb & { _insertValues: ReturnType<typeof vi.fn> }
+  } as unknown
 }
+
+beforeEach(() => {
+  vi.resetModules()
+})
 
 describe('createNotification', () => {
   it('inserts notification when preference is enabled (default)', async () => {
-    // Default: no preference row = enabled
+    const { createNotification } = await import('$lib/server/notifications')
     const db = createMockDb()
     await createNotification(db, {
       title: 'Test notification',
@@ -46,6 +39,7 @@ describe('createNotification', () => {
   })
 
   it('skips insert when preference is disabled', async () => {
+    const { createNotification } = await import('$lib/server/notifications')
     const mockSelect = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -61,11 +55,11 @@ describe('createNotification', () => {
       userId: 'user-1',
     })
 
-    // Insert should NOT be called because preference is disabled
     expect(db.insert).not.toHaveBeenCalled()
   })
 
   it('uses default values for optional fields', async () => {
+    const { createNotification } = await import('$lib/server/notifications')
     const db = createMockDb()
     await createNotification(db, {
       title: 'Simple notification',
@@ -79,6 +73,7 @@ describe('createNotification', () => {
   })
 
   it('passes all provided fields', async () => {
+    const { createNotification } = await import('$lib/server/notifications')
     const db = createMockDb()
     await createNotification(db, {
       body: 'Notification body',
@@ -104,21 +99,14 @@ describe('createNotification', () => {
 
 describe('createBroadcast', () => {
   it('sends to all users with enabled preferences', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
     const userIds = ['user-1', 'user-2', 'user-3']
     const getUserIds = vi.fn().mockResolvedValue(userIds)
 
-    // Mock select to return enabled for all users
-    let selectCount = 0
+    // Bulk query returns user-2 as disabled
     const mockSelect = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockImplementation(() => {
-            selectCount++
-            // user-2 has disabled broadcast
-            if (selectCount === 2) return { enabled: false }
-            return { enabled: true }
-          }),
-        }),
+        where: vi.fn().mockResolvedValue([{ enabled: false, userId: 'user-2' }]),
       }),
     })
     const db = createMockDb({ select: mockSelect })
@@ -130,14 +118,14 @@ describe('createBroadcast', () => {
   })
 
   it('sends to admin users when target is admins', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
     const adminIds = ['admin-1', 'admin-2']
     const getUserIds = vi.fn().mockResolvedValue(adminIds)
 
+    // No disabled prefs returned = all enabled
     const mockSelect = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({ enabled: true }),
-        }),
+        where: vi.fn().mockResolvedValue([]),
       }),
     })
     const db = createMockDb({ select: mockSelect })
@@ -153,15 +141,14 @@ describe('createBroadcast', () => {
   })
 
   it('defaults to enabled when no preference exists', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
     const userIds = ['user-1']
     const getUserIds = vi.fn().mockResolvedValue(userIds)
 
-    // No preference row returns null → default to enabled
+    // Empty result = no disabled prefs = all enabled
     const mockSelect = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue(null),
-        }),
+        where: vi.fn().mockResolvedValue([]),
       }),
     })
     const db = createMockDb({ select: mockSelect })
@@ -172,14 +159,16 @@ describe('createBroadcast', () => {
   })
 
   it('returns 0 when all users have disabled broadcast', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
     const userIds = ['user-1', 'user-2']
     const getUserIds = vi.fn().mockResolvedValue(userIds)
 
     const mockSelect = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({ enabled: false }),
-        }),
+        where: vi.fn().mockResolvedValue([
+          { enabled: false, userId: 'user-1' },
+          { enabled: false, userId: 'user-2' },
+        ]),
       }),
     })
     const db = createMockDb({ select: mockSelect })
@@ -187,19 +176,17 @@ describe('createBroadcast', () => {
     const count = await createBroadcast(db, { title: 'Broadcast', target: 'all' }, getUserIds)
 
     expect(count).toBe(0)
-    // Insert should not be called
     expect(db.insert).not.toHaveBeenCalled()
   })
 
   it('sets entityType to broadcast on all notifications', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
     const userIds = ['user-1']
     const getUserIds = vi.fn().mockResolvedValue(userIds)
 
     const mockSelect = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue(null),
-        }),
+        where: vi.fn().mockResolvedValue([]),
       }),
     })
     const db = createMockDb({ select: mockSelect })
@@ -211,7 +198,6 @@ describe('createBroadcast', () => {
     )
 
     expect(db._insertValues).toHaveBeenCalled()
-    // Broadcast passes an array of values to insert().values()
     const inserted = db._insertValues.mock.calls[0][0]
     expect(inserted).toBeDefined()
     const values = Array.isArray(inserted) ? inserted[0] : inserted
@@ -220,10 +206,22 @@ describe('createBroadcast', () => {
     expect(values.body).toBe('Body text')
     expect(values.type).toBe('warning')
   })
+
+  it('returns 0 for empty user list', async () => {
+    const { createBroadcast } = await import('$lib/server/notifications')
+    const db = createMockDb()
+    const getUserIds = vi.fn().mockResolvedValue([])
+
+    const count = await createBroadcast(db, { title: 'Empty', target: 'all' }, getUserIds)
+
+    expect(count).toBe(0)
+    expect(db.insert).not.toHaveBeenCalled()
+  })
 })
 
 describe('getNotificationPreferences', () => {
   it('returns user preferences', async () => {
+    const { getNotificationPreferences } = await import('$lib/server/notifications')
     const mockPrefs = [
       { channel: 'in_app', enabled: true, type: 'general' },
       { channel: 'in_app', enabled: false, type: 'broadcast' },
@@ -241,15 +239,9 @@ describe('getNotificationPreferences', () => {
 })
 
 describe('setNotificationPreference', () => {
-  it('updates existing preference', async () => {
-    const mockSelect = vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({ id: 'pref-1' }),
-        }),
-      }),
-    })
-    const db = createMockDb({ select: mockSelect })
+  it('uses upsert via onConflictDoUpdate', async () => {
+    const { setNotificationPreference } = await import('$lib/server/notifications')
+    const db = createMockDb()
 
     await setNotificationPreference(db, {
       channel: 'in_app',
@@ -258,26 +250,13 @@ describe('setNotificationPreference', () => {
       userId: 'user-1',
     })
 
-    expect(db.update).toHaveBeenCalled()
-  })
+    expect(db._insertFn).toHaveBeenCalledTimes(1)
+    expect(db._onConflictDoUpdateFn).toHaveBeenCalledTimes(1)
 
-  it('creates new preference when none exists', async () => {
-    const mockSelect = vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue(null),
-        }),
-      }),
-    })
-    const db = createMockDb({ select: mockSelect })
-
-    await setNotificationPreference(db, {
-      channel: 'in_app',
-      enabled: true,
-      type: 'general',
-      userId: 'user-1',
-    })
-
-    expect(db.insert).toHaveBeenCalled()
+    const values = db._insertValues.mock.calls[0][0] as Record<string, unknown>
+    expect(values.channel).toBe('in_app')
+    expect(values.enabled).toBe(false)
+    expect(values.type).toBe('broadcast')
+    expect(values.userId).toBe('user-1')
   })
 })
