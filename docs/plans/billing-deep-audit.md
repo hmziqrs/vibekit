@@ -19,7 +19,7 @@ type: project
 | Payment method management  | **PARTIAL**         | Synced via `payment_method.attached`/`detached` webhook events; no UI for management                                                                                                                                  |
 | Invoice generation         | **PARTIAL**         | Webhook creates records; no PDF generation, no line items                                                                                                                                                             |
 | Payment failure handling   | **PARTIAL**         | Sets subscription to `past_due`; no automated recovery flow                                                                                                                                                           |
-| Dunning emails             | **NOT IMPLEMENTED** | Zero billing email templates                                                                                                                                                                                          |
+| Dunning emails             | **FIXED**           | 5 billing email templates (payment failed, payment succeeded, subscription canceled, trial ending, plan changed) wired into webhook handlers                                                                          |
 | Metered billing            | **PARTIAL**         | Local DB tracking only; never reported to Stripe                                                                                                                                                                      |
 | Usage tracking             | **PARTIAL**         | API endpoint exists but nothing auto-tracks usage                                                                                                                                                                     |
 | Quota enforcement          | **FIXED**           | `checkUsageLimit()` now called in POST /billing/usage; rejects over-limit                                                                                                                                             |
@@ -45,8 +45,7 @@ type: project
 
 3. ~~**`checkUsageLimit()` is dead code**~~ — **FIXED**. Now called in POST /billing/usage; rejects requests that would exceed plan limits.
 
-4. **No dunning emails** — Payment failures, trial endings, and past-due status trigger no notifications.
-   - **Fix**: Create billing email templates and trigger from webhook handlers.
+4. ~~**No dunning emails**~~ — **FIXED**. 5 billing email templates created and wired into Stripe webhook handlers: payment failed, payment succeeded, subscription canceled, trial ending soon, plan changed.
 
 5. **No refund processing** — Pricing page mentions "30-day refund policy" but zero code exists.
    - **Fix**: Add Stripe refund API call and admin endpoint.

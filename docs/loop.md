@@ -164,7 +164,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Gap: Proration handling — calculateProration() now called in changeSubscriptionPlan(), returns proration amount in API response
 - [x] Payment processing (Stripe integration, checkout sessions, invoice generation, payment failure detection)
 - [x] Gap: Payment method management — synced via payment_method.attached/detached webhook events
-- [ ] Gap: Dunning emails — zero billing email templates
+- [x] Gap: Dunning emails — 5 billing email templates created (payment failed, payment succeeded, subscription canceled, trial ending soon, plan changed) with HTML/text versions; wired into Stripe webhook handlers
 - [x] Usage-based billing infrastructure (metered billing tables, usage recording API)
 - [x] Gap: Quota enforcement — checkUsageLimit() now called in POST /billing/usage, rejects over-limit
 - [x] Gap: Usage dashboard — GET /billing/usage endpoint returns current usage and limits
