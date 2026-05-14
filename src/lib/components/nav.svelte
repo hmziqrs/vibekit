@@ -24,6 +24,12 @@
 		signingOut = false
 	}
 
+	function handleDropdownKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			closeDropdown()
+		}
+	}
+
 	$effect(() => {
 		if (!dropdownOpen) {return}
 		function handleClickOutside(e: MouseEvent) {
@@ -32,8 +38,15 @@
 				closeDropdown()
 			}
 		}
+		function handleKeydown(e: KeyboardEvent) {
+			if (e.key === 'Escape') closeDropdown()
+		}
 		document.addEventListener('click', handleClickOutside)
-		return () => document.removeEventListener('click', handleClickOutside)
+		document.addEventListener('keydown', handleKeydown)
+		return () => {
+			document.removeEventListener('click', handleClickOutside)
+			document.removeEventListener('keydown', handleKeydown)
+		}
 	})
 </script>
 
@@ -63,6 +76,8 @@
 						onclick={toggleDropdown}
 						class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
 						disabled={signingOut}
+							aria-expanded={dropdownOpen}
+							aria-haspopup="true"
 					>
 						<span class="text-text-primary">{auth.user.name ?? auth.user.email}</span>
 						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform {dropdownOpen ? 'rotate-180' : ''}"><polyline points="6 9 12 15 18 9"/></svg>
@@ -71,6 +86,8 @@
 					{#if dropdownOpen}
 						<div
 							class="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/[0.06] bg-surface py-1 shadow-lg"
+							role="menu"
+							onkeydown={handleDropdownKeydown}
 						>
 							<a
 								href="/app"

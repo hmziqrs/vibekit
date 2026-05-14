@@ -56,7 +56,7 @@
         tabindex="-1"
         aria-label="Close sidebar"
         onclick={closeMobile}
-        onkeydown={(e) => e.key === 'Escape' && closeMobile()}
+        onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') closeMobile() }}
       ></div>
     {/if}
 

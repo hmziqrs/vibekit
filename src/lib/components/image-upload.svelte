@@ -105,6 +105,13 @@
       role="button"
       tabindex="0"
       aria-label="Upload image"
+      onkeydown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          const input = (e.target as HTMLElement).querySelector('input[type="file"]') as HTMLInputElement | null
+          input?.click()
+        }
+      }}
     >
       {#if uploading}
         <p class="text-[13px] text-text-muted">Uploading...</p>

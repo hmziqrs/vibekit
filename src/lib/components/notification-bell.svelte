@@ -55,6 +55,12 @@
     }
   }
 
+  function handleEscapeKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      open = false
+    }
+  }
+
   async function markAsRead(id: string) {
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
@@ -95,13 +101,16 @@
   $effect(() => {
     if (open) {
       document.addEventListener('click', handleClickOutside)
+      document.addEventListener('keydown', handleEscapeKey)
     } else {
       document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('keydown', handleEscapeKey)
     }
   })
 
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('keydown', handleEscapeKey)
   })
 </script>
 
@@ -110,6 +119,8 @@
     onclick={toggle}
     class="relative rounded-lg p-2 text-text-muted transition-colors hover:bg-surface hover:text-text-primary"
     aria-label="Notifications"
+    aria-expanded={open}
+    aria-haspopup="true"
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />

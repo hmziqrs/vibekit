@@ -125,7 +125,7 @@
   ]
 </script>
 
-<svelte:window onclick={closeMenus} />
+<svelte:window onclick={closeMenus} onkeydown={(e: KeyboardEvent) => { if (e.key === 'Escape') closeMenus() }} />
 
 <ConfirmDialog
   bind:open={showDeleteDialog}

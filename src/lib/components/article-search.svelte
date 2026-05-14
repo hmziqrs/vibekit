@@ -55,7 +55,8 @@
   }
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-label="Insert article" onkeydown={(e) => { if (e.key === 'Escape') onClose() }}>
   <div class="w-full max-w-lg rounded-lg border border-border bg-surface-base p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-text-primary">Insert Article</h2>
