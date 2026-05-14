@@ -453,7 +453,7 @@
                       {#if delivery.statusCode}
                         <span class="text-[12px] text-text-muted">{delivery.statusCode}</span>
                       {/if}
-                      <span class="ml-auto text-[12px] text-text-faint">
+                      <span class="ms-auto text-[12px] text-text-faint">
                         {formatDateTime(delivery.createdAt)} · {delivery.attemptCount} attempt(s)
                       </span>
                     </div>

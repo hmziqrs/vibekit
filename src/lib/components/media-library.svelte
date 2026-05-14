@@ -180,7 +180,7 @@
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/60" role="dialog" tabindex="-1" aria-label="File preview" onkeydown={(e) => { if (e.key === 'Escape') previewItem = null }}>
     <div bind:this={previewEl} class="w-full max-w-3xl rounded-lg border border-border bg-surface-base p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-[14px] font-medium text-text-primary truncate mr-4">{previewItem.key}</h3>
+        <h3 class="text-[14px] font-medium text-text-primary truncate me-4">{previewItem.key}</h3>
         <button onclick={() => previewItem = null} class="shrink-0 text-text-muted hover:text-text-primary" aria-label="Close preview">
           <X class="size-5" />
         </button>

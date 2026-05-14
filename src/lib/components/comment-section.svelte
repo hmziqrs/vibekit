@@ -176,9 +176,9 @@
                 <span class="text-[13px] font-medium text-text-primary">
                   {commentItem.authorDisplayName ?? commentItem.authorName}
                 </span>
-                <span class="ml-2 text-[12px] text-text-faint">{formatDate(commentItem.createdAt)}</span>
+                <span class="ms-2 text-[12px] text-text-faint">{formatDate(commentItem.createdAt)}</span>
                 {#if commentItem.editedAt}
-                  <span class="ml-1 text-[11px] text-text-faint">(edited)</span>
+                  <span class="ms-1 text-[11px] text-text-faint">(edited)</span>
                 {/if}
               </div>
             </div>
@@ -206,7 +206,7 @@
                   e.preventDefault()
                   handleReply(commentItem.id)
                 }}
-                class="mt-3 ml-4"
+                class="mt-3 ms-4"
               >
                 <textarea
                   bind:value={replyContent}
@@ -236,7 +236,7 @@
 
             <!-- Replies -->
             {#if commentItem.replies?.length}
-              <div class="mt-3 ml-4 space-y-3 border-l-2 border-border pl-4">
+              <div class="mt-3 ms-4 space-y-3 border-s-2 border-border pl-4">
                 {#each commentItem.replies as reply}
                   <div>
                     <div class="flex items-center gap-2">

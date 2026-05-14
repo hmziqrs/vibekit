@@ -273,7 +273,7 @@
               <p class="text-[13px] font-medium text-text-primary">{configLabels[config.key] ?? config.key}</p>
               <p class="mt-0.5 text-[12px] text-text-subtle">{config.description}</p>
             </div>
-            <div class="ml-4 flex items-center gap-3">
+            <div class="ms-4 flex items-center gap-3">
               {#if config.type === 'boolean'}
                 <button
                   class={cn(
@@ -574,7 +574,7 @@
                   {/if}
                 </div>
               </div>
-              <div class="ml-4 flex items-center gap-2">
+              <div class="ms-4 flex items-center gap-2">
                 <button
                   class={cn(
                     'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors',

@@ -238,7 +238,7 @@
     </button>
     <button
       onclick={() => selectedIds = new Set()}
-      class="ml-auto text-[12px] text-text-muted hover:text-text-primary"
+      class="ms-auto text-[12px] text-text-muted hover:text-text-primary"
     >
       Clear
     </button>

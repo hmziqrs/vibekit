@@ -63,7 +63,7 @@
 						<div class="h-3 w-3 rounded-full bg-terminal-yellow"></div>
 						<div class="h-3 w-3 rounded-full bg-terminal-green"></div>
 					</div>
-					<div class="ml-4 flex-1 rounded-md bg-surface-elevated px-3 py-1 text-center text-[11px] text-text-subtle">vibekit-project</div>
+					<div class="ms-4 flex-1 rounded-md bg-surface-elevated px-3 py-1 text-center text-[11px] text-text-subtle">vibekit-project</div>
 				</div>
 				<div class="overflow-x-auto px-6 pb-6 pt-2">
 					<pre class="font-mono text-[13px] leading-7 text-text-muted"><code><span class="text-text-subtle"># Create your project</span>
@@ -231,7 +231,7 @@
 							<div class="h-2.5 w-2.5 rounded-full bg-terminal-yellow"></div>
 							<div class="h-2.5 w-2.5 rounded-full bg-terminal-green"></div>
 						</div>
-						<span class="ml-3 text-[11px] text-text-faint">src/routes/app/+page.svelte</span>
+						<span class="ms-3 text-[11px] text-text-faint">src/routes/app/+page.svelte</span>
 					</div>
 					<div class="overflow-x-auto p-6">
 						<pre class="font-mono text-[12px] leading-6 text-text-muted"><code><span class="text-text-subtle">&lt;script lang="ts"&gt;</span>

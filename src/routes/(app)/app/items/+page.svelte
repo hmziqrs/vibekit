@@ -163,7 +163,7 @@
               <p class="mt-0.5 text-[11px] text-text-subtle">{formatDate(item.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </a>
 
-            <div class="ml-4 flex items-center gap-2">
+            <div class="ms-4 flex items-center gap-2">
               <StatusBadge status={item.status} />
 
               <button

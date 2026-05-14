@@ -228,7 +228,7 @@
             </button>
             <button
               onclick={() => (showDeleteConfirm = false)}
-              class="ml-3 rounded-lg border border-white/[0.06] px-4 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary"
+              class="ms-3 rounded-lg border border-white/[0.06] px-4 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
               Cancel
             </button>

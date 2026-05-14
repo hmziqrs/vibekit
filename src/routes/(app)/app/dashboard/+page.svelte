@@ -93,7 +93,7 @@
       </p>
       <button
         onclick={() => (showWelcomeBanner = false)}
-        class="ml-4 text-text-muted transition-colors hover:text-text-primary"
+        class="ms-4 text-text-muted transition-colors hover:text-text-primary"
         aria-label="Dismiss"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -204,7 +204,7 @@
                 <p class="mt-0.5 text-[11px] text-text-subtle">{formatDate(item.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
               <span
-                class="ml-4 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium {item.status === 'active'
+                class="ms-4 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium {item.status === 'active'
                   ? 'bg-success/10 text-success'
                   : 'bg-warning/10 text-warning'}"
               >

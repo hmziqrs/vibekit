@@ -976,7 +976,7 @@
               <p class="text-[13px] font-medium text-text-primary">
                 {ua.browser} on {ua.os}
                 {#if isCurrent}
-                  <span class="ml-1 rounded bg-brand/20 px-1.5 py-0.5 text-[10px] font-medium text-brand">This device</span>
+                  <span class="ms-1 rounded bg-brand/20 px-1.5 py-0.5 text-[10px] font-medium text-brand">This device</span>
                 {/if}
               </p>
               <p class="text-[11px] text-text-subtle">

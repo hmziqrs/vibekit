@@ -438,7 +438,7 @@
                   <div>
                     <p class="text-[13px] text-text-primary">
                       <span class="font-medium">{entry.actorName}</span>
-                      <span class="ml-1 text-text-muted">{formatAction(entry.action)}</span>
+                      <span class="ms-1 text-text-muted">{formatAction(entry.action)}</span>
                     </p>
                     {#if entry.entityType}
                       <p class="text-[11px] text-text-subtle">{entry.entityType}</p>

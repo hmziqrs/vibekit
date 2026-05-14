@@ -127,7 +127,7 @@
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
     {#if unreadCount > 0}
-      <span class="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+      <span class="absolute -end-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
         {unreadCount > 9 ? '9+' : unreadCount}
       </span>
     {/if}

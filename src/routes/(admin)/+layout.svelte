@@ -65,7 +65,7 @@
     <!-- Sidebar -->
     <aside
       class={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-surface transition-transform duration-200 md:static md:translate-x-0',
+        'fixed inset-y-0 start-0 z-50 w-64 transform border-e border-border bg-surface transition-transform duration-200 md:static md:translate-x-0',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
       )}
     >
