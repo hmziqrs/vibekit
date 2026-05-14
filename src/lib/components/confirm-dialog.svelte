@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { createFocusTrap } from '$lib/keyboard.svelte'
+
   let {
     open = $bindable(false),
     title = 'Confirm',
@@ -19,6 +21,8 @@
     children?: import('svelte').Snippet
   } = $props()
 
+  let dialogEl: HTMLDivElement | undefined = $state()
+
   function handleConfirm() {
     if (disabled) return
     onConfirm()
@@ -32,6 +36,13 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {open = false}
   }
+
+  $effect(() => {
+    if (open && dialogEl) {
+      const trap = createFocusTrap(dialogEl)
+      return () => trap.destroy()
+    }
+  })
 </script>
 
 {#if open}
@@ -44,6 +55,7 @@
   >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
+      bind:this={dialogEl}
       class="mx-4 w-full max-w-md rounded-xl border border-white/[0.06] bg-surface p-6"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => e.stopPropagation()}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { createFocusTrap } from '$lib/keyboard.svelte'
 
   let {
     open = $bindable(false),
@@ -14,6 +15,7 @@
   let selectedIndex = $state(-1)
   let recentSearches = $state<string[]>([])
   let inputEl: HTMLInputElement | undefined = $state()
+  let panelEl: HTMLDivElement | undefined = $state()
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
   const STORAGE_KEY = 'vibekit:recent-searches'
@@ -29,6 +31,13 @@
       total = 0
       selectedIndex = -1
       isLoading = false
+    }
+  })
+
+  $effect(() => {
+    if (open && panelEl) {
+      const trap = createFocusTrap(panelEl)
+      return () => trap.destroy()
     }
   })
 
@@ -220,6 +229,7 @@
   >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
+      bind:this={panelEl}
       class="mx-4 w-full max-w-xl rounded-xl border border-white/[0.06] bg-surface shadow-2xl"
       onclick={(e) => e.stopPropagation()}
       onkeydown={handleKeydown}

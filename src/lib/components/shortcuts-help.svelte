@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { getShortcuts, formatShortcut } from '$lib/keyboard.svelte'
+  import { createFocusTrap, getShortcuts, formatShortcut } from '$lib/keyboard.svelte'
 
   let {
     open = $bindable(false),
   }: {
     open?: boolean
   } = $props()
+
+  let dialogEl: HTMLDivElement | undefined = $state()
 
   const defaultShortcuts = [
     { description: 'Open search', key: 'k' },
@@ -20,6 +22,13 @@
       open = false
     }
   }
+
+  $effect(() => {
+    if (open && dialogEl) {
+      const trap = createFocusTrap(dialogEl)
+      return () => trap.destroy()
+    }
+  })
 </script>
 
 {#if open}
@@ -31,12 +40,13 @@
   >
     <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
     <div
+      bind:this={dialogEl}
       class="mx-4 w-full max-w-md rounded-xl border border-white/[0.06] bg-surface p-6"
       onclick={(e) => e.stopPropagation()}
       onkeydown={handleKeydown}
       role="dialog"
       aria-label="Keyboard shortcuts"
-      tabindex="-1"
+      tabindex="0"
     >
       <h2 class="mb-4 text-base font-semibold text-text-primary">Keyboard Shortcuts</h2>
 

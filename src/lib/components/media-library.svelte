@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Editor } from '@tiptap/core'
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
+  import { createFocusTrap } from '$lib/keyboard.svelte'
   import { cn } from '$lib/utils'
   import { FileText, Image, LayoutGrid, List, Music, Search, Trash2, Upload, X } from '@lucide/svelte'
 
@@ -33,6 +34,22 @@
   let deleteTarget = $state<MediaItem | null>(null)
   let showDeleteDialog = $state(false)
   let deleting = $state(false)
+  let dialogEl: HTMLDivElement | undefined = $state()
+  let previewEl: HTMLDivElement | undefined = $state()
+
+  $effect(() => {
+    if (dialogEl) {
+      const trap = createFocusTrap(dialogEl)
+      return () => trap.destroy()
+    }
+  })
+
+  $effect(() => {
+    if (previewItem && previewEl) {
+      const trap = createFocusTrap(previewEl)
+      return () => trap.destroy()
+    }
+  })
 
   function formatSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`
@@ -161,7 +178,7 @@
 
 {#if previewItem}
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/60" role="dialog" aria-label="File preview" onkeydown={(e) => { if (e.key === 'Escape') previewItem = null }}>
-    <div class="w-full max-w-3xl rounded-lg border border-border bg-surface-base p-6">
+    <div bind:this={previewEl} class="w-full max-w-3xl rounded-lg border border-border bg-surface-base p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[14px] font-medium text-text-primary truncate mr-4">{previewItem.key}</h3>
         <button onclick={() => previewItem = null} class="shrink-0 text-text-muted hover:text-text-primary" aria-label="Close preview">
@@ -205,7 +222,7 @@
 {/if}
 
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50" role="dialog" aria-label="Media Library" onkeydown={(e) => { if (e.key === 'Escape') onClose() }}>
-  <div class="w-full max-w-4xl rounded-lg border border-border bg-surface-base p-6">
+  <div bind:this={dialogEl} class="w-full max-w-4xl rounded-lg border border-border bg-surface-base p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-text-primary">Media Library</h2>

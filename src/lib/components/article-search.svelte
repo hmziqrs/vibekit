@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Editor } from '@tiptap/core'
   import { X } from '@lucide/svelte'
+  import { createFocusTrap } from '$lib/keyboard.svelte'
 
   interface Props {
     editor: Editor
@@ -12,6 +13,14 @@
   let results = $state<{ excerpt: string | null; id: string; slug: string; title: string }[]>([])
   let loading = $state(false)
   let searchTimer: ReturnType<typeof setTimeout> | null = null
+  let dialogEl: HTMLDivElement | undefined = $state()
+
+  $effect(() => {
+    if (dialogEl) {
+      const trap = createFocusTrap(dialogEl)
+      return () => trap.destroy()
+    }
+  })
 
   $effect(() => {
     if (searchTimer) clearTimeout(searchTimer)
@@ -57,7 +66,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-label="Insert article" onkeydown={(e) => { if (e.key === 'Escape') onClose() }}>
-  <div class="w-full max-w-lg rounded-lg border border-border bg-surface-base p-6">
+  <div bind:this={dialogEl} class="w-full max-w-lg rounded-lg border border-border bg-surface-base p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-text-primary">Insert Article</h2>
       <button onclick={onClose} class="text-text-muted hover:text-text-primary" aria-label="Close">

@@ -7,6 +7,7 @@
   import TocPanel from '$lib/components/toc-panel.svelte'
   import MediaLibrary from '$lib/components/media-library.svelte'
   import ArticleSearch from '$lib/components/article-search.svelte'
+  import { createFocusTrap } from '$lib/keyboard.svelte'
   import { updatePostSchema } from '$lib/validators/blog'
   import { createQuery } from '@tanstack/svelte-query'
 
@@ -52,6 +53,7 @@
   let showArticleSearch = $state(false)
   let showSchedulePicker = $state(false)
   let scheduleDate = $state('')
+  let scheduleEl = $state<HTMLDivElement | undefined>(undefined)
   let activeTab = $state<'metadata' | 'seo' | 'toc'>('metadata')
 
   let selectedTagIds = $state<Set<string>>(new Set(data.postTags.map((t) => t.id)))
@@ -142,6 +144,13 @@
     }
     el.addEventListener('open-article-search', handler)
     return () => el.removeEventListener('open-article-search', handler)
+  })
+
+  $effect(() => {
+    if (showSchedulePicker && scheduleEl) {
+      const trap = createFocusTrap(scheduleEl)
+      return () => trap.destroy()
+    }
   })
 
   function parseContent(raw: string): object | string | null {
@@ -760,6 +769,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
+      bind:this={scheduleEl}
       class="w-full max-w-sm rounded-lg border border-border bg-surface p-6"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => e.stopPropagation()}
