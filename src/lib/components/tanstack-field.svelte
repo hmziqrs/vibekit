@@ -38,7 +38,7 @@
       value={field.state.value}
       oninput={(e) => field.handleChange(e.currentTarget.value)}
       onblur={field.handleBlur}
-      class="flex min-h-[80px] w-full rounded-md border border-white/[0.06] bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+      class="flex min-h-[80px] w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
       aria-invalid={hasError ? 'true' : 'false'}
       aria-describedby={hasError ? `${String(field.name)}-error` : undefined}
     ></textarea>
@@ -57,7 +57,7 @@
     />
   {/if}
   {#if hasError}
-    <p id="{String(field.name)}-error" class="text-[12px] text-red-400">
+    <p id="{String(field.name)}-error" class="text-[12px] text-destructive">
       {getFieldError(errors)}
     </p>
   {/if}

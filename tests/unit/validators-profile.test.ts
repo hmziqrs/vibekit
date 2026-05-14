@@ -8,7 +8,7 @@ import {
 } from '$lib/validators/profile'
 import { describe, expect, it } from 'vitest'
 
-describe(updateProfileSchema, () => {
+describe('updateProfileSchema', () => {
   const validInput = {
     bio: 'Hello, I am a developer.',
     displayName: 'Dev User',
@@ -78,7 +78,7 @@ describe(updateProfileSchema, () => {
   })
 })
 
-describe(bio, () => {
+describe('bio validator', () => {
   it('accepts null', () => {
     const result = bio.safeParse(null)
     expect(result.success).toBeTruthy()
@@ -100,7 +100,7 @@ describe(bio, () => {
   })
 })
 
-describe(timezone, () => {
+describe('timezone validator', () => {
   it('accepts null', () => {
     const result = timezone.safeParse(null)
     expect(result.success).toBeTruthy()
@@ -143,14 +143,20 @@ describe('onboardingSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects step below 0', () => {
+  it('clamps step below 0 to 0', () => {
     const result = onboardingSchema.safeParse({ step: -1 })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.step).toBe(0)
+    }
   })
 
-  it('rejects step above 3', () => {
-    const result = onboardingSchema.safeParse({ step: 4 })
-    expect(result.success).toBe(false)
+  it('clamps step above 3 to 3', () => {
+    const result = onboardingSchema.safeParse({ step: 10 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.step).toBe(3)
+    }
   })
 
   it('rejects non-integer step', () => {

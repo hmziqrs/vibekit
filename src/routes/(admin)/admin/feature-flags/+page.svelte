@@ -23,8 +23,8 @@
     queryFn: async () => {
       const res = await fetch('/api/admin/feature-flags')
       if (!res.ok) throw new Error('Failed to fetch flags')
-      const data = await res.json()
-      return data.flags as Record<string, unknown>[]
+      const data = (await res.json()) as { flags: Record<string, unknown>[] }
+      return data.flags
     },
     queryKey: ['admin', 'feature-flags'],
   }))
@@ -40,7 +40,7 @@
         method: 'POST',
       })
       if (!res.ok) {
-        const err = await res.json()
+        const err = (await res.json()) as { error?: { message?: string } }
         throw new Error(err.error?.message ?? 'Failed to create flag')
       }
       return res.json()
@@ -140,47 +140,51 @@
   </div>
 
   {#if createFlagMutation.isError}
-    <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
       {createFlagMutation.error?.message ?? 'Failed to create flag'}
     </div>
   {/if}
 
   {#if showCreateForm}
-    <div class="rounded-lg border border-white/[0.06] bg-surface p-6">
+    <div class="rounded-lg border border-border bg-surface p-6">
       <h2 class="mb-4 text-sm font-medium text-text-secondary">New Feature Flag</h2>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="mb-1 block text-xs text-text-muted">Key *</label>
+          <label for="flag-key" class="mb-1 block text-xs text-text-muted">Key *</label>
           <input
+            id="flag-key"
             type="text"
             bind:value={newFlag.key}
             placeholder="e.g. new-dashboard"
-            class="w-full rounded-md border border-white/[0.08] bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
+            class="w-full rounded-md border border-border bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
           />
         </div>
         <div>
-          <label class="mb-1 block text-xs text-text-muted">Name *</label>
+          <label for="flag-name" class="mb-1 block text-xs text-text-muted">Name *</label>
           <input
+            id="flag-name"
             type="text"
             bind:value={newFlag.name}
             placeholder="e.g. New Dashboard"
-            class="w-full rounded-md border border-white/[0.08] bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
+            class="w-full rounded-md border border-border bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
           />
         </div>
         <div class="md:col-span-2">
-          <label class="mb-1 block text-xs text-text-muted">Description</label>
+          <label for="flag-description" class="mb-1 block text-xs text-text-muted">Description</label>
           <input
+            id="flag-description"
             type="text"
             bind:value={newFlag.description}
             placeholder="What this flag controls"
-            class="w-full rounded-md border border-white/[0.08] bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
+            class="w-full rounded-md border border-border bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
           />
         </div>
         <div>
-          <label class="mb-1 block text-xs text-text-muted">Environment</label>
+          <label for="flag-environment" class="mb-1 block text-xs text-text-muted">Environment</label>
           <select
+            id="flag-environment"
             bind:value={newFlag.environment}
-            class="w-full rounded-md border border-white/[0.08] bg-surface-base px-3 py-2 text-sm text-text-primary focus:border-brand focus:outline-none"
+            class="w-full rounded-md border border-border bg-surface-base px-3 py-2 text-sm text-text-primary focus:border-brand focus:outline-none"
           >
             <option value="">All environments</option>
             <option value="development">Development</option>
@@ -189,19 +193,20 @@
           </select>
         </div>
         <div>
-          <label class="mb-1 block text-xs text-text-muted">Rollout % (0-100)</label>
+          <label for="flag-rollout" class="mb-1 block text-xs text-text-muted">Rollout % (0-100)</label>
           <input
+            id="flag-rollout"
             type="number"
             min="0"
             max="100"
             bind:value={newFlag.rolloutPercentage}
-            class="w-full rounded-md border border-white/[0.08] bg-surface-base px-3 py-2 text-sm text-text-primary focus:border-brand focus:outline-none"
+            class="w-full rounded-md border border-border bg-surface-base px-3 py-2 text-sm text-text-primary focus:border-brand focus:outline-none"
           />
         </div>
       </div>
       <div class="mt-4 flex items-center gap-4">
         <label class="flex items-center gap-2 text-sm text-text-secondary">
-          <input type="checkbox" bind:checked={newFlag.enabled} class="rounded border-white/[0.08]" />
+          <input type="checkbox" bind:checked={newFlag.enabled} class="rounded border-border" />
           Enabled
         </label>
         <button
@@ -222,14 +227,14 @@
   {:else if flagsQuery.data}
     {@const flags = flagsQuery.data}
     {#if flags.length === 0}
-      <div class="rounded-lg border border-white/[0.06] bg-surface p-8 text-center">
+      <div class="rounded-lg border border-border bg-surface p-8 text-center">
         <p class="text-sm text-text-muted">No feature flags yet. Create one to get started.</p>
       </div>
     {:else}
-      <div class="overflow-hidden rounded-lg border border-white/[0.06]">
+      <div class="overflow-hidden rounded-lg border border-border">
         <table class="w-full">
           <thead>
-            <tr class="border-b border-white/[0.06] bg-surface-deep">
+            <tr class="border-b border-border bg-surface-deep">
               <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Flag</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Status</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Rollout</th>
@@ -244,7 +249,7 @@
               {@const isEnabled = flag.enabled as boolean}
               {@const isKillSwitch = flag.killSwitch as boolean}
               {@const pct = flag.rolloutPercentage as number}
-              <tr class="border-b border-white/[0.04] hover:bg-white/[0.02]">
+              <tr class="border-b border-border hover:bg-surface-deep/50">
                 <td class="px-4 py-3">
                   {#if editingKey === key && editFlag}
                     <div class="space-y-1">
@@ -259,7 +264,7 @@
                         value={editFlag.description as string ?? ''}
                         oninput={(e) => (editFlag = { ...editFlag, description: (e.target as HTMLInputElement).value })}
                         placeholder="Description"
-                        class="w-full rounded border border-white/[0.08] bg-surface-base px-2 py-1 text-xs text-text-secondary"
+                        class="w-full rounded border border-border bg-surface-base px-2 py-1 text-xs text-text-secondary"
                       />
                     </div>
                   {:else}
@@ -271,15 +276,15 @@
                 </td>
                 <td class="px-4 py-3">
                   {#if isKillSwitch}
-                    <span class="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
+                    <span class="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                       Kill Switch
                     </span>
                   {:else if isEnabled}
-                    <span class="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400">
+                    <span class="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
                       Enabled
                     </span>
                   {:else}
-                    <span class="inline-flex items-center rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-text-muted">
+                    <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-text-muted">
                       Disabled
                     </span>
                   {/if}
@@ -296,7 +301,7 @@
                     />
                   {:else}
                     <div class="flex items-center gap-2">
-                      <div class="h-1.5 w-16 overflow-hidden rounded-full bg-white/[0.06]">
+                      <div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
                         <div
                           class="h-full rounded-full bg-brand"
                           style="width: {Math.min(pct, 100)}%"
@@ -338,7 +343,7 @@
                       </button>
                       <button
                         onclick={() => { editingKey = null; editFlag = null }}
-                        class="rounded px-2 py-1 text-xs text-text-muted hover:bg-white/[0.04]"
+                        class="rounded px-2 py-1 text-xs text-text-muted hover:bg-surface"
                       >
                         Cancel
                       </button>
@@ -348,28 +353,28 @@
                         class={cn(
                           'rounded px-2 py-1 text-xs transition-colors',
                           isEnabled
-                            ? 'text-yellow-400 hover:bg-yellow-500/10'
-                            : 'text-green-400 hover:bg-green-500/10',
+                            ? 'text-warning hover:bg-warning/10'
+                            : 'text-success hover:bg-success/10',
                         )}
                       >
                         {isEnabled ? 'Disable' : 'Enable'}
                       </button>
                       <button
                         onclick={() => startEdit(flag)}
-                        class="rounded px-2 py-1 text-xs text-text-muted hover:bg-white/[0.04]"
+                        class="rounded px-2 py-1 text-xs text-text-muted hover:bg-surface"
                       >
                         Edit
                       </button>
                       <button
                         onclick={() => killSwitchMutation.mutate(key)}
-                        class="rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                        class="rounded px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
                         title="Activate kill switch — immediately disables the flag"
                       >
                         Kill
                       </button>
                       <button
                         onclick={() => { if (confirm('Delete this flag?')) deleteMutation.mutate(key) }}
-                        class="rounded px-2 py-1 text-xs text-text-faint hover:bg-red-500/10 hover:text-red-400"
+                        class="rounded px-2 py-1 text-xs text-text-faint hover:bg-destructive/10 hover:text-destructive"
                       >
                         Delete
                       </button>
@@ -383,7 +388,7 @@
       </div>
     {/if}
   {:else if flagsQuery.isError}
-    <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
       Failed to load feature flags
     </div>
   {/if}

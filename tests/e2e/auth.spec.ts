@@ -6,7 +6,7 @@ test.describe('auth pages', () => {
     await expect(page.locator('[data-slot="card-title"]', { hasText: 'Log in' })).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByLabel('Password')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
     await expect(page.getByText("Don't have an account?")).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create one' })).toBeVisible()
   })
@@ -51,7 +51,7 @@ test.describe('auth pages', () => {
   test('login shows inline validation errors on empty submit', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(page.locator('#email-error')).toBeVisible()
     await expect(page.locator('#email-error')).toHaveText('Please enter a valid email address')
     await expect(page.locator('#password-error')).toBeVisible()

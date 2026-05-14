@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+import { goToAdmin } from './helpers/auth'
+
 test.describe('Admin Media Library', () => {
   test.beforeEach(async ({ page }) => {
+    await goToAdmin(page)
     await page.goto('/admin/media')
     await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
   })
 
   test('shows media library heading', async ({ page }) => {
@@ -14,11 +16,11 @@ test.describe('Admin Media Library', () => {
   })
 
   test('shows upload button', async ({ page }) => {
-    await expect(page.getByText('Upload')).toBeVisible()
+    await expect(page.getByText('Upload').first()).toBeVisible()
   })
 
   test('has type filter tabs', async ({ page }) => {
-    await expect(page.getByText('All')).toBeVisible()
+    await expect(page.getByText('All').first()).toBeVisible()
     await expect(page.getByText('Images')).toBeVisible()
     await expect(page.getByText('Videos')).toBeVisible()
   })
@@ -48,9 +50,7 @@ test.describe('Admin Media Library', () => {
 
 test.describe('Admin Media Navigation', () => {
   test('media nav item exists in sidebar', async ({ page }) => {
-    await page.goto('/admin/dashboard')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await goToAdmin(page)
     await expect(page.getByRole('link', { name: 'Media' })).toBeVisible()
   })
 })

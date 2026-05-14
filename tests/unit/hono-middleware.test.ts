@@ -31,18 +31,18 @@ function mockServices(): TestServices {
 }
 
 function withErrorHandler(app: Hono<Env | ProtectedEnv>) {
-  return app.onError((err, c) => {
+  return app.onError((err: unknown, c: { json: (body: unknown, status: number) => unknown }) => {
     if (isAppError(err)) {
       return c.json(err.toJSON(), err.status)
     }
     return c.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
-      500
+      500 as unknown
     )
   })
 }
 
-describe(requireUser, () => {
+describe('requireUser', () => {
   it('returns 401 when user is null', async () => {
     const app = withErrorHandler(
       new Hono<Env>()
@@ -85,7 +85,7 @@ describe(requireUser, () => {
   })
 })
 
-describe(requireAdmin, () => {
+describe('requireAdmin', () => {
   it('returns 401 when user is null', async () => {
     const app = withErrorHandler(
       new Hono<Env>()
@@ -144,7 +144,7 @@ describe(requireAdmin, () => {
   })
 })
 
-describe(withRateLimit, () => {
+describe('withRateLimit', () => {
   it('allows requests within limit', async () => {
     const user = mockUser('user-1', 'user')
     const limiter = withRateLimit('test-middleware-allow', 5, 60_000)
@@ -222,7 +222,7 @@ describe(withRateLimit, () => {
   })
 })
 
-describe(withOwnedItem, () => {
+describe('withOwnedItem', () => {
   it('returns 404 when item not found', async () => {
     const user = mockUser('user-1', 'user')
     const mockDb = {

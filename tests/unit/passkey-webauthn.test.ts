@@ -120,7 +120,7 @@ describe('passkey login page', () => {
       'utf8'
     )
     expect(pageSource).toContain('passkeyError')
-    expect(pageSource).toContain('text-red-400')
+    expect(pageSource).toContain('text-destructive')
   })
 
   it('has visual separator between email and passkey login', async () => {

@@ -6,7 +6,7 @@
       const res = await fetch('/api/admin/integrations')
       if (!res.ok) throw new Error('Failed to fetch')
       return (await res.json()) as {
-        integrations: Array<{
+        integrations: {
           createdAt: string
           id: string
           lastError: string | null
@@ -16,7 +16,7 @@
           scopes: string[]
           status: string
           userId: string | null
-        }>
+        }[]
       }
     },
     queryKey: ['admin-integrations'],
@@ -36,10 +36,10 @@
   }
 
   const statusColors: Record<string, string> = {
-    active: 'bg-emerald-500/15 text-emerald-400',
-    disconnected: 'bg-white/[0.06] text-text-muted',
-    error: 'bg-red-500/15 text-red-400',
-    expired: 'bg-yellow-500/15 text-yellow-400',
+    active: 'bg-success/15 text-success',
+    disconnected: 'bg-muted text-text-muted',
+    error: 'bg-destructive/15 text-destructive',
+    expired: 'bg-warning/15 text-warning',
   }
 </script>
 
@@ -76,7 +76,7 @@
                   <span
                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {statusColors[
                       int.status
-                    ] ?? 'bg-white/[0.06] text-text-muted'}"
+                    ] ?? 'bg-muted text-text-muted'}"
                   >
                     {int.status}
                   </span>

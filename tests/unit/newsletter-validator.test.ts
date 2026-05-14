@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 // ---------------------------------------------------------------------------
 // subscribeSchema
 // ---------------------------------------------------------------------------
-describe(subscribeSchema, () => {
+describe('subscribeSchema', () => {
   const validInput = {
     email: 'user@example.com',
   }

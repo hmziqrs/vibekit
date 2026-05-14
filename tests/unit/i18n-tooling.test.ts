@@ -52,10 +52,10 @@ describe('i18n Tooling', () => {
         if (!urValue) continue
 
         const urParams = [...(urValue.matchAll(paramRegex) ?? [])].map((m) => m[1])
-        expect(urParams.toSorted()).toStrictEqual(
-          enParams.toSorted(),
+        expect(
+          urParams.toSorted(),
           `Key "${key}": params mismatch between en and ur`
-        )
+        ).toStrictEqual(enParams.toSorted())
       }
     })
   })

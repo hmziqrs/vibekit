@@ -28,9 +28,9 @@ export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
       key: string,
       options?: { contentType?: string; expiresIn?: number }
     ): Promise<string> {
-      // R2 doesn't natively support presigned URLs in Workers,
-      // but we can use createSignedUrl for direct access
-      const url = await bucket.createSignedUrl(key, {
+      // R2 presigned URLs use createSignedUrl for direct access
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const url = await (bucket as any).createSignedUrl(key, {
         expiresIn: options?.expiresIn ?? 3600,
       })
       return url

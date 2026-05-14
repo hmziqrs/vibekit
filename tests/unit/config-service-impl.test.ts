@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('$lib/server/db/schema', () => ({
   configVersion: {
@@ -49,7 +49,7 @@ describe('config-service impl', () => {
         }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    }
+    } as unknown
   }
 
   describe('getConfigValue', () => {

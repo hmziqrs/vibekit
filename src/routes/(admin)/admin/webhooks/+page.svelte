@@ -10,7 +10,7 @@
       const res = await fetch(`/api/admin/webhooks/deliveries?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to fetch deliveries')
       return (await res.json()) as {
-        deliveries: Array<{
+        deliveries: {
           attemptCount: number
           createdAt: string
           endpointId: string
@@ -20,7 +20,7 @@
           responseBody: string | null
           statusCode: number | null
           status: string
-        }>
+        }[]
       }
     },
     queryKey: ['admin-webhook-deliveries'],
@@ -43,10 +43,10 @@
   }
 
   const statusColors: Record<string, string> = {
-    failed: 'bg-red-500/15 text-red-400',
-    pending: 'bg-yellow-500/15 text-yellow-400',
-    retrying: 'bg-orange-500/15 text-orange-400',
-    success: 'bg-emerald-500/15 text-emerald-400',
+    failed: 'bg-destructive/15 text-destructive',
+    pending: 'bg-warning/15 text-warning',
+    retrying: 'bg-warning/15 text-warning',
+    success: 'bg-success/15 text-success',
   }
 </script>
 

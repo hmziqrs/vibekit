@@ -11,7 +11,13 @@ test.describe('dashboard', () => {
   })
 
   test('shows welcome message with user name', async ({ page }) => {
-    await expect(page.getByText('Welcome back, Test Admin')).toBeVisible()
+    // CSR page — auth context loads asynchronously; wait for the sidebar to show the user email
+    // as a signal that auth has resolved, then check the welcome heading
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    // The h1 should show "Welcome back, <user name>" — check the pattern, not exact name
+    // (name may differ if previous serial tests changed it)
+    await expect(page.locator('h1')).toContainText('Welcome back')
+    await expect(page.locator('h1')).not.toContainText('User')
   })
 
   test('shows stats section with 4 cards', async ({ page }) => {

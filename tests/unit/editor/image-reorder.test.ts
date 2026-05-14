@@ -1,5 +1,5 @@
 import { ImageReorder, DRAG_MIME } from '$lib/editor/extensions/image-reorder'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe('image-reorder', () => {
   it('exports the DRAG_MIME constant', () => {

@@ -136,7 +136,7 @@
             currentPage={data.page}
             {totalPages}
             totalItems={data.total}
-            {limit}
+            pageSize={limit}
             onPageChange={goToPage}
           />
         </div>

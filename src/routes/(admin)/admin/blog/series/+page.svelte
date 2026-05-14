@@ -171,8 +171,12 @@
     </a>
     <button
       onclick={() => {
-        resetForm()
-        showCreateForm = !showCreateForm
+        if (showCreateForm) {
+          resetForm()
+        } else {
+          resetForm()
+          showCreateForm = true
+        }
       }}
       class="rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover"
     >
@@ -193,7 +197,7 @@
       {editingSeries ? 'Edit Series' : 'Create Series'}
     </h2>
     {#if formError}
-      <p class="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-400">{formError}</p>
+      <p class="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{formError}</p>
     {/if}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
       <div class="flex-1">
@@ -248,7 +252,7 @@
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={filteredSeries}
+    rows={filteredSeries as unknown as Record<string, unknown>[]}
     loading={seriesQuery.isPending}
     {selectedIds}
     onSelectionChange={(ids) => (selectedIds = ids)}
@@ -259,7 +263,8 @@
     onRetry={() => seriesQuery.refetch()}
     emptyMessage="No series yet. Create your first series!"
   >
-    {#snippet children({ row, columnKey })}
+    {#snippet children({ row: _row, columnKey })}
+      {@const row = _row as unknown as SeriesRow}
       {#if columnKey === 'name'}
         <span class="truncate font-medium">{row.name}</span>
       {:else if columnKey === 'slug'}
@@ -271,15 +276,15 @@
       {:else if columnKey === 'actions'}
         <div class="flex items-center gap-2">
           <button
-            class="rounded-lg border border-white/[0.06] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
-            onclick={() => startEdit(row as SeriesRow)}
+            class="rounded-lg border border-border px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary"
+            onclick={() => startEdit(row)}
           >
             Edit
           </button>
           <button
-            class="rounded-lg border border-red-500/30 px-3 py-1 text-[12px] font-medium text-red-400 hover:bg-red-500/10"
+            class="rounded-lg border border-destructive/30 px-3 py-1 text-[12px] font-medium text-destructive hover:bg-destructive/10"
             onclick={() => {
-              deleteTarget = row as SeriesRow
+              deleteTarget = row
               showConfirmDialog = true
             }}
           >

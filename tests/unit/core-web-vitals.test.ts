@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe('core Web Vitals', () => {
   describe('performance budget thresholds', () => {

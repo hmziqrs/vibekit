@@ -1,7 +1,12 @@
 import { webhookDelivery, webhookEndpoint } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, sql } from 'drizzle-orm'
+
+function deliveryStatus(ok: boolean, shouldRetry: boolean): 'success' | 'retrying' | 'failed' {
+  if (ok) return 'success'
+  return shouldRetry ? 'retrying' : 'failed'
+}
 
 const MAX_RETRIES = 5
 const BACKOFF_BASE_MS = 1000
@@ -39,7 +44,7 @@ export interface WebhookPayload {
 }
 
 export async function createWebhookEndpoint(
-  db: AppDb,
+  db: DrizzleDb,
   userId: string,
   input: { description?: string; events: string[]; url: string }
 ) {
@@ -61,7 +66,7 @@ export async function createWebhookEndpoint(
   return { id, secret, url: input.url }
 }
 
-export async function listWebhookEndpoints(db: AppDb, userId: string) {
+export async function listWebhookEndpoints(db: DrizzleDb, userId: string) {
   return db
     .select()
     .from(webhookEndpoint)
@@ -69,8 +74,9 @@ export async function listWebhookEndpoints(db: AppDb, userId: string) {
     .orderBy(desc(webhookEndpoint.createdAt))
 }
 
+// oxlint-disable-next-line max-params
 export async function updateWebhookEndpoint(
-  db: AppDb,
+  db: DrizzleDb,
   endpointId: string,
   userId: string,
   input: { active?: boolean; description?: string; events?: string[]; url?: string }
@@ -94,13 +100,13 @@ export async function updateWebhookEndpoint(
   return { id: endpointId }
 }
 
-export async function deleteWebhookEndpoint(db: AppDb, endpointId: string, userId: string) {
+export async function deleteWebhookEndpoint(db: DrizzleDb, endpointId: string, userId: string) {
   await db
     .delete(webhookEndpoint)
     .where(and(eq(webhookEndpoint.id, endpointId), eq(webhookEndpoint.userId, userId)))
 }
 
-export async function getWebhookEndpoint(db: AppDb, endpointId: string, userId: string) {
+export async function getWebhookEndpoint(db: DrizzleDb, endpointId: string, userId: string) {
   const rows = await db
     .select()
     .from(webhookEndpoint)
@@ -109,8 +115,9 @@ export async function getWebhookEndpoint(db: AppDb, endpointId: string, userId: 
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
+// oxlint-disable-next-line max-params
 export async function deliverWebhook(
-  db: AppDb,
+  db: DrizzleDb,
   endpoint: { id: string; secret: string; url: string },
   eventType: string,
   data: Record<string, unknown>
@@ -135,7 +142,7 @@ export async function deliverWebhook(
     eventType,
     id,
     nextRetryAt: null,
-    payload,
+    payload: payload as unknown as Record<string, unknown>,
     responseBody: null,
     status: 'pending',
     statusCode: null,
@@ -209,7 +216,7 @@ export async function deliverWebhook(
 }
 
 export async function dispatchWebhooksForEvent(
-  db: AppDb,
+  db: DrizzleDb,
   eventType: string,
   data: Record<string, unknown>
 ) {
@@ -230,7 +237,7 @@ export async function dispatchWebhooksForEvent(
   return results.length
 }
 
-export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
+export async function retryWebhookDelivery(db: DrizzleDb, deliveryId: string) {
   const rows = await db.select().from(webhookDelivery).where(eq(webhookDelivery.id, deliveryId))
 
   const delivery = rows[0] as
@@ -281,7 +288,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
         attemptCount,
         nextRetryAt: null,
         responseBody: responseBody.slice(0, 10_000),
-        status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed',
+        status: deliveryStatus(response.ok, shouldRetry),
         statusCode: response.status,
         updatedAt: new Date(),
       })
@@ -296,7 +303,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
         .where(eq(webhookDelivery.id, deliveryId))
     }
 
-    return { id: deliveryId, status: response.ok ? 'success' : shouldRetry ? 'retrying' : 'failed' }
+    return { id: deliveryId, status: deliveryStatus(response.ok, shouldRetry) }
   } catch (error) {
     console.error(`Webhook delivery ${deliveryId} retry failed:`, error)
     await db
@@ -313,7 +320,7 @@ export async function retryWebhookDelivery(db: AppDb, deliveryId: string) {
   }
 }
 
-export async function listWebhookDeliveries(db: AppDb, endpointId: string, limit = 50) {
+export async function listWebhookDeliveries(db: DrizzleDb, endpointId: string, limit = 50) {
   return db
     .select()
     .from(webhookDelivery)
@@ -323,30 +330,35 @@ export async function listWebhookDeliveries(db: AppDb, endpointId: string, limit
 }
 
 export async function listAllDeliveries(
-  db: AppDb,
+  db: DrizzleDb,
   options?: { eventType?: string; limit?: number; status?: string }
 ) {
   const limit = options?.limit ?? 50
-  let query = db.select().from(webhookDelivery)
 
   const conditions = []
   if (options?.eventType) {
     conditions.push(eq(webhookDelivery.eventType, options.eventType))
   }
   if (options?.status) {
-    conditions.push(eq(webhookDelivery.status, options.status))
+    conditions.push(
+      eq(webhookDelivery.status, options.status as 'failed' | 'pending' | 'retrying' | 'success')
+    )
   }
 
   if (conditions.length > 0) {
-    query = query.where(and(...conditions))
-    return query.orderBy(desc(webhookDelivery.createdAt)).limit(limit)
+    return db
+      .select()
+      .from(webhookDelivery)
+      .where(and(...conditions))
+      .orderBy(desc(webhookDelivery.createdAt))
+      .limit(limit)
   }
 
-  return query.orderBy(desc(webhookDelivery.createdAt)).limit(limit)
+  return db.select().from(webhookDelivery).orderBy(desc(webhookDelivery.createdAt)).limit(limit)
 }
 
 export async function sendTestWebhook(
-  db: AppDb,
+  db: DrizzleDb,
   endpoint: { id: string; secret: string; url: string }
 ) {
   return deliverWebhook(db, endpoint, 'webhook.test', {

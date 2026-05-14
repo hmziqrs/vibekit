@@ -201,8 +201,8 @@
 
     <!-- Danger Zone -->
     {#if canDelete}
-      <div class="rounded-xl border border-red-500/20 bg-red-500/5 p-6">
-        <h2 class="mb-2 text-lg font-semibold text-red-400">Danger Zone</h2>
+      <div class="rounded-xl border border-destructive/20 bg-destructive/5 p-6">
+        <h2 class="mb-2 text-lg font-semibold text-destructive">Danger Zone</h2>
         <p class="mb-4 text-sm text-text-muted">
           Deleting this team will remove it and all associated data. This action cannot be undone.
         </p>
@@ -217,7 +217,7 @@
             <button
               onclick={deleteTeam}
               disabled={deleting}
-              class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              class="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
             >
               {deleting ? 'Deleting...' : 'Yes, Delete Team'}
             </button>
@@ -231,7 +231,7 @@
         {:else}
           <button
             onclick={() => (showDeleteConfirm = true)}
-            class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/20"
+            class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive transition-colors hover:bg-destructive/20"
           >
             Delete Team
           </button>

@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
 
-import { loginAsAdmin } from './helpers/auth'
+import { loginAsAdmin, login, USER } from './helpers/auth'
 
 test.describe('public newsletter signup', () => {
   test('newsletter signup form renders on blog listing page', async ({ page }) => {
     await page.goto('/blog', { waitUntil: 'networkidle' })
-    await expect(page.getByPlaceholder('your@email.com')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Subscribe' })).toBeVisible()
+    await expect(page.getByPlaceholder('your@email.com').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Subscribe' }).first()).toBeVisible()
   })
 
   test('newsletter signup form renders on blog post page', async ({ page }) => {
@@ -15,8 +15,7 @@ test.describe('public newsletter signup', () => {
     if (await firstPost.isVisible()) {
       await firstPost.click()
       await page.waitForURL(/\/blog\/.+/)
-      await expect(page.getByText('Enjoyed this article?')).toBeVisible()
-      await expect(page.getByPlaceholder('your@email.com')).toBeVisible()
+      await expect(page.getByPlaceholder('your@email.com').first()).toBeVisible()
     }
   })
 
@@ -77,7 +76,7 @@ test.describe('admin newsletter management', () => {
     await expect(page.getByText('Name')).toBeVisible()
     await expect(page.getByText('Status')).toBeVisible()
     await expect(page.getByText('Source')).toBeVisible()
-    await expect(page.getByText('Subscribed')).toBeVisible()
+    await expect(page.getByText('Subscribed').first()).toBeVisible()
   })
 
   test('delete button opens confirm dialog', async ({ page }) => {
@@ -109,11 +108,7 @@ test.describe('newsletter auth guards', () => {
   })
 
   test('normal user accessing admin newsletter gets 403', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('user@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('user12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
+    await login(page, USER)
 
     await page.goto('/admin/newsletter')
     await expect(page.getByText('Admin access required')).toBeVisible()

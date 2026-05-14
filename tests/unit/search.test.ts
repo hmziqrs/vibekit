@@ -7,7 +7,7 @@ import {
 import { describe, expect, it } from 'vitest'
 
 describe('search Validators', () => {
-  describe(searchSchema, () => {
+  describe('searchSchema', () => {
     it('validates a valid search query', () => {
       const result = searchSchema.safeParse({ query: 'hello world' })
       expect(result.success).toBe(true)
@@ -47,7 +47,7 @@ describe('search Validators', () => {
     })
   })
 
-  describe(indexDocumentSchema, () => {
+  describe('indexDocumentSchema', () => {
     it('validates a valid document', () => {
       const result = indexDocumentSchema.safeParse({
         content: 'This is the content of the document',
@@ -98,7 +98,7 @@ describe('search Validators', () => {
     })
   })
 
-  describe(deleteIndexSchema, () => {
+  describe('deleteIndexSchema', () => {
     it('validates deletion params', () => {
       const result = deleteIndexSchema.safeParse({
         entityId: 'post-1',
@@ -113,7 +113,7 @@ describe('search Validators', () => {
     })
   })
 
-  describe(reindexSchema, () => {
+  describe('reindexSchema', () => {
     it('validates empty body', () => {
       const result = reindexSchema.safeParse({})
       expect(result.success).toBe(true)

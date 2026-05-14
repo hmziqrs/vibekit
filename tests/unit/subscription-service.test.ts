@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 function createMockDb(
   opts: {
@@ -42,7 +42,7 @@ function createMockDb(
     insert: insertFn,
     select: vi.fn().mockReturnValue({ from: fromFn }),
     update: updateFn,
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 describe('subscription-service module', () => {
@@ -272,7 +272,7 @@ describe('changeSubscriptionPlan', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await expect(changeSubscriptionPlan(db, 'sub-1', 'plan-missing')).rejects.toThrow(
       'New plan not found'
@@ -455,7 +455,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-pro')
 
@@ -486,7 +486,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-starter')
 
@@ -515,7 +515,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-b')
 
@@ -544,7 +544,7 @@ describe('changeSubscriptionPlan success paths', () => {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await changeSubscriptionPlan(db, 'sub-1', 'plan-new')
 
@@ -637,7 +637,7 @@ describe('checkUsageLimit', () => {
     const fromFn = vi.fn().mockReturnValue({ where: whereFn })
     const selectFn = vi.fn().mockReturnValue({ from: fromFn })
     return {
-      db: { select: selectFn } as unknown as import('$lib/server/services/types').AppDb,
+      db: { select: selectFn } as unknown,
       getFn,
     }
   }
@@ -691,5 +691,288 @@ describe('checkUsageLimit', () => {
 
     expect(result.exceeded).toBe(false)
     expect(result.limit).toBeNull()
+  })
+
+  it('returns exceeded when usage exceeds plan limit', async () => {
+    const { checkUsageLimit } = await import('$lib/server/billing/subscription-service')
+
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1)
+        return Promise.resolve({ id: 'sub-1', planId: 'plan-pro', status: 'active' })
+      if (callIdx === 2) return Promise.resolve({ slug: 'pro', features: null })
+      return Promise.resolve(null)
+    })
+    const limitFn = vi.fn().mockReturnValue({ get: getFn })
+    const orderByFn = vi.fn().mockReturnValue({ get: getFn, limit: limitFn })
+    const whereFn = vi.fn().mockResolvedValue([{ quantity: 55000 }])
+    const userSubWhereFn = vi.fn().mockReturnValue({ get: getFn, orderBy: orderByFn })
+    const planWhereFn = vi.fn().mockReturnValue({ get: getFn })
+
+    let selectCallIdx = 0
+    const fromFn = vi.fn().mockImplementation(() => {
+      selectCallIdx++
+      if (selectCallIdx === 1) return { where: userSubWhereFn }
+      if (selectCallIdx === 2) return { where: planWhereFn }
+      return { where: whereFn }
+    })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await checkUsageLimit(db, {
+      metricType: 'api_calls',
+      periodEnd: new Date('2026-06-01'),
+      periodStart: new Date('2026-05-01'),
+      userId: 'user-pro',
+    })
+
+    expect(result.exceeded).toBe(true)
+    expect(result.limit).toBe(50000)
+    expect(result.current).toBe(55000)
+  })
+
+  it('returns not exceeded when usage is under plan limit', async () => {
+    const { checkUsageLimit } = await import('$lib/server/billing/subscription-service')
+
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1)
+        return Promise.resolve({ id: 'sub-1', planId: 'plan-pro', status: 'active' })
+      if (callIdx === 2) return Promise.resolve({ slug: 'pro', features: null })
+      return Promise.resolve(null)
+    })
+    const limitFn = vi.fn().mockReturnValue({ get: getFn })
+    const orderByFn = vi.fn().mockReturnValue({ get: getFn, limit: limitFn })
+    const whereFn = vi.fn().mockResolvedValue([{ quantity: 100 }])
+    const userSubWhereFn = vi.fn().mockReturnValue({ get: getFn, orderBy: orderByFn })
+    const planWhereFn = vi.fn().mockReturnValue({ get: getFn })
+
+    let selectCallIdx = 0
+    const fromFn = vi.fn().mockImplementation(() => {
+      selectCallIdx++
+      if (selectCallIdx === 1) return { where: userSubWhereFn }
+      if (selectCallIdx === 2) return { where: planWhereFn }
+      return { where: whereFn }
+    })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await checkUsageLimit(db, {
+      metricType: 'api_calls',
+      periodEnd: new Date('2026-06-01'),
+      periodStart: new Date('2026-05-01'),
+      userId: 'user-pro',
+    })
+
+    expect(result.exceeded).toBe(false)
+    expect(result.limit).toBe(50000)
+    expect(result.current).toBe(100)
+  })
+})
+
+describe('getActivePlans', () => {
+  it('queries plans with isActive filter', async () => {
+    const { getActivePlans } = await import('$lib/server/billing/subscription-service')
+    const allFn = vi.fn().mockResolvedValue([{ id: 'p1', name: 'Pro' }])
+    const whereFn = vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue(undefined) })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getActivePlans(db)
+
+    expect(db.select).toHaveBeenCalled()
+    expect(whereFn).toHaveBeenCalled()
+  })
+})
+
+describe('getAllPlans', () => {
+  it('queries all plans without filter', async () => {
+    const { getAllPlans } = await import('$lib/server/billing/subscription-service')
+    const fromFn = vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue(undefined) })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    await getAllPlans(db)
+
+    expect(db.select).toHaveBeenCalled()
+  })
+})
+
+describe('getPlanBySlug', () => {
+  it('queries plan by slug', async () => {
+    const { getPlanBySlug } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({ id: 'p1', slug: 'pro' })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getPlanBySlug(db, 'pro')
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(result).toEqual({ id: 'p1', slug: 'pro' })
+  })
+
+  it('returns undefined when plan not found', async () => {
+    const { getPlanBySlug } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue(null)
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getPlanBySlug(db, 'nonexistent')
+
+    expect(result).toBeNull()
+  })
+})
+
+describe('getPlanById', () => {
+  it('queries plan by id', async () => {
+    const { getPlanById } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({ id: 'plan-1', name: 'Starter' })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getPlanById(db, 'plan-1')
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(result).toEqual({ id: 'plan-1', name: 'Starter' })
+  })
+
+  it('returns null when plan not found', async () => {
+    const { getPlanById } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue(null)
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getPlanById(db, 'nonexistent')
+
+    expect(result).toBeNull()
+  })
+})
+
+describe('getUserSubscription', () => {
+  it('returns active subscription for user', async () => {
+    const { getUserSubscription } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({ id: 'sub-1', userId: 'user-1', status: 'active' })
+    const limitFn = vi.fn().mockReturnValue({ get: getFn })
+    const orderByFn = vi.fn().mockReturnValue({ get: getFn, limit: limitFn })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn, orderBy: orderByFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getUserSubscription(db, 'user-1')
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(limitFn).toHaveBeenCalledWith(1)
+    expect(result).toEqual({ id: 'sub-1', userId: 'user-1', status: 'active' })
+  })
+
+  it('returns undefined when user has no subscription', async () => {
+    const { getUserSubscription } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue(null)
+    const limitFn = vi.fn().mockReturnValue({ get: getFn })
+    const orderByFn = vi.fn().mockReturnValue({ get: getFn, limit: limitFn })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn, orderBy: orderByFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getUserSubscription(db, 'user-none')
+
+    expect(result).toBeNull()
+  })
+})
+
+describe('getOrgSubscription', () => {
+  it('returns active subscription for org', async () => {
+    const { getOrgSubscription } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi
+      .fn()
+      .mockResolvedValue({ id: 'sub-2', organizationId: 'org-1', status: 'active' })
+    const limitFn = vi.fn().mockReturnValue({ get: getFn })
+    const orderByFn = vi.fn().mockReturnValue({ get: getFn, limit: limitFn })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn, orderBy: orderByFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getOrgSubscription(db, 'org-1')
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(result).toEqual({ id: 'sub-2', organizationId: 'org-1', status: 'active' })
+  })
+})
+
+describe('getSubscriptionById', () => {
+  it('returns subscription by id', async () => {
+    const { getSubscriptionById } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue({ id: 'sub-1', status: 'active' })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getSubscriptionById(db, 'sub-1')
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(result).toEqual({ id: 'sub-1', status: 'active' })
+  })
+
+  it('returns null when not found', async () => {
+    const { getSubscriptionById } = await import('$lib/server/billing/subscription-service')
+    const getFn = vi.fn().mockResolvedValue(null)
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const result = await getSubscriptionById(db, 'nonexistent')
+
+    expect(result).toBeNull()
+  })
+})
+
+describe('getUsageForPeriod', () => {
+  it('queries usage records filtered by subscription and date range', async () => {
+    const { getUsageForPeriod } = await import('$lib/server/billing/subscription-service')
+    const records = [
+      { metricType: 'api_calls', quantity: 500 },
+      { metricType: 'api_calls', quantity: 300 },
+    ]
+    const whereFn = vi.fn().mockResolvedValue(records)
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn })
+    const db = {
+      select: vi.fn().mockReturnValue({ from: fromFn }),
+    } as unknown
+
+    const start = new Date('2026-05-01')
+    const end = new Date('2026-06-01')
+    const result = await getUsageForPeriod(db, 'sub-1', start, end)
+
+    expect(whereFn).toHaveBeenCalled()
+    expect(result).toEqual(records)
   })
 })

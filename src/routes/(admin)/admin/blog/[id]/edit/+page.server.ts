@@ -1,11 +1,12 @@
 import { blogPost, blogPostSeries, blogPostTag, blogSeries, blogTag } from '$lib/server/db/schema'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { error } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-  const { db } = locals.services
+  const db = locals.services.db as DrizzleDb
   const post = await db.select().from(blogPost).where(eq(blogPost.id, params.id)).get()
 
   if (!post) {

@@ -1,5 +1,5 @@
 import { uploadSession } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, lt } from 'drizzle-orm'
 
@@ -9,7 +9,7 @@ const MIN_CHUNK_SIZE = 1024 * 1024 // 1MB
 const MAX_CHUNK_SIZE = 50 * 1024 * 1024 // 50MB
 
 export async function createUploadSession(
-  db: AppDb,
+  db: DrizzleDb,
   input: {
     chunkSize: number
     fileName: string
@@ -51,12 +51,12 @@ export async function createUploadSession(
   }
 }
 
-export async function getUploadSession(db: AppDb, sessionId: string) {
+export async function getUploadSession(db: DrizzleDb, sessionId: string) {
   const rows = await db.select().from(uploadSession).where(eq(uploadSession.id, sessionId))
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
-export async function recordChunk(db: AppDb, sessionId: string, chunkIndex: number) {
+export async function recordChunk(db: DrizzleDb, sessionId: string, chunkIndex: number) {
   const session = await getUploadSession(db, sessionId)
   if (!session) throw new Error('Upload session not found')
   if (session.status === 'expired') throw new Error('Upload session has expired')
@@ -83,24 +83,33 @@ export async function recordChunk(db: AppDb, sessionId: string, chunkIndex: numb
   return { complete: isComplete, receivedChunks: updatedChunks, totalChunks }
 }
 
-export async function completeUploadSession(db: AppDb, sessionId: string, storageKey: string) {
+export async function completeUploadSession(db: DrizzleDb, sessionId: string, storageKey: string) {
   await db
     .update(uploadSession)
     .set({ status: 'complete', storageKey, updatedAt: new Date() })
     .where(eq(uploadSession.id, sessionId))
 }
 
-export async function failUploadSession(db: AppDb, sessionId: string) {
+export async function failUploadSession(db: DrizzleDb, sessionId: string) {
   await db
     .update(uploadSession)
     .set({ status: 'failed', updatedAt: new Date() })
     .where(eq(uploadSession.id, sessionId))
 }
 
-export async function listUploadSessions(db: AppDb, userId: string, options?: { status?: string }) {
+export async function listUploadSessions(
+  db: DrizzleDb,
+  userId: string,
+  options?: { status?: string }
+) {
   const conditions = [eq(uploadSession.userId, userId)]
   if (options?.status) {
-    conditions.push(eq(uploadSession.status, options.status))
+    conditions.push(
+      eq(
+        uploadSession.status,
+        options.status as 'complete' | 'expired' | 'failed' | 'pending' | 'uploading'
+      )
+    )
   }
   return db
     .select()
@@ -109,15 +118,15 @@ export async function listUploadSessions(db: AppDb, userId: string, options?: { 
     .orderBy(desc(uploadSession.createdAt))
 }
 
-export async function cleanupExpiredSessions(db: AppDb) {
-  const now = Date.now()
+export async function cleanupExpiredSessions(db: DrizzleDb) {
+  const now = new Date()
   await db
     .update(uploadSession)
     .set({ status: 'expired', updatedAt: new Date() })
     .where(lt(uploadSession.expiresAt, now))
 }
 
-export async function deleteUploadSession(db: AppDb, sessionId: string) {
+export async function deleteUploadSession(db: DrizzleDb, sessionId: string) {
   await db.delete(uploadSession).where(eq(uploadSession.id, sessionId))
 }
 

@@ -10,8 +10,8 @@ test.describe('Automation', () => {
   test('shows platform tabs', async ({ page }) => {
     await page.goto('/docs/automation')
     await page.waitForLoadState('networkidle')
-    await expect(page.getByText('ZAPIER')).toBeVisible()
-    await expect(page.getByText('N8N')).toBeVisible()
+    await expect(page.getByText('ZAPIER').first()).toBeVisible()
+    await expect(page.getByText('N8N').first()).toBeVisible()
   })
 
   test('zapier content visible by default', async ({ page }) => {
@@ -24,22 +24,23 @@ test.describe('Automation', () => {
     await page.goto('/docs/automation')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
-    await page.getByText('N8N').click()
-    await expect(page.getByText('n8n Setup')).toBeVisible()
+    await page.getByText('n8n', { exact: true }).first().click()
+    await expect(page.getByText('n8n Setup')).toBeVisible({ timeout: 5000 })
   })
 
   test('make tab switches content', async ({ page }) => {
     await page.goto('/docs/automation')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
-    await page.getByText('MAKE').click()
-    await expect(page.getByText('Make (Integromat) Setup')).toBeVisible()
+    // The make tab renders as "Make (Integromat)" in the DOM (p === 'make' condition in template)
+    await page.getByText('Make (Integromat)', { exact: true }).first().click()
+    await expect(page.getByText('Make (Integromat) Setup')).toBeVisible({ timeout: 5000 })
   })
 
   test('shows trigger examples', async ({ page }) => {
     await page.goto('/docs/automation')
     await page.waitForLoadState('networkidle')
-    await expect(page.getByText('Available Triggers')).toBeVisible()
+    await expect(page.getByText('Available Triggers').first()).toBeVisible()
   })
 
   test('manifest endpoint accessible', async ({ page }) => {
@@ -48,6 +49,7 @@ test.describe('Automation', () => {
   })
 
   test('manifest contains triggers and actions', async ({ page }) => {
+    await page.goto('/docs/automation', { waitUntil: 'networkidle' })
     const response = await page.evaluate(async () => {
       const res = await fetch('/api/automation/manifest')
       return (await res.json()) as {

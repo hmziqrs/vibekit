@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock web-push before importing the module
-vi.mock<typeof import('web-push')>(import('web-push'), () => ({
+vi.mock('web-push', () => ({
   default: {
     sendNotification: vi
       .fn<() => Promise<{ statusCode: number }>>()
@@ -11,7 +11,7 @@ vi.mock<typeof import('web-push')>(import('web-push'), () => ({
 }))
 
 // Mock db schema
-vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
+vi.mock('$lib/server/db/schema', () => ({
   pushSubscription: {
     auth: 'auth',
     createdAt: 'created_at',
@@ -44,10 +44,10 @@ function createMockDb() {
         where: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
       }),
     }),
-  }
+  } as unknown
 }
 
-describe(configureWebPush, () => {
+describe('configureWebPush', () => {
   it('calls setVapidDetails with correct arguments', () => {
     configureWebPush('public-key', 'private-key', 'mailto:test@example.com')
     expect(webpush.setVapidDetails).toHaveBeenCalledWith(
@@ -58,7 +58,7 @@ describe(configureWebPush, () => {
   })
 })
 
-describe(subscribeToPush, () => {
+describe('subscribeToPush', () => {
   it('removes existing subscription before creating new one', async () => {
     const db = createMockDb()
     await subscribeToPush(db, {
@@ -87,7 +87,7 @@ describe(subscribeToPush, () => {
   })
 })
 
-describe(unsubscribeFromPush, () => {
+describe('unsubscribeFromPush', () => {
   it('deletes subscription by endpoint', async () => {
     const db = createMockDb()
     await unsubscribeFromPush(db, 'https://push.example.com/sub/123')

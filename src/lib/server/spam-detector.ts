@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm'
 
 import { comment } from './db/schema'
-import type { AppDb } from './services/types'
+import type { DrizzleDb } from './services/types'
 
 interface SpamCheckInput {
   content: string
-  db: AppDb
+  db: DrizzleDb
   ipAddress: string
   userId: string
 }
@@ -101,13 +101,12 @@ export async function detectSpam(input: SpamCheckInput): Promise<SpamResult> {
   }
 
   // Rate check: more than 10 comments in last hour
-  const recentCount = await db
-    .select({ count: sql<number>`count(*)` })
+  const recentComments = await db
+    .select()
     .from(comment)
     .where(sql`author_id = ${userId} AND created_at > ${oneHourAgo}`)
-    .get()
 
-  if (recentCount && recentCount.count > 10) {
+  if (recentComments.length > 10) {
     score += 20
     reasons.push('rate_exceeded')
   }

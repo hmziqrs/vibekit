@@ -1,7 +1,7 @@
 import { deleteSearchIndexSchema } from '$lib/validators/search'
 import { describe, expect, it } from 'vitest'
 
-describe(deleteSearchIndexSchema, () => {
+describe('deleteSearchIndexSchema', () => {
   it('accepts valid input', () => {
     const result = deleteSearchIndexSchema.safeParse({
       entityId: 'post-123',

@@ -20,7 +20,7 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
     insert: insertFn,
     select: selectFn,
     update: updateFn,
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 describe('feature-flag service module', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
+vi.mock('$lib/server/db/schema', () => ({
   webhookDelivery: {
     attemptCount: 'attempt_count',
     createdAt: 'created_at',
@@ -40,7 +40,7 @@ import {
 } from '$lib/validators/webhook'
 
 describe('webhook validators', () => {
-  describe(createWebhookEndpointSchema, () => {
+  describe('createWebhookEndpointSchema', () => {
     it('validates correct input', () => {
       const result = createWebhookEndpointSchema.safeParse({
         events: ['blog.create', 'blog.update'],
@@ -124,7 +124,7 @@ describe('webhook validators', () => {
     })
   })
 
-  describe(updateWebhookEndpointSchema, () => {
+  describe('updateWebhookEndpointSchema', () => {
     it('allows partial update with url only', () => {
       const result = updateWebhookEndpointSchema.safeParse({
         url: 'https://new-url.com/webhooks',
@@ -150,7 +150,7 @@ describe('webhook validators', () => {
     })
   })
 
-  describe(listDeliveriesSchema, () => {
+  describe('listDeliveriesSchema', () => {
     it('uses default values', () => {
       const result = listDeliveriesSchema.safeParse({})
       expect(result.success).toBeTruthy()

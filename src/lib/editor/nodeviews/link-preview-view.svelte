@@ -71,7 +71,7 @@
   {:else if fetchError}
     <div class="p-4 flex items-center justify-between">
       <div>
-        <p class="text-xs text-red-400">Failed to fetch preview</p>
+        <p class="text-xs text-destructive">Failed to fetch preview</p>
         <a href={url} target="_blank" rel="noopener noreferrer" class="text-xs text-brand hover:underline">{url}</a>
       </div>
     </div>

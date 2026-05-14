@@ -28,6 +28,6 @@ test.describe('session management in settings', () => {
     await page.waitForLoadState('networkidle')
 
     // Should show some browser info (Chromium in Playwright)
-    await expect(page.getByText(/on (macOS|Windows|Linux)/)).toBeVisible()
+    await expect(page.getByText(/on (macOS|Windows|Linux)/).first()).toBeVisible()
   })
 })

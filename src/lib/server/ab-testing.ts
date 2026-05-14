@@ -1,7 +1,7 @@
 import { abAssignment, abEvent, abExperiment, abVariant } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 export interface ExperimentResult {
   conversions: number
@@ -15,7 +15,7 @@ export interface ExperimentResult {
   zScore: number | null
 }
 
-export async function listExperiments(db: AppDb, options?: { status?: string }) {
+export async function listExperiments(db: DrizzleDb, options?: { status?: string }) {
   const conditions = []
   if (options?.status) {
     conditions.push(
@@ -36,13 +36,13 @@ export async function listExperiments(db: AppDb, options?: { status?: string }) 
   return db.select().from(abExperiment).orderBy(desc(abExperiment.createdAt)).limit(200)
 }
 
-export async function getExperiment(db: AppDb, key: string) {
+export async function getExperiment(db: DrizzleDb, key: string) {
   const rows = await db.select().from(abExperiment).where(eq(abExperiment.key, key))
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
 export async function createExperiment(
-  db: AppDb,
+  db: DrizzleDb,
   input: {
     description?: string
     key: string
@@ -68,6 +68,7 @@ export async function createExperiment(
   })
 
   for (const variant of input.variants) {
+    // oxlint-disable-next-line no-await-in-loop
     await db.insert(abVariant).values({
       description: variant.description ?? null,
       experimentId: id,
@@ -83,7 +84,7 @@ export async function createExperiment(
 }
 
 export async function updateExperiment(
-  db: AppDb,
+  db: DrizzleDb,
   key: string,
   input: {
     description?: string
@@ -109,16 +110,16 @@ export async function updateExperiment(
   return { key }
 }
 
-export async function deleteExperiment(db: AppDb, key: string) {
+export async function deleteExperiment(db: DrizzleDb, key: string) {
   await db.delete(abExperiment).where(eq(abExperiment.key, key))
 }
 
-export async function getExperimentVariants(db: AppDb, experimentId: string) {
+export async function getExperimentVariants(db: DrizzleDb, experimentId: string) {
   return db.select().from(abVariant).where(eq(abVariant.experimentId, experimentId))
 }
 
 export async function assignVariant(
-  db: AppDb,
+  db: DrizzleDb,
   experimentKey: string,
   input: { sessionId?: string; userId?: string }
 ) {
@@ -180,7 +181,7 @@ export async function assignVariant(
     id: assignmentId,
     sessionId: input.sessionId ?? null,
     userId: input.userId ?? null,
-    variantId: selectedVariant.id,
+    variantId: selectedVariant.id as string,
   })
 
   return {
@@ -191,7 +192,7 @@ export async function assignVariant(
 }
 
 export async function recordEvent(
-  db: AppDb,
+  db: DrizzleDb,
   input: {
     eventName: string
     eventType: string
@@ -218,7 +219,7 @@ export async function recordEvent(
 }
 
 export async function getExperimentResults(
-  db: AppDb,
+  db: DrizzleDb,
   experimentKey: string
 ): Promise<ExperimentResult[]> {
   const experiment = await getExperiment(db, experimentKey)
@@ -231,8 +232,9 @@ export async function getExperimentResults(
   for (const variant of variants) {
     const variantId = variant.id as string
 
+    // oxlint-disable-next-line no-await-in-loop
     const exposureRows = await db
-      .select({ count: sql<number>`count(*)` })
+      .select()
       .from(abEvent)
       .where(
         and(
@@ -241,10 +243,11 @@ export async function getExperimentResults(
           eq(abEvent.eventType, 'exposure')
         )
       )
-    const exposureCount = exposureRows[0]?.count ?? 0
+    const exposureCount = exposureRows.length
 
+    // oxlint-disable-next-line no-await-in-loop
     const conversionRows = await db
-      .select({ count: sql<number>`count(*)` })
+      .select()
       .from(abEvent)
       .where(
         and(
@@ -253,7 +256,7 @@ export async function getExperimentResults(
           eq(abEvent.eventType, 'conversion')
         )
       )
-    const conversions = conversionRows[0]?.count ?? 0
+    const conversions = conversionRows.length
 
     const conversionRate = exposureCount > 0 ? conversions / exposureCount : 0
 
@@ -275,17 +278,16 @@ export async function getExperimentResults(
     const control = results.find((r) => r.isControl)
     if (control && control.exposureCount > 0) {
       for (const result of results) {
-        if (result.isControl) continue
-        if (result.exposureCount === 0) continue
-
-        const { pValue, zScore } = calculateZTest(
-          control.conversionRate,
-          control.exposureCount,
-          result.conversionRate,
-          result.exposureCount
-        )
-        result.zScore = zScore
-        result.pValue = pValue
+        if (!result.isControl && result.exposureCount > 0) {
+          const { pValue, zScore } = calculateZTest(
+            control.conversionRate,
+            control.exposureCount,
+            result.conversionRate,
+            result.exposureCount
+          )
+          result.zScore = zScore
+          result.pValue = pValue
+        }
       }
     }
   }
@@ -293,6 +295,7 @@ export async function getExperimentResults(
   return results
 }
 
+// oxlint-disable-next-line max-params
 export function calculateZTest(
   p1: number,
   n1: number,

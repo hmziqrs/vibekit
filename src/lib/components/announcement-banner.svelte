@@ -30,9 +30,9 @@
   }
 
   const typeStyles: Record<string, string> = {
-    critical: 'bg-red-500/10 border-red-500/20 text-red-300',
-    info: 'bg-blue-500/10 border-blue-500/20 text-blue-300',
-    warning: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-300',
+    critical: 'bg-destructive/10 border-destructive/20 text-destructive',
+    info: 'bg-info/10 border-info/20 text-info',
+    warning: 'bg-warning/10 border-warning/20 text-warning',
   }
 </script>
 

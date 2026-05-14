@@ -8,7 +8,7 @@ import {
   withTeamMembership,
 } from '$lib/server/hono/middleware'
 import type { OrgEnv, TeamEnv, Variables } from '$lib/server/hono/types'
-import { Hono } from 'hono'
+import { Hono, type StatusCode } from 'hono'
 import { describe, expect, it, vi } from 'vitest'
 
 type TestUser = NonNullable<Variables['user']>
@@ -35,11 +35,11 @@ function mockServices(dbOverrides: Record<string, unknown> = {}): TestServices {
 function withErrorHandler(app: Hono<OrgEnv | TeamEnv>) {
   return app.onError((err, c) => {
     if (isAppError(err)) {
-      return c.json(err.toJSON(), err.status)
+      return c.json(err.toJSON(), err.status as StatusCode)
     }
     return c.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
-      500
+      500 as StatusCode
     )
   })
 }
@@ -55,7 +55,7 @@ function createMockDb(responses: unknown[]) {
   return { from: fromFn, get: getFn, select: selectFn, where: whereFn }
 }
 
-describe(withOrgMembership, () => {
+describe('withOrgMembership', () => {
   it('sets org and membership when user is a member', async () => {
     const user = mockUser('user-1', 'user')
     const org = {
@@ -146,7 +146,7 @@ describe(withOrgMembership, () => {
   })
 })
 
-describe(requireOrgAdmin, () => {
+describe('requireOrgAdmin', () => {
   function createOrgApp(role: string) {
     return withErrorHandler(
       new Hono<OrgEnv>()
@@ -193,7 +193,7 @@ describe(requireOrgAdmin, () => {
   })
 })
 
-describe(requireOrgOwner, () => {
+describe('requireOrgOwner', () => {
   function createOwnerApp(role: string) {
     return withErrorHandler(
       new Hono<OrgEnv>()
@@ -235,7 +235,7 @@ describe(requireOrgOwner, () => {
   })
 })
 
-describe(requirePermission, () => {
+describe('requirePermission', () => {
   it('allows when role has the permission', async () => {
     const middleware = requirePermission('org.settings.update')
     const app = withErrorHandler(
@@ -292,12 +292,12 @@ describe(requirePermission, () => {
 
     const res = await app.request('/test')
     expect(res.status).toBe(403)
-    const body = await res.json()
+    const body = (await res.json()) as { error: { message: string } }
     expect(body.error.message).toContain('org.delete')
   })
 })
 
-describe(withTeamMembership, () => {
+describe('withTeamMembership', () => {
   it('sets team and teamMembership when user is a team member', async () => {
     const user = mockUser('user-1', 'user')
     const teamRow = {
@@ -345,7 +345,7 @@ describe(withTeamMembership, () => {
           capturedTeam = c.get('team' as never)
           capturedTeamMembership = c.get('teamMembership' as never)
           return c.json({ ok: true })
-        })
+        }) as unknown
     )
 
     const res = await app.request('/orgs/org-1/teams/team-1/test')
@@ -378,7 +378,9 @@ describe(withTeamMembership, () => {
           c.set('organization' as never, { id: 'org-1', name: 'Test' } as never)
           await next()
         })
-        .get('/orgs/:orgId/teams/:teamId/test', withTeamMembership, (c) => c.json({ ok: true }))
+        .get('/orgs/:orgId/teams/:teamId/test', withTeamMembership, (c) =>
+          c.json({ ok: true })
+        ) as unknown
     )
 
     const res = await app.request('/orgs/org-1/teams/nonexistent/test')
@@ -419,7 +421,9 @@ describe(withTeamMembership, () => {
           c.set('organization' as never, { id: 'org-1', name: 'Test' } as never)
           await next()
         })
-        .get('/orgs/:orgId/teams/:teamId/test', withTeamMembership, (c) => c.json({ ok: true }))
+        .get('/orgs/:orgId/teams/:teamId/test', withTeamMembership, (c) =>
+          c.json({ ok: true })
+        ) as unknown
     )
 
     const res = await app.request('/orgs/org-1/teams/team-1/test')
@@ -466,7 +470,7 @@ describe(withTeamMembership, () => {
         .get('/orgs/:orgId/teams/:teamId/test', withTeamMembership, (c) => {
           capturedTeamMembership = c.get('teamMembership' as never)
           return c.json({ ok: true })
-        })
+        }) as unknown
     )
 
     const res = await app.request('/orgs/org-1/teams/team-1/test')
@@ -475,7 +479,7 @@ describe(withTeamMembership, () => {
   })
 })
 
-describe(requireTeamPermission, () => {
+describe('requireTeamPermission', () => {
   function createTeamPermissionApp(orgRole: string, teamRole: string | null, action: string) {
     const middleware = requireTeamPermission(action as 'team.update')
     return withErrorHandler(
@@ -511,7 +515,7 @@ describe(requireTeamPermission, () => {
           )
           await next()
         })
-        .get('/test', middleware, (c) => c.json({ ok: true }))
+        .get('/test', middleware, (c) => c.json({ ok: true })) as unknown
     )
   }
 

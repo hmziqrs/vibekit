@@ -1,7 +1,7 @@
 import { email, name, password, slug } from '$lib/validators/common'
 import { describe, expect, it } from 'vitest'
 
-describe(email, () => {
+describe('email validator', () => {
   it('accepts valid emails', () => {
     expect(email.safeParse('user@example.com').success).toBeTruthy()
     expect(email.safeParse('user+tag@example.com').success).toBeTruthy()
@@ -13,7 +13,7 @@ describe(email, () => {
   })
 })
 
-describe(password, () => {
+describe('password validator', () => {
   it('accepts valid passwords', () => {
     expect(password.safeParse('Password1').success).toBeTruthy()
     expect(password.safeParse(`Aa1${'b'.repeat(125)}`).success).toBeTruthy()
@@ -28,7 +28,7 @@ describe(password, () => {
   })
 })
 
-describe(name, () => {
+describe('name validator', () => {
   it('accepts valid names', () => {
     expect(name.safeParse('John').success).toBeTruthy()
   })
@@ -43,7 +43,7 @@ describe(name, () => {
   })
 })
 
-describe(slug, () => {
+describe('slug validator', () => {
   it('accepts valid slugs', () => {
     expect(slug.safeParse('hello-world').success).toBeTruthy()
     expect(slug.safeParse('a').success).toBeTruthy()

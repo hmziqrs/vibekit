@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('$lib/server/db/schema', () => ({
   webhookDelivery: {
@@ -53,7 +53,7 @@ describe('webhooks', () => {
         }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    }
+    } as unknown
   }
 
   function makeEndpoint(overrides: Record<string, unknown> = {}): Record<string, unknown> {

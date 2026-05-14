@@ -105,9 +105,9 @@
 
   function typeColor(type: string): string {
     switch (type) {
-      case 'success': { return 'text-green-400' }
-      case 'warning': { return 'text-yellow-400' }
-      case 'error': { return 'text-red-400' }
+      case 'success': { return 'text-success' }
+      case 'warning': { return 'text-warning' }
+      case 'error': { return 'text-destructive' }
       default: { return 'text-brand' }
     }
   }
@@ -128,7 +128,7 @@
 <div class="relative" bind:this={dropdownEl}>
   <button
     onclick={toggle}
-    class="relative rounded-lg p-2 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"
+    class="relative rounded-lg p-2 text-text-muted transition-colors hover:bg-surface hover:text-text-primary"
     aria-label="Notifications"
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -136,15 +136,15 @@
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
     {#if unreadCount > 0}
-      <span class="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+      <span class="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
         {unreadCount > 9 ? '9+' : unreadCount}
       </span>
     {/if}
   </button>
 
   {#if open}
-    <div class="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/[0.08] bg-surface shadow-xl">
-      <div class="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+    <div class="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
+      <div class="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 class="text-[13px] font-semibold text-text-primary">Notifications</h3>
         {#if unreadCount > 0}
           <button
@@ -165,7 +165,7 @@
           {#each listQuery.data?.notifications ?? [] as n (n.id)}
             <button
               onclick={() => handleNotificationClick(n)}
-              class="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04] {n.readAt ? 'opacity-60' : ''}"
+              class="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-surface {n.readAt ? 'opacity-60' : ''}"
             >
               <div class="mt-0.5 size-2 shrink-0 rounded-full {typeColor(n.type)} bg-current"></div>
               <div class="min-w-0 flex-1">

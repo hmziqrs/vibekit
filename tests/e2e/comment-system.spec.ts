@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { loginAsAdmin } from './helpers/auth'
+import { loginAsAdmin, login, USER } from './helpers/auth'
 
 test.describe('public comments on blog post', () => {
   test('comment section renders on blog post page', async ({ page }) => {
@@ -24,11 +24,7 @@ test.describe('public comments on blog post', () => {
   })
 
   test('comment form shows for authenticated users', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('admin@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('admin12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
+    await loginAsAdmin(page)
 
     await page.goto('/blog', { waitUntil: 'networkidle' })
     const firstPost = page.locator('article a, a article').first()
@@ -50,7 +46,7 @@ test.describe('admin comment moderation', () => {
     await page.goto('/admin/comments', { waitUntil: 'networkidle' })
     await expect(page.getByRole('heading', { name: 'Comments' })).toBeVisible()
     await expect(page.getByText('Pending')).toBeVisible()
-    await expect(page.getByText('Spam')).toBeVisible()
+    await expect(page.getByText('Spam').first()).toBeVisible()
     await expect(page.getByText('Approved')).toBeVisible()
     await expect(page.getByRole('table')).toBeVisible()
   })
@@ -112,11 +108,7 @@ test.describe('comments auth guards', () => {
   })
 
   test('normal user accessing admin comments gets 403', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('user@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('user12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
+    await login(page, USER)
 
     await page.goto('/admin/comments')
     await expect(page.getByText('Admin access required')).toBeVisible()

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { loginAsAdmin } from './helpers/auth'
+import { loginAsAdmin, login, USER } from './helpers/auth'
 
 test.describe('public series page', () => {
   test('series page shows series posts in order', async ({ page }) => {
@@ -55,7 +55,7 @@ test.describe('admin series management', () => {
   test('new series button opens create form', async ({ page }) => {
     await page.goto('/admin/blog/series', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'New Series' }).click()
-    await expect(page.getByText('Create Series')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Create Series' })).toBeVisible()
     await expect(page.getByLabel('Name')).toBeVisible()
     await expect(page.getByLabel('Slug')).toBeVisible()
     await expect(page.getByLabel('Description')).toBeVisible()
@@ -76,8 +76,10 @@ test.describe('admin series management', () => {
     await page.goto('/admin/blog/series', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'New Series' }).click()
     await expect(page.getByText('Create Series')).toBeVisible()
-    await page.getByRole('button', { name: 'Cancel' }).click()
-    await expect(page.getByText('Create Series')).not.toBeVisible()
+    // The toggle button changes from "New Series" to "Cancel" when form is open
+    await page.getByRole('button', { name: 'Cancel' }).first().click()
+    await page.waitForTimeout(300)
+    await expect(page.getByRole('heading', { name: 'Create Series' })).not.toBeVisible()
     await expect(page.getByRole('button', { name: 'New Series' })).toBeVisible()
   })
 
@@ -112,7 +114,7 @@ test.describe('admin series management', () => {
     if ((await deleteButtons.count()) > 0) {
       await deleteButtons.first().click()
       await expect(page.getByText('Delete this series?')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Delete' }).last()).toBeVisible()
     }
   })
 
@@ -152,8 +154,8 @@ test.describe('admin blog editor tag and series selectors', () => {
       await page.waitForURL(/\/admin\/blog\/.*\/edit/, { timeout: 10_000 })
       await page.getByRole('button', { name: /tags & series/i }).click()
       // Should show tag and series sections
-      await expect(page.getByText(/tags/i)).toBeVisible()
-      await expect(page.getByText(/series/i)).toBeVisible()
+      await expect(page.getByText(/tags/i).first()).toBeVisible()
+      await expect(page.getByText(/series/i).first()).toBeVisible()
     }
   })
 
@@ -182,11 +184,7 @@ test.describe('series auth guards', () => {
   })
 
   test('normal user accessing admin series gets 403', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('user@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('user12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
+    await login(page, USER)
 
     await page.goto('/admin/blog/series')
     await expect(page.getByText('Admin access required')).toBeVisible()

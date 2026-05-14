@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 function createMockDb(rows: Record<string, unknown>[] = []) {
   const limitFn = vi.fn().mockResolvedValue(rows)
   const orderByAfterWhere = vi.fn().mockReturnValue({ limit: limitFn })
-  const whereResult = {
+  const whereResult: Record<string, unknown> = {
     limit: limitFn,
     orderBy: orderByAfterWhere,
   }
@@ -33,7 +33,7 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
     insert: insertFn,
     select: vi.fn().mockReturnValue({ from: fromFn }),
     update: updateFn,
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 describe('integrations service module', () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the D1 search adapter
 const mockIndex = vi.fn().mockResolvedValue(undefined)
@@ -21,7 +21,7 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
     _limitFn: limitFn,
     _whereFn: whereFn,
     select: vi.fn().mockReturnValue({ from: fromFn }),
-  } as never
+  } as unknown
 }
 
 beforeEach(() => {

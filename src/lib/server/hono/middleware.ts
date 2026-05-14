@@ -20,7 +20,7 @@ import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createMiddleware } from 'hono/factory'
 
-import type { Env, OrgEnv, ProtectedEnv, TeamEnv } from './types'
+import type { Env, NarrowedServices, OrgEnv, ProtectedEnv, TeamEnv } from './types'
 
 export const withServices = createMiddleware<Env>(async (c, next) => {
   const injected = c.env.__services
@@ -35,7 +35,7 @@ export const withServices = createMiddleware<Env>(async (c, next) => {
 
   const services = await createServices({ platform: { env: c.env } })
   if (!services) throw new ServiceUnavailableError()
-  c.set('services', services)
+  c.set('services', services as unknown as NarrowedServices)
   c.set('auth', createAuthForHono(services.db))
   await next()
 })
@@ -153,7 +153,7 @@ export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
 export const withOwnedItem = createMiddleware<ProtectedEnv>(async (c, next) => {
   const { db } = c.get('services')
   const userId = c.get('user').id
-  const id = c.req.param('id')
+  const id = c.req.param('id') ?? ''
 
   const resource = await db
     .select()

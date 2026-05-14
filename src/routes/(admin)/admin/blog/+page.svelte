@@ -36,12 +36,12 @@
   const pageSize = 20
 
   const statusColors: Record<string, string> = {
-    archived: 'bg-red-500/15 text-red-400',
-    deleted: 'bg-white/[0.06] text-text-muted',
-    draft: 'bg-yellow-500/15 text-yellow-400',
-    published: 'bg-green-500/15 text-green-400',
-    scheduled: 'bg-blue-500/15 text-blue-400',
-    trash: 'bg-white/[0.06] text-text-muted',
+    archived: 'bg-destructive/15 text-destructive',
+    deleted: 'bg-muted text-text-muted',
+    draft: 'bg-warning/15 text-warning',
+    published: 'bg-success/15 text-success',
+    scheduled: 'bg-info/15 text-info',
+    trash: 'bg-muted text-text-muted',
   }
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -208,13 +208,13 @@
     <span class="text-[12px] text-text-muted">{selectedIds.size} selected</span>
     <button
       onclick={() => { bulkAction = 'delete'; showConfirmDialog = true }}
-      class="rounded-lg border border-red-500/30 px-3 py-1 text-[12px] font-medium text-red-400 hover:bg-red-500/10"
+      class="rounded-lg border border-destructive/30 px-3 py-1 text-[12px] font-medium text-destructive hover:bg-destructive/10"
     >
       Delete
     </button>
     <button
       onclick={() => { bulkAction = 'archive'; showConfirmDialog = true }}
-      class="rounded-lg border border-white/[0.1] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
+      class="rounded-lg border border-border px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary"
     >
       Archive
     </button>
@@ -228,13 +228,13 @@
 {/if}
 
 {#if bulkError}
-  <p class="mt-2 text-[12px] text-red-400">{bulkError}</p>
+  <p class="mt-2 text-[12px] text-destructive">{bulkError}</p>
 {/if}
 
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={postsQuery.data?.posts ?? []}
+    rows={(postsQuery.data?.posts ?? []) as unknown as Record<string, unknown>[]}
     loading={postsQuery.isPending}
     selectable
     {selectedIds}
@@ -246,7 +246,8 @@
     onRetry={() => postsQuery.refetch()}
     emptyMessage={statusFilter === 'trash' ? 'No trashed posts.' : 'No posts yet. Create your first post!'}
   >
-    {#snippet children({ row, columnKey })}
+    {#snippet children({ row: _row, columnKey })}
+      {@const row = _row as unknown as PostRow}
       {#if columnKey === 'title'}
         <span class="truncate font-medium">{row.title}</span>
       {:else if columnKey === 'slug'}
@@ -258,7 +259,7 @@
         />
       {:else if columnKey === 'publishedAt'}
         {#if row.status === 'scheduled' && row.scheduledAt}
-          <span class="text-blue-400">{formatDate(row.scheduledAt as string)}</span>
+          <span class="text-info">{formatDate(row.scheduledAt as string)}</span>
         {:else}
           <span class="text-text-muted">{formatDate(row.publishedAt as string | null)}</span>
         {/if}
@@ -268,7 +269,7 @@
         <div class="flex items-center gap-2">
           {#if statusFilter === 'trash'}
             <button
-              class="rounded-lg border border-white/[0.06] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
+              class="rounded-lg border border-border px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary"
               onclick={() => restorePost(row.id as string)}
             >
               Restore
@@ -276,13 +277,13 @@
           {:else}
             <a
               href="/admin/blog/{row.id}/edit"
-              class="rounded-lg border border-white/[0.06] px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
+              class="rounded-lg border border-border px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary"
             >
               Edit
             </a>
             <button
-              class="rounded-lg border border-red-500/30 px-3 py-1 text-[12px] font-medium text-red-400 hover:bg-red-500/10"
-              onclick={() => { deleteTarget = row as PostRow; bulkAction = null; showConfirmDialog = true }}
+              class="rounded-lg border border-destructive/30 px-3 py-1 text-[12px] font-medium text-destructive hover:bg-destructive/10"
+              onclick={() => { deleteTarget = row; bulkAction = null; showConfirmDialog = true }}
             >
               Delete
             </button>

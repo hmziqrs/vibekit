@@ -54,32 +54,32 @@ items = response.json()`,
     const script = document.createElement('script')
     script.src = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.min.js'
     script.async = true
-    script.onload = () => {
+    script.addEventListener('load', () => {
       scalarLoaded = true
-    }
+    })
     document.head.appendChild(script)
   })
 
+  function tryInit() {
+    const container = document.getElementById('scalar-container')
+    const { Scalar } = window as { Scalar?: typeof window.Scalar }
+    if (container && Scalar) {
+      container.innerHTML = ''
+      Scalar.createApiReference(container, {
+        hideDownloadButton: false,
+        hideModels: false,
+        layout: 'modern',
+        searchHotKey: 'k',
+        spec: { url: '/openapi.yaml' },
+        theme: 'dark',
+      })
+    } else {
+      setTimeout(tryInit, 200)
+    }
+  }
+
   $effect(() => {
     if (activeTab === 'reference' && scalarLoaded) {
-      const tryInit = () => {
-        const container = document.getElementById('scalar-container')
-        const Scalar = window.Scalar
-        if (container && Scalar) {
-          // Clear any existing content
-          container.innerHTML = ''
-          Scalar.createApiReference(container, {
-            hideDownloadButton: false,
-            hideModels: false,
-            layout: 'modern',
-            searchHotKey: 'k',
-            spec: { url: '/openapi.yaml' },
-            theme: 'dark',
-          })
-        } else {
-          setTimeout(tryInit, 200)
-        }
-      }
       setTimeout(tryInit, 100)
     }
   })

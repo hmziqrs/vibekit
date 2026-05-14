@@ -65,14 +65,13 @@
       name: auth.user?.name || '',
       timezone: (auth.user?.timezone as string | null | undefined) ?? '',
     },
-    onSubmit: async ({ value }: { value: ProfileInput }) => {
+    onSubmit: async ({ value }: { value: { name: string; bio?: string | null; displayName?: string | null; timezone?: string | null } }) => {
       try {
         const res = await authClient.updateUser({
-          bio: value.bio || null,
           displayName: value.displayName || null,
           name: value.name.trim(),
           timezone: value.timezone || null,
-        })
+        } as Parameters<typeof authClient.updateUser>[0])
         if (res.error) {
           return { form: res.error.message || 'Failed to update profile' }
         }
@@ -85,7 +84,8 @@
       }
     },
     validators: {
-      onSubmit: updateProfileSchema,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onSubmit: updateProfileSchema as any,
     },
   }))
 
@@ -102,7 +102,7 @@
       formData.append('avatar', file)
       const res = await fetch('/api/upload-avatar', { body: formData, method: 'POST' })
       if (!res.ok) {
-        const data = await res.json()
+        const data = (await res.json()) as { error?: { message?: string } }
         avatarError = data.error?.message ?? 'Upload failed'
         return
       }
@@ -146,12 +146,12 @@
           </div>
         {/if}
         <label
-          class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+          class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-foreground/50 opacity-0 transition-opacity group-hover:opacity-100"
         >
           {#if avatarUploading}
-            <span class="text-[11px] text-white">...</span>
+            <span class="text-[11px] text-brand-foreground">...</span>
           {:else}
-            <span class="text-[11px] text-white">Change</span>
+            <span class="text-[11px] text-brand-foreground">Change</span>
           {/if}
           <input
             type="file"
@@ -287,7 +287,7 @@
           </form.Field>
 
           {#if successMessage}
-            <p class="text-[13px] text-emerald-400">{successMessage}</p>
+            <p class="text-[13px] text-success">{successMessage}</p>
           {/if}
 
           <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>

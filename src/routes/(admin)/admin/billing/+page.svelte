@@ -105,15 +105,15 @@
 
   <!-- Overview Stats -->
   <div class="grid gap-4 sm:grid-cols-3">
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-5">
+    <div class="rounded-xl border border-border bg-surface p-5">
       <p class="text-[13px] text-text-muted">Active Subscriptions</p>
       <p class="mt-1 text-2xl font-bold text-text-primary">{totalActive()}</p>
     </div>
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-5">
+    <div class="rounded-xl border border-border bg-surface p-5">
       <p class="text-[13px] text-text-muted">Total Subscriptions</p>
       <p class="mt-1 text-2xl font-bold text-text-primary">{totalAll()}</p>
     </div>
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-5">
+    <div class="rounded-xl border border-border bg-surface p-5">
       <p class="text-[13px] text-text-muted">Plans</p>
       <p class="mt-1 text-2xl font-bold text-text-primary">{plansQuery.data?.length ?? 0}</p>
     </div>
@@ -121,7 +121,7 @@
 
   <!-- Plan Distribution -->
   {#if overviewQuery.data?.planDistribution && overviewQuery.data.planDistribution.length > 0}
-    <div class="rounded-xl border border-white/[0.06] bg-surface p-5">
+    <div class="rounded-xl border border-border bg-surface p-5">
       <h2 class="mb-3 text-[15px] font-semibold text-text-primary">Plan Distribution</h2>
       <div class="space-y-2">
         {#each overviewQuery.data.planDistribution as dist}
@@ -140,35 +140,39 @@
       <h2 class="mb-4 text-[15px] font-semibold text-text-primary">New Plan</h2>
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
-          <label class="mb-1 block text-[12px] text-text-muted">Name</label>
+          <label for="plan-name" class="mb-1 block text-[12px] text-text-muted">Name</label>
           <input
+            id="plan-name"
             bind:value={newPlanName}
-            class="w-full rounded-lg border border-white/[0.08] bg-surface-base px-3 py-2 text-[14px] text-text-primary"
+            class="w-full rounded-lg border border-border bg-surface-base px-3 py-2 text-[14px] text-text-primary"
             placeholder="Pro"
           />
         </div>
         <div>
-          <label class="mb-1 block text-[12px] text-text-muted">Slug</label>
+          <label for="plan-slug" class="mb-1 block text-[12px] text-text-muted">Slug</label>
           <input
+            id="plan-slug"
             bind:value={newPlanSlug}
-            class="w-full rounded-lg border border-white/[0.08] bg-surface-base px-3 py-2 text-[14px] text-text-primary"
+            class="w-full rounded-lg border border-border bg-surface-base px-3 py-2 text-[14px] text-text-primary"
             placeholder="pro"
           />
         </div>
         <div>
-          <label class="mb-1 block text-[12px] text-text-muted">Price ($)</label>
+          <label for="plan-price" class="mb-1 block text-[12px] text-text-muted">Price ($)</label>
           <input
+            id="plan-price"
             bind:value={newPlanPrice}
-            class="w-full rounded-lg border border-white/[0.08] bg-surface-base px-3 py-2 text-[14px] text-text-primary"
+            class="w-full rounded-lg border border-border bg-surface-base px-3 py-2 text-[14px] text-text-primary"
             placeholder="29.00"
             type="number"
           />
         </div>
         <div>
-          <label class="mb-1 block text-[12px] text-text-muted">Interval</label>
+          <label for="plan-interval" class="mb-1 block text-[12px] text-text-muted">Interval</label>
           <select
+            id="plan-interval"
             bind:value={newPlanInterval}
-            class="w-full rounded-lg border border-white/[0.08] bg-surface-base px-3 py-2 text-[14px] text-text-primary"
+            class="w-full rounded-lg border border-border bg-surface-base px-3 py-2 text-[14px] text-text-primary"
           >
             <option value="month">Monthly</option>
             <option value="year">Yearly</option>
@@ -190,17 +194,17 @@
     {#if plansQuery.isPending}
       <div class="space-y-2">
         {#each Array(3) as _}
-          <div class="h-14 animate-pulse rounded-xl bg-white/[0.04]"></div>
+          <div class="h-14 animate-pulse rounded-xl bg-surface-deep"></div>
         {/each}
       </div>
     {:else if plansQuery.data && plansQuery.data.length > 0}
       <div class="space-y-2">
         {#each plansQuery.data as plan (plan.id)}
-          <div class="flex items-center justify-between rounded-xl border border-white/[0.06] bg-surface px-5 py-4">
+          <div class="flex items-center justify-between rounded-xl border border-border bg-surface px-5 py-4">
             <div>
               <div class="flex items-center gap-2">
                 <p class="text-[14px] font-medium text-text-primary">{plan.name}</p>
-                <span class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {plan.isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}">
+                <span class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {plan.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}">
                   {plan.isActive ? 'active' : 'inactive'}
                 </span>
               </div>
@@ -212,13 +216,13 @@
             <div class="flex gap-2">
               <button
                 onclick={() => togglePlan(plan.id, plan.isActive)}
-                class="rounded-lg border border-white/[0.08] px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-white/[0.04]"
+                class="rounded-lg border border-border px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-surface"
               >
                 {plan.isActive ? 'Deactivate' : 'Activate'}
               </button>
               <button
                 onclick={() => deletePlan(plan.id)}
-                class="rounded-lg border border-red-500/20 px-3 py-1.5 text-[12px] text-red-400 transition-colors hover:bg-red-500/10"
+                class="rounded-lg border border-destructive/20 px-3 py-1.5 text-[12px] text-destructive transition-colors hover:bg-destructive/10"
               >
                 Delete
               </button>

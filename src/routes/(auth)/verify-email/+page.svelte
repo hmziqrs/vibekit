@@ -91,7 +91,7 @@
         </div>
       {:else if verified}
         <div class="space-y-4">
-          <p class="text-sm text-green-400">{message}</p>
+          <p class="text-sm text-success">{message}</p>
           <a
             href="/login"
             class="block text-center text-sm text-text-primary hover:underline"
@@ -102,7 +102,7 @@
       {:else if failed}
         <div class="space-y-4">
           {#if message}
-            <p class="text-sm text-green-400">{message}</p>
+            <p class="text-sm text-success">{message}</p>
           {/if}
 
           <form
@@ -125,7 +125,7 @@
             <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
               {#snippet children(errorMessage)}
                 {#if errorMessage}
-                  <p class="text-sm text-red-400">{errorMessage}</p>
+                  <p class="text-sm text-destructive">{errorMessage}</p>
                 {/if}
               {/snippet}
             </form.Subscribe>
@@ -142,7 +142,7 @@
       {:else}
         <div class="space-y-4">
           {#if message}
-            <p class="text-sm text-green-400">{message}</p>
+            <p class="text-sm text-success">{message}</p>
           {/if}
 
           <p class="text-sm text-text-secondary">
@@ -170,7 +170,7 @@
             <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
               {#snippet children(errorMessage)}
                 {#if errorMessage}
-                  <p class="text-sm text-red-400">{errorMessage}</p>
+                  <p class="text-sm text-destructive">{errorMessage}</p>
                 {/if}
               {/snippet}
             </form.Subscribe>

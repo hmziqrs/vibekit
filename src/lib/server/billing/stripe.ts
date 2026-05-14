@@ -1,4 +1,5 @@
-type Stripe = import('stripe').default
+// oxlint-disable-next-line import/no-named-as-default
+import type Stripe from 'stripe'
 
 let _stripe: Stripe | null = null
 

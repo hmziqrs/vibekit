@@ -72,15 +72,15 @@
   })
 </script>
 
-<div class="mb-6 flex items-center justify-between rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+<div class="mb-6 flex items-center justify-between rounded-lg border border-warning/30 bg-warning/10 px-4 py-3">
   <div class="flex items-center gap-2">
-    <span class="size-2 rounded-full bg-yellow-400"></span>
-    <span class="text-[13px] font-medium text-yellow-200">Preview Mode</span>
-    <span class="text-[13px] text-yellow-200/60">This post is not yet published</span>
+    <span class="size-2 rounded-full bg-warning"></span>
+    <span class="text-[13px] font-medium text-warning">Preview Mode</span>
+    <span class="text-[13px] text-warning/60">This post is not yet published</span>
   </div>
   <a
     href="/admin/blog/{data.post.id}/edit"
-    class="rounded-lg border border-yellow-500/30 px-3 py-1.5 text-[12px] font-medium text-yellow-200 hover:bg-yellow-500/10"
+    class="rounded-lg border border-warning/30 px-3 py-1.5 text-[12px] font-medium text-warning hover:bg-warning/10"
   >
     Back to Edit
   </a>
@@ -89,19 +89,19 @@
 {#if loading}
   <div class="space-y-4 px-6 py-24">
     <div class="mx-auto max-w-3xl">
-      <div class="h-10 w-3/4 animate-pulse rounded bg-white/[0.06]"></div>
-      <div class="mt-4 h-4 w-1/4 animate-pulse rounded bg-white/[0.06]"></div>
-      <div class="mt-10 h-64 animate-pulse rounded-xl bg-white/[0.06]"></div>
+      <div class="h-10 w-3/4 animate-pulse rounded bg-muted"></div>
+      <div class="mt-4 h-4 w-1/4 animate-pulse rounded bg-muted"></div>
+      <div class="mt-10 h-64 animate-pulse rounded-xl bg-muted"></div>
       <div class="mt-8 space-y-3">
         {#each Array(8) as _}
-          <div class="h-4 w-full animate-pulse rounded bg-white/[0.06]"></div>
+          <div class="h-4 w-full animate-pulse rounded bg-muted"></div>
         {/each}
       </div>
     </div>
   </div>
 {:else if errorMsg}
   <div class="px-6 py-24 text-center">
-    <p class="text-red-400">{errorMsg}</p>
+    <p class="text-destructive">{errorMsg}</p>
   </div>
 {:else}
   <article class="px-6 py-24">
@@ -119,7 +119,7 @@
         <img
           src={data.post.coverImageUrl}
           alt={data.post.title}
-          class="mb-10 w-full rounded-xl border border-white/6"
+          class="mb-10 w-full rounded-xl border border-border"
           loading="lazy"
         />
       {/if}

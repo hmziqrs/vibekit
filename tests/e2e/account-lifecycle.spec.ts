@@ -12,7 +12,7 @@ test.describe('account lifecycle', () => {
     })
 
     test('shows deactivate account section', async ({ page }) => {
-      await expect(page.getByText('Deactivate Account')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Deactivate Account' })).toBeVisible()
       await expect(
         page.getByText(
           'Temporarily disable your account. You can sign back in to reactivate at any time.'
@@ -22,7 +22,7 @@ test.describe('account lifecycle', () => {
     })
 
     test('shows delete account section with grace period info', async ({ page }) => {
-      await expect(page.getByText('Delete Account')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Delete Account' })).toBeVisible()
       await expect(page.getByText('scheduled for deletion')).toBeVisible()
       await expect(page.getByText('30 days')).toBeVisible()
       await expect(page.getByText('reactivate it')).toBeVisible()
@@ -54,22 +54,26 @@ test.describe('account lifecycle', () => {
   test.describe('reactivation page', () => {
     test('displays reactivation form', async ({ page }) => {
       await page.goto('/reactivate', { waitUntil: 'networkidle' })
-      await expect(page.getByText('Reactivate account')).toBeVisible()
-      await expect(page.getByText('scheduled for deletion')).toBeVisible()
-      await expect(page.getByLabel('Email address')).toBeVisible()
-      await expect(page.getByLabel('Password')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Reactivate account' })).toBeVisible()
+      await expect(page.getByText('Reactivate account').first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('scheduled for deletion')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByLabel('Email address')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByLabel('Password')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('button', { name: 'Reactivate account' })).toBeVisible({
+        timeout: 10_000,
+      })
     })
 
     test('shows back to login link', async ({ page }) => {
       await page.goto('/reactivate', { waitUntil: 'networkidle' })
-      await expect(page.getByRole('link', { name: 'Back to login' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Back to login' })).toBeVisible({
+        timeout: 10_000,
+      })
     })
 
     test('accepts email parameter from URL', async ({ page }) => {
       await page.goto('/reactivate?email=test@example.com', { waitUntil: 'networkidle' })
       const emailInput = page.getByLabel('Email address')
-      await expect(emailInput).toHaveValue('test@example.com')
+      await expect(emailInput).toHaveValue('test@example.com', { timeout: 10_000 })
     })
 
     test('shows validation error on empty submit', async ({ page }) => {

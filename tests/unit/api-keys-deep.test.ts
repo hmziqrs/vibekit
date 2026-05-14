@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('$lib/server/db/schema', () => ({
   apiKey: {
@@ -63,7 +63,7 @@ describe('api-keys', () => {
         from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(keys) }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    }
+    } as unknown
   }
 
   function createMockDbWithOrder(keys: Record<string, unknown>[] = []) {
@@ -83,7 +83,7 @@ describe('api-keys', () => {
         }),
       }),
       update: vi.fn().mockReturnValue({ set: setFn }),
-    }
+    } as unknown
   }
 
   describe('createApiKey', () => {

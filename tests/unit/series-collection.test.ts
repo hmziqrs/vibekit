@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 // ── Series Validators ──
 
-describe(createSeriesSchema, () => {
+describe('createSeriesSchema', () => {
   const validInput = {
     name: 'Building a SaaS',
     slug: 'building-a-saas',
@@ -100,7 +100,7 @@ describe(createSeriesSchema, () => {
   })
 })
 
-describe(updateSeriesSchema, () => {
+describe('updateSeriesSchema', () => {
   it('allows partial updates with just name', () => {
     const result = updateSeriesSchema.safeParse({ name: 'Updated Name' })
     expect(result.success).toBeTruthy()

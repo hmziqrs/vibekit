@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { loginAsAdmin } from './helpers/auth'
+import { loginAsAdmin, login, USER } from './helpers/auth'
 
 test.describe('public analytics tracking', () => {
   test('reading tracker script loads on blog post page', async ({ page }) => {
@@ -95,11 +95,7 @@ test.describe('analytics auth guards', () => {
   })
 
   test('normal user accessing admin analytics gets 403', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('user@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('user12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
+    await login(page, USER)
 
     await page.goto('/admin/analytics')
     await expect(page.getByText('Admin access required')).toBeVisible()

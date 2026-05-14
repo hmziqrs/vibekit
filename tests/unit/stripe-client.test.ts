@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockConstructEvent = vi.fn()
 const mockCreateSession = vi.fn()
@@ -342,6 +342,6 @@ describe('verifyWebhookSignature', () => {
     })
 
     expect(result.type).toBe('invoice.payment_succeeded')
-    expect(result.data.object.id).toBe('evt_123')
+    expect((result.data.object as { id: string }).id).toBe('evt_123')
   })
 })

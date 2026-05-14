@@ -23,14 +23,14 @@
   let descLength = $derived(seoDescription.length)
   function getTitleGuidance(len: number): string {
     if (len === 0) return ''
-    if (len <= 60) return 'text-green-400'
-    return 'text-yellow-400'
+    if (len <= 60) return 'text-success'
+    return 'text-warning'
   }
 
   function getDescGuidance(len: number): string {
     if (len === 0) return ''
-    if (len <= 160) return 'text-green-400'
-    return 'text-yellow-400'
+    if (len <= 160) return 'text-success'
+    return 'text-warning'
   }
 
   let titleGuidance = $derived(getTitleGuidance(titleLength))

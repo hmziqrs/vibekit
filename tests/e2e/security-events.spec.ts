@@ -1,15 +1,10 @@
 import { expect, test } from '@playwright/test'
 
-const ADMIN_EMAIL = 'admin@vibekit.local'
-const ADMIN_PASSWORD = 'admin12345678'
+import { loginAsAdmin } from './helpers/auth'
 
 test.describe('security events', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
-    await page.getByLabel('Email').fill(ADMIN_EMAIL)
-    await page.getByLabel('Password').fill(ADMIN_PASSWORD)
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await page.waitForURL('/app')
+    await loginAsAdmin(page)
   })
 
   test('security activity section loads on settings page', async ({ page }) => {

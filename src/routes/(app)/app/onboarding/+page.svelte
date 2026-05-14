@@ -288,7 +288,7 @@
     <!-- Step 3: Done -->
     {#if currentStep === 3}
       <div class="rounded-xl border border-white/[0.06] bg-surface p-8 text-center">
-        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
           <svg
             width="28"
             height="28"
@@ -298,7 +298,7 @@
             stroke-width="2.5"
             stroke-linecap="round"
             stroke-linejoin="round"
-            class="text-emerald-400"
+            class="text-success"
           >
             <polyline points="20 6 9 17 4 12" />
           </svg>

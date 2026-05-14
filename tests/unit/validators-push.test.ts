@@ -1,7 +1,7 @@
 import { pushSubscribeSchema, pushUnsubscribeSchema } from '$lib/validators/push'
 import { describe, expect, it } from 'vitest'
 
-describe(pushSubscribeSchema, () => {
+describe('pushSubscribeSchema', () => {
   const validInput = {
     auth: 'dGhpcyBpcyBhIGJhc2U2NCBzdHJpbmc=',
     endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
@@ -56,7 +56,7 @@ describe(pushSubscribeSchema, () => {
   })
 })
 
-describe(pushUnsubscribeSchema, () => {
+describe('pushUnsubscribeSchema', () => {
   it('accepts valid endpoint', () => {
     const result = pushUnsubscribeSchema.safeParse({
       endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',

@@ -83,7 +83,7 @@
 
 <form onsubmit={handleSubmit} class="mt-8 space-y-6 max-w-4xl" novalidate>
   {#if serverError}
-    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
+    <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{serverError}</p>
   {/if}
 
   <div>
@@ -97,7 +97,7 @@
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
     {#if errors.title}
-      <p id="title-error" class="mt-1 text-[12px] text-red-400">{errors.title}</p>
+      <p id="title-error" class="mt-1 text-[12px] text-destructive">{errors.title}</p>
     {/if}
   </div>
 
@@ -111,7 +111,7 @@
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
     {#if errors.slug}
-      <p id="slug-error" class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
+      <p id="slug-error" class="mt-1 text-[12px] text-destructive">{errors.slug}</p>
     {/if}
   </div>
 
@@ -125,7 +125,7 @@
       class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
     />
     {#if errors.excerpt}
-      <p id="excerpt-error" class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
+      <p id="excerpt-error" class="mt-1 text-[12px] text-destructive">{errors.excerpt}</p>
     {/if}
   </div>
 
@@ -135,14 +135,16 @@
     onRemove={() => (coverImageUrl = '')}
   />
   {#if errors.coverImageUrl}
-    <p id="cover-image-error" class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
+    <p id="cover-image-error" class="mt-1 text-[12px] text-destructive">{errors.coverImageUrl}</p>
   {/if}
 
   <div>
-    <label class="mb-2 block text-sm font-medium text-text-secondary">Content</label>
-    <ArticleEditor onUpdate={handleEditorUpdate} />
+    <label for="content-editor" class="mb-2 block text-sm font-medium text-text-secondary">Content</label>
+    <div id="content-editor">
+      <ArticleEditor onUpdate={handleEditorUpdate} />
+    </div>
     {#if errors.contentBody}
-      <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
+      <p id="content-error" class="mt-1 text-[12px] text-destructive">{errors.contentBody}</p>
     {/if}
   </div>
 

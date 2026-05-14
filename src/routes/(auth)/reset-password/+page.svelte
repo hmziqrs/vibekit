@@ -63,7 +63,7 @@
 
     <Card.Content>
       {#if !token}
-        <p class="text-sm text-red-400">Invalid or missing reset token</p>
+        <p class="text-sm text-destructive">Invalid or missing reset token</p>
         <a
           href="/forgot-password"
           class="mt-4 block text-center text-sm text-text-primary hover:underline"
@@ -72,7 +72,7 @@
         </a>
       {:else if done}
         <div class="space-y-4">
-          <p class="text-sm text-green-400">{message}</p>
+          <p class="text-sm text-success">{message}</p>
           <a
             href="/login"
             class="block text-center text-sm text-text-primary hover:underline"
@@ -114,7 +114,7 @@
           <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
             {#snippet children(errorMessage)}
               {#if errorMessage}
-                <p class="text-sm text-red-400">{errorMessage}</p>
+                <p class="text-sm text-destructive">{errorMessage}</p>
               {/if}
             {/snippet}
           </form.Subscribe>

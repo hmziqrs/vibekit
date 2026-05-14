@@ -103,17 +103,17 @@ export function getPasswordStrength(password: string): PasswordStrengthResult {
 
 export function getPasswordStrengthColor(score: number): string {
   const colors = [
-    'text-red-500',
-    'text-orange-500',
-    'text-yellow-500',
-    'text-green-400',
-    'text-green-500',
+    'text-destructive',
+    'text-warning',
+    'text-warning',
+    'text-success',
+    'text-success',
   ]
   return colors[score] ?? 'text-text-muted'
 }
 
 export function getPasswordStrengthBarColor(score: number): string {
-  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-400', 'bg-green-500']
+  const colors = ['bg-destructive', 'bg-warning', 'bg-warning', 'bg-success', 'bg-success']
   return colors[score] ?? 'bg-text-muted'
 }
 

@@ -108,7 +108,7 @@
     <Card.Content>
       <form onsubmit={handleSubmit} class="space-y-4" novalidate>
         {#if errorMsg}
-          <p class="text-sm text-red-400">{errorMsg}</p>
+          <p class="text-sm text-destructive">{errorMsg}</p>
         {/if}
 
         <div>

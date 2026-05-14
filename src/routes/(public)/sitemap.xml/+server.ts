@@ -1,4 +1,5 @@
 import { blogPost, blogTag } from '$lib/server/db/schema'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
@@ -31,7 +32,7 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
     'Content-Type': 'application/xml; charset=utf-8',
   })
 
-  const { db } = locals.services
+  const { db } = locals.services as unknown as { db: DrizzleDb }
 
   const posts = await db
     .select({

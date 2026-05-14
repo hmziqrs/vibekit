@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+import { goToAdmin } from './helpers/auth'
+
 test.describe('Admin Feature Flags', () => {
   test.beforeEach(async ({ page }) => {
+    await goToAdmin(page)
     await page.goto('/admin/feature-flags')
     await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
   })
 
   test('shows feature flags page heading', async ({ page }) => {
@@ -62,16 +64,12 @@ test.describe('Admin Feature Flags', () => {
 
 test.describe('Admin Feature Flags Navigation', () => {
   test('feature flags nav item exists in sidebar', async ({ page }) => {
-    await page.goto('/admin/dashboard')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await goToAdmin(page)
     await expect(page.getByRole('link', { name: 'Feature Flags' })).toBeVisible()
   })
 
   test('navigates to feature flags page', async ({ page }) => {
-    await page.goto('/admin/dashboard')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await goToAdmin(page)
     await page.getByRole('link', { name: 'Feature Flags' }).click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveURL(/\/admin\/feature-flags/)

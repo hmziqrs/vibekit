@@ -1,8 +1,12 @@
+import type { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
 import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
+
+// Narrow AppDb union to a single type so .select() overload resolution works.
+type Db = ReturnType<typeof getDb>
 
 const ORIGIN = 'https://vibekit.dev'
 
@@ -15,15 +19,25 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;')
 }
 
+interface FeedPost {
+  authorName: string | null
+  contentBody: string | null
+  excerpt: string | null
+  id: string
+  publishedAt: number | null
+  slug: string
+  title: string
+}
+
 export const GET: RequestHandler = async ({ locals, setHeaders }) => {
   setHeaders({
     'Cache-Control': 'public, max-age=300, s-maxage=3600',
     'Content-Type': 'application/xml; charset=utf-8',
   })
 
-  const { db } = locals.services
+  const db = locals.services.db as Db
 
-  const posts = await db
+  const rows = await db
     .select({
       authorName: user.displayName,
       contentBody: blogPost.contentBody,
@@ -39,13 +53,16 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
     .orderBy(desc(blogPost.publishedAt))
     .limit(25)
 
+  const posts = rows as unknown as FeedPost[]
+
   const items = await Promise.all(
     posts.map(async (post) => {
-      const tags = await db
+      const tagRows = await db
         .select({ name: blogTag.name })
         .from(blogPostTag)
         .innerJoin(blogTag, eq(blogPostTag.tagId, blogTag.id))
         .where(eq(blogPostTag.postId, post.id))
+      const tags = tagRows as unknown as { name: string }[]
 
       const pubDate = post.publishedAt
         ? new Date(post.publishedAt).toUTCString()
@@ -66,7 +83,7 @@ ${categories}
   )
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/Atom">
   <channel>
     <title>Vibekit Blog</title>
     <link>${ORIGIN}/blog</link>

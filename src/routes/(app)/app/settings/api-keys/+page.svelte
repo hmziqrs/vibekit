@@ -182,8 +182,9 @@
     <h3 class="text-text-primary text-sm font-medium">Create New API Key</h3>
     <div class="mt-3 space-y-3">
       <div>
-        <label class="text-text-muted mb-1 block text-xs">Name</label>
+        <label for="api-key-name" class="text-text-muted mb-1 block text-xs">Name</label>
         <input
+          id="api-key-name"
           bind:value={name}
           class="border-border bg-surface-base text-text-primary w-full rounded-md border px-3 py-2 text-sm"
           placeholder="e.g., Production API Key"
@@ -191,7 +192,7 @@
         />
       </div>
       <div>
-        <label class="text-text-muted mb-1 block text-xs">Scopes</label>
+        <span class="text-text-muted mb-1 block text-xs">Scopes</span>
         <div class="flex flex-wrap gap-2">
           {#each SCOPES as scope}
             <button
@@ -206,8 +207,9 @@
         </div>
       </div>
       <div>
-        <label class="text-text-muted mb-1 block text-xs">Rate Limit (req/min, optional)</label>
+        <label for="api-key-rate-limit" class="text-text-muted mb-1 block text-xs">Rate Limit (req/min, optional)</label>
         <input
+          id="api-key-rate-limit"
           bind:value={rateLimit}
           class="border-border bg-surface-base text-text-primary w-full rounded-md border px-3 py-2 text-sm"
           placeholder="Leave empty for default"

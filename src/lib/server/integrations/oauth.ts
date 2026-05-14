@@ -42,6 +42,7 @@ export function consumeOAuthState(state: string): (OAuthState & { codeVerifier?:
   return entry.data
 }
 
+// oxlint-disable-next-line max-params
 export function getAuthorizationUrl(
   providerSlug: string,
   state: string,
@@ -67,6 +68,7 @@ export function getAuthorizationUrl(
   return url
 }
 
+// oxlint-disable-next-line max-params
 export async function exchangeCodeForTokens(
   providerSlug: string,
   code: string,

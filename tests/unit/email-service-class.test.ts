@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockSend = vi.fn().mockResolvedValue({ id: 'msg-123', success: true })
 
@@ -35,7 +35,7 @@ describe('EmailService', () => {
     expect(msg.html).toContain('https://app.com/reset?token=abc')
     expect(msg.text).toContain('https://app.com/reset?token=abc')
     expect(msg.html).toContain('John')
-    expect(result.success).toBe(true)
+    expect((result as unknown as { success: boolean }).success).toBe(true)
   })
 
   it('sendPasswordReset works without userName', async () => {
@@ -66,7 +66,7 @@ describe('EmailService', () => {
     expect(msg.from).toBe('Vibekit <noreply@vibekit.com>')
     expect(msg.html).toContain('https://app.com/verify?token=abc')
     expect(msg.text).toContain('https://app.com/verify?token=abc')
-    expect(result.success).toBe(true)
+    expect((result as unknown as { success: boolean }).success).toBe(true)
   })
 
   it('sendEmailVerification works without userName', async () => {
@@ -98,7 +98,7 @@ describe('EmailService', () => {
     expect(msg.html).toContain('Hello, I have a question')
     expect(msg.text).toContain('Sender Name')
     expect(msg.text).toContain('Hello, I have a question')
-    expect(result.success).toBe(true)
+    expect((result as unknown as { success: boolean }).success).toBe(true)
   })
 
   it('sendNewsletterConfirmation enqueues email with bounce callback', async () => {

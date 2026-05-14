@@ -154,6 +154,7 @@ export async function evaluateFeatureFlag(
   const deps = (flag.dependencies as string[]) ?? []
   if (deps.length > 0) {
     for (const depKey of deps) {
+      // oxlint-disable-next-line no-await-in-loop
       const depResult = await evaluateFeatureFlag(db, depKey, context)
       if (!depResult) return false
     }
@@ -190,6 +191,7 @@ export async function evaluateMultipleFlags(
 ): Promise<Record<string, boolean>> {
   const result: Record<string, boolean> = {}
   for (const key of keys) {
+    // oxlint-disable-next-line no-await-in-loop
     result[key] = await evaluateFeatureFlag(db, key, context)
   }
   return result

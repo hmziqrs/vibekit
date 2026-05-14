@@ -61,19 +61,19 @@
   function statusColor(s: string): string {
     switch (s) {
       case 'approved': {
-        return 'text-green-400 bg-green-500/10'
+        return 'text-success bg-success/10'
       }
       case 'pending': {
-        return 'text-yellow-400 bg-yellow-500/10'
+        return 'text-warning bg-warning/10'
       }
       case 'rejected': {
-        return 'text-red-400 bg-red-500/10'
+        return 'text-destructive bg-destructive/10'
       }
       case 'spam': {
-        return 'text-red-500 bg-red-500/10'
+        return 'text-destructive bg-destructive/10'
       }
       default: {
-        return 'text-text-muted bg-white/5'
+        return 'text-text-muted bg-muted'
       }
     }
   }
@@ -147,28 +147,28 @@
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Pending</div>
-    <div class="text-xl font-semibold text-yellow-400">{stats.pending}</div>
+    <div class="text-xl font-semibold text-warning">{stats.pending}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'spam')}
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'spam' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Spam</div>
-    <div class="text-xl font-semibold text-red-500">{stats.spam}</div>
+    <div class="text-xl font-semibold text-destructive">{stats.spam}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'approved')}
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'approved' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Approved</div>
-    <div class="text-xl font-semibold text-green-400">{stats.approved}</div>
+    <div class="text-xl font-semibold text-success">{stats.approved}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'rejected')}
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'rejected' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Rejected</div>
-    <div class="text-xl font-semibold text-red-400">{stats.rejected}</div>
+    <div class="text-xl font-semibold text-destructive">{stats.rejected}</div>
   </button>
 </div>
 
@@ -178,13 +178,13 @@
     <span class="text-[13px] text-text-muted">{selectedIds.size} selected</span>
     <button
       onclick={() => bulkModerate('approved')}
-      class="rounded-lg bg-green-500/10 px-3 py-1 text-[12px] font-medium text-green-400 hover:bg-green-500/20"
+      class="rounded-lg bg-success/10 px-3 py-1 text-[12px] font-medium text-success hover:bg-success/20"
     >
       Approve
     </button>
     <button
       onclick={() => bulkModerate('rejected')}
-      class="rounded-lg bg-red-500/10 px-3 py-1 text-[12px] font-medium text-red-400 hover:bg-red-500/20"
+      class="rounded-lg bg-destructive/10 px-3 py-1 text-[12px] font-medium text-destructive hover:bg-destructive/20"
     >
       Reject
     </button>
@@ -200,7 +200,7 @@
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={commentsQuery.data?.comments ?? []}
+    rows={(commentsQuery.data?.comments ?? []) as unknown as Record<string, unknown>[]}
     loading={commentsQuery.isPending}
     {selectedIds}
     onSelectionChange={(ids) => (selectedIds = ids)}
@@ -211,7 +211,8 @@
     onRetry={() => commentsQuery.refetch()}
     emptyMessage="No comments matching this filter."
   >
-    {#snippet children({ row, columnKey })}
+    {#snippet children({ row: _row, columnKey })}
+	      {@const row = _row as unknown as CommentRow}
       {#if columnKey === 'authorName'}
         <div>
           <span class="font-medium text-text-primary">{row.authorName}</span>
@@ -240,7 +241,7 @@
         <div class="flex items-center gap-1">
           {#if row.status !== 'approved'}
             <button
-              class="rounded-lg px-2 py-1 text-[11px] font-medium text-green-400 hover:bg-green-500/10"
+              class="rounded-lg px-2 py-1 text-[11px] font-medium text-success hover:bg-success/10"
               onclick={() => moderate(row.id, 'approved')}
             >
               Approve
@@ -248,16 +249,16 @@
           {/if}
           {#if row.status !== 'rejected'}
             <button
-              class="rounded-lg px-2 py-1 text-[11px] font-medium text-yellow-400 hover:bg-yellow-500/10"
+              class="rounded-lg px-2 py-1 text-[11px] font-medium text-warning hover:bg-warning/10"
               onclick={() => moderate(row.id, 'rejected')}
             >
               Reject
             </button>
           {/if}
           <button
-            class="rounded-lg px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/10"
+            class="rounded-lg px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"
             onclick={() => {
-              deleteTarget = row as CommentRow
+              deleteTarget = row
               showConfirmDialog = true
             }}
           >

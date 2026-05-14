@@ -64,7 +64,7 @@ function observeCLS(): void {
     const po = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (!(entry as PerformanceEntry & { hadRecentInput: boolean }).hadRecentInput) {
-          const firstSessionEntry = sessionEntries[0]
+          const [firstSessionEntry] = sessionEntries
           const lastSessionEntry = sessionEntries[sessionEntries.length - 1]
 
           if (
@@ -150,15 +150,17 @@ export function initWebVitals(): void {
   observeINP()
 }
 
+function ratingColor(rating: string): string {
+  if (rating === 'good') return '#0cce6a'
+  if (rating === 'needs-improvement') return '#ffa400'
+  return '#ff4e42'
+}
+
 export function reportToConsole(): () => void {
   if (!import.meta.env.DEV) return () => {}
+
   return onWebVital((metric) => {
-    const color =
-      metric.rating === 'good'
-        ? '#0cce6a'
-        : metric.rating === 'needs-improvement'
-          ? '#ffa400'
-          : '#ff4e42'
+    const color = ratingColor(metric.rating)
     console.log(
       `%c${metric.name}%c ${metric.value.toFixed(2)} (${metric.rating})`,
       `color:${color};font-weight:bold`,

@@ -1,7 +1,7 @@
 import { createItemSchema, updateItemSchema } from '$lib/validators/item'
 import { describe, expect, it } from 'vitest'
 
-describe(createItemSchema, () => {
+describe('createItemSchema', () => {
   it('validates valid input with name only', () => {
     const data = createItemSchema.parse({ name: 'My Item' })
     expect(data).toStrictEqual({ name: 'My Item' })
@@ -33,7 +33,7 @@ describe(createItemSchema, () => {
   })
 })
 
-describe(updateItemSchema, () => {
+describe('updateItemSchema', () => {
   it('allows partial update with name only', () => {
     const data = updateItemSchema.parse({ name: 'Updated Name' })
     expect(data).toStrictEqual({ name: 'Updated Name' })

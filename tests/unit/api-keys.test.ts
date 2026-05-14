@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
+vi.mock('$lib/server/db/schema', () => ({
   apiKey: {
     createdAt: 'created_at',
     expiresAt: 'expires_at',
@@ -60,7 +60,7 @@ function createMockDb() {
   }
 }
 
-describe(createApiKeySchema, () => {
+describe('createApiKeySchema', () => {
   it('validates a correct input', () => {
     const result = createApiKeySchema.safeParse({
       name: 'My API Key',
@@ -157,7 +157,7 @@ describe(createApiKeySchema, () => {
   })
 })
 
-describe(updateApiKeySchema, () => {
+describe('updateApiKeySchema', () => {
   it('allows partial update with name only', () => {
     const result = updateApiKeySchema.safeParse({ name: 'New Name' })
     expect(result.success).toBeTruthy()
@@ -179,7 +179,7 @@ describe(updateApiKeySchema, () => {
   })
 })
 
-describe(rotateApiKeySchema, () => {
+describe('rotateApiKeySchema', () => {
   it('validates correct input', () => {
     const result = rotateApiKeySchema.safeParse({ id: 'key-123' })
     expect(result.success).toBeTruthy()
@@ -191,7 +191,7 @@ describe(rotateApiKeySchema, () => {
   })
 })
 
-describe(hasScope, () => {
+describe('hasScope', () => {
   it('admin scope grants all access', () => {
     expect(hasScope(['admin'], 'read:items')).toBeTruthy()
     expect(hasScope(['admin'], 'write:billing')).toBeTruthy()
@@ -219,7 +219,7 @@ describe(hasScope, () => {
   })
 })
 
-describe(hashKey, () => {
+describe('hashKey', () => {
   it('produces a consistent SHA-256 hash', async () => {
     const key = 'vk_live_test123'
     const hash1 = await hashKey(key)

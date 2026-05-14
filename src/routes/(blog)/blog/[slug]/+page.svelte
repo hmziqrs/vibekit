@@ -18,7 +18,7 @@
 
 <SeoHead
   description={data.post.seoDescription ?? data.post.excerpt ?? ''}
-  image={data.post.coverImageUrl}
+  image={data.post.coverImageUrl ?? undefined}
   publishedTime={data.post.publishedAt ? new Date(data.post.publishedAt).toISOString() : undefined}
   title={data.post.title}
   type="article"

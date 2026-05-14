@@ -6,7 +6,7 @@ import {
 } from '$lib/validators/team'
 import { describe, expect, it } from 'vitest'
 
-describe(createTeamSchema, () => {
+describe('createTeamSchema', () => {
   it('accepts valid team name', () => {
     const result = createTeamSchema.safeParse({ name: 'Engineering' })
     expect(result.success).toBe(true)
@@ -39,7 +39,7 @@ describe(createTeamSchema, () => {
   })
 })
 
-describe(updateTeamSchema, () => {
+describe('updateTeamSchema', () => {
   it('accepts valid update', () => {
     const result = updateTeamSchema.safeParse({ name: 'Updated Team' })
     expect(result.success).toBe(true)
@@ -72,7 +72,7 @@ describe(updateTeamSchema, () => {
   })
 })
 
-describe(addTeamMemberSchema, () => {
+describe('addTeamMemberSchema', () => {
   it('accepts valid input with userId', () => {
     const result = addTeamMemberSchema.safeParse({ userId: 'user-123' })
     expect(result.success).toBe(true)
@@ -104,7 +104,7 @@ describe(addTeamMemberSchema, () => {
   })
 })
 
-describe(updateTeamMemberRoleSchema, () => {
+describe('updateTeamMemberRoleSchema', () => {
   it('accepts lead role', () => {
     const result = updateTeamMemberRoleSchema.safeParse({ role: 'lead' })
     expect(result.success).toBe(true)

@@ -83,10 +83,10 @@
   const totalPages = $derived(reportsQuery.data ? Math.ceil(reportsQuery.data.total / 20) : 1)
 
   const statusColors: Record<string, string> = {
-    dismissed: 'bg-gray-500/15 text-gray-400',
-    pending: 'bg-yellow-500/15 text-yellow-400',
-    resolved: 'bg-green-500/15 text-green-400',
-    reviewing: 'bg-blue-500/15 text-blue-400',
+    dismissed: 'bg-muted/15 text-text-muted',
+    pending: 'bg-warning/15 text-warning',
+    resolved: 'bg-success/15 text-success',
+    reviewing: 'bg-info/15 text-info',
   }
 
   const reasonLabels: Record<string, string> = {
@@ -193,15 +193,15 @@
   <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
     <div class="rounded-xl border border-white/[0.06] bg-surface p-4">
       <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Pending</p>
-      <p class="mt-1 text-2xl font-bold text-yellow-400">{statsQuery.data.pending}</p>
+      <p class="mt-1 text-2xl font-bold text-warning">{statsQuery.data.pending}</p>
     </div>
     <div class="rounded-xl border border-white/[0.06] bg-surface p-4">
       <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Reviewing</p>
-      <p class="mt-1 text-2xl font-bold text-blue-400">{statsQuery.data.reviewing}</p>
+      <p class="mt-1 text-2xl font-bold text-info">{statsQuery.data.reviewing}</p>
     </div>
     <div class="rounded-xl border border-white/[0.06] bg-surface p-4">
       <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Resolved</p>
-      <p class="mt-1 text-2xl font-bold text-green-400">{statsQuery.data.resolved}</p>
+      <p class="mt-1 text-2xl font-bold text-success">{statsQuery.data.resolved}</p>
     </div>
     <div class="rounded-xl border border-white/[0.06] bg-surface p-4">
       <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Total</p>
@@ -235,7 +235,7 @@
     </div>
   {:else if reportsQuery.error}
     <div class="p-6 text-center">
-      <p class="text-[13px] text-red-400">Failed to load reports. Please try again.</p>
+      <p class="text-[13px] text-destructive">Failed to load reports. Please try again.</p>
       <button
         class="mt-3 text-[13px] text-brand hover:underline"
         onclick={() => reportsQuery.refetch()}
@@ -322,11 +322,11 @@
                   {#if openMenuId === report.id}
                     <div class="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-white/[0.06] bg-surface py-1 shadow-lg">
                       <button
-                        class="w-full px-4 py-2 text-left text-[12px] text-green-400 hover:bg-white/[0.04]"
+                        class="w-full px-4 py-2 text-left text-[12px] text-success hover:bg-white/[0.04]"
                         onclick={() => openResolveDialog(report, 'resolved')}
                       >Resolve</button>
                       <button
-                        class="w-full px-4 py-2 text-left text-[12px] text-yellow-400 hover:bg-white/[0.04]"
+                        class="w-full px-4 py-2 text-left text-[12px] text-warning hover:bg-white/[0.04]"
                         onclick={() => openResolveDialog(report, 'dismissed')}
                       >Dismiss</button>
                     </div>

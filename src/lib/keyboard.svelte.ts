@@ -21,6 +21,7 @@ export function getShortcuts(): ShortcutEntry[] {
   return [...shortcuts]
 }
 
+// oxlint-disable-next-line max-params
 export function checkCollision(
   key: string,
   mac: boolean,
@@ -52,7 +53,7 @@ export function createFocusTrap(container: HTMLElement): { destroy: () => void }
     'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
   function getFocusableElements(): HTMLElement[] {
-    return [...container.querySelectorAll(FOCUSABLE_SELECTOR)]
+    return [...container.querySelectorAll(FOCUSABLE_SELECTOR)] as HTMLElement[]
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -61,7 +62,7 @@ export function createFocusTrap(container: HTMLElement): { destroy: () => void }
     const focusable = getFocusableElements()
     if (focusable.length === 0) return
 
-    const first = focusable[0]
+    const [first] = focusable
     const last = focusable[focusable.length - 1]
 
     if (e.shiftKey) {
@@ -99,7 +100,7 @@ export function createRovingTabIndex(
   let activeIndex = 0
 
   function getItems(): HTMLElement[] {
-    return [...container.querySelectorAll(itemSelector)]
+    return [...container.querySelectorAll(itemSelector)] as HTMLElement[]
   }
 
   function setActive(index: number) {

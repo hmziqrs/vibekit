@@ -1,4 +1,5 @@
 import { renderAndSanitize } from '$lib/markdown'
+import type { getDb } from '$lib/server/db'
 import { user } from '$lib/server/db/auth.schema'
 import {
   blogPost,
@@ -13,6 +14,9 @@ import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
+// Narrow AppDb union to a single type so .select() overload resolution works.
+type Db = ReturnType<typeof getDb>
+
 function estimateReadingTime(html: string): number {
   const text = html.replace(/<[^>]*>/g, '')
   const words = text.split(/\s+/).filter(Boolean).length
@@ -24,10 +28,10 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
     'CDN-Cache-Control': 'public, max-age=3600',
     'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
   })
-  const { db } = locals.services
+  const db = locals.services.db as Db
   const { slug } = params
 
-  const [post] = await db
+  const [postRow] = await db
     .select({
       authorImage: user.image,
       authorName: user.displayName,
@@ -39,6 +43,15 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
       and(eq(blogPost.slug, slug), eq(blogPost.status, 'published'), isNull(blogPost.deletedAt))
     )
     .limit(1)
+
+  // Drizzle with { schema } returns rows keyed by table name (e.g. blog_post, user),
+  // Not the alias used in .select().
+  type PostRow = (typeof postRow extends (infer U)[] ? U : typeof postRow) & {
+    authorImage: string | null
+    authorName: string | null
+    post: typeof blogPost.$inferSelect
+  }
+  const post = postRow as unknown as PostRow | undefined
 
   if (post) {
     const contentHtml = post.post.contentBody ? renderAndSanitize(post.post.contentBody) : ''
@@ -67,7 +80,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
 
     if (tagIds.length > 0) {
       const ids = tagIds.map((t) => t.tagId)
-      relatedPosts = await db
+      relatedPosts = (await db
         .select({
           coverImageUrl: blogPost.coverImageUrl,
           excerpt: blogPost.excerpt,
@@ -87,7 +100,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
         )
         .groupBy(blogPost.id)
         .orderBy(desc(sql<number>`count(*)`))
-        .limit(3)
+        .limit(3)) as unknown as typeof relatedPosts
     }
 
     // Fetch series this post belongs to, with all posts in each series
@@ -103,14 +116,18 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
       description: string | null
       id: string
       name: string
-      posts: Array<{ isActive: boolean; slug: string; sortOrder: number; title: string }>
+      posts: { isActive: boolean; slug: string; sortOrder: number; title: string }[]
       slug: string
     }
+
+    type BlogSeriesRow = typeof blogSeries.$inferSelect
 
     const series: SeriesEntry[] = []
 
     for (const row of postSeriesRows) {
-      const seriesPosts = await db
+      const seriesData = (row as unknown as { series: BlogSeriesRow }).series
+      // oxlint-disable-next-line no-await-in-loop
+      const seriesPosts = (await db
         .select({
           slug: blogPost.slug,
           sortOrder: blogPostSeries.sortOrder,
@@ -118,20 +135,24 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
         })
         .from(blogPostSeries)
         .innerJoin(blogPost, eq(blogPostSeries.postId, blogPost.id))
-        .where(and(eq(blogPostSeries.seriesId, row.series.id), eq(blogPost.status, 'published')))
-        .orderBy(asc(blogPostSeries.sortOrder))
+        .where(and(eq(blogPostSeries.seriesId, seriesData.id), eq(blogPost.status, 'published')))
+        .orderBy(asc(blogPostSeries.sortOrder))) as unknown as {
+        slug: string
+        sortOrder: number
+        title: string
+      }[]
 
       series.push({
-        description: row.series.description,
-        id: row.series.id,
-        name: row.series.name,
+        description: seriesData.description,
+        id: seriesData.id,
+        name: seriesData.name,
         posts: seriesPosts.map((p) => ({
           isActive: p.slug === post.post.slug,
           slug: p.slug,
           sortOrder: p.sortOrder,
           title: p.title,
         })),
-        slug: row.series.slug,
+        slug: seriesData.slug,
       })
     }
 

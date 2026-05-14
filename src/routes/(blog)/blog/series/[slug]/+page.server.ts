@@ -1,25 +1,29 @@
+import type { getDb } from '$lib/server/db'
 import { blogPost, blogPostSeries, blogSeries } from '$lib/server/db/schema'
 import { redirect } from '@sveltejs/kit'
 import { and, asc, eq, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
+// Narrow AppDb union to a single type so .select() overload resolution works.
+type Db = ReturnType<typeof getDb>
+
 export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
   setHeaders({
     'CDN-Cache-Control': 'public, max-age=3600',
     'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
   })
-  const { db } = locals.services
+  const db = locals.services.db as Db
   const { slug } = params
 
   const seriesRows = await db.select().from(blogSeries).where(eq(blogSeries.slug, slug)).limit(1)
 
-  const series = seriesRows[0]
+  const [series] = seriesRows
   if (!series) {
     throw redirect(302, '/blog')
   }
 
-  const posts = await db
+  const rows = await db
     .select({
       coverImageUrl: blogPost.coverImageUrl,
       excerpt: blogPost.excerpt,
@@ -38,6 +42,15 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
       )
     )
     .orderBy(asc(blogPostSeries.sortOrder))
+
+  const posts = rows as unknown as {
+    coverImageUrl: string | null
+    excerpt: string | null
+    publishedAt: number | null
+    slug: string
+    sortOrder: number
+    title: string
+  }[]
 
   return {
     posts,

@@ -43,8 +43,8 @@
 </script>
 
 {#if status === 'success'}
-  <div class="rounded-lg border border-green-500/20 bg-green-500/5 p-4 text-center">
-    <p class="text-[13px] text-green-400">{message}</p>
+  <div class="rounded-lg border border-success/20 bg-success/5 p-4 text-center">
+    <p class="text-[13px] text-success">{message}</p>
   </div>
 {:else}
   <form onsubmit={handleSubmit} class={compact ? 'flex items-center gap-2' : ''}>
@@ -70,7 +70,7 @@
       </button>
     </div>
     {#if status === 'error'}
-      <p class="mt-2 text-[12px] text-red-400">{message}</p>
+      <p class="mt-2 text-[12px] text-destructive">{message}</p>
     {/if}
   </form>
 {/if}

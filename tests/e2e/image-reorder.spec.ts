@@ -1,13 +1,10 @@
 import { expect, test } from '@playwright/test'
 
+import { loginAsAdmin } from './helpers/auth'
+
 test.describe('image reorder in article editor', () => {
   test.beforeEach(async ({ page }) => {
-    // Login as admin
-    await page.goto('/login')
-    await page.getByLabel('Email').fill('admin@vibekit.local')
-    await page.getByLabel('Password').fill('admin123')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/admin/dashboard')
+    await loginAsAdmin(page)
   })
 
   test('drag handle is visible on figure images in editor', async ({ page }) => {

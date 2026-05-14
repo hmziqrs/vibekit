@@ -125,10 +125,10 @@
 
   function statusColor(status: string): string {
     switch (status) {
-      case 'active': { return 'bg-green-500/10 text-green-400' }
+      case 'active': { return 'bg-success/10 text-success' }
       case 'trialing': { return 'bg-brand/10 text-brand' }
-      case 'canceled': { return 'bg-red-500/10 text-red-400' }
-      case 'past_due': { return 'bg-yellow-500/10 text-yellow-400' }
+      case 'canceled': { return 'bg-destructive/10 text-destructive' }
+      case 'past_due': { return 'bg-warning/10 text-warning' }
       default: { return 'bg-white/[0.06] text-text-muted' }
     }
   }
@@ -216,7 +216,7 @@
               <ul class="mt-3 space-y-1">
                 {#each tryParseFeatures(plan.features) as feature}
                   <li class="flex items-center gap-2 text-[12px] text-text-muted">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-400">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-success">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                     {feature}

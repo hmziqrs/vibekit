@@ -5,15 +5,15 @@ export interface LogEntry {
   timestamp: string
 }
 
+function now(): string {
+  return new Date().toISOString()
+}
+
 export function createLogger(context?: string) {
   function formatEntry(entry: LogEntry): string {
     const prefix = context ? `[${context}]` : ''
     const meta = entry.metadata ? ` ${JSON.stringify(entry.metadata)}` : ''
     return `${entry.timestamp} ${entry.level.toUpperCase()} ${prefix} ${entry.message}${meta}`
-  }
-
-  function now(): string {
-    return new Date().toISOString()
   }
 
   return {

@@ -1,7 +1,7 @@
 import { createPostSchema, updatePostSchema } from '$lib/validators/blog'
 import { describe, expect, it } from 'vitest'
 
-describe(createPostSchema, () => {
+describe('createPostSchema', () => {
   const validInput = {
     slug: 'my-first-post',
     status: 'draft',
@@ -45,7 +45,7 @@ describe(createPostSchema, () => {
   })
 })
 
-describe(updatePostSchema, () => {
+describe('updatePostSchema', () => {
   it('allows partial updates', () => {
     const result = updatePostSchema.safeParse({ title: 'Updated Title' })
     expect(result.success).toBeTruthy()

@@ -57,7 +57,7 @@
     <Card.Content>
       {#if submitted}
         <div class="space-y-4">
-          <p class="text-sm text-emerald-400">Your appeal has been submitted. We will review it and get back to you.</p>
+          <p class="text-sm text-success">Your appeal has been submitted. We will review it and get back to you.</p>
           <Button class="w-full" onclick={() => goto('/login')}>Back to login</Button>
         </div>
       {:else}

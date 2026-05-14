@@ -93,6 +93,7 @@
       }
       ({ nextCursor } = data)
       hasMore = data.truncated ?? false
+      // oxlint-disable-next-line catch-error-name
     } catch (e) {
       console.error('Failed to load media', e)
       error = 'Failed to load media'
@@ -116,8 +117,9 @@
       if (!res.ok) throw new Error('Upload failed')
       const { key } = (await res.json()) as { key: string; url: string }
       items = [{ contentType: file.type, key, lastModified: new Date().toISOString(), size: file.size }, ...items]
-    } catch (error) {
-      console.error('Failed to upload file', error)
+      // oxlint-disable-next-line catch-error-name
+    } catch (err) {
+      console.error('Failed to upload file', err)
       uploadError = 'Upload failed'
     } finally {
       uploading = false
@@ -160,7 +162,7 @@
 />
 
 {#if previewItem}
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60" role="dialog">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/60" role="dialog">
     <div class="w-full max-w-3xl rounded-lg border border-border bg-surface-base p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[14px] font-medium text-text-primary truncate mr-4">{previewItem.key}</h3>
@@ -192,11 +194,11 @@
         {/if}
         <button
           onclick={() => { deleteTarget = previewItem; showDeleteDialog = true }}
-          class="rounded-lg border border-red-500/30 px-4 py-2 text-[12px] font-medium text-red-400 hover:bg-red-500/10"
+          class="rounded-lg border border-destructive/30 px-4 py-2 text-[12px] font-medium text-destructive hover:bg-destructive/10"
         >
           Delete
         </button>
-        <button onclick={() => previewItem = null} class="rounded-lg border border-white/[0.1] px-4 py-2 text-[12px] text-text-muted hover:text-text-primary">
+        <button onclick={() => previewItem = null} class="rounded-lg border border-border px-4 py-2 text-[12px] text-text-muted hover:text-text-primary">
           Close
         </button>
       </div>
@@ -204,13 +206,13 @@
   </div>
 {/if}
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog">
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50" role="dialog">
   <div class="w-full max-w-4xl rounded-lg border border-border bg-surface-base p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-text-primary">Media Library</h2>
       <div class="flex items-center gap-2">
-        <label class="cursor-pointer rounded-lg border border-white/[0.1] px-3 py-1.5 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary {uploading ? 'opacity-50 pointer-events-none' : ''}">
+        <label class="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary {uploading ? 'opacity-50 pointer-events-none' : ''}">
           <input type="file" accept="image/*,video/*,audio/*" class="hidden" onchange={handleUpload} disabled={uploading} />
           {uploading ? 'Uploading...' : 'Upload'}
         </label>
@@ -221,7 +223,7 @@
     </div>
 
     {#if uploadError}
-      <p class="mb-3 text-[12px] text-red-400">{uploadError}</p>
+      <p class="mb-3 text-[12px] text-destructive">{uploadError}</p>
     {/if}
 
     <!-- Toolbar -->
@@ -238,7 +240,7 @@
             onclick={() => fileTypeFilter = tab.value}
             class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors {fileTypeFilter === tab.value
               ? 'bg-brand/15 text-brand'
-              : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary'}"
+              : 'text-text-muted hover:bg-surface hover:text-text-primary'}"
           >
             {tab.label}
           </button>
@@ -258,13 +260,13 @@
         <div class="flex items-center rounded-lg border border-border">
           <button
             onclick={() => viewMode = 'grid'}
-            class={cn('p-1.5 transition-colors', viewMode === 'grid' ? 'bg-white/8 text-text-primary' : 'text-text-muted hover:text-text-primary')}
+            class={cn('p-1.5 transition-colors', viewMode === 'grid' ? 'bg-surface-elevated text-text-primary' : 'text-text-muted hover:text-text-primary')}
           >
             <LayoutGrid class="size-3.5" />
           </button>
           <button
             onclick={() => viewMode = 'list'}
-            class={cn('p-1.5 transition-colors', viewMode === 'list' ? 'bg-white/8 text-text-primary' : 'text-text-muted hover:text-text-primary')}
+            class={cn('p-1.5 transition-colors', viewMode === 'list' ? 'bg-surface-elevated text-text-primary' : 'text-text-muted hover:text-text-primary')}
           >
             <List class="size-3.5" />
           </button>
@@ -276,11 +278,11 @@
     {#if loading}
       <div class="grid grid-cols-4 gap-3">
         {#each Array(8) as _}
-          <div class="aspect-square animate-pulse rounded-lg bg-white/[0.06]"></div>
+          <div class="aspect-square animate-pulse rounded-lg bg-muted"></div>
         {/each}
       </div>
     {:else if error}
-      <p class="py-8 text-center text-[13px] text-red-400">{error}</p>
+      <p class="py-8 text-center text-[13px] text-destructive">{error}</p>
     {:else if filteredItems().length === 0 && items.length === 0}
       <p class="py-8 text-center text-[13px] text-text-muted">No files uploaded yet.</p>
     {:else if filteredItems().length === 0}
@@ -311,7 +313,7 @@
                 {/if}
                 <button
                   onclick={() => { deleteTarget = item; showDeleteDialog = true }}
-                  class="p-1 text-text-muted hover:text-red-400"
+                  class="p-1 text-text-muted hover:text-destructive"
                   title="Delete"
                 >
                   <Trash2 class="size-3" />
@@ -325,7 +327,7 @@
       <!-- List view -->
       <div class="max-h-[70vh] overflow-y-auto space-y-1">
         {#each filteredItems() as item (item.key)}
-          <div class="flex items-center gap-3 rounded-lg border border-border px-3 py-2 transition-colors hover:bg-white/[0.02]">
+          <div class="flex items-center gap-3 rounded-lg border border-border px-3 py-2 transition-colors hover:bg-surface">
             <div class="size-10 shrink-0 overflow-hidden rounded bg-surface">
               {#if item.contentType?.startsWith('image/')}
                 <img src={`/cdn/blog/${item.key}`} alt={item.key} class="size-full object-cover" loading="lazy" />
@@ -347,7 +349,7 @@
               {/if}
               <button
                 onclick={() => { deleteTarget = item; showDeleteDialog = true }}
-                class="text-[11px] text-red-400 hover:text-red-300"
+                class="text-[11px] text-destructive hover:text-destructive-foreground"
               >
                 Delete
               </button>
@@ -362,7 +364,7 @@
         <button
           onclick={() => fetchMedia(true)}
           disabled={loadingMore}
-          class="rounded-lg border border-white/[0.1] px-4 py-2 text-[12px] font-medium text-text-muted hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
+          class="rounded-lg border border-border px-4 py-2 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary disabled:opacity-50"
         >
           {loadingMore ? 'Loading...' : 'Load more'}
         </button>

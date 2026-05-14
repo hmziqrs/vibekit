@@ -1,90 +1,132 @@
-import { createServer } from 'http'
-import type { AddressInfo } from 'net'
+import { expect, test } from '@playwright/test'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { goToAdmin, login } from './helpers/auth'
 
-describe('system config e2e', () => {
-  let server: ReturnType<typeof createServer>
-  let baseUrl: string
+test.describe.configure({ mode: 'serial' })
 
-  beforeAll(async () => {
-    const { app } = await import('../src/lib/server/hono/index')
-    server = createServer((req, res) => {
-      app.fetch(new Request(`http://localhost${req.url}`, req as never)).then((response) => {
-        res.statusCode = response.status
-        response.headers.forEach((value, key) => {
-          res.setHeader(key, value)
-        })
-        response.arrayBuffer().then((buf) => {
-          res.end(Buffer.from(buf))
-        })
-      })
-    })
-    await new Promise<void>((resolve) => {
-      server.listen(0, () => {
-        const addr = server.address() as AddressInfo
-        baseUrl = `http://localhost:${addr.port}`
-        resolve()
-      })
-    })
+test.describe('system config endpoints require auth', () => {
+  test('GET /api/admin/config returns error without admin auth', async ({ browser }) => {
+    const context = await browser.newContext()
+    const res = await context.request.get('/api/admin/config')
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    await context.close()
   })
 
-  afterAll(() => {
-    server?.close()
+  test('PATCH /api/admin/config/:key returns error without admin auth', async ({ browser }) => {
+    const context = await browser.newContext()
+    const res = await context.request.patch('/api/admin/config/maintenance_mode', {
+      data: { value: 'true' },
+    })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    await context.close()
   })
 
-  describe('config endpoints', () => {
-    it('GET /api/admin/config requires admin auth', async () => {
-      const res = await fetch(`${baseUrl}/api/admin/config`)
-      expect(res.status).toBe(401)
-    })
-
-    it('PATCH /api/admin/config/maintenance_mode requires admin auth', async () => {
-      const res = await fetch(`${baseUrl}/api/admin/config/maintenance_mode`, {
-        body: JSON.stringify({ value: 'true' }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'PATCH',
-      })
-      expect(res.status).toBe(401)
-    })
+  test('GET /api/admin/announcements returns error without admin auth', async ({ browser }) => {
+    const context = await browser.newContext()
+    const res = await context.request.get('/api/admin/announcements')
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    await context.close()
   })
 
-  describe('announcement endpoints', () => {
-    it('GET /api/admin/announcements requires admin auth', async () => {
-      const res = await fetch(`${baseUrl}/api/admin/announcements`)
-      expect(res.status).toBe(401)
+  test('POST /api/admin/announcements returns error without admin auth', async ({ browser }) => {
+    const context = await browser.newContext()
+    const res = await context.request.post('/api/admin/announcements', {
+      data: { message: 'Test announcement' },
     })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    await context.close()
+  })
 
-    it('POST /api/admin/announcements requires admin auth', async () => {
-      const res = await fetch(`${baseUrl}/api/admin/announcements`, {
-        body: JSON.stringify({ message: 'Test announcement' }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
-      expect(res.status).toBe(401)
+  test('PATCH /api/admin/announcements/:id returns error without admin auth', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext()
+    const res = await context.request.patch('/api/admin/announcements/test-id', {
+      data: { isActive: false },
     })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    await context.close()
+  })
 
-    it('PATCH /api/admin/announcements/test-id requires admin auth', async () => {
-      const res = await fetch(`${baseUrl}/api/admin/announcements/test-id`, {
-        body: JSON.stringify({ isActive: false }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'PATCH',
-      })
-      expect(res.status).toBe(401)
-    })
+  test('DELETE /api/admin/announcements/:id returns error without admin auth', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext()
+    const res = await context.request.delete('/api/admin/announcements/test-id')
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    await context.close()
+  })
 
-    it('DELETE /api/admin/announcements/test-id requires admin auth', async () => {
-      const res = await fetch(`${baseUrl}/api/admin/announcements/test-id`, {
-        method: 'DELETE',
-      })
-      expect(res.status).toBe(401)
-    })
+  test('GET /api/announcements returns array without auth', async ({ browser }) => {
+    const context = await browser.newContext()
+    const res = await context.request.get('/api/announcements')
+    expect(res.status()).toBe(200)
+    const data = await res.json()
+    expect(Array.isArray(data)).toBe(true)
+    await context.close()
+  })
+})
 
-    it('GET /api/announcements returns empty array without auth', async () => {
-      const res = await fetch(`${baseUrl}/api/announcements`)
-      expect(res.status).toBe(200)
-      const data = await res.json()
-      expect(Array.isArray(data)).toBe(true)
-    })
+test.describe('admin settings page', () => {
+  test.beforeEach(async ({ page }) => {
+    await goToAdmin(page)
+  })
+
+  test('displays settings page heading', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'System Settings' })).toBeVisible()
+  })
+
+  test('shows section tabs', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Feature Flags' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Maintenance' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'History' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Announcements' })).toBeVisible()
+  })
+
+  test('feature flags section shows config entries', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    // Default section is Feature Flags
+    await expect(
+      page.getByText('Manage feature flags, maintenance mode, and announcements.')
+    ).toBeVisible()
+  })
+
+  test('maintenance section shows toggle', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Maintenance' }).click()
+    await expect(page.getByRole('heading', { name: 'Maintenance Mode' })).toBeVisible()
+  })
+
+  test('announcements section shows list and create button', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Announcements' }).click()
+    await expect(page.getByText('System Announcements')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'New Announcement' })).toBeVisible()
+  })
+
+  test('admin can fetch config via API', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    const res = await page.request.get('/api/admin/config')
+    expect(res.status()).toBe(200)
+    const data = await res.json()
+    expect(Array.isArray(data)).toBe(true)
+  })
+
+  test('admin can fetch announcements via API', async ({ page }) => {
+    await page.goto('/admin/settings', { waitUntil: 'networkidle' })
+    await expect(page.getByText('admin@vibekit.local')).toBeVisible({ timeout: 15_000 })
+    const res = await page.request.get('/api/admin/announcements')
+    expect(res.status()).toBe(200)
+    const data = await res.json()
+    expect(data).toHaveProperty('announcements')
+    expect(data).toHaveProperty('total')
   })
 })

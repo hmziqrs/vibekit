@@ -22,7 +22,7 @@ function createMockDb(recentComment?: object, recentCount?: { count: number }) {
         }),
       }),
     }),
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 function createRateLimitedDb(recentCount: number) {
@@ -31,20 +31,33 @@ function createRateLimitedDb(recentCount: number) {
     callIdx++
     // First call = duplicate check (no dup)
     if (callIdx === 1) return Promise.resolve(null)
-    // Second call = rate count check
-    return Promise.resolve({ count: recentCount })
+    return Promise.resolve(null)
+  })
+  const whereNoLimit = vi.fn().mockImplementation(() => {
+    callIdx++
+    // Second call = rate count check (returns array of comments)
+    if (callIdx === 2) return Promise.resolve(Array(recentCount).fill({ id: 'comment' }))
+    return Promise.resolve([])
   })
 
   return {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: getFn,
-          limit: vi.fn().mockReturnValue({ get: getFn }),
+        where: vi.fn().mockImplementation((..._args: unknown[]) => {
+          callIdx++
+          // First call = duplicate check (has .limit and .get)
+          if (callIdx <= 2) {
+            return {
+              get: getFn,
+              limit: vi.fn().mockReturnValue({ get: getFn }),
+            }
+          }
+          // Second call = rate check (returns array directly)
+          return Promise.resolve(Array(recentCount).fill({ id: 'comment' }))
         }),
       }),
     }),
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 function createDuplicateDb() {
@@ -66,7 +79,7 @@ function createDuplicateDb() {
         }),
       }),
     }),
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 describe('spam-detector module', () => {

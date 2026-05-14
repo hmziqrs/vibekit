@@ -42,6 +42,7 @@
       }
 
       onUpload(data.url!)
+      // oxlint-disable-next-line catch-error-name
     } catch (e) {
       console.error('Failed to upload image', e)
       error = 'Network error'
@@ -73,10 +74,10 @@
 </script>
 
 <div class="space-y-2">
-  <label id="cover-image-label" class="mb-2 block text-sm font-medium text-text-secondary">Cover Image</label>
+  <label for="image-upload" class="mb-2 block text-sm font-medium text-text-secondary">Cover Image</label>
 
   {#if error}
-    <p class="rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{error}</p>
+    <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{error}</p>
   {/if}
 
   {#if currentUrl}
@@ -89,7 +90,7 @@
       <button
         type="button"
         onclick={onRemove}
-        class="absolute top-2 right-2 rounded-md bg-surface/90 px-2 py-1 text-[12px] text-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400"
+        class="absolute top-2 right-2 rounded-md bg-surface/90 px-2 py-1 text-[12px] text-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
       >
         Remove
       </button>
@@ -115,10 +116,10 @@
         </div>
       {/if}
       <input
+        id="image-upload"
         type="file"
         accept={ACCEPT}
         onchange={onFileInput}
-        aria-labelledby="cover-image-label"
         class="absolute inset-0 cursor-pointer opacity-0"
         disabled={uploading}
       />

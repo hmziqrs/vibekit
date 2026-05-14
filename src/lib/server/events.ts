@@ -1,4 +1,5 @@
 import { writeAuditLog } from '$lib/server/audit'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { dispatchWebhooksForEvent } from '$lib/server/webhooks'
 
 export interface EmitEventInput {
@@ -9,10 +10,7 @@ export interface EmitEventInput {
   userId: string
 }
 
-export async function emitEvent(
-  db: Parameters<typeof writeAuditLog>[0],
-  input: EmitEventInput
-): Promise<void> {
+export async function emitEvent(db: DrizzleDb, input: EmitEventInput): Promise<void> {
   // Always write audit log
   await writeAuditLog(db, {
     action: input.action,

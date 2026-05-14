@@ -30,13 +30,14 @@
   let savingConfig = $state(false)
   let showCreateAnnouncement = $state(false)
   let deletingId = $state<string | null>(null)
+  let showDeleteDialog = $state(false)
   let newMessage = $state('')
   let newType = $state<'info' | 'warning' | 'critical'>('info')
   let newStartsAt = $state('')
   let newEndsAt = $state('')
   let creating = $state(false)
   let togglingId = $state<string | null>(null)
-  let section = $state<'announcements' | 'config' | 'maintenance'>('config')
+  let section = $state<'announcements' | 'config' | 'history' | 'maintenance'>('config')
 
   const configQuery = createQuery(() => ({
     queryFn: async () => {
@@ -64,7 +65,7 @@
       const res = await fetch('/api/admin/config/history?limit=20')
       if (!res.ok) throw new Error('Failed to fetch history')
       return res.json() as Promise<{
-        versions: Array<{
+        versions: {
           changedBy: string | null
           configKey: string
           createdAt: number
@@ -72,7 +73,7 @@
           id: string
           newValue: string | null
           oldValue: string | null
-        }>
+        }[]
       }>
     },
     queryKey: ['admin', 'config-history'],
@@ -82,9 +83,9 @@
   const featureFlags = $derived(configQuery.data?.filter((c) => c.key !== 'maintenance_mode' && c.key !== 'maintenance_message') ?? [])
 
   const typeColors: Record<string, string> = {
-    critical: 'bg-red-500/15 text-red-400',
-    info: 'bg-blue-500/15 text-blue-400',
-    warning: 'bg-yellow-500/15 text-yellow-400',
+    critical: 'bg-destructive/15 text-destructive',
+    info: 'bg-info/15 text-info',
+    warning: 'bg-warning/15 text-warning',
   }
 
   const typeLabels: Record<string, string> = {
@@ -179,6 +180,7 @@
     const res = await fetch(`/api/admin/announcements/${deletingId}`, { method: 'DELETE' })
     if (res.ok) {
       deletingId = null
+      showDeleteDialog = false
       announcementsQuery.refetch()
     }
   }
@@ -218,7 +220,7 @@
       {/each}
     {:else if configQuery.error}
       <div class="rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
-        <p class="text-[13px] text-red-400">Failed to load config.</p>
+        <p class="text-[13px] text-destructive">Failed to load config.</p>
         <button
           class="mt-3 text-[13px] text-brand hover:underline"
           onclick={() => configQuery.refetch()}
@@ -243,10 +245,11 @@
                   disabled={savingConfig}
                   role="switch"
                   aria-checked={config.value === 'true'}
+                  aria-label={configLabels[config.key] ?? config.key}
                 >
                   <span
                     class={cn(
-                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-primary-foreground shadow transition-transform',
                       config.value === 'true' ? 'translate-x-5' : 'translate-x-0',
                     )}
                   ></span>
@@ -291,13 +294,13 @@
       <div class={cn(
         'rounded-xl border p-6',
         maintenanceConfig?.value === 'true'
-          ? 'border-red-500/30 bg-red-500/5'
+          ? 'border-destructive/30 bg-destructive/5'
           : 'border-white/[0.06] bg-surface',
       )}>
         <div class="flex items-center justify-between">
           <div>
             <div class="flex items-center gap-2">
-              <svg class={cn('h-5 w-5', maintenanceConfig?.value === 'true' ? 'text-red-400' : 'text-text-muted')} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg class={cn('h-5 w-5', maintenanceConfig?.value === 'true' ? 'text-destructive' : 'text-text-muted')} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -313,16 +316,17 @@
           <button
             class={cn(
               'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
-              maintenanceConfig?.value === 'true' ? 'bg-red-500' : 'bg-white/[0.12]',
+              maintenanceConfig?.value === 'true' ? 'bg-destructive' : 'bg-white/[0.12]',
             )}
             onclick={toggleMaintenance}
             disabled={savingConfig}
             role="switch"
             aria-checked={maintenanceConfig?.value === 'true'}
+            aria-label="Toggle maintenance mode"
           >
             <span
               class={cn(
-                'pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow transition-transform',
+                'pointer-events-none inline-block h-6 w-6 rounded-full bg-primary-foreground shadow transition-transform',
                 maintenanceConfig?.value === 'true' ? 'translate-x-5' : 'translate-x-0',
               )}
             ></span>
@@ -379,7 +383,7 @@
       </div>
     {:else if historyQuery.error}
       <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
-        <p class="text-[13px] text-red-400">Failed to load history.</p>
+        <p class="text-[13px] text-destructive">Failed to load history.</p>
       </div>
     {:else if !historyQuery.data?.versions.length}
       <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
@@ -438,8 +442,9 @@
           ></textarea>
           <div class="flex flex-wrap items-end gap-3">
             <div>
-              <label class="mb-1 block text-[11px] font-medium text-text-subtle">Type</label>
+              <label for="announcement-type" class="mb-1 block text-[11px] font-medium text-text-subtle">Type</label>
               <select
+                id="announcement-type"
                 class="rounded-md border border-white/[0.06] bg-surface-base px-2 py-1 text-[12px] text-text-primary focus:border-brand focus:outline-none"
                 bind:value={newType}
               >
@@ -449,16 +454,18 @@
               </select>
             </div>
             <div>
-              <label class="mb-1 block text-[11px] font-medium text-text-subtle">Starts At (optional)</label>
+              <label for="announcement-starts" class="mb-1 block text-[11px] font-medium text-text-subtle">Starts At (optional)</label>
               <input
+                id="announcement-starts"
                 type="datetime-local"
                 class="rounded-md border border-white/[0.06] bg-surface-base px-2 py-1 text-[12px] text-text-primary focus:border-brand focus:outline-none"
                 bind:value={newStartsAt}
               />
             </div>
             <div>
-              <label class="mb-1 block text-[11px] font-medium text-text-subtle">Ends At (optional)</label>
+              <label for="announcement-ends" class="mb-1 block text-[11px] font-medium text-text-subtle">Ends At (optional)</label>
               <input
+                id="announcement-ends"
                 type="datetime-local"
                 class="rounded-md border border-white/[0.06] bg-surface-base px-2 py-1 text-[12px] text-text-primary focus:border-brand focus:outline-none"
                 bind:value={newEndsAt}
@@ -489,7 +496,7 @@
       </div>
     {:else if announcementsQuery.error}
       <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
-        <p class="text-[13px] text-red-400">Failed to load announcements.</p>
+        <p class="text-[13px] text-destructive">Failed to load announcements.</p>
         <button class="mt-3 text-[13px] text-brand hover:underline" onclick={() => announcementsQuery.refetch()}>Retry</button>
       </div>
     {:else if !announcementsQuery.data?.announcements.length}
@@ -512,7 +519,7 @@
                   <span
                     class={cn(
                       'inline-block rounded-full px-2 py-0.5 text-[11px] font-medium',
-                      a.isActive ? 'bg-green-500/15 text-green-400' : 'bg-white/[0.06] text-text-muted',
+                      a.isActive ? 'bg-success/15 text-success' : 'bg-white/[0.06] text-text-muted',
                     )}
                   >{a.isActive ? 'Active' : 'Inactive'}</span>
                 </div>
@@ -532,15 +539,15 @@
                   class={cn(
                     'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors',
                     a.isActive
-                      ? 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'
-                      : 'border-green-500/30 text-green-400 hover:bg-green-500/10',
+                      ? 'border-warning/30 text-warning hover:bg-warning/10'
+                      : 'border-success/30 text-success hover:bg-success/10',
                   )}
                   onclick={() => toggleAnnouncementActive(a.id, a.isActive)}
                   disabled={togglingId === a.id}
                 >{a.isActive ? 'Deactivate' : 'Activate'}</button>
                 <button
-                  class="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/10"
-                  onclick={() => (deletingId = a.id)}
+                  class="rounded-md border border-destructive/30 px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"
+                  onclick={() => { deletingId = a.id; showDeleteDialog = true }}
                 >Delete</button>
               </div>
             </div>
@@ -553,7 +560,7 @@
 
 <!-- Delete confirmation -->
 <ConfirmDialog
-  bind:open={deletingId}
+  bind:open={showDeleteDialog}
   title="Delete Announcement"
   message="This action cannot be undone."
   confirmLabel="Delete"

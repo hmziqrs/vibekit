@@ -27,7 +27,7 @@
 
 <div class="space-y-3">
   {#if socialError}
-    <p class="text-sm text-red-400">{socialError}</p>
+    <p class="text-sm text-destructive">{socialError}</p>
   {/if}
 
   <button

@@ -73,14 +73,14 @@ describe('svelteKit CSP configuration', () => {
     // Extract the script-src line from config
     const scriptSrcMatch = configSource.match(/'script-src':\s*\[([^\]]+)\]/)
     expect(scriptSrcMatch).toBeTruthy()
-    expect(scriptSrcMatch[1]).not.toContain('unsafe-inline')
+    expect(scriptSrcMatch![1]).not.toContain('unsafe-inline')
   })
 
   it('allows unsafe-inline for style-src (required for Svelte transitions)', () => {
     const configSource = readFileSync(resolve(process.cwd(), 'svelte.config.js'), 'utf8')
     const styleSrcMatch = configSource.match(/'style-src':\s*\[([^\]]+)\]/)
     expect(styleSrcMatch).toBeTruthy()
-    expect(styleSrcMatch[1]).toContain('unsafe-inline')
+    expect(styleSrcMatch![1]).toContain('unsafe-inline')
   })
 
   it('sets object-src to none', () => {

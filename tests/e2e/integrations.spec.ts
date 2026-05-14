@@ -9,7 +9,7 @@ test.describe('Integrations', () => {
 
   test('integrations page loads', async ({ page }) => {
     await page.goto('/app/settings/integrations')
-    await expect(page.getByText('Integrations')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible()
     await expect(page.getByText('Connect third-party services')).toBeVisible()
   })
 

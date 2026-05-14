@@ -9,7 +9,7 @@ test.describe('Webhooks', () => {
 
   test('webhooks page loads', async ({ page }) => {
     await page.goto('/app/settings/webhooks')
-    await expect(page.getByText('Webhooks')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Webhooks' })).toBeVisible()
     await expect(page.getByText('Add Endpoint')).toBeVisible()
   })
 

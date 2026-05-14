@@ -3,7 +3,7 @@ import { Plugin } from '@tiptap/pm/state'
 
 const DRAG_MIME = 'application/x-figure-image-pos'
 
-function removeIndicators(root: ParentNode) {
+function removeIndicators(root: Element | Document) {
   root.querySelectorAll('.figure-drop-line').forEach((el) => el.remove())
 }
 
@@ -53,7 +53,7 @@ export const ImageReorder = Extension.create({
         props: {
           handleDOMEvents: {
             dragleave(_view) {
-              removeIndicators(_view.dom)
+              removeIndicators(_view.dom as Element)
               return false
             },
 
@@ -61,7 +61,7 @@ export const ImageReorder = Extension.create({
               if (!event.dataTransfer?.types.includes(DRAG_MIME)) return false
 
               event.preventDefault()
-              insertDropLine(_view.dom as HTMLElement, event.clientY)
+              insertDropLine(_view.dom as HTMLElement, event.clientY as number)
               return false
             },
           },
@@ -76,7 +76,7 @@ export const ImageReorder = Extension.create({
             const sourcePos = Number(posStr)
             if (!Number.isInteger(sourcePos)) return false
 
-            const coords = { x: event.clientX, y: event.clientY }
+            const coords = { left: event.clientX, top: event.clientY }
             const result = view.posAtCoords(coords)
             if (!result) return false
 
@@ -91,8 +91,8 @@ export const ImageReorder = Extension.create({
 
             const { tr } = view.state
             tr.delete(sourcePos, sourcePos + sourceNode.nodeSize)
-            const { from } = tr.mapping.mapResult(insertPos < sourcePos ? insertPos : insertPos)
-            const resolvedFrom = tr.doc.resolve(from)
+            const mapped = tr.mapping.mapResult(insertPos < sourcePos ? insertPos : insertPos)
+            const resolvedFrom = tr.doc.resolve(mapped.pos)
             const newNode = view.state.schema.nodeFromJSON(nodeCopy)
             tr.insert(resolvedFrom.pos, newNode)
             view.dispatch(tr)

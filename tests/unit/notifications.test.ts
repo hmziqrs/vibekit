@@ -26,7 +26,7 @@ function createMockDb(preferenceEnabled = true) {
       }),
     }),
     update: updateFn,
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 describe('notifications module', () => {
@@ -201,7 +201,7 @@ describe('setNotificationPreference', () => {
         set: vi.fn().mockReturnValue({ where: updateWhereFn }),
       }),
       insert: vi.fn(),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await setNotificationPreference(db, {
       channel: 'in_app',
@@ -226,7 +226,7 @@ describe('setNotificationPreference', () => {
       }),
       update: vi.fn(),
       insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     await setNotificationPreference(db, {
       channel: 'email',
@@ -256,7 +256,7 @@ describe('getNotificationPreferences', () => {
           where: vi.fn().mockResolvedValue(mockPrefs),
         }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     const prefs = await getNotificationPreferences(db, 'user-1')
 
@@ -272,7 +272,7 @@ describe('getNotificationPreferences', () => {
           where: vi.fn().mockResolvedValue([]),
         }),
       }),
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
 
     const prefs = await getNotificationPreferences(db, 'user-no-prefs')
 

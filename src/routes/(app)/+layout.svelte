@@ -72,7 +72,7 @@
     <!-- Mobile overlay -->
     {#if mobileMenuOpen}
       <div
-        class="fixed inset-0 z-40 bg-black/50 md:hidden"
+        class="fixed inset-0 z-40 bg-foreground/50 md:hidden"
         role="presentation"
         onclick={closeMobileMenu}
         onkeydown={(e) => e.key === 'Escape' && closeMobileMenu()}

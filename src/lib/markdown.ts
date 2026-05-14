@@ -1,5 +1,5 @@
 import hljs from 'highlight.js'
-import purify from 'isomorphic-dompurify'
+import { sanitize } from 'isomorphic-dompurify'
 import { micromark } from 'micromark'
 import { gfm, gfmHtml } from 'micromark-extension-gfm'
 
@@ -24,13 +24,10 @@ function unescapeHtml(str: string): string {
 function highlightCodeBlocks(html: string): string {
   return html.replace(CODE_BLOCK_RE, (_match, lang: string | undefined, code: string) => {
     const rawCode = unescapeHtml(code).trim()
-    let highlighted: string
-
-    if (lang && hljs.getLanguage(lang)) {
-      highlighted = hljs.highlight(rawCode, { language: lang }).value
-    } else {
-      highlighted = hljs.highlightAuto(rawCode).value
-    }
+    const highlighted =
+      lang && hljs.getLanguage(lang)
+        ? hljs.highlight(rawCode, { language: lang }).value
+        : hljs.highlightAuto(rawCode).value
 
     const langAttr = lang ? ` class="language-${lang} hljs"` : ' class="hljs"'
     return `<pre><code${langAttr}>${highlighted}</code></pre>`
@@ -49,7 +46,7 @@ function renderMarkdown(raw: string): string {
 }
 
 function sanitizeHtml(html: string): string {
-  return purify.sanitize(html, {
+  return sanitize(html, {
     ADD_ATTR: ['target'],
     ALLOW_DATA_ATTR: false,
     FORBID_ATTR: ['style', 'formaction', 'xlink:href', 'data', 'dynsrc', 'lowsrc'],

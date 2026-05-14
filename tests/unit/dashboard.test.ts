@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe('dashboard stats response shape', () => {
   it('includes all expected keys', () => {
@@ -74,22 +74,22 @@ describe('time ago formatting', () => {
 
 describe('action color mapping', () => {
   function getActionColor(action: string) {
-    if (action.includes('create')) return 'text-emerald-400'
-    if (action.includes('delete')) return 'text-red-400'
-    if (action.includes('update')) return 'text-blue-400'
+    if (action.includes('create')) return 'text-success'
+    if (action.includes('delete')) return 'text-destructive'
+    if (action.includes('update')) return 'text-info'
     return 'text-text-secondary'
   }
 
   it('green for create actions', () => {
-    expect(getActionColor('item.create')).toBe('text-emerald-400')
+    expect(getActionColor('item.create')).toBe('text-success')
   })
 
   it('red for delete actions', () => {
-    expect(getActionColor('item.delete')).toBe('text-red-400')
+    expect(getActionColor('item.delete')).toBe('text-destructive')
   })
 
   it('blue for update actions', () => {
-    expect(getActionColor('item.update')).toBe('text-blue-400')
+    expect(getActionColor('item.update')).toBe('text-info')
   })
 
   it('default for unknown actions', () => {

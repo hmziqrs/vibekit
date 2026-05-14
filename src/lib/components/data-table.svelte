@@ -82,7 +82,7 @@
             <input
               type="checkbox"
               checked={allChecked}
-              {someChecked}
+              indeterminate={someChecked}
               onchange={toggleAll}
               class="rounded border-border"
             />
@@ -119,11 +119,11 @@
         {#each Array(5) as _}
           <tr class="border-t border-border">
             {#if selectable}
-              <td class="px-3 py-4"><div class="h-4 w-4 animate-pulse rounded bg-white/[0.06]"></div></td>
+              <td class="px-3 py-4"><div class="h-4 w-4 animate-pulse rounded bg-muted"></div></td>
             {/if}
             {#each columns as col}
               <td class="px-4 py-4">
-                <div class="h-4 w-full max-w-[200px] animate-pulse rounded bg-white/[0.06]"></div>
+                <div class="h-4 w-full max-w-[200px] animate-pulse rounded bg-muted"></div>
               </td>
             {/each}
           </tr>
@@ -131,7 +131,7 @@
       {:else if error}
         <tr>
           <td colspan={columns.length + (selectable ? 1 : 0)} class="px-4 py-8 text-center">
-            <p class="text-[13px] text-red-400">{error}</p>
+            <p class="text-[13px] text-destructive">{error}</p>
             {#if onRetry}
               <button onclick={onRetry} class="mt-2 text-[12px] text-brand hover:underline">Retry</button>
             {/if}
@@ -145,7 +145,7 @@
         </tr>
       {:else}
         {#each rows as row (row.id as string)}
-          <tr class="border-t border-border transition-colors hover:bg-white/[0.02]">
+          <tr class="border-t border-border transition-colors hover:bg-surface">
             {#if selectable}
               <td class="px-3 py-3">
                 <input

@@ -1,7 +1,7 @@
 import { createReportSchema, resolveReportSchema } from '$lib/validators/report'
 import { describe, expect, it } from 'vitest'
 
-describe(createReportSchema, () => {
+describe('createReportSchema', () => {
   const validInput = {
     entityId: 'post-123',
     entityType: 'blogPost',
@@ -81,7 +81,7 @@ describe(createReportSchema, () => {
   })
 })
 
-describe(resolveReportSchema, () => {
+describe('resolveReportSchema', () => {
   it('accepts resolved status with note', () => {
     const result = resolveReportSchema.safeParse({
       resolutionNote: 'Content removed',

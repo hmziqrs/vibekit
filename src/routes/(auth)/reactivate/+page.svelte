@@ -64,7 +64,7 @@
     <Card.Content>
       {#if reactivated}
         <div class="space-y-4">
-          <p class="text-sm text-emerald-400">Your account has been reactivated!</p>
+          <p class="text-sm text-success">Your account has been reactivated!</p>
           <Button class="w-full" onclick={() => goto('/app/dashboard')}>Go to dashboard</Button>
         </div>
       {:else}

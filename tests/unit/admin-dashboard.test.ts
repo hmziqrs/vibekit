@@ -25,9 +25,9 @@ function formatAction(action: string): string {
 
 function getActionColor(action: string): string {
   const colors: Record<string, string> = {
-    'item.create': 'text-emerald-400',
-    'item.delete': 'text-red-400',
-    'item.update': 'text-blue-400',
+    'item.create': 'text-success',
+    'item.delete': 'text-destructive',
+    'item.update': 'text-info',
     'user.login': 'text-brand',
   }
   return colors[action] ?? 'text-text-secondary'
@@ -68,11 +68,11 @@ describe('action formatting', () => {
 
 describe('action color mapping', () => {
   it('returns colors for create actions', () => {
-    expect(getActionColor('item.create')).toBe('text-emerald-400')
+    expect(getActionColor('item.create')).toBe('text-success')
   })
 
   it('returns colors for delete actions', () => {
-    expect(getActionColor('item.delete')).toBe('text-red-400')
+    expect(getActionColor('item.delete')).toBe('text-destructive')
   })
 
   it('returns default for unknown actions', () => {

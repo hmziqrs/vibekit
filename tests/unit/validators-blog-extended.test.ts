@@ -1,7 +1,7 @@
 import { bulkActionSchema, createTagSchema, linkPreviewSchema } from '$lib/validators/blog'
 import { describe, expect, it } from 'vitest'
 
-describe(createTagSchema, () => {
+describe('createTagSchema', () => {
   it('accepts valid tag name', () => {
     const result = createTagSchema.safeParse({ name: 'TypeScript' })
     expect(result.success).toBe(true)
@@ -43,7 +43,7 @@ describe(createTagSchema, () => {
   })
 })
 
-describe(bulkActionSchema, () => {
+describe('bulkActionSchema', () => {
   it('accepts valid ids array', () => {
     const result = bulkActionSchema.safeParse({ ids: ['id1', 'id2'] })
     expect(result.success).toBe(true)
@@ -87,7 +87,7 @@ describe(bulkActionSchema, () => {
   })
 })
 
-describe(linkPreviewSchema, () => {
+describe('linkPreviewSchema', () => {
   it('accepts valid https URL', () => {
     const result = linkPreviewSchema.safeParse({ url: 'https://example.com/page' })
     expect(result.success).toBe(true)
@@ -124,6 +124,7 @@ describe(linkPreviewSchema, () => {
   })
 
   it('rejects javascript: URL (SSRF prevention)', () => {
+    // oxlint-disable-next-line no-script-url
     const result = linkPreviewSchema.safeParse({ url: 'javascript:alert(1)' })
     expect(result.success).toBe(false)
   })
@@ -139,7 +140,7 @@ describe(linkPreviewSchema, () => {
   })
 
   it('rejects non-string URL', () => {
-    const result = linkPreviewSchema.safeParse({ url: 12345 })
+    const result = linkPreviewSchema.safeParse({ url: 12_345 })
     expect(result.success).toBe(false)
   })
 

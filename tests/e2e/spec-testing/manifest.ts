@@ -2,9 +2,11 @@ import type { RouteConfig } from './types'
 
 export const ROUTES: RouteConfig[] = [
   // (public) — prerendered, no CSR (csr=false in +layout.ts)
+  // Note: devStrategy is 'ssr-with-csr' because the dev server serves these via SSR with scripts
+  // even though they prerender at build time. The expectedStrategy reflects production behavior.
   {
     description: 'Homepage is prerendered static HTML',
-    devStrategy: 'prerendered-no-csr',
+    devStrategy: 'ssr-with-csr',
     expectedStrategy: 'prerendered-no-csr',
     group: '(public)',
     path: '/',
@@ -13,7 +15,7 @@ export const ROUTES: RouteConfig[] = [
   },
   {
     description: 'Features page is prerendered static HTML',
-    devStrategy: 'prerendered-no-csr',
+    devStrategy: 'ssr-with-csr',
     expectedStrategy: 'prerendered-no-csr',
     group: '(public)',
     path: '/features',
@@ -22,7 +24,7 @@ export const ROUTES: RouteConfig[] = [
   },
   {
     description: 'Pricing page is prerendered static HTML',
-    devStrategy: 'prerendered-no-csr',
+    devStrategy: 'ssr-with-csr',
     expectedStrategy: 'prerendered-no-csr',
     group: '(public)',
     path: '/pricing',
@@ -31,7 +33,7 @@ export const ROUTES: RouteConfig[] = [
   },
   {
     description: 'About page is prerendered static HTML',
-    devStrategy: 'prerendered-no-csr',
+    devStrategy: 'ssr-with-csr',
     expectedStrategy: 'prerendered-no-csr',
     group: '(public)',
     path: '/about',
@@ -40,7 +42,7 @@ export const ROUTES: RouteConfig[] = [
   },
   {
     description: 'Privacy page is prerendered static HTML',
-    devStrategy: 'prerendered-no-csr',
+    devStrategy: 'ssr-with-csr',
     expectedStrategy: 'prerendered-no-csr',
     group: '(public)',
     path: '/privacy',
@@ -49,7 +51,7 @@ export const ROUTES: RouteConfig[] = [
   },
   {
     description: 'Terms page is prerendered static HTML',
-    devStrategy: 'prerendered-no-csr',
+    devStrategy: 'ssr-with-csr',
     expectedStrategy: 'prerendered-no-csr',
     group: '(public)',
     path: '/terms',

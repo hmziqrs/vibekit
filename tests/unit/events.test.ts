@@ -19,7 +19,7 @@ describe('events module', () => {
   it('writes audit log with correct input', async () => {
     const { emitEvent } = await import('$lib/server/events')
     const { writeAuditLog } = await import('$lib/server/audit')
-    const db = {} as import('$lib/server/services/types').AppDb
+    const db = {} as unknown
 
     await emitEvent(db, {
       action: 'user.created',
@@ -42,7 +42,7 @@ describe('events module', () => {
   it('passes metadata to audit log', async () => {
     const { emitEvent } = await import('$lib/server/events')
     const { writeAuditLog } = await import('$lib/server/audit')
-    const db = {} as import('$lib/server/services/types').AppDb
+    const db = {} as unknown
 
     await emitEvent(db, {
       action: 'item.updated',
@@ -63,7 +63,7 @@ describe('events module', () => {
   it('dispatches webhooks for the event', async () => {
     const { emitEvent } = await import('$lib/server/events')
     const { dispatchWebhooksForEvent } = await import('$lib/server/webhooks')
-    const db = {} as import('$lib/server/services/types').AppDb
+    const db = {} as unknown
 
     await emitEvent(db, {
       action: 'blog.published',
@@ -90,7 +90,7 @@ describe('events module', () => {
       new Error('Connection refused')
     )
 
-    const db = {} as import('$lib/server/services/types').AppDb
+    const db = {} as unknown
 
     await expect(
       emitEvent(db, {
@@ -116,7 +116,7 @@ describe('events module', () => {
       new Error('Timeout')
     )
 
-    const db = {} as import('$lib/server/services/types').AppDb
+    const db = {} as unknown
 
     await emitEvent(db, {
       action: 'user.deleted',

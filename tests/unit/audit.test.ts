@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 function createMockDb() {
   const valuesFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
@@ -8,7 +8,7 @@ function createMockDb() {
     _insertFn: insertFn,
     _valuesFn: valuesFn,
     insert: insertFn,
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown
 }
 
 describe('audit module', () => {

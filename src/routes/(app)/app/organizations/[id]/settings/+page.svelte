@@ -124,7 +124,7 @@
         <div class="mb-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{saveError}</div>
       {/if}
       {#if saveSuccess}
-        <div class="mb-4 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">Settings saved</div>
+        <div class="mb-4 rounded-lg bg-success/10 px-4 py-3 text-sm text-success">Settings saved</div>
       {/if}
 
       <div class="space-y-4">
@@ -148,7 +148,7 @@
           ></textarea>
         </div>
         <div>
-          <label class="mb-1.5 block text-sm font-medium text-text-secondary">Slug</label>
+          <span class="mb-1.5 block text-sm font-medium text-text-secondary">Slug</span>
           <p class="text-sm text-text-subtle">/{org.slug} (auto-generated from name)</p>
         </div>
         <div class="flex justify-end">

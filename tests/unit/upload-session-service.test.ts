@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('$lib/server/db/schema', () => ({
+vi.mock('$lib/server/db/schema', async (importOriginal) => ({
+  ...(await importOriginal()),
   uploadSession: {
     chunkSize: 'chunkSize',
     createdAt: 'createdAt',
@@ -22,6 +23,21 @@ vi.mock('$lib/server/uuid', () => ({
   uuid: () => 'test-uuid-session',
 }))
 
+function makeSession(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    chunkSize: 5 * 1024 * 1024,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    fileName: 'test.mp4',
+    fileSize: 50 * 1024 * 1024,
+    fileType: 'video/mp4',
+    id: 'sess-1',
+    receivedChunks: [],
+    status: 'pending',
+    totalChunks: 10,
+    ...overrides,
+  }
+}
+
 describe('upload-session service', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -29,36 +45,31 @@ describe('upload-session service', () => {
 
   function createMockDb(session: Record<string, unknown> | null = null) {
     const rows = session ? [session] : []
-    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+    const setFn = vi.fn<() => { where: ReturnType<typeof vi.fn> }>().mockReturnValue({
+      where: vi.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
+    })
 
     return {
-      _insertFn: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      _setFn: setFn,
-      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockResolvedValue(rows),
-          where: vi.fn().mockResolvedValue(rows),
-        }),
+      _insertFn: vi.fn<() => { values: ReturnType<typeof vi.fn> }>().mockReturnValue({
+        values: vi.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
       }),
-      update: vi.fn().mockReturnValue({ set: setFn }),
-    }
-  }
-
-  function makeSession(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-    return {
-      chunkSize: 5 * 1024 * 1024,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      fileName: 'test.mp4',
-      fileSize: 50 * 1024 * 1024,
-      fileType: 'video/mp4',
-      id: 'sess-1',
-      receivedChunks: [],
-      status: 'pending',
-      totalChunks: 10,
-      ...overrides,
-    }
+      _setFn: setFn,
+      delete: vi.fn<() => { where: ReturnType<typeof vi.fn> }>().mockReturnValue({
+        where: vi.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
+      }),
+      insert: vi.fn<() => { values: ReturnType<typeof vi.fn> }>().mockReturnValue({
+        values: vi.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
+      }),
+      select: vi.fn<() => { from: ReturnType<typeof vi.fn> }>().mockReturnValue({
+        from: vi
+          .fn<() => { orderBy: ReturnType<typeof vi.fn>; where: ReturnType<typeof vi.fn> }>()
+          .mockReturnValue({
+            orderBy: vi.fn<() => Promise<unknown[]>>().mockResolvedValue(rows),
+            where: vi.fn<() => Promise<unknown[]>>().mockResolvedValue(rows),
+          }),
+      }),
+      update: vi.fn<() => { set: ReturnType<typeof vi.fn> }>().mockReturnValue({ set: setFn }),
+    } as unknown
   }
 
   describe('createUploadSession', () => {
@@ -160,7 +171,7 @@ describe('upload-session service', () => {
     it('returns null when not found', async () => {
       const { getUploadSession } = await import('$lib/server/upload-session')
       const db = createMockDb(null)
-      expect(await getUploadSession(db, 'missing')).toBeNull()
+      await expect(getUploadSession(db, 'missing')).resolves.toBeNull()
     })
   })
 
@@ -171,7 +182,7 @@ describe('upload-session service', () => {
       const db = createMockDb(session)
       const result = await recordChunk(db, 'sess-1', 0)
       expect(result.complete).toBe(false)
-      expect(result.receivedChunks).toEqual([0])
+      expect(result.receivedChunks).toStrictEqual([0])
       expect(result.totalChunks).toBe(3)
     })
 
@@ -181,7 +192,7 @@ describe('upload-session service', () => {
       const db = createMockDb(session)
       const result = await recordChunk(db, 'sess-1', 2)
       expect(result.complete).toBe(true)
-      expect(result.receivedChunks).toEqual([0, 1, 2])
+      expect(result.receivedChunks).toStrictEqual([0, 1, 2])
     })
 
     it('handles duplicate chunk submission', async () => {
@@ -190,7 +201,7 @@ describe('upload-session service', () => {
       const db = createMockDb(session)
       const result = await recordChunk(db, 'sess-1', 0)
       expect(result.complete).toBe(false)
-      expect(result.receivedChunks).toEqual([0, 1])
+      expect(result.receivedChunks).toStrictEqual([0, 1])
     })
 
     it('throws for missing session', async () => {
@@ -218,7 +229,7 @@ describe('upload-session service', () => {
       const session = makeSession({ receivedChunks: [2], totalChunks: 3 })
       const db = createMockDb(session)
       const result = await recordChunk(db, 'sess-1', 0)
-      expect(result.receivedChunks).toEqual([0, 2])
+      expect(result.receivedChunks).toStrictEqual([0, 2])
     })
   })
 

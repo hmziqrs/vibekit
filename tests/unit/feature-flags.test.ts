@@ -6,10 +6,10 @@ import {
   toggleFeatureFlagSchema,
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('feature Flag Validators', () => {
-  describe(createFeatureFlagSchema, () => {
+  describe('createFeatureFlagSchema', () => {
     it('validates a valid flag creation', () => {
       const result = createFeatureFlagSchema.safeParse({
         key: 'new-dashboard',
@@ -96,7 +96,7 @@ describe('feature Flag Validators', () => {
     })
   })
 
-  describe(updateFeatureFlagSchema, () => {
+  describe('updateFeatureFlagSchema', () => {
     it('validates partial update', () => {
       const result = updateFeatureFlagSchema.safeParse({
         name: 'Updated Name',
@@ -117,7 +117,7 @@ describe('feature Flag Validators', () => {
     })
   })
 
-  describe(toggleFeatureFlagSchema, () => {
+  describe('toggleFeatureFlagSchema', () => {
     it('validates enable', () => {
       const result = toggleFeatureFlagSchema.safeParse({ enabled: true })
       expect(result.success).toBe(true)
@@ -134,7 +134,7 @@ describe('feature Flag Validators', () => {
     })
   })
 
-  describe(evaluateFlagSchema, () => {
+  describe('evaluateFlagSchema', () => {
     it('validates without context', () => {
       const result = evaluateFlagSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -148,7 +148,7 @@ describe('feature Flag Validators', () => {
     })
   })
 
-  describe(evaluateMultipleFlagsSchema, () => {
+  describe('evaluateMultipleFlagsSchema', () => {
     it('validates with keys', () => {
       const result = evaluateMultipleFlagsSchema.safeParse({
         keys: ['flag-a', 'flag-b'],
@@ -171,7 +171,7 @@ describe('feature Flag Validators', () => {
     })
   })
 
-  describe(listFeatureFlagsSchema, () => {
+  describe('listFeatureFlagsSchema', () => {
     it('validates empty params', () => {
       const result = listFeatureFlagsSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -294,7 +294,7 @@ describe('feature-flags service', () => {
         from: vi.fn().mockReturnValue({ where: whereFn }),
       }),
       update: updateFn,
-    } as unknown as import('$lib/server/services/types').AppDb
+    } as unknown
   }
 
   function makeFlag(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
@@ -455,7 +455,7 @@ describe('feature-flags service', () => {
       })
       const db = {
         select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) }),
-      } as unknown as import('$lib/server/services/types').AppDb
+      } as unknown
       expect(await evaluateFeatureFlag(db, 'test-flag')).toBe(false)
     })
   })
@@ -472,7 +472,7 @@ describe('feature-flags service', () => {
       })
       const db = {
         select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) }),
-      } as unknown as import('$lib/server/services/types').AppDb
+      } as unknown
       const result = await evaluateMultipleFlags(db, ['flag-a', 'flag-b'])
       expect(result['flag-a']).toBe(true)
       expect(result['flag-b']).toBe(false)

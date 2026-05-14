@@ -6,7 +6,7 @@
       const res = await fetch('/api/integrations')
       if (!res.ok) throw new Error('Failed to fetch integrations')
       return (await res.json()) as {
-        integrations: Array<{
+        integrations: {
           createdAt: string
           externalAccountId: string | null
           id: string
@@ -17,7 +17,7 @@
           scopes: string[]
           status: string
           tokenExpiresAt: string | null
-        }>
+        }[]
       }
     },
     queryKey: ['integrations'],
@@ -28,7 +28,7 @@
       const res = await fetch('/api/integrations/providers')
       if (!res.ok) throw new Error('Failed to fetch providers')
       return (await res.json()) as {
-        providers: Array<{
+        providers: {
           configured: boolean
           provider: {
             category: string
@@ -38,7 +38,7 @@
             scopes: string[]
             slug: string
           }
-        }>
+        }[]
       }
     },
     queryKey: ['integration-providers'],
@@ -77,10 +77,10 @@
   }
 
   const statusColors: Record<string, string> = {
-    active: 'bg-emerald-500/15 text-emerald-400',
+    active: 'bg-success/15 text-success',
     disconnected: 'bg-white/[0.06] text-text-muted',
-    error: 'bg-red-500/15 text-red-400',
-    expired: 'bg-yellow-500/15 text-yellow-400',
+    error: 'bg-destructive/15 text-destructive',
+    expired: 'bg-warning/15 text-warning',
   }
 
   function getConnected(integrations: { provider: string }[], slug: string) {
@@ -135,7 +135,7 @@
                 </div>
                 {#if connected}
                   <span
-                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-400"
+                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-success/15 text-success"
                   >
                     Connected
                   </span>
@@ -146,7 +146,7 @@
                 {#if connected}
                   <span class="text-xs text-text-subtle">Already connected</span>
                 {:else if !configured}
-                  <span class="text-xs text-yellow-400">Not configured by admin</span>
+                  <span class="text-xs text-warning">Not configured by admin</span>
                 {:else}
                   <button
                     onclick={() => connectMutation.mutate(provider.slug)}
@@ -196,7 +196,7 @@
                     {/if}
                   </div>
                   {#if int.lastError}
-                    <p class="mt-1 text-xs text-red-400">{int.lastError}</p>
+                    <p class="mt-1 text-xs text-destructive">{int.lastError}</p>
                   {/if}
                 </div>
               </div>
@@ -211,7 +211,7 @@
                 <button
                   onclick={() => disconnectMutation.mutate(int.id)}
                   disabled={disconnectMutation.isPending}
-                  class="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                  class="rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
                 >
                   Disconnect
                 </button>

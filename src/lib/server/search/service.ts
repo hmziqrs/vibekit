@@ -1,4 +1,4 @@
-import type { SearchAdapter, SearchDocument, SearchService } from './types'
+import type { SearchAdapter, SearchDocument, SearchResult, SearchService } from './types'
 
 export function createSearchService(adapter: SearchAdapter): SearchService {
   return {
@@ -17,8 +17,8 @@ export function createSearchService(adapter: SearchAdapter): SearchService {
     async search(
       query: string,
       options?: { entityTypes?: string[]; limit?: number; offset?: number }
-    ): Promise<{ hits: SearchDocument[]; total: number }> {
-      return adapter.search(query, options) as Promise<{ hits: SearchDocument[]; total: number }>
+    ): Promise<{ hits: SearchResult[]; total: number }> {
+      return adapter.search(query, options)
     },
   }
 }

@@ -27,7 +27,10 @@ test.describe('banning system', () => {
   test.describe('appeal page', () => {
     test('displays appeal form', async ({ page }) => {
       await page.goto('/appeal?email=banned@example.com', { waitUntil: 'networkidle' })
-      await expect(page.getByText('Submit Appeal')).toBeVisible()
+      // Card.Title renders as a <div>, not a heading element
+      await expect(page.getByText('Submit Appeal').first()).toBeVisible({
+        timeout: 10_000,
+      })
       await expect(page.getByLabel('Name')).toBeVisible()
       await expect(page.getByLabel('Email address')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Submit Appeal' })).toBeVisible()
@@ -51,7 +54,7 @@ test.describe('banning system', () => {
     })
 
     test('shows user list with status column', async ({ page }) => {
-      await expect(page.getByText('Users')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible({ timeout: 10_000 })
       await expect(page.getByText('Status')).toBeVisible()
     })
 

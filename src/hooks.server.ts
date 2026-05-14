@@ -3,6 +3,7 @@ import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { createAuth } from '$lib/server/auth'
 import { checkLockout, recordFailedAttempt, resetAttempts } from '$lib/server/auth-lockout'
+import type { getDb } from '$lib/server/db'
 import { session as sessionTable, systemConfig } from '$lib/server/db/schema'
 import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
@@ -11,7 +12,7 @@ import {
   writeSecurityEvent,
   type SecurityEventType,
 } from '$lib/server/services/security-events'
-import { error, type Handle, type HandleServerError } from '@sveltejs/kit'
+import { error as httpError, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 import { eq } from 'drizzle-orm'
@@ -66,6 +67,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   if (!services) {
     return resolve(event)
   }
+  const db = services.db as ReturnType<typeof getDb>
 
   event.locals.services = services
   event.locals.auth = createAuth(services.db)
@@ -121,7 +123,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
       // Check if user is suspended (banned) — block sign-in
       {
         const { user: userTable } = await import('$lib/server/db/auth.schema')
-        const [foundUser] = await services.db
+        const [foundUser] = await db
           .select({
             banExpiresAt: userTable.banExpiresAt,
             banReason: userTable.banReason,
@@ -294,7 +296,8 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
   const { services } = event.locals
   if (services) {
     try {
-      const [row] = await services.db
+      const maintenanceDb = services.db as ReturnType<typeof getDb>
+      const [row] = await maintenanceDb
         .select({ value: systemConfig.value })
         .from(systemConfig)
         .where(eq(systemConfig.key, 'maintenance_mode'))
@@ -339,7 +342,7 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
   }
 
   // Admin routes require auth + admin role
-  if (pathname.startsWith('/admin')) {
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     if (!user) {
       return new Response(null, {
         headers: { Location: `/login?next=${encodeURIComponent(pathname)}` },
@@ -347,12 +350,12 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
       })
     }
     if (user.role !== 'admin') {
-      throw error(403, { message: 'Admin access required' })
+      throw httpError(403, { message: 'Admin access required' })
     }
   }
 
   // App routes require auth
-  if (pathname.startsWith('/app')) {
+  if (pathname === '/app' || pathname.startsWith('/app/')) {
     if (!user) {
       return new Response(null, {
         headers: { Location: `/login?next=${encodeURIComponent(pathname)}` },
@@ -377,7 +380,7 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
 }
 
 const handleHono: Handle = ({ event, resolve }) => {
-  if (event.url.pathname.startsWith('/api/')) {
+  if (event.url.pathname === '/api' || event.url.pathname.startsWith('/api/')) {
     return app.fetch(
       event.request,
       {

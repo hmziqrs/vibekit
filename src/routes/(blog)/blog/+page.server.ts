@@ -1,7 +1,11 @@
+import type { getDb } from '$lib/server/db'
 import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
 import { and, desc, eq, isNull, like, or, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
+
+// Narrow AppDb union to a single type so .select() overload resolution works.
+type Db = ReturnType<typeof getDb>
 
 export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
   setHeaders({
@@ -9,7 +13,7 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
     'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=60',
   })
 
-  const { db } = locals.services
+  const db = locals.services.db as Db
   const page = Math.max(1, Number(url.searchParams.get('page') || '1'))
   const limit = 10
   const offset = (page - 1) * limit
@@ -62,6 +66,7 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
             .where(whereClause)
             .orderBy(desc(blogPost.publishedAt)),
         ])
+        const _countRow = _countResult[0] as unknown as { value: number }
         const filtered = allPosts.filter((p) => idSet.has(p.id))
         const total = filtered.length
         const posts = filtered.slice(offset, offset + limit)
@@ -111,12 +116,14 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
     .from(blogTag)
     .orderBy(blogTag.name)
 
+  const countRow = countResult[0] as unknown as { value: number }
+
   return {
     page,
     posts,
     q: q || null,
     tag: tagSlug || null,
     tags,
-    total: countResult[0]?.value ?? 0,
+    total: countRow?.value ?? 0,
   }
 }

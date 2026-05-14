@@ -1,9 +1,9 @@
 import { configVersion, systemConfig } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq } from 'drizzle-orm'
 
-export async function getConfigValue(db: AppDb, key: string, environment?: string) {
+export async function getConfigValue(db: DrizzleDb, key: string, environment?: string) {
   // First try environment-specific value
   if (environment) {
     const envRows = await db
@@ -19,7 +19,7 @@ export async function getConfigValue(db: AppDb, key: string, environment?: strin
 }
 
 export async function setConfigValue(
-  db: AppDb,
+  db: DrizzleDb,
   input: {
     changedBy?: string
     description?: string
@@ -36,6 +36,7 @@ export async function setConfigValue(
   const oldValue =
     existing.length > 0 ? ((existing[0] as Record<string, unknown>).value as string) : null
 
+  // oxlint-disable-next-line unicorn/prefer-ternary
   if (existing.length > 0) {
     await db
       .update(systemConfig)
@@ -47,7 +48,7 @@ export async function setConfigValue(
       environment: input.environment ?? null,
       id: uuid(),
       key: effectiveKey,
-      type: input.type ?? 'string',
+      type: (input.type ?? 'string') as 'boolean' | 'json' | 'string',
       updatedBy: input.changedBy ?? null,
       value: input.value,
     })
@@ -68,7 +69,7 @@ export async function setConfigValue(
 }
 
 export async function getConfigHistory(
-  db: AppDb,
+  db: DrizzleDb,
   key?: string,
   options?: { limit?: number; offset?: number }
 ) {
@@ -98,10 +99,11 @@ export async function getConfigHistory(
     .offset(offset)
 }
 
-export async function resolveConfig(db: AppDb, keys: string[], environment?: string) {
+export async function resolveConfig(db: DrizzleDb, keys: string[], environment?: string) {
   const result: Record<string, string> = {}
 
   for (const key of keys) {
+    // oxlint-disable-next-line no-await-in-loop
     const config = await getConfigValue(db, key, environment)
     if (config) {
       result[key] = config.value as string

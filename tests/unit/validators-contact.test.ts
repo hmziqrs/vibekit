@@ -1,7 +1,7 @@
 import { appealSchema, contactSchema } from '$lib/validators/contact'
 import { describe, expect, it } from 'vitest'
 
-describe(contactSchema, () => {
+describe('contactSchema', () => {
   const validInput = {
     email: 'john@example.com',
     message: 'I would like to know more about your product and pricing options.',

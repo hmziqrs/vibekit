@@ -1,13 +1,7 @@
-import {
-  createPostSchema,
-  updatePostSchema,
-  type CreatePostInput,
-  type UpdatePostInput,
-} from '$lib/validators/blog'
+import { createPostSchema, updatePostSchema } from '$lib/validators/blog'
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod/v4'
 
-describe(createPostSchema, () => {
+describe('createPostSchema', () => {
   it('accepts draft status', () => {
     const result = createPostSchema.safeParse({
       slug: 'test-post',
@@ -37,7 +31,7 @@ describe(createPostSchema, () => {
   })
 })
 
-describe(updatePostSchema, () => {
+describe('updatePostSchema', () => {
   it('accepts scheduled status', () => {
     const result = updatePostSchema.safeParse({
       status: 'scheduled',
@@ -72,6 +66,7 @@ describe(updatePostSchema, () => {
     expect(result.success && result.data.scheduledAt).toBeUndefined()
   })
 
+  // oxlint-disable-next-line jest/prefer-ending-with-an-expect
   it('accepts all valid statuses', () => {
     const statuses = ['draft', 'published', 'archived', 'scheduled'] as const
     for (const status of statuses) {

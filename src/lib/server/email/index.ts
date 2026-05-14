@@ -1,7 +1,9 @@
 import type { EmailClient, EmailResult } from '../services/types'
 import { EmailQueue } from './queue'
-import { renderContactNotification } from './templates/contact-notification'
-import type { ContactNotificationData } from './templates/contact-notification'
+import {
+  renderContactNotification,
+  type ContactNotificationData,
+} from './templates/contact-notification'
 import { renderEmailVerification } from './templates/email-verification'
 import { renderNewsletterConfirm } from './templates/newsletter-confirm'
 import { renderPasswordReset } from './templates/password-reset'

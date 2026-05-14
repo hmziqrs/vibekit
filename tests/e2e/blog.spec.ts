@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { loginAsAdmin, login, USER } from './helpers/auth'
+
 test.describe('public blog', () => {
   test('blog index renders with search bar and articles', async ({ page }) => {
     await page.goto('/blog', { waitUntil: 'networkidle' })
@@ -71,12 +73,8 @@ test.describe('blog auth guards', () => {
   })
 
   test('normal user accessing admin blog gets 403', async ({ page }) => {
-    // Sign in as normal user via API
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('user@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('user12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
+    // Sign in as normal user
+    await login(page, USER)
 
     await page.goto('/admin/blog')
     await expect(page.getByText('Admin access required')).toBeVisible()
@@ -86,20 +84,7 @@ test.describe('blog auth guards', () => {
 
 test.describe('admin blog management', () => {
   test.beforeEach(async ({ page }) => {
-    // Log in as admin
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByPlaceholder('you@example.com').fill('admin@vibekit.local')
-    await page.getByPlaceholder('Enter your password').fill('admin12345678')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/app/**', { timeout: 10_000 })
-    // Dismiss cookie consent if present
-    const dialog = page.getByRole('dialog', { name: /cookie consent/i })
-    if (await dialog.isVisible()) {
-      await dialog
-        .getByRole('button', { name: 'Decline' })
-        .click()
-        .catch(() => {})
-    }
+    await loginAsAdmin(page)
   })
 
   test('blog list renders with data table', async ({ page }) => {

@@ -1,20 +1,16 @@
 import { blogPost, item } from '$lib/server/db/schema'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { eq, isNull } from 'drizzle-orm'
 
 import type { SearchDocument } from './types'
 
-type DbClient = AppDb & {
-  all: (query: unknown) => Promise<unknown[]>
-  run: (query: unknown) => Promise<void>
+function getAdapter(db: DrizzleDb) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return createD1SearchAdapter(db as any)
 }
 
-function getAdapter(db: DbClient) {
-  return createD1SearchAdapter(db)
-}
-
-export async function indexBlogPost(db: DbClient, postId: string): Promise<void> {
+export async function indexBlogPost(db: DrizzleDb, postId: string): Promise<void> {
   const rows = await db
     .select({
       contentBody: blogPost.contentBody,
@@ -54,7 +50,7 @@ export async function indexBlogPost(db: DbClient, postId: string): Promise<void>
   await getAdapter(db).index(document)
 }
 
-export async function indexItem(db: DbClient, itemId: string): Promise<void> {
+export async function indexItem(db: DrizzleDb, itemId: string): Promise<void> {
   const rows = await db
     .select({
       createdAt: item.createdAt,
@@ -86,14 +82,14 @@ export async function indexItem(db: DbClient, itemId: string): Promise<void> {
 }
 
 export async function deindexEntity(
-  db: DbClient,
+  db: DrizzleDb,
   entityId: string,
   entityType: string
 ): Promise<void> {
   await getAdapter(db).delete(entityId, entityType)
 }
 
-export async function reindexAllBlogPosts(db: DbClient): Promise<number> {
+export async function reindexAllBlogPosts(db: DrizzleDb): Promise<number> {
   const posts = await db
     .select({
       contentBody: blogPost.contentBody,
@@ -106,24 +102,25 @@ export async function reindexAllBlogPosts(db: DbClient): Promise<number> {
     .from(blogPost)
     .where(isNull(blogPost.deletedAt))
 
-  let count = 0
+  let indexedCount = 0
   for (const post of posts) {
-    if (post.status === 'archived') continue
-
-    const document: SearchDocument = {
-      content: [post.excerpt ?? '', post.contentBody ?? ''].join('\n').slice(0, 5000),
-      entityId: post.id,
-      entityType: 'blog_post',
-      metadata: { slug: post.slug, status: post.status },
-      title: post.title ?? post.slug,
+    if (post.status !== 'archived') {
+      const document: SearchDocument = {
+        content: [post.excerpt ?? '', post.contentBody ?? ''].join('\n').slice(0, 5000),
+        entityId: post.id,
+        entityType: 'blog_post',
+        metadata: { slug: post.slug, status: post.status },
+        title: post.title ?? post.slug,
+      }
+      // oxlint-disable-next-line no-await-in-loop
+      await getAdapter(db).index(document)
+      indexedCount++
     }
-    await getAdapter(db).index(document)
-    count++
   }
-  return count
+  return indexedCount
 }
 
-export async function reindexAllItems(db: DbClient): Promise<number> {
+export async function reindexAllItems(db: DrizzleDb): Promise<number> {
   const items = await db
     .select({
       description: item.description,
@@ -136,17 +133,18 @@ export async function reindexAllItems(db: DbClient): Promise<number> {
 
   let count = 0
   for (const row of items) {
-    if (row.status === 'archived') continue
-
-    const document: SearchDocument = {
-      content: row.description ?? '',
-      entityId: row.id,
-      entityType: 'item',
-      metadata: { status: row.status },
-      title: row.name,
+    if (row.status !== 'archived') {
+      const document: SearchDocument = {
+        content: row.description ?? '',
+        entityId: row.id,
+        entityType: 'item',
+        metadata: { status: row.status },
+        title: row.name,
+      }
+      // oxlint-disable-next-line no-await-in-loop
+      await getAdapter(db).index(document)
+      count++
     }
-    await getAdapter(db).index(document)
-    count++
   }
   return count
 }

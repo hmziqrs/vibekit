@@ -8,7 +8,7 @@ function sanitizeSearchQuery(query: string): string {
     .trim()
 }
 
-describe('FTS search query sanitization', () => {
+describe('search query sanitization', () => {
   it('strips double quotes', () => {
     expect(sanitizeSearchQuery('hello "world"')).toBe('hello world')
   })

@@ -1,3 +1,9 @@
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
+
 export interface ImageResizeOptions {
   fit?: 'contain' | 'cover' | 'crop' | 'scale-down'
   format?: 'avif' | 'json' | 'webp'
@@ -95,11 +101,6 @@ export function extractImageMetadata(filename: string, fileSize: number) {
     filename,
     mimeType: mimeTypeMap[ext] ?? 'application/octet-stream',
     size: fileSize,
-    sizeFormatted:
-      fileSize < 1024
-        ? `${fileSize}B`
-        : fileSize < 1024 * 1024
-          ? `${(fileSize / 1024).toFixed(1)}KB`
-          : `${(fileSize / (1024 * 1024)).toFixed(1)}MB`,
+    sizeFormatted: formatFileSize(fileSize),
   }
 }

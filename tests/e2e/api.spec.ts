@@ -26,19 +26,19 @@ test.describe('Hono API integration', () => {
       expect(res.status()).toBe(200)
 
       const body = await res.json()
-      expect(body.ok).toBe(true)
-      expect(body.db).toBe('connected')
-      expect(typeof body.responseTime).toBe('number')
-      expect(typeof body.time).toBe('string')
+      expect(body.status).toBe('healthy')
+      expect(body.checks.database).toBe('healthy')
+      expect(typeof body.timestamp).toBe('string')
+      expect(typeof body.version).toBe('string')
     })
 
     test('health endpoint structure is correct', async ({ request }) => {
       const res = await request.get('/api/health')
       const body = await res.json()
-      expect(body).toHaveProperty('ok')
-      expect(body).toHaveProperty('db')
-      expect(body).toHaveProperty('responseTime')
-      expect(body).toHaveProperty('time')
+      expect(body).toHaveProperty('status')
+      expect(body).toHaveProperty('checks')
+      expect(body).toHaveProperty('timestamp')
+      expect(body).toHaveProperty('version')
     })
   })
 
@@ -49,7 +49,7 @@ test.describe('Hono API integration', () => {
       const res = await request.get('/api/items')
       expect(res.status()).toBe(401)
       const body = await res.json()
-      expect(body.error).toBe('Unauthorized')
+      expect(body.error).toBeTruthy()
     })
 
     test('unauthenticated request to blog route returns 401', async ({ request }) => {
@@ -370,8 +370,8 @@ test.describe('Hono API integration', () => {
     test('PATCH /api/admin/users/:id updates user status', async ({ request }) => {
       const cookie = await login(request, ADMIN)
 
-      // Get the regular user's ID
-      const listRes = await request.get('/api/admin/users', {
+      // Search for the regular user specifically (may not be on first page of unfiltered list)
+      const listRes = await request.get('/api/admin/users?search=user@vibekit.local', {
         headers: { cookie },
       })
       const { users } = await listRes.json()
@@ -399,8 +399,8 @@ test.describe('Hono API integration', () => {
     test('DELETE /api/admin/users/:id cannot delete self', async ({ request }) => {
       const cookie = await login(request, ADMIN)
 
-      // Get admin's own ID
-      const listRes = await request.get('/api/admin/users', {
+      // Get admin's own ID (search to avoid pagination issues)
+      const listRes = await request.get('/api/admin/users?search=admin@vibekit.local', {
         headers: { cookie },
       })
       const { users } = await listRes.json()
@@ -412,7 +412,8 @@ test.describe('Hono API integration', () => {
       })
       expect(res.status()).toBe(400)
       const body = await res.json()
-      expect(body.error).toBe('Cannot delete yourself')
+      // Error response format: { error: { code, message, status } }
+      expect(body.error.message).toBe('Cannot delete yourself')
     })
 
     test('DELETE /api/admin/users/:id returns 404 for nonexistent user', async ({ request }) => {

@@ -164,12 +164,12 @@ describe('handleRouteGuards', () => {
   })
 
   it('requires auth for admin routes', () => {
-    expect(hooksSource).toContain("pathname.startsWith('/admin')")
+    expect(hooksSource).toContain("pathname === '/admin' || pathname.startsWith('/admin/')")
     expect(hooksSource).toContain("user.role !== 'admin'")
   })
 
   it('requires auth for app routes', () => {
-    expect(hooksSource).toContain("pathname.startsWith('/app')")
+    expect(hooksSource).toContain("pathname === '/app' || pathname.startsWith('/app/')")
     expect(hooksSource).toContain('encodeURIComponent(pathname)')
   })
 

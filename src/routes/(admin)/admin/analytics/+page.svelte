@@ -76,7 +76,7 @@
   </div>
   <div class="rounded-lg border border-border bg-surface p-3">
     <div class="text-[12px] text-text-muted">Avg Completion</div>
-    <div class="text-xl font-semibold text-green-400">
+    <div class="text-xl font-semibold text-success">
       {overviewQuery.data ? `${overviewQuery.data.avgCompletion}%` : '—'}
     </div>
   </div>

@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto'
+import { createHmac, type createHash } from 'node:crypto'
 
 import type {
   ListResult,
@@ -66,7 +66,7 @@ export function createS3Storage(config: S3Config): StorageClient {
   return {
     async delete(key: string): Promise<void> {
       const path = `/${config.bucket}/${key}`
-      const host = new URL(baseUrl).host
+      const { host } = new URL(baseUrl)
       const headers: Record<string, string> = { host }
       const auth = await signRequest('DELETE', path, headers)
       await fetch(`${baseUrl}${path}`, {
@@ -77,7 +77,7 @@ export function createS3Storage(config: S3Config): StorageClient {
 
     async get(key: string): Promise<StoredObject | null> {
       const path = `/${config.bucket}/${key}`
-      const host = new URL(baseUrl).host
+      const { host } = new URL(baseUrl)
       const headers: Record<string, string> = { host }
       const auth = await signRequest('GET', path, headers)
       const res = await fetch(`${baseUrl}${path}`, {
@@ -115,7 +115,7 @@ export function createS3Storage(config: S3Config): StorageClient {
         'X-Amz-SignedHeaders': 'host',
       })
 
-      const host = new URL(baseUrl).host
+      const { host } = new URL(baseUrl)
       const path = `/${config.bucket}/${key}`
       const canonical = [
         'GET',
@@ -147,7 +147,7 @@ export function createS3Storage(config: S3Config): StorageClient {
         'max-keys': String(limit),
       })
       const path = `/${config.bucket}?${params}`
-      const host = new URL(baseUrl).host
+      const { host } = new URL(baseUrl)
       const headers: Record<string, string> = { host }
       const auth = await signRequest('GET', path, headers)
       const res = await fetch(`${baseUrl}${path}`, {
@@ -189,7 +189,7 @@ export function createS3Storage(config: S3Config): StorageClient {
       opts?: PutOptions
     ): Promise<PutResult> {
       const path = `/${config.bucket}/${key}`
-      const host = new URL(baseUrl).host
+      const { host } = new URL(baseUrl)
 
       let bytes: Uint8Array
       if (body instanceof Uint8Array) {
@@ -224,7 +224,7 @@ export function createS3Storage(config: S3Config): StorageClient {
 
       const auth = await signRequest('PUT', path, headers)
       const res = await fetch(`${baseUrl}${path}`, {
-        body: bytes,
+        body: new Blob([bytes.buffer] as BlobPart[]),
         headers: { ...headers, authorization: auth },
         method: 'PUT',
       })
@@ -241,15 +241,15 @@ export function createS3Storage(config: S3Config): StorageClient {
 }
 
 function sha256Hex(data: string): string {
-  const { createHash } = require('node:crypto') as typeof import('node:crypto')
-  return createHash('sha256').update(data).digest('hex')
+  const crypto = require('node:crypto') as { createHash: typeof createHash }
+  return crypto.createHash('sha256').update(data).digest('hex')
 }
 
 function hmacChain(...parts: string[]): Buffer {
-  const { createHmac: hmac } = require('node:crypto') as typeof import('node:crypto')
+  const { createHmac: hmacFn } = require('node:crypto') as { createHmac: typeof createHmac }
   let key = Buffer.from(parts[0], 'utf8')
   for (let i = 1; i < parts.length; i++) {
-    key = hmac('sha256', key).update(parts[i]).digest()
+    key = hmacFn('sha256', key).update(parts[i]).digest()
   }
   return key
 }

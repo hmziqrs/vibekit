@@ -84,9 +84,9 @@
   }
 
   function getActionColor(action: string) {
-    if (action.includes('create')) return 'text-emerald-400'
-    if (action.includes('delete')) return 'text-red-400'
-    if (action.includes('update')) return 'text-blue-400'
+    if (action.includes('create')) return 'text-success'
+    if (action.includes('delete')) return 'text-destructive'
+    if (action.includes('update')) return 'text-info'
     return 'text-text-secondary'
   }
 </script>
@@ -212,8 +212,8 @@
               </div>
               <span
                 class="ml-4 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium {item.status === 'active'
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'bg-amber-500/10 text-amber-400'}"
+                  ? 'bg-success/10 text-success'
+                  : 'bg-warning/10 text-warning'}"
               >
                 {item.status}
               </span>

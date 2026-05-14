@@ -1,5 +1,5 @@
 import { apiKey, apiKeyUsageLog } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 
@@ -21,7 +21,7 @@ async function hashKey(key: string): Promise<string> {
 }
 
 export async function createApiKey(
-  db: AppDb,
+  db: DrizzleDb,
   userId: string,
   input: { expiresAt?: number; name: string; rateLimit?: number; scopes: string[] }
 ) {
@@ -46,7 +46,7 @@ export async function createApiKey(
 }
 
 export async function validateApiKey(
-  db: AppDb,
+  db: DrizzleDb,
   bearerToken: string
 ): Promise<{
   id: string
@@ -92,7 +92,7 @@ export async function validateApiKey(
   }
 }
 
-export async function touchApiKey(db: AppDb, keyId: string) {
+export async function touchApiKey(db: DrizzleDb, keyId: string) {
   await db
     .update(apiKey)
     .set({
@@ -103,7 +103,7 @@ export async function touchApiKey(db: AppDb, keyId: string) {
 }
 
 export async function logApiKeyUsage(
-  db: AppDb,
+  db: DrizzleDb,
   input: {
     apiKeyId: string
     endpoint: string
@@ -125,7 +125,7 @@ export async function logApiKeyUsage(
   })
 }
 
-export async function listApiKeys(db: AppDb, userId: string) {
+export async function listApiKeys(db: DrizzleDb, userId: string) {
   return db
     .select({
       createdAt: apiKey.createdAt,
@@ -145,7 +145,7 @@ export async function listApiKeys(db: AppDb, userId: string) {
 }
 
 export async function rotateApiKey(
-  db: AppDb,
+  db: DrizzleDb,
   keyId: string,
   userId: string
 ): Promise<{ id: string; key: string; keyPrefix: string } | null> {
@@ -165,7 +165,7 @@ export async function rotateApiKey(
   return { id: keyId, key: fullKey, keyPrefix }
 }
 
-export async function revokeApiKey(db: AppDb, keyId: string, userId: string): Promise<boolean> {
+export async function revokeApiKey(db: DrizzleDb, keyId: string, userId: string): Promise<boolean> {
   await db
     .update(apiKey)
     .set({ revokedAt: new Date() })
@@ -174,12 +174,13 @@ export async function revokeApiKey(db: AppDb, keyId: string, userId: string): Pr
   return true
 }
 
-export async function deleteApiKey(db: AppDb, keyId: string, userId: string) {
+export async function deleteApiKey(db: DrizzleDb, keyId: string, userId: string) {
   await db.delete(apiKey).where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId)))
 }
 
+// oxlint-disable-next-line max-params
 export async function updateApiKey(
-  db: AppDb,
+  db: DrizzleDb,
   keyId: string,
   userId: string,
   input: { name?: string; rateLimit?: number | null; scopes?: string[] }
@@ -197,7 +198,7 @@ export async function updateApiKey(
     .where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId), isNull(apiKey.revokedAt)))
 }
 
-export async function getApiKeyUsage(db: AppDb, keyId: string, limit = 50) {
+export async function getApiKeyUsage(db: DrizzleDb, keyId: string, limit = 50) {
   return db
     .select()
     .from(apiKeyUsageLog)

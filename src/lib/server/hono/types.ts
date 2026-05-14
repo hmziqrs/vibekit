@@ -1,14 +1,21 @@
 import type { OrgRole, TeamRole } from '$lib/permissions'
 import type { createAuthForHono } from '$lib/server/auth-hono'
-import type { AppServices } from '$lib/server/services/types'
+import type { AppServices, DrizzleDb } from '$lib/server/services/types'
+
+export type NarrowedServices = Omit<AppServices, 'db'> & { db: DrizzleDb }
 
 export interface Bindings {
   DB?: D1Database
   R2_BLOG_MEDIA?: R2Bucket
+  STRIPE_SECRET_KEY?: string
+  STRIPE_WEBHOOK_SECRET?: string
+  VAPID_PUBLIC_KEY?: string
+  VAPID_PRIVATE_KEY?: string
+  VAPID_SUBJECT?: string
 }
 
 export interface Variables {
-  services: AppServices
+  services: NarrowedServices
   auth: ReturnType<typeof createAuthForHono>
   user: ReturnType<typeof createAuthForHono>['$Infer']['Session']['user'] | null
   session: ReturnType<typeof createAuthForHono>['$Infer']['Session']['session'] | null
@@ -21,11 +28,12 @@ export interface Variables {
     scopes: string[]
     userId: string
   } | null
+  resource: unknown
 }
 
 export interface Env {
   Bindings: Bindings & {
-    __services?: AppServices
+    __services?: NarrowedServices
     __auth?: Variables['auth']
     __user?: Variables['user']
     __session?: Variables['session']

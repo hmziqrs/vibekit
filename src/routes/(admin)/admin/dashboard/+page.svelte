@@ -28,14 +28,14 @@
 
   function getActionColor(action: string): string {
     const colors: Record<string, string> = {
-      'item.create': 'text-emerald-400',
-      'item.delete': 'text-red-400',
-      'item.update': 'text-blue-400',
-      'organization.create': 'text-emerald-400',
-      'organization.delete': 'text-red-400',
-      'organization.update': 'text-blue-400',
+      'item.create': 'text-success',
+      'item.delete': 'text-destructive',
+      'item.update': 'text-info',
+      'organization.create': 'text-success',
+      'organization.delete': 'text-destructive',
+      'organization.update': 'text-info',
       'user.login': 'text-brand',
-      'user.register': 'text-emerald-400',
+      'user.register': 'text-success',
     }
     return colors[action] ?? 'text-text-secondary'
   }
@@ -77,9 +77,9 @@
   {#if statsQuery.isPending}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {#each Array(4) as _}
-        <div class="animate-pulse rounded-xl border border-white/[0.06] bg-surface p-6">
-          <div class="h-4 w-20 rounded bg-white/[0.06]"></div>
-          <div class="mt-3 h-8 w-16 rounded bg-white/[0.06]"></div>
+        <div class="animate-pulse rounded-xl border border-border bg-surface p-6">
+          <div class="h-4 w-20 rounded bg-muted"></div>
+          <div class="mt-3 h-8 w-16 rounded bg-muted"></div>
         </div>
       {/each}
     </div>
@@ -93,7 +93,7 @@
     <!-- Stat cards -->
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <!-- Users -->
-      <div class="rounded-xl border border-white/[0.06] bg-surface p-6">
+      <div class="rounded-xl border border-border bg-surface p-6">
         <div class="flex items-center justify-between">
           <p class="text-[13px] text-text-muted">Users</p>
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
@@ -105,15 +105,15 @@
         </div>
         <p class="mt-2 text-2xl font-semibold text-text-primary">{stats.users.total}</p>
         <div class="mt-1 flex items-center gap-2">
-          <span class="text-[12px] text-emerald-400">+{stats.users.newThisWeek} this week</span>
+          <span class="text-[12px] text-success">+{stats.users.newThisWeek} this week</span>
           {#if stats.users.suspended > 0}
-            <span class="text-[12px] text-red-400">{stats.users.suspended} suspended</span>
+            <span class="text-[12px] text-destructive">{stats.users.suspended} suspended</span>
           {/if}
         </div>
       </div>
 
       <!-- Blog Posts -->
-      <div class="rounded-xl border border-white/[0.06] bg-surface p-6">
+      <div class="rounded-xl border border-border bg-surface p-6">
         <div class="flex items-center justify-between">
           <p class="text-[13px] text-text-muted">Blog Posts</p>
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
@@ -125,13 +125,13 @@
         </div>
         <p class="mt-2 text-2xl font-semibold text-text-primary">{stats.posts.total}</p>
         <div class="mt-1 flex items-center gap-2">
-          <span class="text-[12px] text-emerald-400">{stats.posts.published} published</span>
+          <span class="text-[12px] text-success">{stats.posts.published} published</span>
           <span class="text-[12px] text-text-subtle">{stats.posts.draft} drafts</span>
         </div>
       </div>
 
       <!-- Items -->
-      <div class="rounded-xl border border-white/[0.06] bg-surface p-6">
+      <div class="rounded-xl border border-border bg-surface p-6">
         <div class="flex items-center justify-between">
           <p class="text-[13px] text-text-muted">Items</p>
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
@@ -141,11 +141,11 @@
           </div>
         </div>
         <p class="mt-2 text-2xl font-semibold text-text-primary">{stats.items.total}</p>
-        <span class="text-[12px] text-emerald-400">{stats.items.active} active</span>
+        <span class="text-[12px] text-success">{stats.items.active} active</span>
       </div>
 
       <!-- Active Users -->
-      <div class="rounded-xl border border-white/[0.06] bg-surface p-6">
+      <div class="rounded-xl border border-border bg-surface p-6">
         <div class="flex items-center justify-between">
           <p class="text-[13px] text-text-muted">Active Users</p>
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
@@ -167,16 +167,16 @@
         <a href="/admin/audit" class="text-[13px] text-brand hover:underline">View all</a>
       </div>
       {#if stats.audit.length === 0}
-        <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-6">
+        <div class="mt-4 rounded-xl border border-border bg-surface p-6">
           <p class="text-[13px] text-text-muted">No activity recorded yet.</p>
         </div>
       {:else}
-        <div class="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-surface">
+        <div class="mt-4 overflow-hidden rounded-xl border border-border bg-surface">
           <div class="divide-y divide-white/[0.04]">
             {#each stats.audit as entry (entry.id)}
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-medium text-text-secondary">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-medium text-text-secondary">
                     {entry.userName.charAt(0).toUpperCase()}
                   </div>
                   <div>

@@ -1,7 +1,7 @@
 import { bulkDeleteMediaSchema } from '$lib/validators/upload'
 import { describe, expect, it } from 'vitest'
 
-describe(bulkDeleteMediaSchema, () => {
+describe('bulkDeleteMediaSchema', () => {
   it('accepts valid keys array', () => {
     const result = bulkDeleteMediaSchema.safeParse({
       keys: ['uploads/img1.jpg', 'uploads/img2.png'],

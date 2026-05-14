@@ -6,10 +6,10 @@ import {
   recordEventSchema,
   updateExperimentSchema,
 } from '$lib/validators/ab-testing'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('a/B Testing Validators', () => {
-  describe(createExperimentSchema, () => {
+  describe('createExperimentSchema', () => {
     it('validates a valid experiment', () => {
       const result = createExperimentSchema.safeParse({
         key: 'checkout-redesign',
@@ -90,7 +90,7 @@ describe('a/B Testing Validators', () => {
     })
   })
 
-  describe(updateExperimentSchema, () => {
+  describe('updateExperimentSchema', () => {
     it('validates status update', () => {
       const result = updateExperimentSchema.safeParse({ status: 'running' })
       expect(result.success).toBe(true)
@@ -112,7 +112,7 @@ describe('a/B Testing Validators', () => {
     })
   })
 
-  describe(assignVariantSchema, () => {
+  describe('assignVariantSchema', () => {
     it('validates with userId', () => {
       const result = assignVariantSchema.safeParse({ userId: 'user-123' })
       expect(result.success).toBe(true)
@@ -129,7 +129,7 @@ describe('a/B Testing Validators', () => {
     })
   })
 
-  describe(recordEventSchema, () => {
+  describe('recordEventSchema', () => {
     it('validates conversion event', () => {
       const result = recordEventSchema.safeParse({
         eventName: 'purchase',
@@ -164,7 +164,7 @@ describe('a/B Testing Validators', () => {
     })
   })
 
-  describe(listExperimentsSchema, () => {
+  describe('listExperimentsSchema', () => {
     it('validates empty params', () => {
       const result = listExperimentsSchema.safeParse({})
       expect(result.success).toBe(true)
@@ -178,7 +178,7 @@ describe('a/B Testing Validators', () => {
 })
 
 describe('statistical Significance', () => {
-  describe(calculateZTest, () => {
+  describe('calculateZTest', () => {
     it('returns 0 zScore for identical rates', () => {
       const { zScore } = calculateZTest(0.1, 1000, 0.1, 1000)
       expect(zScore).toBe(0)
@@ -324,10 +324,11 @@ describe('ab-testing service', () => {
         const limitFn = vi.fn().mockResolvedValue(selectCallCount === 1 ? expRows : variants)
         // Return a thenable so `await` works directly, plus .limit() for chaining
         const result = selectCallCount === 1 ? expRows : variants
-        const chainable = { limit: limitFn }
-        // Make it thenable (awaitable)
-        chainable.then = (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve)
-        chainable.catch = (reject: (v: unknown) => unknown) => Promise.resolve(result).catch(reject)
+        const chainable = {
+          limit: limitFn,
+        } as unknown as Promise<unknown> & { limit: ReturnType<typeof vi.fn> }
+        chainable.then = Promise.resolve(result).then.bind(Promise.resolve(result))
+        chainable.catch = Promise.resolve(result).catch.bind(Promise.resolve(result))
         return chainable
       }),
     }))
@@ -343,7 +344,7 @@ describe('ab-testing service', () => {
       insert: insertFn,
       select: vi.fn().mockReturnValue({ from: fromFn }),
       update: updateFn,
-    }
+    } as unknown
   }
 
   describe('getExperiment', () => {
@@ -471,7 +472,7 @@ describe('ab-testing service', () => {
 
       const db = {
         select: vi.fn().mockReturnValue({ from: fromFn }),
-      }
+      } as unknown
 
       const results = await getExperimentResults(db, 'test-exp')
       expect(results).toHaveLength(2)

@@ -1,5 +1,5 @@
 import { notification, notificationPreference } from '$lib/server/db/schema'
-import type { AppDb } from '$lib/server/services/types'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, eq } from 'drizzle-orm'
 
@@ -16,7 +16,10 @@ interface CreateNotificationInput {
   userId: string
 }
 
-export async function createNotification(db: AppDb, input: CreateNotificationInput): Promise<void> {
+export async function createNotification(
+  db: DrizzleDb,
+  input: CreateNotificationInput
+): Promise<void> {
   const enabled = await isInAppEnabled(db, input.userId, input.entityType ?? 'general')
   if (!enabled) return
 
@@ -34,7 +37,7 @@ export async function createNotification(db: AppDb, input: CreateNotificationInp
 }
 
 export async function createBroadcast(
-  db: AppDb,
+  db: DrizzleDb,
   input: {
     body?: string
     link?: string
@@ -60,13 +63,14 @@ export async function createBroadcast(
 
   // Insert in batches of 100
   for (let i = 0; i < values.length; i += 100) {
+    // oxlint-disable-next-line no-await-in-loop
     await db.insert(notification).values(values.slice(i, i + 100))
   }
 
   return userIds.length
 }
 
-async function isInAppEnabled(db: AppDb, userId: string, type: string): Promise<boolean> {
+async function isInAppEnabled(db: DrizzleDb, userId: string, type: string): Promise<boolean> {
   const pref = await db
     .select({ enabled: notificationPreference.enabled })
     .from(notificationPreference)
@@ -83,7 +87,7 @@ async function isInAppEnabled(db: AppDb, userId: string, type: string): Promise<
 }
 
 export async function getNotificationPreferences(
-  db: AppDb,
+  db: DrizzleDb,
   userId: string
 ): Promise<{ channel: string; enabled: boolean; type: string }[]> {
   const prefs = await db
@@ -99,7 +103,7 @@ export async function getNotificationPreferences(
 }
 
 export async function setNotificationPreference(
-  db: AppDb,
+  db: DrizzleDb,
   input: { channel: 'email' | 'in_app'; enabled: boolean; type: string; userId: string }
 ): Promise<void> {
   const existing = await db
@@ -114,6 +118,7 @@ export async function setNotificationPreference(
     )
     .get()
 
+  // oxlint-disable-next-line unicorn/prefer-ternary
   if (existing) {
     await db
       .update(notificationPreference)

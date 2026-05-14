@@ -1,5 +1,5 @@
 import { createReportSchema, resolveReportSchema } from '$lib/validators/report'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it, test } from 'vitest'
 
 describe('create report schema', () => {
   it('validates a complete report', () => {

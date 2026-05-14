@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDelete = vi.fn()
 const mockInsert = vi.fn()
@@ -50,7 +50,7 @@ function createMockDb(
         }),
       }),
     }),
-  } as never
+  } as unknown
 }
 
 beforeEach(() => {

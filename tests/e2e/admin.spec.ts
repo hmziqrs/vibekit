@@ -9,7 +9,7 @@ test.describe('admin dashboard', () => {
     await goToAdmin(page)
     await expect(page.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible()
     // Stat card labels are <p> elements (sidebar uses <a> links)
-    await expect(page.locator('main p', { hasText: 'Users' })).toBeVisible()
+    await expect(page.locator('main p', { hasText: 'Active Users' })).toBeVisible()
     await expect(page.locator('main p', { hasText: 'Blog Posts' })).toBeVisible()
     await expect(page.locator('main p', { hasText: 'Items' })).toBeVisible()
   })
@@ -21,23 +21,38 @@ test.describe('admin user management', () => {
     await page.getByRole('link', { name: 'Users' }).first().click()
     await expect(page).toHaveURL('/admin/users')
     await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
+    // Wait for table data to load (CSR page fetches from API)
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 })
+    // Seeded users may be on a later page due to test-created users; search to find them
+    await page.getByPlaceholder('Search by email or name').fill('vibekit.local')
+    await page.waitForTimeout(500)
     // Scope to table to avoid matching sidebar user info
-    await expect(page.getByRole('table').getByText('admin@vibekit.local')).toBeVisible()
+    await expect(page.getByRole('table').getByText('admin@vibekit.local')).toBeVisible({
+      timeout: 10_000,
+    })
     await expect(page.getByRole('table').getByText('user@vibekit.local')).toBeVisible()
   })
 
   test('search filters users by email', async ({ page }) => {
     await goToAdmin(page)
     await page.getByRole('link', { name: 'Users' }).first().click()
+    await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 })
     await page.getByPlaceholder('Search by email or name').fill('admin@')
     await page.waitForTimeout(500)
     await expect(page.getByRole('table').getByText('admin@vibekit.local')).toBeVisible()
   })
 
   test('suspend and activate user', async ({ page }) => {
+    test.setTimeout(60_000)
     await goToAdmin(page)
     await page.getByRole('link', { name: 'Users' }).first().click()
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 })
+
+    // Search for the seeded user (may not be on first page due to test-created users)
+    await page.getByPlaceholder('Search by email or name').fill('user@vibekit.local')
+    await page.waitForTimeout(500)
 
     // Find the regular user row and open its three-dot menu
     const userRow = page
@@ -78,6 +93,7 @@ test.describe('admin blog management', () => {
   })
 
   test('create and delete blog post', async ({ page }) => {
+    test.setTimeout(60_000)
     await goToAdmin(page)
     await page.getByRole('link', { name: 'Blog' }).first().click()
     await page.waitForLoadState('networkidle')
@@ -90,7 +106,10 @@ test.describe('admin blog management', () => {
     await page.getByLabel('Title').fill(postTitle)
     // Slug should auto-generate
     await page.waitForTimeout(500)
-    await page.getByLabel('Content').fill('This is test content for the blog post.')
+    // Content uses TipTap rich text editor — click and type into it
+    const editor = page.locator('.tiptap, [contenteditable="true"]').first()
+    await editor.click()
+    await editor.fill('This is test content for the blog post.')
     await page.getByRole('button', { name: 'Save Draft' }).click()
 
     // Should redirect to edit page

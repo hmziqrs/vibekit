@@ -6,6 +6,7 @@ export default defineConfig({
   reporter: 'html',
   retries: process.env.CI ? 2 : 0,
   testDir: './tests/e2e',
+  testIgnore: [],
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',

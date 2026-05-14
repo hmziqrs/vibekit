@@ -92,8 +92,8 @@
   }
 
   const statusColors: Record<string, string> = {
-    active: 'bg-green-500/15 text-green-400',
-    suspended: 'bg-red-500/15 text-red-400',
+    active: 'bg-success/15 text-success',
+    suspended: 'bg-destructive/15 text-destructive',
   }
 
   const filterTabs = [
@@ -135,7 +135,7 @@
     </div>
   {:else if usersQuery.error}
     <div class="p-6 text-center">
-      <p class="text-[13px] text-red-400">Failed to load users. Please try again.</p>
+      <p class="text-[13px] text-destructive">Failed to load users. Please try again.</p>
       <button class="mt-3 text-[13px] text-brand hover:underline" onclick={() => usersQuery.refetch()}>Retry</button>
     </div>
   {:else if !usersQuery.data?.users.length}
@@ -190,11 +190,11 @@
                       <button class="w-full px-4 py-2 text-left text-[12px] text-text-secondary hover:bg-white/[0.04]" onclick={() => changeRole(user, 'user')}>Demote to User</button>
                     {/if}
                     {#if user.status === 'active'}
-                      <button class="w-full px-4 py-2 text-left text-[12px] text-yellow-400 hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Suspend</button>
+                      <button class="w-full px-4 py-2 text-left text-[12px] text-warning hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Suspend</button>
                     {:else}
-                      <button class="w-full px-4 py-2 text-left text-[12px] text-green-400 hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Activate</button>
+                      <button class="w-full px-4 py-2 text-left text-[12px] text-success hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Activate</button>
                     {/if}
-                    <button class="w-full px-4 py-2 text-left text-[12px] text-red-400 hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user; showDeleteDialog = true }}>Delete</button>
+                    <button class="w-full px-4 py-2 text-left text-[12px] text-destructive hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user; showDeleteDialog = true }}>Delete</button>
                   </div>
                 {/if}
               </div>

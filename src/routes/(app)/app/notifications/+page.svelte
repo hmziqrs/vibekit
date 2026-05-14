@@ -99,18 +99,18 @@
 
   function typeColor(type: string): string {
     switch (type) {
-      case 'success': { return 'text-green-400' }
-      case 'warning': { return 'text-yellow-400' }
-      case 'error': { return 'text-red-400' }
+      case 'success': { return 'text-success' }
+      case 'warning': { return 'text-warning' }
+      case 'error': { return 'text-destructive' }
       default: { return 'text-brand' }
     }
   }
 
   function typeBadgeBg(type: string): string {
     switch (type) {
-      case 'success': { return 'bg-green-500/10 text-green-400' }
-      case 'warning': { return 'bg-yellow-500/10 text-yellow-400' }
-      case 'error': { return 'bg-red-500/10 text-red-400' }
+      case 'success': { return 'bg-success/10 text-success' }
+      case 'warning': { return 'bg-warning/10 text-warning' }
+      case 'error': { return 'bg-destructive/10 text-destructive' }
       default: { return 'bg-brand/10 text-brand' }
     }
   }
@@ -209,7 +209,7 @@
             {/if}
             <button
               onclick={() => deleteNotification(n.id)}
-              class="rounded-lg p-1.5 text-text-muted hover:bg-red-500/10 hover:text-red-400"
+              class="rounded-lg p-1.5 text-text-muted hover:bg-destructive/10 hover:text-destructive"
               title="Delete"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

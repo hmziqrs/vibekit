@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+import { goToAdmin } from './helpers/auth'
+
 test.describe('Admin A/B Experiments', () => {
   test.beforeEach(async ({ page }) => {
+    await goToAdmin(page)
     await page.goto('/admin/experiments')
     await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
   })
 
   test('shows experiments page heading', async ({ page }) => {
@@ -51,16 +53,12 @@ test.describe('Admin A/B Experiments', () => {
 
 test.describe('Admin Experiments Navigation', () => {
   test('experiments nav item exists in sidebar', async ({ page }) => {
-    await page.goto('/admin/dashboard')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await goToAdmin(page)
     await expect(page.getByRole('link', { name: 'Experiments' })).toBeVisible()
   })
 
   test('navigates to experiments page', async ({ page }) => {
-    await page.goto('/admin/dashboard')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await goToAdmin(page)
     await page.getByRole('link', { name: 'Experiments' }).click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveURL(/\/admin\/experiments/)

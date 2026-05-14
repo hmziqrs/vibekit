@@ -95,6 +95,11 @@
   --terminal-yellow: #febc2e;
   --terminal-green: #28c840;
 
+  /* Semantic status colors */
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
   /* Gradients / glows */
   --glow-brand: rgba(232, 184, 109, 0.06);
   --glow-brand-strong: rgba(232, 184, 109, 0.12);
@@ -158,6 +163,11 @@
   --terminal-red: #ff5f57;
   --terminal-yellow: #febc2e;
   --terminal-green: #28c840;
+
+  /* Semantic status colors */
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --info: #60a5fa;
 
   /* Gradients / glows */
   --glow-brand: rgba(232, 184, 109, 0.06);
@@ -225,6 +235,11 @@
   --color-terminal-red: var(--terminal-red);
   --color-terminal-yellow: var(--terminal-yellow);
   --color-terminal-green: var(--terminal-green);
+
+  /* Semantic status colors */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
 }
 
 @layer base {

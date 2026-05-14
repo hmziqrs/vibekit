@@ -6,7 +6,7 @@ import {
 } from '$lib/validators/auth'
 import { describe, expect, it } from 'vitest'
 
-describe(loginSchema, () => {
+describe('loginSchema', () => {
   it('validates a valid login', () => {
     const result = loginSchema.safeParse({ email: 'user@example.com', password: 'secret123' })
     expect(result.success).toBeTruthy()
@@ -23,7 +23,7 @@ describe(loginSchema, () => {
   })
 })
 
-describe(registerSchema, () => {
+describe('registerSchema', () => {
   const validInput = {
     confirmPassword: 'Securepassword1',
     email: 'john@example.com',
@@ -57,7 +57,7 @@ describe(registerSchema, () => {
   })
 })
 
-describe(forgotPasswordSchema, () => {
+describe('forgotPasswordSchema', () => {
   it('validates a valid email', () => {
     const result = forgotPasswordSchema.safeParse({ email: 'user@example.com' })
     expect(result.success).toBeTruthy()
@@ -69,7 +69,7 @@ describe(forgotPasswordSchema, () => {
   })
 })
 
-describe(resetPasswordSchema, () => {
+describe('resetPasswordSchema', () => {
   const validInput = {
     confirmPassword: 'Newpassword123',
     password: 'Newpassword123',

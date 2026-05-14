@@ -1,7 +1,7 @@
 import { subscribeSchema } from '$lib/validators/newsletter'
 import { describe, expect, it } from 'vitest'
 
-describe(subscribeSchema, () => {
+describe('subscribeSchema', () => {
   it('validates email only', () => {
     const result = subscribeSchema.safeParse({ email: 'test@example.com' })
     expect(result.success).toBeTruthy()

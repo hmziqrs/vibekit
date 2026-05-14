@@ -14,6 +14,7 @@
   }
 
   const { data } = $props()
+  const logs = (data.logs ?? []) as unknown as AuditRow[]
   const selectedAction = $derived(page.url.searchParams.get('action') ?? '')
 
   function handleFilter(action: string) {
@@ -51,7 +52,7 @@
   <button
     class={cn(
       'rounded-lg px-3 py-2 text-[12px] font-medium transition-colors',
-      !selectedAction ? 'bg-brand/10 text-brand' : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
+      !selectedAction ? 'bg-brand/10 text-brand' : 'text-text-muted hover:bg-surface hover:text-text-primary',
     )}
     onclick={() => handleFilter('')}
   >
@@ -61,7 +62,7 @@
     <button
       class={cn(
         'rounded-lg px-3 py-2 text-[12px] font-medium transition-colors',
-        selectedAction === action ? 'bg-brand/10 text-brand' : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
+        selectedAction === action ? 'bg-brand/10 text-brand' : 'text-text-muted hover:bg-surface hover:text-text-primary',
       )}
       onclick={() => handleFilter(action)}
     >
@@ -71,7 +72,7 @@
 </div>
 
 <!-- Table -->
-<div class="mt-6 overflow-x-auto rounded-xl border border-white/[0.06] bg-surface">
+<div class="mt-6 overflow-x-auto rounded-xl border border-border bg-surface">
   {#if !data.logs.length}
     <div class="p-6 text-center">
       <p class="text-[13px] text-text-muted">No audit log entries found.</p>
@@ -79,7 +80,7 @@
   {:else}
     <table class="w-full min-w-[700px]">
       <thead>
-        <tr class="border-b border-white/[0.06]">
+        <tr class="border-b border-border">
           <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Action</th>
           <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Entity</th>
           <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Entity ID</th>
@@ -87,18 +88,18 @@
           <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Timestamp</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-white/[0.04]">
-        {#each data.logs as log (log.id)}
-          <tr class="transition-colors hover:bg-white/[0.02]">
+      <tbody class="divide-y divide-border">
+        {#each logs as log (log.id)}
+          <tr class="transition-colors hover:bg-surface-deep/50">
             <td class="px-5 py-3.5">
               <span class={cn(
                 'inline-block rounded-full px-2 py-0.5 text-[11px] font-medium',
-                log.action === 'create' ? 'bg-green-500/15 text-green-400'
-                : log.action === 'update' ? 'bg-blue-500/15 text-blue-400'
-                : log.action === 'delete' ? 'bg-red-500/15 text-red-400'
-                : log.action === 'login' ? 'bg-purple-500/15 text-purple-400'
-                : log.action === 'logout' ? 'bg-yellow-500/15 text-yellow-400'
-                : 'bg-white/[0.06] text-text-muted',
+                log.action === 'create' ? 'bg-success/15 text-success'
+                : log.action === 'update' ? 'bg-info/15 text-info'
+                : log.action === 'delete' ? 'bg-destructive/15 text-destructive'
+                : log.action === 'login' ? 'bg-brand/15 text-brand'
+                : log.action === 'logout' ? 'bg-warning/15 text-warning'
+                : 'bg-muted text-text-muted',
               )}>
                 {log.action}
               </span>
@@ -107,7 +108,7 @@
               {log.entityType}
             </td>
             <td class="px-5 py-3.5">
-              <code class="rounded bg-white/[0.04] px-1.5 py-0.5 text-[11px] text-text-subtle">
+              <code class="rounded bg-surface-deep px-1.5 py-0.5 text-[11px] text-text-subtle">
                 {log.entityId.length > 8 ? log.entityId.slice(0, 8) + '...' : log.entityId}
               </code>
             </td>
@@ -124,20 +125,20 @@
 
     <!-- Pagination -->
     {#if data.totalPages > 1}
-      <div class="flex items-center justify-between border-t border-white/[0.06] px-5 py-3">
+      <div class="flex items-center justify-between border-t border-border px-5 py-3">
         <p class="text-[12px] text-text-subtle">
           Page {data.page} of {data.totalPages}
         </p>
         <div class="flex gap-2">
           <button
-            class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-white/[0.04] disabled:opacity-40"
+            class="rounded-lg border border-border px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-surface disabled:opacity-40"
             disabled={data.page <= 1}
             onclick={() => goToPage(data.page - 1)}
           >
             Previous
           </button>
           <button
-            class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-white/[0.04] disabled:opacity-40"
+            class="rounded-lg border border-border px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-surface disabled:opacity-40"
             disabled={data.page >= data.totalPages}
             onclick={() => goToPage(data.page + 1)}
           >

@@ -6,7 +6,7 @@ import {
 import { describe, expect, it } from 'vitest'
 
 describe('upload Session Validators', () => {
-  describe(createUploadSessionSchema, () => {
+  describe('createUploadSessionSchema', () => {
     it('validates a valid upload session', () => {
       const result = createUploadSessionSchema.safeParse({
         chunkSize: 5 * 1024 * 1024,
@@ -81,7 +81,7 @@ describe('upload Session Validators', () => {
     })
   })
 
-  describe(chunkUploadSchema, () => {
+  describe('chunkUploadSchema', () => {
     it('validates valid chunk index', () => {
       const result = chunkUploadSchema.safeParse({ chunkIndex: 0 })
       expect(result.success).toBe(true)
@@ -98,7 +98,7 @@ describe('upload Session Validators', () => {
     })
   })
 
-  describe(listUploadSessionsSchema, () => {
+  describe('listUploadSessionsSchema', () => {
     it('validates empty params', () => {
       const result = listUploadSessionsSchema.safeParse({})
       expect(result.success).toBe(true)

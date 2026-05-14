@@ -19,14 +19,14 @@ export function createD1SearchAdapter(db: {
   return {
     async delete(entityId: string, entityType: string): Promise<void> {
       await db.run(sql`
-        DELETE FROM search_index
+        DELETE FROM search_content
         WHERE entity_type = ${entityType} AND entity_id = ${entityId}
       `)
     },
 
     async index(document: SearchDocument): Promise<void> {
       await db.run(sql`
-        INSERT INTO search_index (entity_type, entity_id, title, content, metadata, updated_at)
+        INSERT INTO search_content (entity_type, entity_id, title, content, metadata, updated_at)
         VALUES (${document.entityType}, ${document.entityId}, ${document.title}, ${document.content}, ${JSON.stringify(document.metadata ?? {})}, ${Date.now()})
         ON CONFLICT(entity_type, entity_id) DO UPDATE SET
           title = ${document.title},
@@ -38,6 +38,7 @@ export function createD1SearchAdapter(db: {
 
     async indexBatch(documents: SearchDocument[]): Promise<void> {
       for (const doc of documents) {
+        // oxlint-disable-next-line no-await-in-loop
         await this.index(doc)
       }
     },
@@ -65,7 +66,7 @@ export function createD1SearchAdapter(db: {
       const results = await db.all(sql`
         SELECT entity_type, entity_id, title, content, metadata, rank
         FROM search_index
-        WHERE search_index MATCH ${sanitized + '*'}
+        WHERE search_index MATCH ${`${sanitized}*`}
         ${typeFilter}
         ORDER BY rank
         LIMIT ${limit} OFFSET ${offset}
@@ -74,7 +75,7 @@ export function createD1SearchAdapter(db: {
       const countResult = await db.all(sql`
         SELECT COUNT(*) as total
         FROM search_index
-        WHERE search_index MATCH ${sanitized + '*'}
+        WHERE search_index MATCH ${`${sanitized}*`}
         ${typeFilter}
       `)
 

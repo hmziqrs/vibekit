@@ -299,12 +299,12 @@
     <h1 class="text-2xl font-bold text-text-primary">Edit Post</h1>
     <span
       class="rounded-full px-2.5 py-0.5 text-[11px] font-medium {data.post.status === 'published'
-        ? 'bg-green-500/10 text-green-400'
+        ? 'bg-success/10 text-success'
         : data.post.status === 'draft'
-          ? 'bg-yellow-500/10 text-yellow-400'
+          ? 'bg-warning/10 text-warning'
           : data.post.status === 'scheduled'
-            ? 'bg-blue-500/10 text-blue-400'
-            : 'bg-red-500/10 text-red-400'}"
+            ? 'bg-info/10 text-info'
+            : 'bg-destructive/10 text-destructive'}"
     >
       {data.post.status}
     </span>
@@ -314,7 +314,7 @@
 
 <form onsubmit={handleSubmit} class="mt-8" novalidate>
   {#if serverError}
-    <p class="mb-6 rounded-lg bg-red-500/10 px-4 py-2 text-[13px] text-red-400">{serverError}</p>
+    <p class="mb-6 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{serverError}</p>
   {/if}
 
   <div class="flex gap-6">
@@ -330,7 +330,7 @@
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
         {#if errors.title}
-          <p id="title-error" class="mt-1 text-[12px] text-red-400">{errors.title}</p>
+          <p id="title-error" class="mt-1 text-[12px] text-destructive">{errors.title}</p>
         {/if}
       </div>
 
@@ -344,7 +344,7 @@
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
         {#if errors.slug}
-          <p id="slug-error" class="mt-1 text-[12px] text-red-400">{errors.slug}</p>
+          <p id="slug-error" class="mt-1 text-[12px] text-destructive">{errors.slug}</p>
         {/if}
       </div>
 
@@ -360,7 +360,7 @@
           class="w-full rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
         {#if errors.excerpt}
-          <p id="excerpt-error" class="mt-1 text-[12px] text-red-400">{errors.excerpt}</p>
+          <p id="excerpt-error" class="mt-1 text-[12px] text-destructive">{errors.excerpt}</p>
         {/if}
       </div>
 
@@ -370,12 +370,12 @@
         onRemove={() => (coverImageUrl = '')}
       />
       {#if errors.coverImageUrl}
-        <p id="cover-image-error" class="mt-1 text-[12px] text-red-400">{errors.coverImageUrl}</p>
+        <p id="cover-image-error" class="mt-1 text-[12px] text-destructive">{errors.coverImageUrl}</p>
       {/if}
 
       <div>
         <div class="mb-2 flex items-center justify-between">
-          <label class="text-sm font-medium text-text-secondary">Content</label>
+          <label for="content-editor" class="text-sm font-medium text-text-secondary">Content</label>
           <button
             type="button"
             onclick={() => (showMediaLibrary = true)}
@@ -385,7 +385,7 @@
           </button>
         </div>
         <!-- svelte-ignore binding_property_non_reactive -->
-        <div bind:this={editorWrapperEl}>
+        <div id="content-editor" bind:this={editorWrapperEl}>
           <ArticleEditor
             content={parseContent(contentBody)}
             onUpdate={handleEditorUpdate}
@@ -393,7 +393,7 @@
           />
         </div>
         {#if errors.contentBody}
-          <p id="content-error" class="mt-1 text-[12px] text-red-400">{errors.contentBody}</p>
+          <p id="content-error" class="mt-1 text-[12px] text-destructive">{errors.contentBody}</p>
         {/if}
       </div>
 
@@ -410,7 +410,7 @@
           href="/admin/blog/{data.post.id}/preview"
           target="_blank"
           rel="noopener"
-          class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+          class="rounded-lg border border-border px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
         >
           Preview
         </a>
@@ -420,7 +420,7 @@
             type="button"
             onclick={publish}
             disabled={saving}
-            class="rounded-lg bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-50"
+            class="rounded-lg bg-success px-5 py-2.5 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-success/80 disabled:opacity-50"
           >
             Publish
           </button>
@@ -428,7 +428,7 @@
             type="button"
             onclick={() => (showSchedulePicker = true)}
             disabled={saving}
-            class="rounded-lg border border-blue-500/30 px-5 py-2.5 text-[13px] font-medium text-blue-400 transition-colors hover:bg-blue-500/10"
+            class="rounded-lg border border-info/30 px-5 py-2.5 text-[13px] font-medium text-info transition-colors hover:bg-info/10"
           >
             Schedule
           </button>
@@ -439,7 +439,7 @@
             type="button"
             onclick={cancelSchedule}
             disabled={saving}
-            class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+            class="rounded-lg border border-border px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
           >
             Cancel Schedule
           </button>
@@ -450,7 +450,7 @@
             type="button"
             onclick={unpublish}
             disabled={saving}
-            class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+            class="rounded-lg border border-border px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
           >
             Unpublish
           </button>
@@ -459,7 +459,7 @@
         <button
           type="button"
           onclick={archive}
-          class="rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+          class="rounded-lg border border-border px-5 py-2.5 text-[13px] font-medium text-text-secondary hover:text-text-primary"
         >
           Archive
         </button>
@@ -467,7 +467,7 @@
         <button
           type="button"
           onclick={deletePost}
-          class="rounded-lg border border-red-500/30 px-5 py-2.5 text-[13px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
+          class="rounded-lg border border-destructive/30 px-5 py-2.5 text-[13px] font-medium text-destructive transition-colors hover:bg-destructive/10"
         >
           Delete
         </button>
@@ -549,7 +549,7 @@
                       onclick={() => toggleTag(tag.id)}
                       class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-colors {selectedTagIds.has(tag.id)
                         ? 'bg-brand/10 text-brand'
-                        : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary'}"
+                        : 'text-text-muted hover:bg-surface hover:text-text-primary'}"
                     >
                       <span
                         class="flex size-3.5 shrink-0 items-center justify-center rounded border {selectedTagIds.has(tag.id)
@@ -627,7 +627,7 @@
                       onclick={() => toggleSeries(s.id)}
                       class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-colors {selectedSeries.has(s.id)
                         ? 'bg-brand/10 text-brand'
-                        : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary'}"
+                        : 'text-text-muted hover:bg-surface hover:text-text-primary'}"
                     >
                       <span
                         class="flex size-3.5 shrink-0 items-center justify-center rounded border {selectedSeries.has(s.id)
@@ -688,13 +688,20 @@
 {#if showSchedulePicker}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50"
+    role="dialog"
+    tabindex="-1"
     onclick={() => (showSchedulePicker = false)}
+    onkeydown={(e) => e.key === 'Escape' && (showSchedulePicker = false)}
   >
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="w-full max-w-sm rounded-lg border border-border bg-surface p-6"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
     >
       <h3 class="text-lg font-semibold text-text-primary">Schedule Publication</h3>
       <p class="mt-1 text-sm text-text-muted">Choose a date and time to publish this post.</p>
@@ -714,7 +721,7 @@
         <button
           type="button"
           onclick={() => (showSchedulePicker = false)}
-          class="rounded-lg border border-white/[0.1] px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text-primary"
+          class="rounded-lg border border-border px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text-primary"
         >
           Cancel
         </button>
@@ -722,7 +729,7 @@
           type="button"
           onclick={schedulePublish}
           disabled={saving || !scheduleDate}
-          class="rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+          class="rounded-lg bg-info px-4 py-2 text-[13px] font-semibold text-brand-foreground transition-all hover:bg-info/80 disabled:opacity-50"
         >
           Schedule
         </button>

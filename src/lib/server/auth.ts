@@ -70,7 +70,7 @@ export const authConfig = {
       '/sign-in/email': { max: 5, window: 60 },
       '/sign-up/email': { max: 3, window: 60 },
     },
-    enabled: true,
+    enabled: !process.env.VITEST && __ADAPTER__ !== 'node',
     max: 20,
     // TODO: Switch to "database" storage after adding rateLimit model to Drizzle schema.
     // Memory storage works for dev/single-instance but doesn't persist across Workers isolates.

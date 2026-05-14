@@ -2,7 +2,7 @@
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite'
 
 const adapter = process.env.ADAPTER ?? 'node'
 
@@ -31,16 +31,5 @@ export default defineConfig({
   ],
   ssr: {
     external: ['better-auth', '@better-auth/core', 'bun:sqlite', 'drizzle-orm/bun-sqlite'],
-  },
-  test: {
-    environment: 'node',
-    exclude: ['node_modules', '.svelte-kit', 'build'],
-    globals: true,
-    include: ['tests/unit/**/*.test.{js,ts}'],
-    server: {
-      deps: {
-        inline: [/@sveltejs\/kit/],
-      },
-    },
   },
 })

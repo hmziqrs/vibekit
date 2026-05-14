@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockAll = vi.fn().mockResolvedValue([])
 const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 0 } })

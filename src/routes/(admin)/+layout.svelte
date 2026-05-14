@@ -47,7 +47,7 @@
     <!-- Mobile overlay -->
     {#if mobileOpen}
       <div
-        class="fixed inset-0 z-40 bg-black/60 md:hidden"
+        class="fixed inset-0 z-40 bg-foreground/60 md:hidden"
         role="button"
         tabindex="-1"
         aria-label="Close sidebar"
@@ -59,7 +59,7 @@
     <!-- Sidebar -->
     <aside
       class={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-white/[0.06] bg-surface transition-transform duration-200 md:static md:translate-x-0',
+        'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-surface transition-transform duration-200 md:static md:translate-x-0',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
       )}
     >
@@ -84,7 +84,7 @@
           <span class="text-[15px] font-semibold tracking-tight text-text-primary">Admin</span>
         </a>
         <button
-          class="rounded-md p-1 text-text-muted hover:bg-white/[0.04] hover:text-text-primary md:hidden"
+          class="rounded-md p-1 text-text-muted hover:bg-surface hover:text-text-primary md:hidden"
           onclick={closeMobile}
           aria-label="Close sidebar"
         >
@@ -103,7 +103,7 @@
               'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
               isActive(item.href)
                 ? 'bg-brand/10 text-brand'
-                : 'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
+                : 'text-text-muted hover:bg-surface hover:text-text-primary',
             )}
             onclick={closeMobile}
           >
@@ -174,12 +174,12 @@
           </a>
         {/each}
 
-        <div class="my-3 border-t border-white/[0.06]"></div>
+        <div class="my-3 border-t border-border"></div>
         <a
           href="/app/dashboard"
           class={cn(
             'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-            'text-text-muted hover:bg-white/[0.04] hover:text-text-primary',
+            'text-text-muted hover:bg-surface hover:text-text-primary',
           )}
           onclick={closeMobile}
         >
@@ -191,13 +191,13 @@
       </nav>
 
       <!-- Sidebar footer: user info + logout -->
-      <div class="absolute bottom-0 left-0 right-0 border-t border-white/[0.06] p-4">
+      <div class="absolute bottom-0 left-0 right-0 border-t border-border p-4">
         {#if auth.isPending}
           <div class="flex items-center gap-3">
-            <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-white/[0.06]"></div>
+            <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-muted"></div>
             <div class="min-w-0 flex-1 space-y-2">
-              <div class="h-3 w-20 animate-pulse rounded bg-white/[0.06]"></div>
-              <div class="h-2 w-10 animate-pulse rounded bg-white/[0.06]"></div>
+              <div class="h-3 w-20 animate-pulse rounded bg-muted"></div>
+              <div class="h-2 w-10 animate-pulse rounded bg-muted"></div>
             </div>
           </div>
         {:else if auth.user}
@@ -213,14 +213,14 @@
                   'inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium',
                   auth.user?.role === 'admin'
                     ? 'bg-brand/20 text-brand'
-                    : 'bg-white/[0.06] text-text-muted',
+                    : 'bg-muted text-text-muted',
                 )}
               >
                 {auth.user?.role ?? 'user'}
               </span>
             </div>
             <button
-              class="rounded-md p-1.5 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
+              class="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-50"
               onclick={handleSignOut}
               disabled={signingOut}
               title="Sign out"
@@ -241,10 +241,10 @@
 
     <!-- Main content -->
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] px-6">
+      <header class="flex h-14 shrink-0 items-center justify-between border-b border-border px-6">
         <div class="flex items-center gap-3">
           <button
-            class="rounded-md p-1.5 text-text-muted hover:bg-white/[0.04] hover:text-text-primary md:hidden"
+            class="rounded-md p-1.5 text-text-muted hover:bg-surface hover:text-text-primary md:hidden"
             onclick={() => (mobileOpen = true)}
             aria-label="Open sidebar"
           >

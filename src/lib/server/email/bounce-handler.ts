@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
 
 import { newsletterSubscriber } from '../db/schema'
-import type { AppDb } from '../services/types'
+import type { DrizzleDb } from '../services/types'
 
-export async function handleBounce(db: AppDb, emailAddress: string): Promise<void> {
+export async function handleBounce(db: DrizzleDb, emailAddress: string): Promise<void> {
   const subscriber = await db
     .select({ id: newsletterSubscriber.id })
     .from(newsletterSubscriber)

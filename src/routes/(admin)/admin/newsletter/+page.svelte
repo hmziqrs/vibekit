@@ -57,19 +57,19 @@
   function statusColor(s: string): string {
     switch (s) {
       case 'confirmed': {
-        return 'text-green-400 bg-green-500/10'
+        return 'text-success bg-success/10'
       }
       case 'pending': {
-        return 'text-yellow-400 bg-yellow-500/10'
+        return 'text-warning bg-warning/10'
       }
       case 'unsubscribed': {
-        return 'text-text-muted bg-white/5'
+        return 'text-text-muted bg-muted'
       }
       case 'bounced': {
-        return 'text-red-400 bg-red-500/10'
+        return 'text-destructive bg-destructive/10'
       }
       default: {
-        return 'text-text-muted bg-white/5'
+        return 'text-text-muted bg-muted'
       }
     }
   }
@@ -118,14 +118,14 @@
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Pending</div>
-    <div class="text-xl font-semibold text-yellow-400">{stats.pending}</div>
+    <div class="text-xl font-semibold text-warning">{stats.pending}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'confirmed')}
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'confirmed' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Confirmed</div>
-    <div class="text-xl font-semibold text-green-400">{stats.confirmed}</div>
+    <div class="text-xl font-semibold text-success">{stats.confirmed}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'unsubscribed')}
@@ -139,14 +139,14 @@
     class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'bounced' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Bounced</div>
-    <div class="text-xl font-semibold text-red-400">{stats.bounced}</div>
+    <div class="text-xl font-semibold text-destructive">{stats.bounced}</div>
   </button>
 </div>
 
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={subscribersQuery.data?.subscribers ?? []}
+    rows={(subscribersQuery.data?.subscribers ?? []) as unknown as Record<string, unknown>[]}
     loading={subscribersQuery.isPending}
     {selectedIds}
     onSelectionChange={(ids) => (selectedIds = ids)}
@@ -157,7 +157,8 @@
     onRetry={() => subscribersQuery.refetch()}
     emptyMessage="No subscribers matching this filter."
   >
-    {#snippet children({ row, columnKey })}
+    {#snippet children({ row: _row, columnKey })}
+      {@const row = _row as unknown as SubscriberRow}
       {#if columnKey === 'email'}
         <span class="font-medium text-text-primary">{row.email}</span>
       {:else if columnKey === 'name'}
@@ -172,9 +173,9 @@
         <span class="text-text-muted">{formatDate(row.createdAt)}</span>
       {:else if columnKey === 'actions'}
         <button
-          class="rounded-lg px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/10"
+          class="rounded-lg px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"
           onclick={() => {
-            deleteTarget = row as SubscriberRow
+            deleteTarget = row
             showConfirmDialog = true
           }}
         >

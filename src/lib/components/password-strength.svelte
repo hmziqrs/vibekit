@@ -17,7 +17,7 @@
         <div
           class="h-1.5 flex-1 rounded-full transition-all duration-200 {i <= result.score
             ? getPasswordStrengthBarColor(result.score)
-            : 'bg-white/10'}"
+            : 'bg-muted'}"
         ></div>
       {/each}
     </div>

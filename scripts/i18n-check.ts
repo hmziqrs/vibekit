@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const LOCALES_DIR = resolve(import.meta.dirname, '..', 'messages')
@@ -9,40 +9,6 @@ function loadMessages(locale: string): Record<string, string> {
   const json = JSON.parse(raw)
   const { $schema: _, ...messages } = json
   return messages as Record<string, string>
-}
-
-function walkDir(dir: string): string[] {
-  const files: string[] = []
-  for (const entry of readdirSync(dir)) {
-    const fullPath = resolve(dir, entry)
-    const stat = statSync(fullPath)
-    if (stat.isDirectory()) {
-      files.push(...walkDir(fullPath))
-    } else if (entry.endsWith('.svelte') || entry.endsWith('.ts')) {
-      files.push(fullPath)
-    }
-  }
-  return files
-}
-
-function findUsedKeys(): Set<string> {
-  const usedKeys = new Set<string>()
-  const srcDir = resolve(import.meta.dirname, '..', 'src')
-
-  try {
-    const files = walkDir(srcDir)
-    for (const file of files) {
-      const content = readFileSync(file, 'utf8')
-      const matches = content.matchAll(/m\.([a-z_]+)\(\)/g)
-      for (const match of matches) {
-        usedKeys.add(match[1])
-      }
-    }
-  } catch {
-    // If walk fails, skip unused detection
-  }
-
-  return usedKeys
 }
 
 function main(): void {

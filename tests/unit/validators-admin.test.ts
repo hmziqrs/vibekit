@@ -6,7 +6,7 @@ import {
 } from '$lib/validators/admin'
 import { describe, expect, it } from 'vitest'
 
-describe(banUserSchema, () => {
+describe('banUserSchema', () => {
   it('accepts valid ban with reason only', () => {
     const result = banUserSchema.safeParse({ reason: 'Violation of terms' })
     expect(result.success).toBe(true)
@@ -73,7 +73,7 @@ describe(banUserSchema, () => {
   })
 })
 
-describe(impersonateUserSchema, () => {
+describe('impersonateUserSchema', () => {
   it('accepts valid reason', () => {
     const result = impersonateUserSchema.safeParse({ reason: 'Debugging user issue' })
     expect(result.success).toBe(true)
@@ -105,7 +105,7 @@ describe(impersonateUserSchema, () => {
   })
 })
 
-describe(stopImpersonateSchema, () => {
+describe('stopImpersonateSchema', () => {
   it('accepts valid session token', () => {
     const result = stopImpersonateSchema.safeParse({ sessionToken: 'abc123' })
     expect(result.success).toBe(true)
@@ -127,7 +127,7 @@ describe(stopImpersonateSchema, () => {
   })
 })
 
-describe(broadcastNotificationSchema, () => {
+describe('broadcastNotificationSchema', () => {
   const validInput = {
     target: 'all' as const,
     title: 'System maintenance scheduled',

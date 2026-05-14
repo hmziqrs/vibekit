@@ -131,7 +131,7 @@
           maxlength="5000"
         ></textarea>
         {#if error}
-          <p class="mt-2 text-[12px] text-red-400">{error}</p>
+          <p class="mt-2 text-[12px] text-destructive">{error}</p>
         {/if}
         <div class="mt-2 flex justify-end">
           <button
@@ -156,8 +156,8 @@
       <div class="space-y-4">
         {#each Array(3) as _}
           <div class="animate-pulse rounded-lg border border-border bg-surface p-4">
-            <div class="mb-2 h-4 w-24 rounded bg-white/5"></div>
-            <div class="h-3 w-full rounded bg-white/5"></div>
+            <div class="mb-2 h-4 w-24 rounded bg-muted"></div>
+            <div class="h-3 w-full rounded bg-muted"></div>
           </div>
         {/each}
       </div>

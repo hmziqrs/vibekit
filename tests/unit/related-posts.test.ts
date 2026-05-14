@@ -1,11 +1,4 @@
-import {
-  blogPost,
-  blogPostTag,
-  blogTag,
-  type BlogPost,
-  type BlogPostTag,
-  type BlogTag,
-} from '$lib/server/db/schema'
+import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
 import { describe, expect, it } from 'vitest'
 
 describe('related posts query logic', () => {
@@ -131,7 +124,7 @@ describe('related posts query logic', () => {
 
   describe('blog post tag schema', () => {
     it('blogPostTag has composite structure for junction table', () => {
-      const mockPostTag: BlogPostTag = {
+      const mockPostTag: typeof blogPostTag.$inferInsert = {
         postId: 'post-123',
         tagId: 'tag-456',
       }
@@ -140,7 +133,7 @@ describe('related posts query logic', () => {
     })
 
     it('blogTag has required display fields', () => {
-      const mockTag: BlogTag = {
+      const mockTag: typeof blogTag.$inferInsert = {
         id: 'tag-1',
         name: 'Development',
         slug: 'development',

@@ -19,12 +19,12 @@
       const res = await fetch(`/api/admin/media?${params}`)
       if (!res.ok) throw new Error('Failed to fetch media')
       return res.json() as Promise<{
-        items: Array<{
+        items: {
           contentType?: string
           key: string
           lastModified: string
           size: number
-        }>
+        }[]
         nextCursor?: string
         truncated: boolean
       }>
@@ -38,11 +38,13 @@
       for (const file of files) {
         const formData = new FormData()
         formData.append('file', file)
+        // oxlint-disable-next-line no-await-in-loop
         const res = await fetch('/api/admin/media/upload', {
           body: formData,
           method: 'POST',
         })
         if (!res.ok) throw new Error(`Failed to upload ${file.name}`)
+        // oxlint-disable-next-line no-await-in-loop
         results.push(await res.json())
       }
       return results
@@ -86,11 +88,9 @@
 
   function selectAll() {
     if (!mediaQuery.data) return
-    if (selectedKeys.size === mediaQuery.data.items.length) {
-      selectedKeys = new Set()
-    } else {
-      selectedKeys = new Set(mediaQuery.data.items.map((i) => i.key))
-    }
+    selectedKeys = selectedKeys.size === mediaQuery.data.items.length
+      ? new Set()
+      : new Set(mediaQuery.data.items.map((i) => i.key))
   }
 
   function formatSize(bytes: number) {
@@ -165,7 +165,7 @@
   </div>
 
   {#if uploadMutation.isError}
-    <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
       Upload failed: {uploadMutation.error?.message}
     </div>
   {/if}
@@ -196,7 +196,7 @@
             deleteMutation.mutate([...selectedKeys])
           }
         }}
-        class="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20"
+        class="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20"
       >
         Delete ({selectedKeys.size})
       </button>
@@ -248,9 +248,9 @@
                 </div>
               {/if}
             </div>
-            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-              <p class="truncate text-[10px] text-white">{item.key.split('/').pop()}</p>
-              <p class="text-[9px] text-white/60">{formatSize(item.size)}</p>
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-foreground/60 to-transparent p-2">
+              <p class="truncate text-[10px] text-brand-foreground">{item.key.split('/').pop()}</p>
+              <p class="text-[9px] text-brand-foreground/60">{formatSize(item.size)}</p>
             </div>
           </button>
         {/each}
@@ -306,7 +306,7 @@
                         deleteMutation.mutate([item.key])
                       }
                     }}
-                    class="rounded px-2 py-1 text-xs text-text-faint hover:bg-red-500/10 hover:text-red-400"
+                    class="rounded px-2 py-1 text-xs text-text-faint hover:bg-destructive/10 hover:text-destructive"
                   >
                     Delete
                   </button>
@@ -318,7 +318,7 @@
       </div>
     {/if}
   {:else if mediaQuery.isError}
-    <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
       Failed to load media files
     </div>
   {/if}

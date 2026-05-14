@@ -1,12 +1,15 @@
 import TurndownService from 'turndown'
 
+// eslint-disable-next-line typescript-eslint/consistent-type-definitions
+type Filter = Parameters<TurndownService['addRule']>[1]['filter']
+
 const td = new TurndownService({
   codeBlockStyle: 'fenced',
   headingStyle: 'atx',
 })
 
 td.addRule('figureImage', {
-  filter: 'figure[data-figure-image]',
+  filter: 'figure[data-figure-image]' as Filter,
   replacement(_content, node) {
     const el = node as HTMLElement
     const img = el.querySelector('img')
@@ -19,7 +22,7 @@ td.addRule('figureImage', {
 })
 
 td.addRule('embedBlock', {
-  filter: 'div[data-embed-block]',
+  filter: 'div[data-embed-block]' as Filter,
   replacement(_content, node) {
     const el = node as HTMLElement
     const iframe = el.querySelector('iframe')
@@ -29,7 +32,7 @@ td.addRule('embedBlock', {
 })
 
 td.addRule('pullQuote', {
-  filter: 'blockquote[data-pull-quote]',
+  filter: 'blockquote[data-pull-quote]' as Filter,
   replacement(_content, node) {
     const el = node as HTMLElement
     const p = el.querySelector('p')
@@ -43,7 +46,7 @@ td.addRule('pullQuote', {
 })
 
 td.addRule('relatedArticle', {
-  filter: 'div[data-related-article]',
+  filter: 'div[data-related-article]' as Filter,
   replacement(_content, node) {
     const el = node as HTMLElement
     const link = el.querySelector('a')
@@ -54,7 +57,7 @@ td.addRule('relatedArticle', {
 })
 
 td.addRule('factBox', {
-  filter: 'div[data-fact-box]',
+  filter: 'div[data-fact-box]' as Filter,
   replacement(content, node) {
     const el = node as HTMLElement
     const title = el.querySelector('h4')?.textContent?.trim() || 'Key Facts'
@@ -63,14 +66,14 @@ td.addRule('factBox', {
 })
 
 td.addRule('correctionNote', {
-  filter: 'div[data-correction-note]',
+  filter: 'div[data-correction-note]' as Filter,
   replacement(content) {
     return `:::correction\n${content.trim()}\n:::\n\n`
   },
 })
 
 td.addRule('updateNote', {
-  filter: 'div[data-update-note]',
+  filter: 'div[data-update-note]' as Filter,
   replacement(content) {
     return `:::update\n${content.trim()}\n:::\n\n`
   },

@@ -95,8 +95,8 @@
 
   {#if hasError}
     <div class="absolute inset-0 flex items-center justify-center">
-      <div class="rounded-lg bg-red-500/10 px-4 py-2">
-        <p class="text-xs text-red-400">Upload failed</p>
+      <div class="rounded-lg bg-destructive/10 px-4 py-2">
+        <p class="text-xs text-destructive">Upload failed</p>
       </div>
     </div>
   {/if}

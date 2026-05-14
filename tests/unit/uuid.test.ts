@@ -1,4 +1,4 @@
-import { uuid, uuidv7 } from '$lib/server/uuid'
+import { uuid } from '$lib/server/uuid'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe(uuid, () => {
@@ -12,7 +12,7 @@ describe(uuid, () => {
     expect(ids.size).toBe(100)
   })
 
-  it('exports uuidv7 from package', () => {
-    expectTypeOf(uuidv7).toBeFunction()
+  it('exports uuid function', () => {
+    expectTypeOf(uuid).toBeFunction()
   })
 })

@@ -92,7 +92,7 @@
         <form.Subscribe selector={(state) => extractFormError(state.errorMap?.onSubmit)}>
           {#snippet children(errorMessage)}
             {#if errorMessage}
-              <p class="text-sm text-red-400">{errorMessage}</p>
+              <p class="text-sm text-destructive">{errorMessage}</p>
             {/if}
           {/snippet}
         </form.Subscribe>
@@ -149,7 +149,7 @@
       </div>
 
       {#if passkeyError}
-        <p class="mb-3 text-sm text-red-400">{passkeyError}</p>
+        <p class="mb-3 text-sm text-destructive">{passkeyError}</p>
       {/if}
       <Button type="button" variant="outline" class="w-full" onclick={handlePasskeySignIn}>
         <svg class="mr-2 size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

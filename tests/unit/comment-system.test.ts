@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 // ── Comment Validators ──
 
-describe(createCommentSchema, () => {
+describe('createCommentSchema', () => {
   it('validates minimal valid input', () => {
     const result = createCommentSchema.safeParse({ content: 'Great post!' })
     expect(result.success).toBeTruthy()
@@ -57,7 +57,7 @@ describe(createCommentSchema, () => {
   })
 })
 
-describe(updateCommentSchema, () => {
+describe('updateCommentSchema', () => {
   it('validates content update', () => {
     const result = updateCommentSchema.safeParse({ content: 'Updated comment' })
     expect(result.success).toBeTruthy()
@@ -79,7 +79,7 @@ describe(updateCommentSchema, () => {
   })
 })
 
-describe(moderateCommentSchema, () => {
+describe('moderateCommentSchema', () => {
   it('accepts approved status', () => {
     const result = moderateCommentSchema.safeParse({ status: 'approved' })
     expect(result.success).toBeTruthy()

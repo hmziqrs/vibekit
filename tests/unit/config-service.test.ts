@@ -2,7 +2,7 @@ import { updateConfigSchema } from '$lib/validators'
 import { describe, expect, it } from 'vitest'
 
 describe('configuration Service Validators', () => {
-  describe(updateConfigSchema, () => {
+  describe('updateConfigSchema', () => {
     it('validates a string config value', () => {
       const result = updateConfigSchema.safeParse({ value: 'hello' })
       expect(result.success).toBe(true)

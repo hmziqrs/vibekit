@@ -1,20 +1,21 @@
+import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
 
-function createMockDb(subscriber?: { id: string }) {
+function createMockDb(subscriber?: { id: string } | null) {
   const getFn = vi.fn().mockResolvedValue(subscriber ?? null)
   const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
   const updateFn = vi.fn().mockReturnValue({ set: setFn })
 
-  return {
-    _setFn: setFn,
-    _updateFn: updateFn,
+  const db = {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({ get: getFn }),
       }),
     }),
     update: updateFn,
-  } as unknown as import('$lib/server/services/types').AppDb
+  } as unknown as DrizzleDb
+
+  return { db, updateFn, setFn }
 }
 
 describe('bounce-handler', () => {
@@ -25,22 +26,22 @@ describe('bounce-handler', () => {
 
   it('marks subscriber as bounced', async () => {
     const { handleBounce } = await import('$lib/server/email/bounce-handler')
-    const db = createMockDb({ id: 'sub-1' })
+    const { db, updateFn, setFn } = createMockDb({ id: 'sub-1' })
 
     await handleBounce(db, 'bounced@example.com')
 
-    expect(db._updateFn).toHaveBeenCalledTimes(1)
-    const setArg = db._setFn.mock.calls[0][0] as Record<string, unknown>
+    expect(updateFn).toHaveBeenCalledTimes(1)
+    const setArg = setFn.mock.calls[0][0] as Record<string, unknown>
     expect(setArg.status).toBe('bounced')
     expect(setArg.updatedAt).toBeInstanceOf(Date)
   })
 
   it('does nothing when subscriber not found', async () => {
     const { handleBounce } = await import('$lib/server/email/bounce-handler')
-    const db = createMockDb(null)
+    const { db, updateFn } = createMockDb(null)
 
     await handleBounce(db, 'unknown@example.com')
 
-    expect(db._updateFn).toHaveBeenCalledTimes(0)
+    expect(updateFn).toHaveBeenCalledTimes(0)
   })
 })

@@ -169,13 +169,13 @@
 
   function statusColor(status: string): string {
     switch (status) {
-      case 'success': { return 'text-green-400 bg-green-500/10'
+      case 'success': { return 'text-success bg-success/10'
       }
-      case 'failed': { return 'text-red-400 bg-red-500/10'
+      case 'failed': { return 'text-destructive bg-destructive/10'
       }
-      case 'pending': { return 'text-yellow-400 bg-yellow-500/10'
+      case 'pending': { return 'text-warning bg-warning/10'
       }
-      case 'retrying': { return 'text-blue-400 bg-blue-500/10'
+      case 'retrying': { return 'text-info bg-info/10'
       }
       default: { return 'text-text-muted bg-white/5'
       }
@@ -200,14 +200,14 @@
   </div>
 
   {#if newEndpointResult}
-    <div class="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+    <div class="rounded-xl border border-success/20 bg-success/5 p-4">
       <div class="flex items-start justify-between">
         <div>
-          <h3 class="font-medium text-green-400">Webhook Endpoint Created</h3>
+          <h3 class="font-medium text-success">Webhook Endpoint Created</h3>
           <p class="mt-1 text-[13px] text-text-muted">
             Save this secret now — it won't be shown again.
           </p>
-          <code class="mt-2 block rounded bg-surface-deep px-3 py-2 text-[13px] text-green-300 font-mono break-all">
+          <code class="mt-2 block rounded bg-surface-deep px-3 py-2 text-[13px] text-success font-mono break-all">
             {newEndpointResult.secret}
           </code>
         </div>
@@ -222,8 +222,8 @@
   {/if}
 
   {#if error}
-    <div class="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-      <p class="text-[14px] text-red-400">{error}</p>
+    <div class="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+      <p class="text-[14px] text-destructive">{error}</p>
     </div>
   {/if}
 
@@ -233,8 +233,9 @@
 
       <div class="mt-4 space-y-4">
         <div>
-          <label class="mb-1.5 block text-[13px] font-medium text-text-secondary">Payload URL</label>
+          <label for="webhook-url" class="mb-1.5 block text-[13px] font-medium text-text-secondary">Payload URL</label>
           <input
+            id="webhook-url"
             type="url"
             bind:value={newUrl}
             placeholder="https://example.com/webhooks"
@@ -243,8 +244,9 @@
         </div>
 
         <div>
-          <label class="mb-1.5 block text-[13px] font-medium text-text-secondary">Description</label>
+          <label for="webhook-description" class="mb-1.5 block text-[13px] font-medium text-text-secondary">Description</label>
           <input
+            id="webhook-description"
             type="text"
             bind:value={newDescription}
             placeholder="Optional description"
@@ -252,9 +254,9 @@
           />
         </div>
 
-        <div>
+        <div aria-labelledby="webhook-events-label">
           <div class="mb-2 flex items-center justify-between">
-            <label class="text-[13px] font-medium text-text-secondary">Events</label>
+            <span id="webhook-events-label" class="text-[13px] font-medium text-text-secondary">Events</span>
             <div class="flex gap-2">
               <button
                 onclick={selectAll}
@@ -341,7 +343,7 @@
                 <span class="truncate text-[14px] font-medium text-text-primary">{endpoint.url}</span>
                 <span class="rounded-full px-2 py-0.5 text-[11px] font-medium {
                   endpoint.active
-                    ? 'bg-green-500/10 text-green-400'
+                    ? 'bg-success/10 text-success'
                     : 'bg-white/5 text-text-muted'
                 }">
                   {endpoint.active ? 'Active' : 'Paused'}
@@ -382,7 +384,7 @@
               </button>
               <button
                 onclick={() => deleteEndpoint(endpoint.id)}
-                class="rounded-lg border border-red-500/20 px-3 py-1.5 text-[12px] text-red-400 hover:bg-red-500/5"
+                class="rounded-lg border border-destructive/20 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive/5"
               >
                 Delete
               </button>

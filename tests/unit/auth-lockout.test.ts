@@ -13,7 +13,10 @@ describe('auth-lockout logic', () => {
 
   describe('lockout state transitions', () => {
     it('allows access when no previous attempts exist', () => {
-      const state = { attemptCount: 0, lockedUntil: null }
+      const state: { attemptCount: number; lockedUntil: Date | null } = {
+        attemptCount: 0,
+        lockedUntil: null,
+      }
       const locked = state.lockedUntil !== null && state.lockedUntil > new Date()
       expect(locked).toBe(false)
     })

@@ -55,12 +55,12 @@
 
   function getRoleBadgeColor(role: string) {
     const colors: Record<string, string> = {
-      admin: 'bg-blue-500/20 text-blue-400',
-      member: 'bg-emerald-500/20 text-emerald-400',
-      owner: 'bg-amber-500/20 text-amber-400',
-      viewer: 'bg-gray-500/20 text-gray-400',
+      admin: 'bg-info/20 text-info',
+      member: 'bg-success/20 text-success',
+      owner: 'bg-warning/20 text-warning',
+      viewer: 'bg-muted/20 text-muted',
     }
-    return colors[role] ?? 'bg-gray-500/20 text-gray-400'
+    return colors[role] ?? 'bg-muted/20 text-muted'
   }
 </script>
 

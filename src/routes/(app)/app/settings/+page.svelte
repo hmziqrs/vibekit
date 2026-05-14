@@ -38,7 +38,7 @@
   // Passkey state
   let passkeyLoading = $state(false)
   let passkeyError = $state('')
-  let userPasskeys = $state<{ createdAt: Date | null; id: string; name: string | undefined }[]>([])
+  let userPasskeys = $state<{ createdAt?: Date | null; id: string; name?: string }[]>([])
   let deletePasskeyId = $state('')
   let passkeyName = $state('')
 
@@ -58,7 +58,7 @@
     try {
       const res = await fetch('/api/security-events')
       if (res.ok) {
-        const data = await res.json()
+        const data = (await res.json()) as { events: typeof securityEvents }
         securityEvents = data.events ?? []
       }
     } catch {
@@ -303,14 +303,14 @@
   // Session management state
   let activeSessions = $state<
     {
-      createdAt: Date | null
-      currentUserAgent: boolean
-      expiresAt: Date | null
+      createdAt?: Date | null
+      currentUserAgent?: boolean
+      expiresAt?: Date | null
       id: string
-      ipAddress: string | null
+      ipAddress?: string | null
       token: string
-      updatedAt: Date | null
-      userAgent: string | null
+      updatedAt?: Date | null
+      userAgent?: string | null
       userId: string
     }[]
   >([])
@@ -318,7 +318,7 @@
   let sessionsError = $state('')
   let currentSessionId = $state('')
 
-  function parseUserAgent(ua: string | null): { browser: string; os: string } {
+  function parseUserAgent(ua: string | null | undefined): { browser: string; os: string } {
     if (!ua) return { browser: 'Unknown', os: 'Unknown' }
     let browser = 'Unknown'
     let os = 'Unknown'
@@ -710,8 +710,8 @@
     {:else if twoFactorState === 'enabled'}
       <div class="mt-4 space-y-3">
         <div class="flex items-center gap-2">
-          <span class="inline-block h-2 w-2 rounded-full bg-green-500"></span>
-          <p class="text-[13px] text-green-400">Two-factor authentication is enabled</p>
+          <span class="inline-block h-2 w-2 rounded-full bg-success"></span>
+          <p class="text-[13px] text-success">Two-factor authentication is enabled</p>
         </div>
 
         {#if showBackupCodes && backupCodes.length > 0}
@@ -922,7 +922,7 @@
           {@const ua = parseUserAgent(evt.userAgent)}
           <div class="flex items-center justify-between rounded-lg border border-white/6 bg-surface-elevated px-4 py-3">
             <div class="flex items-center gap-3">
-              <span class="flex size-2 rounded-full {severity === 'danger' ? 'bg-red-400' : severity === 'warn' ? 'bg-yellow-400' : 'bg-green-400'}"></span>
+              <span class="flex size-2 rounded-full {severity === 'danger' ? 'bg-destructive' : severity === 'warn' ? 'bg-warning' : 'bg-success'}"></span>
               <div>
                 <p class="text-[13px] font-medium text-text-primary">{formatEventType(evt.eventType)}</p>
                 <p class="text-[11px] text-text-subtle">

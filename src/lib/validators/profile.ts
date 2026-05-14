@@ -15,7 +15,11 @@ export const updateProfileSchema = z.object({
 
 export const onboardingSchema = z.object({
   completed: z.boolean().optional(),
-  step: z.number().int().min(0).max(3).optional(),
+  step: z
+    .number()
+    .int()
+    .transform((v) => Math.min(Math.max(0, v), 3))
+    .optional(),
 })
 
 export const reactivateAccountSchema = z.object({
