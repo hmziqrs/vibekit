@@ -234,7 +234,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] i18n tooling (missing translation detection script, ICU message format, key parity tests)
 - [x] Gap: Translation keys wired in app sidebar, admin sidebar, and search dialog components; i18n check added to CI pipeline
 - [x] Gap: 27 components replaced hardcoded 'en-US' date/number formatting with locale-aware formatDate/formatNumber from $lib/i18n.svelte
-- [ ] Gap: No RTL-aware CSS (15+ hardcoded directional classes)
+- [x] Gap: RTL-aware CSS — replaced LTR-specific classes (ml-, mr-, pl-, pr-, left-, right-, border-l/r) with logical properties (ms-, me-, ps-, pe-, start-, end-, border-s/e) across layouts and core components
 - [x] Gap: Language switcher moved into app and admin sidebar navigation (user section)
 - [x] Gap: i18n check script added to GitHub Actions CI pipeline
 - [x] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
