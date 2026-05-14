@@ -150,7 +150,7 @@
 
 <div class="space-y-6">
   <div>
-    <h2 class="text-text-primary text-xl font-semibold">API Keys</h2>
+    <h1 class="text-text-primary text-xl font-semibold">API Keys</h1>
     <p class="text-text-muted mt-1">Manage API keys for programmatic access to your account.</p>
   </div>
 

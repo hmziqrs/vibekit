@@ -55,7 +55,7 @@
   <!-- Platform Tabs -->
   <div class="border-b border-white/[0.06]">
     <div class="mx-auto max-w-4xl px-6">
-      <nav class="flex gap-6">
+      <nav class="flex gap-6" aria-label="Automation platforms">
         {#each platforms as p (p)}
           <button
             onclick={() => (activePlatform = p)}

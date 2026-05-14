@@ -183,7 +183,7 @@
           <p class="mt-1 text-[13px] text-text-secondary">{resolveTarget.description}</p>
         {/if}
       </div>
-      <textarea
+      <textarea aria-label="Resolution note"
         bind:value={resolutionNote}
         class="w-full rounded-lg border border-white/[0.06] bg-surface-base px-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         rows="3"

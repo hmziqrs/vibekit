@@ -380,7 +380,7 @@
           <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Maintenance Message</p>
           {#if editingKey === 'maintenance_message'}
             <div class="mt-2 flex items-start gap-2">
-              <textarea
+              <textarea aria-label="Maintenance message"
                 class="w-full rounded-md border border-white/[0.06] bg-surface-base px-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 rows="3"
                 bind:value={editingValue}
@@ -472,7 +472,7 @@
     {#if showCreateAnnouncement}
       <div class="mt-4 rounded-xl border border-white/[0.06] bg-surface p-4">
         <div class="space-y-3">
-          <textarea
+          <textarea aria-label="Announcement message"
             class="w-full rounded-md border border-white/[0.06] bg-surface-base px-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             rows="3"
             placeholder="Announcement message..."

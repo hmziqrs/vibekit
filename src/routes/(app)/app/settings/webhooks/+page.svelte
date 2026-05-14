@@ -218,7 +218,7 @@
     <div class="rounded-xl border border-success/20 bg-success/5 p-4">
       <div class="flex items-start justify-between">
         <div>
-          <h3 class="font-medium text-success">Webhook Endpoint Created</h3>
+          <h2 class="font-medium text-success">Webhook Endpoint Created</h2>
           <p class="mt-1 text-[13px] text-text-muted">
             Save this secret now — it won't be shown again.
           </p>
@@ -244,7 +244,7 @@
 
   {#if showCreateForm}
     <div class="rounded-xl border border-white/[0.06] bg-surface p-5">
-      <h3 class="text-[15px] font-medium text-text-primary">New Webhook Endpoint</h3>
+      <h2 class="text-[15px] font-medium text-text-primary">New Webhook Endpoint</h2>
 
       <div class="mt-4 space-y-4">
         <div>
@@ -422,7 +422,7 @@
 
           {#if selectedEndpointId === endpoint.id}
             <div class="mt-4 border-t border-white/[0.06] pt-4">
-              <h4 class="mb-2 text-[13px] font-medium text-text-secondary">Delivery History</h4>
+              <h3 class="mb-2 text-[13px] font-medium text-text-secondary">Delivery History</h3>
               {#if deliveriesQuery.isPending}
                 <div class="space-y-2">
                   {#each Array(2) as _}

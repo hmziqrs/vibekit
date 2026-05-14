@@ -665,7 +665,7 @@
                             updateSeriesOrder(seriesId, Number((e.target as HTMLInputElement).value))}
                           min="0"
                           class="w-10 rounded border border-brand/30 bg-transparent px-1 py-0.5 text-center text-[11px] text-brand focus:border-brand focus:outline-none"
-                          title="Sort order"
+                          aria-label="Sort order"
                         />
                         <button
                           type="button"

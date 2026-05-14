@@ -103,7 +103,7 @@
     {/if}
 
     <div class="mb-8 rounded-lg border border-border bg-surface p-5">
-      <h3 class="mb-1 text-sm font-semibold text-text-primary">Subscribe to the newsletter</h3>
+      <h2 class="mb-1 text-sm font-semibold text-text-primary">Subscribe to the newsletter</h2>
       <NewsletterSignup source="blog" />
     </div>
 
