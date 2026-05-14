@@ -105,7 +105,23 @@
   </div>
 
   <!-- Available Providers -->
-  {#if providersQuery.isSuccess && providersQuery.data}
+  {#if providersQuery.isPending}
+    <div class="space-y-3">
+      {#each Array(3) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if providersQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load integration providers.</p>
+      <button
+        onclick={() => providersQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
+  {:else if providersQuery.isSuccess && providersQuery.data}
     {@const byCategory = Object.groupBy(
       providersQuery.data.providers,
       (p) => p.provider.category,
@@ -165,7 +181,23 @@
   {/if}
 
   <!-- Active Integrations -->
-  {#if integrationsQuery.isSuccess && integrationsQuery.data && integrationsQuery.data.integrations.length > 0}
+  {#if integrationsQuery.isPending}
+    <div class="space-y-3">
+      {#each Array(2) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if integrationsQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load integrations.</p>
+      <button
+        onclick={() => integrationsQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
+  {:else if integrationsQuery.isSuccess && integrationsQuery.data && integrationsQuery.data.integrations.length > 0}
     <div>
       <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-text-muted">
         Active Connections

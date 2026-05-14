@@ -26,6 +26,7 @@
   let newPlanSlug = $state('')
   let newPlanPrice = $state('')
   let newPlanInterval = $state<'month' | 'year'>('month')
+  let mutationError = $state('')
 
   const queryClient = useQueryClient()
 
@@ -49,38 +50,65 @@
   }))
 
   async function togglePlan(planId: string, isActive: boolean) {
-    await fetch(`/api/admin/billing/plans/${planId}`, {
-      body: JSON.stringify({ isActive: !isActive }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/billing/plans/${planId}`, {
+        body: JSON.stringify({ isActive: !isActive }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!res.ok) {
+        mutationError = 'Failed to update plan status. Please try again.'
+        return
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to update plan status.'
+    }
   }
 
   async function deletePlan(planId: string) {
-    await fetch(`/api/admin/billing/plans/${planId}`, { method: 'DELETE' })
-    queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/billing/plans/${planId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        mutationError = 'Failed to delete plan. Please try again.'
+        return
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to delete plan.'
+    }
   }
 
   async function createPlan() {
     if (!newPlanName.trim() || !newPlanSlug.trim() || !newPlanPrice) return
 
-    await fetch('/api/admin/billing/plans', {
-      body: JSON.stringify({
-        interval: newPlanInterval,
-        name: newPlanName.trim(),
-        priceInCents: Math.round(Number(newPlanPrice) * 100),
-        slug: newPlanSlug.trim(),
-      }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    })
+    try {
+      mutationError = ''
+      const res = await fetch('/api/admin/billing/plans', {
+        body: JSON.stringify({
+          interval: newPlanInterval,
+          name: newPlanName.trim(),
+          priceInCents: Math.round(Number(newPlanPrice) * 100),
+          slug: newPlanSlug.trim(),
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) {
+        mutationError = 'Failed to create plan. Please try again.'
+        return
+      }
 
-    newPlanName = ''
-    newPlanSlug = ''
-    newPlanPrice = ''
-    showCreatePlan = false
-    queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
+      newPlanName = ''
+      newPlanSlug = ''
+      newPlanPrice = ''
+      showCreatePlan = false
+      queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] })
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to create plan.'
+    }
   }
 
   function formatPrice(cents: number, currency: string): string {
@@ -93,6 +121,10 @@
 </script>
 
 <div class="space-y-6 p-6">
+  {#if mutationError}
+    <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+  {/if}
+
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold text-text-primary">Billing</h1>
     <button
@@ -104,20 +136,32 @@
   </div>
 
   <!-- Overview Stats -->
-  <div class="grid gap-4 sm:grid-cols-3">
-    <div class="rounded-xl border border-border bg-surface p-5">
-      <p class="text-[13px] text-text-muted">Active Subscriptions</p>
-      <p class="mt-1 text-2xl font-bold text-text-primary">{totalActive()}</p>
+  {#if overviewQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load billing overview.</p>
+      <button
+        onclick={() => overviewQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
     </div>
-    <div class="rounded-xl border border-border bg-surface p-5">
-      <p class="text-[13px] text-text-muted">Total Subscriptions</p>
-      <p class="mt-1 text-2xl font-bold text-text-primary">{totalAll()}</p>
+  {:else}
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-border bg-surface p-5">
+        <p class="text-[13px] text-text-muted">Active Subscriptions</p>
+        <p class="mt-1 text-2xl font-bold text-text-primary">{totalActive()}</p>
+      </div>
+      <div class="rounded-xl border border-border bg-surface p-5">
+        <p class="text-[13px] text-text-muted">Total Subscriptions</p>
+        <p class="mt-1 text-2xl font-bold text-text-primary">{totalAll()}</p>
+      </div>
+      <div class="rounded-xl border border-border bg-surface p-5">
+        <p class="text-[13px] text-text-muted">Plans</p>
+        <p class="mt-1 text-2xl font-bold text-text-primary">{plansQuery.data?.length ?? 0}</p>
+      </div>
     </div>
-    <div class="rounded-xl border border-border bg-surface p-5">
-      <p class="text-[13px] text-text-muted">Plans</p>
-      <p class="mt-1 text-2xl font-bold text-text-primary">{plansQuery.data?.length ?? 0}</p>
-    </div>
-  </div>
+  {/if}
 
   <!-- Plan Distribution -->
   {#if overviewQuery.data?.planDistribution && overviewQuery.data.planDistribution.length > 0}
@@ -196,6 +240,16 @@
         {#each Array(3) as _}
           <div class="h-14 animate-pulse rounded-xl bg-surface-deep"></div>
         {/each}
+      </div>
+    {:else if plansQuery.error}
+      <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+        <p class="text-[14px] text-destructive">Failed to load plans.</p>
+        <button
+          onclick={() => plansQuery.refetch()}
+          class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+        >
+          Try again
+        </button>
       </div>
     {:else if plansQuery.data && plansQuery.data.length > 0}
       <div class="space-y-2">

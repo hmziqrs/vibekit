@@ -46,6 +46,7 @@
   let selectedRole = $state<TeamRole>('member')
   let adding = $state(false)
   let error = $state('')
+  let mutationError = $state('')
 
   const queryClient = useQueryClient()
 
@@ -170,24 +171,30 @@
   }
 
   async function removeMember(memberId: string) {
-    const res = await fetch(`/api/orgs/${orgId}/teams/${teamId}/members/${memberId}`, {
-      method: 'DELETE',
-    })
-
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/teams/${teamId}/members/${memberId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to remove member')
       await queryClient.invalidateQueries({ queryKey: ['team-members', orgId, teamId] })
+    } catch {
+      mutationError = 'Failed to remove member'
     }
   }
 
   async function changeRole(memberId: string, newRole: TeamRole) {
-    const res = await fetch(`/api/orgs/${orgId}/teams/${teamId}/members/${memberId}`, {
-      body: JSON.stringify({ role: newRole }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/teams/${teamId}/members/${memberId}`, {
+        body: JSON.stringify({ role: newRole }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!res.ok) throw new Error('Failed to change role')
       await queryClient.invalidateQueries({ queryKey: ['team-members', orgId, teamId] })
+    } catch {
+      mutationError = 'Failed to change role'
     }
   }
 
@@ -326,6 +333,10 @@
         </form>
       {/if}
 
+      {#if mutationError}
+        <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+      {/if}
+
       {#if membersQuery.isPending}
         <div class="mt-4 space-y-3">
           {#each Array(3) as _}
@@ -333,6 +344,16 @@
               <div class="h-4 w-48 rounded bg-white/[0.06]"></div>
             </div>
           {/each}
+        </div>
+      {:else if membersQuery.error}
+        <div class="mt-4 rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+          <p class="text-[14px] text-destructive">Failed to load members.</p>
+          <button
+            onclick={() => membersQuery.refetch()}
+            class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+          >
+            Try again
+          </button>
         </div>
       {:else if membersQuery.data}
         <div class="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-surface">
@@ -388,6 +409,16 @@
           {#each Array(3) as _}
             <div class="animate-pulse h-12 rounded-lg bg-white/[0.06]"></div>
           {/each}
+        </div>
+      {:else if activityQuery.error}
+        <div class="mt-4 rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+          <p class="text-[14px] text-destructive">Failed to load activity.</p>
+          <button
+            onclick={() => activityQuery.refetch()}
+            class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+          >
+            Try again
+          </button>
         </div>
       {:else if activityQuery.data && activityQuery.data.length > 0}
         <div class="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-surface">

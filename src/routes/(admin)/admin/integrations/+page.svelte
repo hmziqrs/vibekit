@@ -49,7 +49,21 @@
     <p class="mt-1 text-sm text-text-muted">Monitor third-party integration connections across the platform</p>
   </div>
 
-  {#if integrationsQuery.isSuccess && integrationsQuery.data}
+  {#if integrationsQuery.isPending}
+    <div class="flex items-center justify-center py-12">
+      <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
+    </div>
+  {:else if integrationsQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load integrations.</p>
+      <button
+        onclick={() => integrationsQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
+  {:else if integrationsQuery.isSuccess && integrationsQuery.data}
     {#if integrationsQuery.data.integrations.length === 0}
       <div class="rounded-lg border border-border bg-surface p-8 text-center">
         <p class="text-sm text-text-muted">No integrations found</p>

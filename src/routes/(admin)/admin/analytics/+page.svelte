@@ -61,38 +61,60 @@
 </div>
 
 <!-- Stats -->
-<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-  <div class="rounded-lg border border-border bg-surface p-3">
-    <div class="text-[12px] text-text-muted">Total Views</div>
-    <div class="text-xl font-semibold text-text-primary">
-      {overviewQuery.data ? formatNumber(overviewQuery.data.totalViews) : '—'}
+{#if overviewQuery.error}
+  <div class="mt-4 rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+    <p class="text-[14px] text-destructive">Failed to load analytics overview.</p>
+    <button
+      onclick={() => overviewQuery.refetch()}
+      class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+    >
+      Try again
+    </button>
+  </div>
+{:else}
+  <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div class="rounded-lg border border-border bg-surface p-3">
+      <div class="text-[12px] text-text-muted">Total Views</div>
+      <div class="text-xl font-semibold text-text-primary">
+        {overviewQuery.data ? formatNumber(overviewQuery.data.totalViews) : '—'}
+      </div>
+    </div>
+    <div class="rounded-lg border border-border bg-surface p-3">
+      <div class="text-[12px] text-text-muted">Unique Visitors</div>
+      <div class="text-xl font-semibold text-text-primary">
+        {overviewQuery.data ? formatNumber(overviewQuery.data.uniqueVisitors) : '—'}
+      </div>
+    </div>
+    <div class="rounded-lg border border-border bg-surface p-3">
+      <div class="text-[12px] text-text-muted">Avg Completion</div>
+      <div class="text-xl font-semibold text-success">
+        {overviewQuery.data ? `${overviewQuery.data.avgCompletion}%` : '—'}
+      </div>
+    </div>
+    <div class="rounded-lg border border-border bg-surface p-3">
+      <div class="text-[12px] text-text-muted">Top Referrers</div>
+      <div class="text-xl font-semibold text-text-primary">
+        {overviewQuery.data ? overviewQuery.data.referrers.length : '—'}
+      </div>
     </div>
   </div>
-  <div class="rounded-lg border border-border bg-surface p-3">
-    <div class="text-[12px] text-text-muted">Unique Visitors</div>
-    <div class="text-xl font-semibold text-text-primary">
-      {overviewQuery.data ? formatNumber(overviewQuery.data.uniqueVisitors) : '—'}
-    </div>
-  </div>
-  <div class="rounded-lg border border-border bg-surface p-3">
-    <div class="text-[12px] text-text-muted">Avg Completion</div>
-    <div class="text-xl font-semibold text-success">
-      {overviewQuery.data ? `${overviewQuery.data.avgCompletion}%` : '—'}
-    </div>
-  </div>
-  <div class="rounded-lg border border-border bg-surface p-3">
-    <div class="text-[12px] text-text-muted">Top Referrers</div>
-    <div class="text-xl font-semibold text-text-primary">
-      {overviewQuery.data ? overviewQuery.data.referrers.length : '—'}
-    </div>
-  </div>
-</div>
+{/if}
 
 <!-- Top Posts -->
 <div class="mt-6">
   <h2 class="mb-3 text-lg font-semibold text-text-primary">Top Posts</h2>
   {#if overviewQuery.isPending}
     <div class="text-[13px] text-text-muted">Loading...</div>
+  {:else if overviewQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load top posts.</p>
+      <button
+        onclick={() => overviewQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
   {:else if overviewQuery.data?.topPosts.length}
     <div class="overflow-hidden rounded-lg border border-border">
       <table class="w-full">
@@ -127,7 +149,17 @@
 </div>
 
 <!-- Referrers -->
-{#if overviewQuery.data?.referrers.length}
+{#if overviewQuery.error}
+  <div class="mt-6 rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+    <p class="text-[14px] text-destructive">Failed to load referrers.</p>
+    <button
+      onclick={() => overviewQuery.refetch()}
+      class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+    >
+      Try again
+    </button>
+  </div>
+{:else if overviewQuery.data?.referrers.length}
   <div class="mt-6">
     <h2 class="mb-3 text-lg font-semibold text-text-primary">Top Referrers</h2>
     <div class="overflow-hidden rounded-lg border border-border">

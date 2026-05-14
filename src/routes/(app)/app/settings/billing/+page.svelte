@@ -195,7 +195,23 @@
   {/if}
 
   <!-- Available Plans -->
-  {#if plansQuery.data && plansQuery.data.length > 0}
+  {#if plansQuery.isPending}
+    <div class="space-y-3">
+      {#each Array(3) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if plansQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load plans.</p>
+      <button
+        onclick={() => plansQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
+  {:else if plansQuery.data && plansQuery.data.length > 0}
     <div>
       <h2 class="mb-3 text-lg font-semibold text-text-primary">Available Plans</h2>
       <div class="grid gap-4 sm:grid-cols-2">
@@ -247,7 +263,23 @@
   {/if}
 
   <!-- Invoices -->
-  {#if invoicesQuery.data && invoicesQuery.data.length > 0}
+  {#if invoicesQuery.isPending}
+    <div class="space-y-3">
+      {#each Array(3) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if invoicesQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load invoices.</p>
+      <button
+        onclick={() => invoicesQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
+  {:else if invoicesQuery.data && invoicesQuery.data.length > 0}
     <div>
       <h2 class="mb-3 text-lg font-semibold text-text-primary">Invoice History</h2>
       <div class="space-y-2">

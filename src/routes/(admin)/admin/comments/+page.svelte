@@ -22,6 +22,7 @@
   let deleteTarget = $state<CommentRow | null>(null)
   let showConfirmDialog = $state(false)
   let stats = $state({ approved: 0, pending: 0, rejected: 0, spam: 0 })
+  let mutationError = $state('')
 
   const commentsQuery = createQuery(() => ({
     queryFn: async () => {
@@ -79,40 +80,63 @@
   }
 
   async function moderate(id: string, newStatus: 'approved' | 'rejected' | 'spam') {
-    const res = await fetch(`/api/admin/comments/${id}/moderate`, {
-      body: JSON.stringify({ status: newStatus }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    if (res.ok) {
-      commentsQuery.refetch()
-      statsQuery.refetch()
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/comments/${id}/moderate`, {
+        body: JSON.stringify({ status: newStatus }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (res.ok) {
+        commentsQuery.refetch()
+        statsQuery.refetch()
+      } else {
+        mutationError = 'Failed to moderate comment. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to moderate comment.'
     }
   }
 
   async function deleteComment() {
     if (!deleteTarget) return
-    const res = await fetch(`/api/admin/comments/${deleteTarget.id}`, { method: 'DELETE' })
-    if (res.ok) {
-      deleteTarget = null
-      showConfirmDialog = false
-      commentsQuery.refetch()
-      statsQuery.refetch()
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/comments/${deleteTarget.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        deleteTarget = null
+        showConfirmDialog = false
+        commentsQuery.refetch()
+        statsQuery.refetch()
+      } else {
+        mutationError = 'Failed to delete comment. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to delete comment.'
     }
   }
 
   async function bulkModerate(newStatus: 'approved' | 'rejected') {
-    const promises = [...selectedIds].map((id) =>
-      fetch(`/api/admin/comments/${id}/moderate`, {
-        body: JSON.stringify({ status: newStatus }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'PATCH',
-      }),
-    )
-    await Promise.all(promises)
-    selectedIds = new Set()
-    commentsQuery.refetch()
-    statsQuery.refetch()
+    try {
+      mutationError = ''
+      const promises = [...selectedIds].map((id) =>
+        fetch(`/api/admin/comments/${id}/moderate`, {
+          body: JSON.stringify({ status: newStatus }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        }),
+      )
+      const results = await Promise.all(promises)
+      if (results.every((r) => r.ok)) {
+        selectedIds = new Set()
+        commentsQuery.refetch()
+        statsQuery.refetch()
+      } else {
+        mutationError = 'Some comments failed to update. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Bulk moderation failed.'
+    }
   }
 
   function truncate(text: string, max = 80): string {
@@ -132,6 +156,10 @@
   variant="danger"
   onConfirm={deleteComment}
 />
+
+{#if mutationError}
+  <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+{/if}
 
 <div class="flex items-center justify-between">
   <h1 class="text-2xl font-bold text-text-primary">Comments</h1>

@@ -26,6 +26,7 @@
 
   let filterType = $state<string>('all')
   let filterRead = $state<string>('all')
+  let mutationError = $state('')
 
   const queryClient = useQueryClient()
 
@@ -59,18 +60,36 @@
   )
 
   async function markAsRead(id: string) {
-    await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' })
+      if (!res.ok) throw new Error('Failed to mark as read')
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      mutationError = 'Failed to mark notification as read.'
+    }
   }
 
   async function markAllRead() {
-    await fetch('/api/notifications/read-all', { method: 'PATCH' })
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    mutationError = ''
+    try {
+      const res = await fetch('/api/notifications/read-all', { method: 'PATCH' })
+      if (!res.ok) throw new Error('Failed to mark all as read')
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      mutationError = 'Failed to mark all notifications as read.'
+    }
   }
 
   async function deleteNotification(id: string) {
-    await fetch(`/api/notifications/${id}`, { method: 'DELETE' })
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/notifications/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete notification')
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      mutationError = 'Failed to delete notification.'
+    }
   }
 
   function handleNotificationClick(n: NotificationData) {
@@ -139,11 +158,25 @@
     </select>
   </div>
 
+  {#if mutationError}
+    <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+  {/if}
+
   {#if notificationsQuery.isPending}
     <div class="space-y-3">
       {#each Array(5) as _}
         <div class="h-16 animate-pulse rounded-xl bg-white/[0.04]"></div>
       {/each}
+    </div>
+  {:else if notificationsQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load notifications.</p>
+      <button
+        onclick={() => notificationsQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
     </div>
   {:else if filteredNotifications().length === 0}
     <div class="rounded-xl border border-white/[0.06] bg-surface p-8 text-center">

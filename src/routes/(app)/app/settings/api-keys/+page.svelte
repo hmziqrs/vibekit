@@ -228,7 +228,21 @@
 
   <!-- Keys list -->
   {#if keysQuery.isPending}
-    <p class="text-text-muted text-sm">Loading API keys...</p>
+    <div class="space-y-3">
+      {#each Array(3) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if keysQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load API keys.</p>
+      <button
+        onclick={() => keysQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
   {:else if keysQuery.data && keysQuery.data.length > 0}
     <div class="space-y-3">
       {#each keysQuery.data as keyItem (keyItem.id)}

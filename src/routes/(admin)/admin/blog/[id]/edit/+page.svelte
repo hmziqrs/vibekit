@@ -45,6 +45,7 @@
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
   let serverError = $state('')
+  let mutationError = $state('')
   let editor = $state<Editor | null>(null)
   let editorWrapperEl = $state<HTMLDivElement | undefined>(undefined)
   let showMediaLibrary = $state(false)
@@ -235,10 +236,22 @@
   }
 
   async function publish() {
+    mutationError = ''
     saving = true
-    await fetch(`/api/blog/${data.post.id}/publish`, { method: 'POST' })
-    saving = false
-    await invalidateAll()
+    try {
+      const res = await fetch(`/api/blog/${data.post.id}/publish`, { method: 'POST' })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        mutationError = err.error ?? 'Failed to publish post.'
+        saving = false
+        return
+      }
+      saving = false
+      await invalidateAll()
+    } catch {
+      mutationError = 'Network error. Please try again.'
+      saving = false
+    }
   }
 
   async function schedulePublish() {
@@ -271,26 +284,66 @@
   }
 
   async function unpublish() {
+    mutationError = ''
     saving = true
-    await fetch(`/api/blog/${data.post.id}/unpublish`, { method: 'POST' })
-    saving = false
-    await invalidateAll()
+    try {
+      const res = await fetch(`/api/blog/${data.post.id}/unpublish`, { method: 'POST' })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        mutationError = err.error ?? 'Failed to unpublish post.'
+        saving = false
+        return
+      }
+      saving = false
+      await invalidateAll()
+    } catch {
+      mutationError = 'Network error. Please try again.'
+      saving = false
+    }
   }
 
   async function archive() {
     if (!confirm('Archive this post?')) {
       return
     }
-    await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
-    goto('/admin/blog')
+    mutationError = ''
+    saving = true
+    try {
+      const res = await fetch(`/api/blog/${data.post.id}/archive`, { method: 'POST' })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        mutationError = err.error ?? 'Failed to archive post.'
+        saving = false
+        return
+      }
+      saving = false
+      goto('/admin/blog')
+    } catch {
+      mutationError = 'Network error. Please try again.'
+      saving = false
+    }
   }
 
   async function deletePost() {
     if (!confirm('Delete this post? This action can be undone by restoring from the blog list.')) {
       return
     }
-    await fetch(`/api/blog/${data.post.id}`, { method: 'DELETE' })
-    goto('/admin/blog')
+    mutationError = ''
+    saving = true
+    try {
+      const res = await fetch(`/api/blog/${data.post.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        mutationError = err.error ?? 'Failed to delete post.'
+        saving = false
+        return
+      }
+      saving = false
+      goto('/admin/blog')
+    } catch {
+      mutationError = 'Network error. Please try again.'
+      saving = false
+    }
   }
 </script>
 
@@ -315,6 +368,10 @@
 <form onsubmit={handleSubmit} class="mt-8" novalidate>
   {#if serverError}
     <p class="mb-6 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{serverError}</p>
+  {/if}
+
+  {#if mutationError}
+    <p class="mb-6 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
   {/if}
 
   <div class="flex gap-6">

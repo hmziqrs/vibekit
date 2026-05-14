@@ -37,6 +37,7 @@
   let newEndsAt = $state('')
   let creating = $state(false)
   let togglingId = $state<string | null>(null)
+  let mutationError = $state('')
   let section = $state<'announcements' | 'config' | 'history' | 'maintenance'>('config')
 
   const configQuery = createQuery(() => ({
@@ -113,16 +114,24 @@
 
   async function saveConfig(key: string, value: string) {
     savingConfig = true
-    const res = await fetch(`/api/admin/config/${key}`, {
-      body: JSON.stringify({ value }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    savingConfig = false
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/admin/config/${key}`, {
+        body: JSON.stringify({ value }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: { message?: string } }
+        throw new Error(err.error?.message ?? 'Failed to save config')
+      }
       editingKey = null
       editingValue = ''
       configQuery.refetch()
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to save config'
+    } finally {
+      savingConfig = false
     }
   }
 
@@ -138,50 +147,73 @@
 
   async function createAnnouncement() {
     creating = true
-    const body: Record<string, unknown> = {
-      isActive: true,
-      message: newMessage,
-      type: newType,
-    }
-    if (newStartsAt) body.startsAt = new Date(newStartsAt).toISOString()
-    if (newEndsAt) body.endsAt = new Date(newEndsAt).toISOString()
+    mutationError = ''
+    try {
+      const body: Record<string, unknown> = {
+        isActive: true,
+        message: newMessage,
+        type: newType,
+      }
+      if (newStartsAt) body.startsAt = new Date(newStartsAt).toISOString()
+      if (newEndsAt) body.endsAt = new Date(newEndsAt).toISOString()
 
-    const res = await fetch('/api/admin/announcements', {
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    })
-    creating = false
-    if (res.ok) {
+      const res = await fetch('/api/admin/announcements', {
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: { message?: string } }
+        throw new Error(err.error?.message ?? 'Failed to create announcement')
+      }
       showCreateAnnouncement = false
       newMessage = ''
       newType = 'info'
       newStartsAt = ''
       newEndsAt = ''
       announcementsQuery.refetch()
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to create announcement'
+    } finally {
+      creating = false
     }
   }
 
   async function toggleAnnouncementActive(id: string, currentActive: boolean) {
     togglingId = id
-    const res = await fetch(`/api/admin/announcements/${id}`, {
-      body: JSON.stringify({ isActive: !currentActive }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    togglingId = null
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/admin/announcements/${id}`, {
+        body: JSON.stringify({ isActive: !currentActive }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: { message?: string } }
+        throw new Error(err.error?.message ?? 'Failed to update announcement')
+      }
       announcementsQuery.refetch()
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to update announcement'
+    } finally {
+      togglingId = null
     }
   }
 
   async function deleteAnnouncement() {
     if (!deletingId) return
-    const res = await fetch(`/api/admin/announcements/${deletingId}`, { method: 'DELETE' })
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/admin/announcements/${deletingId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: { message?: string } }
+        throw new Error(err.error?.message ?? 'Failed to delete announcement')
+      }
       deletingId = null
       showDeleteDialog = false
       announcementsQuery.refetch()
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to delete announcement'
     }
   }
 
@@ -210,6 +242,12 @@
     >{s.label}</button>
   {/each}
 </div>
+
+{#if mutationError}
+  <div class="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
+    {mutationError}
+  </div>
+{/if}
 
 <!-- Feature Flags Section -->
 {#if section === 'config'}

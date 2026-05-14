@@ -29,6 +29,7 @@
   let resolveStatus = $state<'resolved' | 'dismissed'>('resolved')
   let resolutionNote = $state('')
   let resolving = $state(false)
+  let mutationError = $state('')
 
   const statusTabs = [
     { label: 'Pending', value: 'pending' },
@@ -120,18 +121,26 @@
 
   async function handleResolve() {
     if (!resolveTarget) return
-    resolving = true
-    const res = await fetch(`/api/admin/reports/${resolveTarget.id}`, {
-      body: JSON.stringify({ resolutionNote, status: resolveStatus }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    resolving = false
-    if (res.ok) {
-      showResolveDialog = false
-      resolveTarget = null
-      reportsQuery.refetch()
-      statsQuery.refetch()
+    try {
+      mutationError = ''
+      resolving = true
+      const res = await fetch(`/api/admin/reports/${resolveTarget.id}`, {
+        body: JSON.stringify({ resolutionNote, status: resolveStatus }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      resolving = false
+      if (res.ok) {
+        showResolveDialog = false
+        resolveTarget = null
+        reportsQuery.refetch()
+        statsQuery.refetch()
+      } else {
+        mutationError = 'Failed to resolve report. Please try again.'
+      }
+    } catch (error) {
+      resolving = false
+      mutationError = error instanceof Error ? e.message : 'Failed to resolve report.'
     }
   }
 
@@ -184,6 +193,10 @@
     </div>
   {/if}
 </ConfirmDialog>
+
+{#if mutationError}
+  <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+{/if}
 
 <h1 class="text-2xl font-bold text-text-primary">Content Moderation</h1>
 <p class="mt-1 text-[14px] text-text-muted">Review and manage reported content.</p>

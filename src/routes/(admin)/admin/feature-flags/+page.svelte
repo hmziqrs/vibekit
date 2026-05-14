@@ -145,6 +145,30 @@
     </div>
   {/if}
 
+  {#if updateMutation.isError}
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {updateMutation.error?.message ?? 'Failed to update flag'}
+    </div>
+  {/if}
+
+  {#if toggleMutation.isError}
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {toggleMutation.error?.message ?? 'Failed to toggle flag'}
+    </div>
+  {/if}
+
+  {#if killSwitchMutation.isError}
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {killSwitchMutation.error?.message ?? 'Failed to activate kill switch'}
+    </div>
+  {/if}
+
+  {#if deleteMutation.isError}
+    <div class="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {deleteMutation.error?.message ?? 'Failed to delete flag'}
+    </div>
+  {/if}
+
   {#if showCreateForm}
     <div class="rounded-lg border border-border bg-surface p-6">
       <h2 class="mb-4 text-sm font-medium text-text-secondary">New Feature Flag</h2>

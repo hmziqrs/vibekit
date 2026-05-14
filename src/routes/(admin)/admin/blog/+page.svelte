@@ -32,6 +32,7 @@
   let showConfirmDialog = $state(false)
   let bulkAction = $state<'delete' | 'archive' | null>(null)
   let bulkError = $state('')
+  let mutationError = $state('')
 
   const pageSize = 20
 
@@ -93,17 +94,33 @@
 
   async function deletePost() {
     if (!deleteTarget) return
-    const res = await fetch(`/api/blog/${deleteTarget.id}`, { method: 'DELETE' })
-    if (res.ok) {
-      deleteTarget = null
-      showConfirmDialog = false
-      postsQuery.refetch()
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/blog/${deleteTarget.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        deleteTarget = null
+        showConfirmDialog = false
+        postsQuery.refetch()
+      } else {
+        mutationError = 'Failed to delete post. Please try again.'
+      }
+    } catch {
+      mutationError = 'Network error. Please try again.'
     }
   }
 
   async function restorePost(id: string) {
-    const res = await fetch(`/api/blog/${id}/restore`, { method: 'POST' })
-    if (res.ok) postsQuery.refetch()
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/blog/${id}/restore`, { method: 'POST' })
+      if (res.ok) {
+        postsQuery.refetch()
+      } else {
+        mutationError = 'Failed to restore post. Please try again.'
+      }
+    } catch {
+      mutationError = 'Network error. Please try again.'
+    }
   }
 
   async function executeBulkAction() {
@@ -229,6 +246,10 @@
 
 {#if bulkError}
   <p class="mt-2 text-[12px] text-destructive">{bulkError}</p>
+{/if}
+
+{#if mutationError}
+  <p class="mt-2 text-[12px] text-destructive">{mutationError}</p>
 {/if}
 
 <div class="mt-4">

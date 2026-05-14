@@ -10,6 +10,7 @@
   let search = $state('')
   let deleteTarget = $state<ItemData | null>(null)
   let deleteDialogOpen = $state(false)
+  let mutationError = $state('')
 
   const queryClient = useQueryClient()
 
@@ -35,24 +36,32 @@
   }
 
   async function toggleArchive(id: string, currentStatus: string) {
+    mutationError = ''
     const newStatus = currentStatus === 'active' ? 'archived' : 'active'
-    const res = await fetch(`/api/items/${id}`, {
-      body: JSON.stringify({ status: newStatus }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/items/${id}`, {
+        body: JSON.stringify({ status: newStatus }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!res.ok) throw new Error('Failed to update item')
       await queryClient.invalidateQueries({ queryKey: ['items'] })
+    } catch {
+      mutationError = 'Failed to update item status.'
     }
   }
 
   async function deleteItem() {
     if (!deleteTarget) {return}
-    const res = await fetch(`/api/items/${deleteTarget.id}`, { method: 'DELETE' })
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/items/${deleteTarget.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete item')
       deleteTarget = null
       deleteDialogOpen = false
       await queryClient.invalidateQueries({ queryKey: ['items'] })
+    } catch {
+      mutationError = 'Failed to delete item.'
     }
   }
 
@@ -104,6 +113,10 @@
       <SearchInput bind:value={search} placeholder="Search items..." />
     </div>
   </div>
+
+  {#if mutationError}
+    <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+  {/if}
 
   <!-- Items list -->
   {#if itemsQuery.isPending}

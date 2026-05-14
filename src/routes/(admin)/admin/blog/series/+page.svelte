@@ -27,6 +27,7 @@
   let newDescription = $state('')
   let formError = $state('')
   let formSaving = $state(false)
+  let mutationError = $state('')
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   $effect(() => {
@@ -138,11 +139,19 @@
 
   async function deleteSeries() {
     if (!deleteTarget) return
-    const res = await fetch(`/api/blog/series/${deleteTarget.id}`, { method: 'DELETE' })
-    if (res.ok) {
-      deleteTarget = null
-      showConfirmDialog = false
-      seriesQuery.refetch()
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/blog/series/${deleteTarget.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        deleteTarget = null
+        showConfirmDialog = false
+        seriesQuery.refetch()
+      } else {
+        const data = (await res.json()) as { error?: string }
+        mutationError = data.error ?? 'Failed to delete series. Please try again.'
+      }
+    } catch {
+      mutationError = 'Network error. Please try again.'
     }
   }
 
@@ -160,8 +169,11 @@
   onConfirm={deleteSeries}
 />
 
+{#if mutationError}
+  <p class="mt-4 text-[12px] text-destructive">{mutationError}</p>
+{/if}
+
 <div class="flex items-center justify-between">
-  <h1 class="text-2xl font-bold text-text-primary">Series</h1>
   <div class="flex items-center gap-3">
     <a
       href="/admin/blog"

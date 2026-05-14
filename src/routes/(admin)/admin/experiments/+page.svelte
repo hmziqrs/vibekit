@@ -347,6 +347,16 @@
     <div class="flex items-center justify-center py-12">
       <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
     </div>
+  {:else if experimentsQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load experiments.</p>
+      <button
+        onclick={() => experimentsQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
   {:else if experimentsQuery.data}
     {@const experiments = experimentsQuery.data}
     {#if experiments.length === 0}

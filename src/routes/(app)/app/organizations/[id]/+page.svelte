@@ -33,6 +33,7 @@
   let inviteError = $state('')
   let inviteSuccess = $state('')
   let removingMemberId = $state('')
+  let mutationError = $state('')
 
   const orgId = $derived(page.params.id)
   const queryClient = useQueryClient()
@@ -90,24 +91,31 @@
   }
 
   async function removeMember(memberId: string, memberName: string) {
+    mutationError = ''
     removingMemberId = memberId
-    const res = await fetch(`/api/orgs/${orgId}/members/${memberId}`, { method: 'DELETE' })
-
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/members/${memberId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to remove member')
       await queryClient.invalidateQueries({ queryKey: ['organization-members', orgId] })
+    } catch {
+      mutationError = 'Failed to remove member'
+    } finally {
+      removingMemberId = ''
     }
-    removingMemberId = ''
   }
 
   async function changeRole(memberId: string, newRole: string) {
-    const res = await fetch(`/api/orgs/${orgId}/members/${memberId}`, {
-      body: JSON.stringify({ role: newRole }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-
-    if (res.ok) {
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/members/${memberId}`, {
+        body: JSON.stringify({ role: newRole }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!res.ok) throw new Error('Failed to change role')
       await queryClient.invalidateQueries({ queryKey: ['organization-members', orgId] })
+    } catch {
+      mutationError = 'Failed to change role'
     }
   }
 
@@ -176,6 +184,10 @@
         <h2 class="text-base font-semibold text-text-primary">Members</h2>
       </div>
 
+      {#if mutationError}
+        <p class="mx-6 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+      {/if}
+
       <!-- Invite Form -->
       {#if canInvite}
         <form
@@ -232,6 +244,16 @@
               <div class="h-4 w-32 animate-pulse rounded bg-white/[0.06]"></div>
             </div>
           {/each}
+        </div>
+      {:else if membersQuery.error}
+        <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+          <p class="text-[14px] text-destructive">Failed to load members.</p>
+          <button
+            onclick={() => membersQuery.refetch()}
+            class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+          >
+            Try again
+          </button>
         </div>
       {:else}
         <div class="divide-y divide-white/[0.04]">

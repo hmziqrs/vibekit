@@ -21,6 +21,7 @@
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
   let showDeleteDialog = $state(false)
+  let mutationError = $state('')
 
   const usersQuery = createQuery(() => ({
     queryFn: async () => {
@@ -38,38 +39,59 @@
   }))
 
   async function changeRole(user: UserRow, newRole: 'user' | 'admin') {
-    const res = await fetch(`/api/admin/users/${user.id}`, {
-      body: JSON.stringify({ role: newRole }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    if (res.ok) {
-      openMenuId = null
-      usersQuery.refetch()
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        body: JSON.stringify({ role: newRole }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (res.ok) {
+        openMenuId = null
+        usersQuery.refetch()
+      } else {
+        mutationError = 'Failed to change role. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to change role.'
     }
   }
 
   async function toggleStatus(user: UserRow) {
-    const newStatus = user.status === 'active' ? 'suspended' : 'active'
-    const res = await fetch(`/api/admin/users/${user.id}`, {
-      body: JSON.stringify({ status: newStatus }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    if (res.ok) {
-      openMenuId = null
-      usersQuery.refetch()
+    try {
+      mutationError = ''
+      const newStatus = user.status === 'active' ? 'suspended' : 'active'
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        body: JSON.stringify({ status: newStatus }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (res.ok) {
+        openMenuId = null
+        usersQuery.refetch()
+      } else {
+        mutationError = 'Failed to update user status. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to update user status.'
     }
   }
 
   async function deleteUser() {
     if (!confirmDelete) {return}
-    const res = await fetch(`/api/admin/users/${confirmDelete.id}`, { method: 'DELETE' })
-    if (res.ok) {
-      confirmDelete = null
-      showDeleteDialog = false
-      openMenuId = null
-      usersQuery.refetch()
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/users/${confirmDelete.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        confirmDelete = null
+        showDeleteDialog = false
+        openMenuId = null
+        usersQuery.refetch()
+      } else {
+        mutationError = 'Failed to delete user. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to delete user.'
     }
   }
 
@@ -113,6 +135,10 @@
   variant="danger"
   onConfirm={deleteUser}
 />
+
+{#if mutationError}
+  <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+{/if}
 
 <h1 class="text-2xl font-bold text-text-primary">Users</h1>
 <p class="mt-1 text-[14px] text-text-muted">Manage user accounts.</p>

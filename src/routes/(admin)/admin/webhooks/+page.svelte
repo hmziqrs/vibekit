@@ -2,7 +2,7 @@
   import { createMutation, createQuery } from '@tanstack/svelte-query'
   import { page } from '$app/state'
 
-  const { isSuccess, data, refetch } = createQuery(() => ({
+  const { isSuccess, isPending, error, data, refetch } = createQuery(() => ({
     queryFn: async () => {
       const params = new URLSearchParams()
       if ($state.snapshot(statusFilter)) params.set('status', statusFilter)
@@ -88,7 +88,25 @@
     </button>
   </div>
 
-  {#if isSuccess && data}
+  {#if retryMutation.isError}
+    <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{retryMutation.error?.message ?? 'Retry failed'}</p>
+  {/if}
+
+  {#if isPending}
+    <div class="flex items-center justify-center py-12">
+      <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"></div>
+    </div>
+  {:else if error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load webhook deliveries.</p>
+      <button
+        onclick={() => refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
+  {:else if isSuccess && data}
     {#if data.deliveries.length === 0}
       <div class="rounded-lg border border-border bg-surface p-8 text-center">
         <p class="text-sm text-text-muted">No webhook deliveries found</p>

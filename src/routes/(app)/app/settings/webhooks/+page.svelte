@@ -328,7 +328,21 @@
   {/if}
 
   {#if endpointsQuery.isPending}
-    <div class="py-8 text-center text-text-muted">Loading webhooks...</div>
+    <div class="space-y-3">
+      {#each Array(3) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if endpointsQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load webhook endpoints.</p>
+      <button
+        onclick={() => endpointsQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
+    </div>
   {:else if endpointsQuery.data?.endpoints.length === 0}
     <div class="rounded-xl border border-white/[0.06] bg-surface p-8 text-center">
       <p class="text-text-muted">No webhook endpoints configured yet.</p>
@@ -395,7 +409,21 @@
             <div class="mt-4 border-t border-white/[0.06] pt-4">
               <h4 class="mb-2 text-[13px] font-medium text-text-secondary">Delivery History</h4>
               {#if deliveriesQuery.isPending}
-                <p class="text-[13px] text-text-muted">Loading...</p>
+                <div class="space-y-2">
+                  {#each Array(2) as _}
+                    <div class="h-8 animate-pulse rounded-lg bg-white/[0.04]"></div>
+                  {/each}
+                </div>
+              {:else if deliveriesQuery.error}
+                <div class="rounded-lg border border-destructive/20 bg-surface p-4 text-center">
+                  <p class="text-[13px] text-destructive">Failed to load deliveries.</p>
+                  <button
+                    onclick={() => deliveriesQuery.refetch()}
+                    class="mt-1 text-[12px] font-medium text-brand transition-colors hover:text-brand-hover"
+                  >
+                    Try again
+                  </button>
+                </div>
               {:else if deliveriesQuery.data?.deliveries.length === 0}
                 <p class="text-[13px] text-text-muted">No deliveries yet.</p>
               {:else if deliveriesQuery.data}

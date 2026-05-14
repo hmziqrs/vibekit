@@ -18,6 +18,7 @@
   let deleteTarget = $state<SubscriberRow | null>(null)
   let showConfirmDialog = $state(false)
   let stats = $state({ bounced: 0, confirmed: 0, pending: 0, unsubscribed: 0 })
+  let mutationError = $state('')
 
   const subscribersQuery = createQuery(() => ({
     queryFn: async () => {
@@ -81,12 +82,19 @@
 
   async function deleteSubscriber() {
     if (!deleteTarget) return
-    const res = await fetch(`/api/admin/newsletter/subscribers/${deleteTarget.id}`, { method: 'DELETE' })
-    if (res.ok) {
-      deleteTarget = null
-      showConfirmDialog = false
-      subscribersQuery.refetch()
-      statsQuery.refetch()
+    try {
+      mutationError = ''
+      const res = await fetch(`/api/admin/newsletter/subscribers/${deleteTarget.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        deleteTarget = null
+        showConfirmDialog = false
+        subscribersQuery.refetch()
+        statsQuery.refetch()
+      } else {
+        mutationError = 'Failed to delete subscriber. Please try again.'
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? e.message : 'Failed to delete subscriber.'
     }
   }
 
@@ -103,6 +111,10 @@
   variant="danger"
   onConfirm={deleteSubscriber}
 />
+
+{#if mutationError}
+  <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
+{/if}
 
 <div class="flex items-center justify-between">
   <h1 class="text-2xl font-bold text-text-primary">Newsletter</h1>

@@ -53,51 +53,72 @@
     creating = true
     error = ''
 
-    const res = await fetch(`/api/orgs/${orgId}/teams`, {
-      body: JSON.stringify({ description: createDescription || undefined, name: createName }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    })
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/teams`, {
+        body: JSON.stringify({ description: createDescription || undefined, name: createName }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
 
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: { message?: string } }
-      error = data.error?.message ?? 'Failed to create team'
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: { message?: string } }
+        throw new Error(data.error?.message ?? 'Failed to create team')
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['teams', orgId] })
+      createName = ''
+      createDescription = ''
+      showCreateForm = false
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Failed to create team'
+    } finally {
       creating = false
-      return
     }
-
-    await queryClient.invalidateQueries({ queryKey: ['teams', orgId] })
-    createName = ''
-    createDescription = ''
-    showCreateForm = false
-    creating = false
   }
 </script>
 
 <div class="space-y-6">
-  <div class="flex items-center justify-between">
-    <div>
-      <div class="flex items-center gap-2 text-sm text-text-muted">
-        <a href="/app/organizations" class="hover:text-text-secondary">Organizations</a>
-        <span>/</span>
-        <a href="/app/organizations/{orgId}" class="hover:text-text-secondary">
-          {orgQuery.data?.organization.name ?? '...'}
-        </a>
-        <span>/</span>
-        <span class="text-text-primary">Teams</span>
-      </div>
-      <h1 class="mt-2 text-2xl font-bold text-text-primary">Teams</h1>
-      <p class="mt-1 text-sm text-text-muted">Manage teams within this organization</p>
+  {#if orgQuery.isPending}
+    <div class="animate-pulse space-y-4">
+      <div class="h-4 w-64 rounded bg-white/[0.06]"></div>
+      <div class="h-8 w-48 rounded bg-white/[0.06]"></div>
+      <div class="h-4 w-72 rounded bg-white/[0.06]"></div>
     </div>
-    {#if canCreate}
+  {:else if orgQuery.error}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load organization.</p>
       <button
-        onclick={() => (showCreateForm = !showCreateForm)}
-        class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
+        onclick={() => orgQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
       >
-        {showCreateForm ? 'Cancel' : 'New Team'}
+        Try again
       </button>
-    {/if}
-  </div>
+    </div>
+  {:else}
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-2 text-sm text-text-muted">
+          <a href="/app/organizations" class="hover:text-text-secondary">Organizations</a>
+          <span>/</span>
+          <a href="/app/organizations/{orgId}" class="hover:text-text-secondary">
+            {orgQuery.data?.organization.name ?? '...'}
+          </a>
+          <span>/</span>
+          <span class="text-text-primary">Teams</span>
+        </div>
+        <h1 class="mt-2 text-2xl font-bold text-text-primary">Teams</h1>
+        <p class="mt-1 text-sm text-text-muted">Manage teams within this organization</p>
+      </div>
+      {#if canCreate}
+        <button
+          onclick={() => (showCreateForm = !showCreateForm)}
+          class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
+        >
+          {showCreateForm ? 'Cancel' : 'New Team'}
+        </button>
+      {/if}
+    </div>
+  {/if}
 
   {#if showCreateForm}
     <form
