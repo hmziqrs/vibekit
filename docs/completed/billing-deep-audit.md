@@ -62,3 +62,11 @@
 - No tests for webhook handler route itself (requires Stripe signature mock)
 - No tests for organization billing routes
 - No tests for race conditions (double checkout, concurrent cancel/reactivate)
+
+## Fixes Applied After Audit (Iteration 8)
+
+| Issue                                                                       | Fix                                                                                                                                                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| No Stripe event ID deduplication (webhook retries could double-process)     | Added `stripe_webhook_event` table with unique `event_id` index. Webhook handler now checks for previously processed events and records event IDs after successful processing. |
+| `withApiKey` not imported in hono middleware (500 errors on pages using it) | Added `withApiKey` to destructured import from `./middleware`                                                                                                                  |
+| Push notifications had no client-side registration UI                       | Added Push Notifications section to settings page with SW registration, permission request, and subscribe/unsubscribe via API                                                  |
