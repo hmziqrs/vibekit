@@ -171,7 +171,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [ ] Gap: Overage handling — no overage pricing or auto-upgrade
 - [x] Billing admin (plan management, subscription overview, invoice listing)
 - [x] Gap: Revenue metrics — MRR/ARR/ARPU/net revenue/churn/trial counts added to getBillingOverview()
-- [ ] Gap: Refund processing — charge.refunded webhook marks invoice as void; no explicit refund API endpoint
+- [x] Gap: Refund processing — admin refund endpoint (POST /api/admin/billing/refund) calls Stripe refunds API, marks invoice void; charge.refunded webhook handles automatic Stripe-initiated refunds
 - [ ] Gap: Discount/coupon management — no tables or code
 - [ ] Gap: Tax configuration — no tax calculation
 - [x] Payment webhooks (Stripe webhook handler, idempotent processing with eventId dedup)

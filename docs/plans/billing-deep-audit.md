@@ -27,7 +27,7 @@ type: project
 | Usage dashboard for users  | **FIXED**           | GET /billing/usage endpoint returns current usage and limits                                                                                                                                                          |
 | Revenue metrics            | **FIXED**           | MRR/ARR/ARPU/net revenue 30d/churned count/trial count in `getBillingOverview()`                                                                                                                                      |
 | Failed payment queue       | **PARTIAL**         | Invoices listable but no dedicated queue or bulk retry                                                                                                                                                                |
-| Refund processing          | **NOT IMPLEMENTED** | No code, only marketing text on pricing page                                                                                                                                                                          |
+| Refund processing          | **FIXED**           | Admin refund endpoint POST /api/admin/billing/refund calls Stripe API, marks invoice void; charge.refunded webhook handles automatic refunds                                                                          |
 | Discount/coupon management | **NOT IMPLEMENTED** | No tables, no code, no Stripe coupon integration                                                                                                                                                                      |
 | Tax configuration          | **NOT IMPLEMENTED** | No tax fields, no calculation, no Stripe Tax                                                                                                                                                                          |
 | Stripe webhook handler     | **PARTIAL**         | 11 events handled (added trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired); still missing customer.updated, payment_method.updated, invoice.upcoming |
@@ -47,8 +47,7 @@ type: project
 
 4. ~~**No dunning emails**~~ — **FIXED**. 5 billing email templates created and wired into Stripe webhook handlers: payment failed, payment succeeded, subscription canceled, trial ending soon, plan changed.
 
-5. **No refund processing** — Pricing page mentions "30-day refund policy" but zero code exists.
-   - **Fix**: Add Stripe refund API call and admin endpoint.
+5. ~~**No refund processing**~~ — **FIXED**. Admin refund endpoint (POST /api/admin/billing/refund) validates via zod schema, calls Stripe refunds.create API, marks local invoice as void.
 
 6. **Webhook `checkout.session.completed` hardcodes 30-day period** — Line 927 hardcodes `currentPeriodEnd` instead of reading from Stripe.
    - **Fix**: Parse `current_period_start`/`current_period_end` from the Stripe subscription object.
