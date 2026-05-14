@@ -4,6 +4,7 @@
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
+  import LanguageSwitcher from '$lib/components/language-switcher.svelte'
 
   const { children } = $props()
   const auth = getContext<AuthContext>('auth')
@@ -236,6 +237,7 @@
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
             </button>
+            <LanguageSwitcher />
           </div>
         {:else}
           <p class="text-[13px] text-text-muted">Not signed in</p>

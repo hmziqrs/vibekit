@@ -5,6 +5,7 @@
   import NotificationBell from '$lib/components/notification-bell.svelte'
   import SearchDialog from '$lib/components/search-dialog.svelte'
   import ShortcutsHelp from '$lib/components/shortcuts-help.svelte'
+  import LanguageSwitcher from '$lib/components/language-switcher.svelte'
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
@@ -198,6 +199,9 @@
         >
           {signingOut ? 'Signing out...' : 'Sign out'}
         </button>
+        <div class="mt-2 flex justify-center">
+          <LanguageSwitcher />
+        </div>
       </div>
     </aside>
 

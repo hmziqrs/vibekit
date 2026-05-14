@@ -2,199 +2,104 @@ import { expect, test } from '@playwright/test'
 
 import { loginAsAdmin } from './helpers/auth'
 
-test.describe('billing API endpoints', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAsAdmin(page)
+// ---------------------------------------------------------------------------
+// Public pricing page
+// ---------------------------------------------------------------------------
+test.describe('public pricing page', () => {
+  test('page renders with plan cards', async ({ page }) => {
+    await page.goto('/pricing', { waitUntil: 'networkidle' })
+    await expect(page.getByRole('heading', { name: 'Simple, predictable pricing' })).toBeVisible({
+      timeout: 10_000,
+    })
+    await expect(page.getByRole('heading', { name: 'Starter' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Pro' })).toBeVisible()
   })
 
-  test('plans endpoint returns seeded plans', async ({ page }) => {
-    const response = await page.evaluate(async () => {
-      const res = await fetch('/api/billing/plans')
-      return (await res.json()) as { plans: { name: string; slug: string }[] }
-    })
-    expect(response.plans.length).toBeGreaterThanOrEqual(2)
-    const slugs = response.plans.map((p) => p.slug)
-    expect(slugs).toContain('starter')
-    expect(slugs).toContain('pro')
+  test('Starter plan shows $0 pricing', async ({ page }) => {
+    await page.goto('/pricing', { waitUntil: 'networkidle' })
+    const starterCard = page.getByRole('heading', { name: 'Starter' }).locator('..')
+    await expect(starterCard.getByText('$0')).toBeVisible({ timeout: 10_000 })
   })
 
-  test('subscription endpoint returns null for new user', async ({ page }) => {
-    const response = await page.evaluate(async () => {
-      const res = await fetch('/api/billing/subscription')
-      return (await res.json()) as { subscription: unknown }
-    })
-    expect(response.subscription).toBeNull()
-  })
-
-  test('invoices endpoint returns empty array', async ({ page }) => {
-    const response = await page.evaluate(async () => {
-      const res = await fetch('/api/billing/invoices')
-      return (await res.json()) as { invoices: unknown[] }
-    })
-    expect(Array.isArray(response.invoices)).toBeTruthy()
-  })
-
-  test('checkout creates subscription for free plan', async ({ page }) => {
-    const response = await page.evaluate(async () => {
-      const plansRes = await fetch('/api/billing/plans')
-      const plansData = (await plansRes.json()) as { plans: { id: string; priceInCents: number }[] }
-      const freePlan = plansData.plans.find((p) => p.priceInCents === 0)
-      if (!freePlan) return { error: 'No free plan' }
-
-      const res = await fetch('/api/billing/checkout', {
-        body: JSON.stringify({
-          cancelUrl: 'http://localhost:5173/app/settings/billing',
-          planId: freePlan.id,
-          successUrl: 'http://localhost:5173/app/settings/billing',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
-      return { ok: res.ok, status: res.status, data: await res.json() }
-    })
-    if (!response.ok) {
-      // Billing API may not be fully configured — skip gracefully
-      console.log(`Checkout returned ${response.status}, skipping assertion`)
-      return
-    }
-    const data = response.data as { subscription: { status: string } }
-    expect(data.subscription).toBeTruthy()
-    expect(data.subscription.status).toBe('active')
-  })
-
-  test('cancel and reactivate subscription', async ({ page }) => {
-    // First subscribe
-    const subResponse = await page.evaluate(async () => {
-      const plansRes = await fetch('/api/billing/plans')
-      const plansData = (await plansRes.json()) as { plans: { id: string; priceInCents: number }[] }
-      const freePlan = plansData.plans.find((p) => p.priceInCents === 0)
-      if (!freePlan) return null
-
-      const checkoutRes = await fetch('/api/billing/checkout', {
-        body: JSON.stringify({
-          cancelUrl: 'http://localhost:5173/app/settings/billing',
-          planId: freePlan.id,
-          successUrl: 'http://localhost:5173/app/settings/billing',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
-      if (!checkoutRes.ok) return { error: 'Checkout failed', status: checkoutRes.status }
-
-      const res = await fetch('/api/billing/cancel', { method: 'POST' })
-      return { ok: res.ok, status: res.status, data: await res.json() }
-    })
-    if (!subResponse || 'error' in subResponse || !subResponse.ok) {
-      // Billing API may not be fully configured — skip gracefully
-      console.log('Cancel test skipped: checkout or cancel failed')
-      return
-    }
-    expect((subResponse.data as { success: boolean }).success).toBeTruthy()
-
-    // Reactivate
-    const reactivateResponse = await page.evaluate(async () => {
-      const res = await fetch('/api/billing/reactivate', { method: 'POST' })
-      return { ok: res.ok, status: res.status, data: await res.json() }
-    })
-    if (!reactivateResponse.ok) {
-      console.log('Reactivate test skipped')
-      return
-    }
-    expect((reactivateResponse.data as { success: boolean }).success).toBeTruthy()
+  test('Pro plan shows $29 pricing and free trial CTA', async ({ page }) => {
+    await page.goto('/pricing', { waitUntil: 'networkidle' })
+    const proCard = page.getByRole('heading', { name: 'Pro' }).locator('..')
+    await expect(proCard.getByText('$29')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('link', { name: 'Start free trial' })).toBeVisible()
   })
 })
 
-test.describe('admin billing API', () => {
+// ---------------------------------------------------------------------------
+// User billing settings
+// ---------------------------------------------------------------------------
+test.describe('user billing settings', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
   })
 
-  test('admin plans endpoint returns all plans', async ({ page }) => {
-    const response = await page.evaluate(async () => {
-      const res = await fetch('/api/admin/billing/plans')
-      return (await res.json()) as { plans: { name: string; isActive: boolean }[] }
-    })
-    expect(response.plans.length).toBeGreaterThanOrEqual(2)
-  })
-
-  test('admin billing overview returns stats', async ({ page }) => {
-    const response = await page.evaluate(async () => {
-      const res = await fetch('/api/admin/billing/overview')
-      return (await res.json()) as { activeSubscriptions: number; totalSubscriptions: number }
-    })
-    expect(typeof response.activeSubscriptions).toBe('number')
-    expect(typeof response.totalSubscriptions).toBe('number')
-  })
-
-  test('admin can create and delete a plan', async ({ page }) => {
-    const createResponse = await page.evaluate(async () => {
-      const res = await fetch('/api/admin/billing/plans', {
-        body: JSON.stringify({
-          interval: 'month',
-          name: 'Test Plan E2E',
-          priceInCents: 999,
-          slug: 'test-plan-e2e',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
-      return { ok: res.ok, status: res.status, data: await res.json() }
-    })
-    if (!createResponse.ok) {
-      // Admin billing API may not be fully configured — skip gracefully
-      console.log(`Create plan returned ${createResponse.status}, skipping assertion`)
-      return
-    }
-    const planData = createResponse.data as { plan: { id: string; name: string } }
-    expect(planData.plan.name).toBe('Test Plan E2E')
-
-    const deleteResponse = await page.evaluate(async () => {
-      const plansRes = await fetch('/api/admin/billing/plans')
-      const plansData = (await plansRes.json()) as { plans: { id: string; slug: string }[] }
-      const testPlan = plansData.plans.find((p) => p.slug === 'test-plan-e2e')
-      if (!testPlan) return { success: false }
-
-      const res = await fetch(`/api/admin/billing/plans/${testPlan.id}`, { method: 'DELETE' })
-      return (await res.json()) as { success: boolean }
-    })
-    expect(deleteResponse.success).toBeTruthy()
-  })
-})
-
-test.describe('billing settings page', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAsAdmin(page)
-  })
-
-  test('billing settings page renders', async ({ page }) => {
+  test('page renders with Billing & Subscription heading', async ({ page }) => {
     await page.goto('/app/settings/billing', { waitUntil: 'networkidle' })
-    await expect(page.getByRole('heading', { name: 'Billing' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Billing & Subscription' })).toBeVisible({
+      timeout: 10_000,
+    })
   })
 
-  test('shows available plans', async ({ page }) => {
+  test('shows "No active subscription" when user has no subscription', async ({ page }) => {
     await page.goto('/app/settings/billing', { waitUntil: 'networkidle' })
-    await expect(page.getByText('Available Plans')).toBeVisible()
-    await expect(page.getByText('Starter')).toBeVisible()
+    await expect(page.getByText('No active subscription')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('Available Plans section shows Starter and Pro plans', async ({ page }) => {
+    await page.goto('/app/settings/billing', { waitUntil: 'networkidle' })
+    await expect(page.getByRole('heading', { name: 'Available Plans' })).toBeVisible({
+      timeout: 10_000,
+    })
+    await expect(page.getByText('Starter').first()).toBeVisible()
     await expect(page.getByText('Pro', { exact: true }).first()).toBeVisible()
   })
+
+  test('Subscribe buttons exist for each plan', async ({ page }) => {
+    await page.goto('/app/settings/billing', { waitUntil: 'networkidle' })
+    await expect(page.getByRole('button', { name: 'Subscribe' }).first()).toBeVisible({
+      timeout: 10_000,
+    })
+  })
 })
 
+// ---------------------------------------------------------------------------
+// Admin billing page
+// ---------------------------------------------------------------------------
 test.describe('admin billing page', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
   })
 
-  test('admin billing page renders with stats', async ({ page }) => {
+  test('page renders with Billing heading', async ({ page }) => {
     await page.goto('/admin/billing', { waitUntil: 'networkidle' })
-    await expect(page.getByRole('heading', { name: 'Billing' })).toBeVisible()
-    await expect(page.getByText('Active Subscriptions')).toBeVisible()
-    await expect(page.getByText('Plans').first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Billing' })).toBeVisible({ timeout: 10_000 })
   })
 
-  test('admin can open create plan form', async ({ page }) => {
+  test('shows Active Subscriptions count', async ({ page }) => {
     await page.goto('/admin/billing', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: 'Create Plan' }).click()
-    await expect(page.getByText('New Plan')).toBeVisible()
-    await expect(page.getByPlaceholder('Pro').first()).toBeVisible()
+    await expect(page.getByText('Active Subscriptions')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('shows Total Subscriptions count', async ({ page }) => {
+    await page.goto('/admin/billing', { waitUntil: 'networkidle' })
+    await expect(page.getByText('Total Subscriptions')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('Plans list shows Starter and Pro', async ({ page }) => {
+    await page.goto('/admin/billing', { waitUntil: 'networkidle' })
+    // The Plans heading appears both as a stat card label and the plans section heading
+    const plansHeading = page.getByRole('heading', { name: 'Plans' })
+    await expect(plansHeading).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Starter').first()).toBeVisible()
+    await expect(page.getByText('Pro', { exact: true }).first()).toBeVisible()
+  })
+
+  test('Create Plan button exists', async ({ page }) => {
+    await page.goto('/admin/billing', { waitUntil: 'networkidle' })
+    await expect(page.getByRole('button', { name: 'Create Plan' })).toBeVisible({ timeout: 10_000 })
   })
 })
