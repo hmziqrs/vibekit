@@ -1,17 +1,11 @@
 <script lang="ts">
+  import { acceptConsent, declineConsent, getConsentStatus, initConsent } from '$lib/consent.svelte'
   import { useAnalytics } from '$lib/use-analytics.svelte'
 
-  let visible = $state(false)
-
-  $effect.pre(() => {
-    if (typeof localStorage !== 'undefined') {
-      visible = !localStorage.getItem('consent')
-    }
-  })
+  initConsent()
 
   function accept() {
-    localStorage.setItem('consent', 'accepted')
-    visible = false
+    acceptConsent()
     useAnalytics(
       typeof import.meta !== 'undefined'
         ? (import.meta.env as Record<string, string>)?.PUBLIC_FIREBASE_CONFIG
@@ -20,12 +14,11 @@
   }
 
   function decline() {
-    localStorage.setItem('consent', 'declined')
-    visible = false
+    declineConsent()
   }
 </script>
 
-{#if visible}
+{#if !getConsentStatus()}
   <div
     role="dialog"
     aria-label="Cookie consent"

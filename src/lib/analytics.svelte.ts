@@ -1,3 +1,4 @@
+import { getConsentStatus } from './consent.svelte'
 import { initFirebase } from './firebase'
 
 let initialized = $state(false)
@@ -7,9 +8,7 @@ export async function initAnalyticsIfConsented(configJson?: string) {
     return
   }
 
-  const consent = typeof localStorage !== 'undefined' ? localStorage.getItem('consent') : null
-
-  if (consent === 'accepted' && configJson) {
+  if (getConsentStatus() === 'accepted' && configJson) {
     initialized = await initFirebase(configJson)
   }
 }

@@ -7,6 +7,7 @@
   import { password } from '$lib/validators/common'
   import PasswordStrength from '$lib/components/password-strength.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
+  import { acceptConsent, getConsentStatus, initConsent, withdrawConsent as withdrawConsentAction } from '$lib/consent.svelte'
 
   const changePasswordSchema = z
     .object({
@@ -61,21 +62,15 @@
   let pushLoading = $state(false)
   let pushError = $state('')
 
-  // Consent management state
-  let consentStatus = $state<'accepted' | 'declined' | null>(null)
-
-  function refreshConsent() {
-    consentStatus = localStorage.getItem('consent') as 'accepted' | 'declined' | null
-  }
+  // Consent management — shared reactive store
+  initConsent()
 
   function withdrawConsent() {
-    localStorage.removeItem('consent')
-    consentStatus = null
+    withdrawConsentAction()
   }
 
   function grantConsent() {
-    localStorage.setItem('consent', 'accepted')
-    consentStatus = 'accepted'
+    acceptConsent()
   }
 
   async function initPush() {
@@ -334,7 +329,6 @@
   $effect(() => {
     loadPasskeys()
     initPush()
-    refreshConsent()
   })
 
   // Connected accounts state
@@ -1176,7 +1170,7 @@
       Manage your cookie and analytics preferences. Analytics help us improve your experience.
     </p>
     <div class="mt-4 flex items-center gap-3">
-      {#if consentStatus === 'accepted'}
+      {#if getConsentStatus() === 'accepted'}
         <span class="text-[13px] text-text-secondary">Status: <span class="text-green-400">Accepted</span></span>
         <button
           onclick={withdrawConsent}
@@ -1184,7 +1178,7 @@
         >
           Withdraw Consent
         </button>
-      {:else if consentStatus === 'declined'}
+      {:else if getConsentStatus() === 'declined'}
         <span class="text-[13px] text-text-secondary">Status: <span class="text-text-muted">Declined</span></span>
         <button
           onclick={grantConsent}
