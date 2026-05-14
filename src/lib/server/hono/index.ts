@@ -264,6 +264,7 @@ import { z } from 'zod/v4'
 import {
   requirePermission,
   requireTeamPermission,
+  withApiKey,
   withOrgMembership,
   withOwnedItem,
   withRateLimit,
