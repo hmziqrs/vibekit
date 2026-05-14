@@ -1,7 +1,7 @@
 import { notification, notificationPreference } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 
 type NotificationType = 'error' | 'info' | 'success' | 'warning'
 
