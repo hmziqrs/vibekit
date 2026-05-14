@@ -848,7 +848,7 @@ export const subscriptionPlan = sqliteTable(
     stripePriceId: text('stripe_price_id'),
     trialDays: integer('trial_days').default(0).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
   },
@@ -860,7 +860,7 @@ export const subscription = sqliteTable(
   {
     canceledAt: integer('canceled_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
     currentPeriodEnd: integer('current_period_end', { mode: 'timestamp_ms' }).notNull(),
     currentPeriodStart: integer('current_period_start', { mode: 'timestamp_ms' }).notNull(),
@@ -884,7 +884,7 @@ export const subscription = sqliteTable(
     stripeSubscriptionId: text('stripe_subscription_id'),
     trialEnd: integer('trial_end', { mode: 'timestamp_ms' }),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
@@ -898,7 +898,7 @@ export const subscription = sqliteTable(
 
 export const subscriptionEvent = sqliteTable('subscription_event', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
   fromPlanId: text('from_plan_id'),
   id: text('id')
@@ -926,7 +926,7 @@ export const subscriptionEvent = sqliteTable('subscription_event', {
 
 export const usageRecord = sqliteTable('usage_record', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
   id: text('id')
     .primaryKey()
@@ -945,7 +945,7 @@ export const usageRecord = sqliteTable('usage_record', {
 export const invoice = sqliteTable('invoice', {
   amountInCents: integer('amount_in_cents').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
   currency: text('currency', { length: 3 })
     .notNull()
@@ -972,7 +972,7 @@ export const invoice = sqliteTable('invoice', {
 export const paymentMethod = sqliteTable('payment_method', {
   brand: text('brand'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
   expiryMonth: integer('expiry_month'),
   expiryYear: integer('expiry_year'),
@@ -1036,7 +1036,7 @@ export const pushSubscription = sqliteTable(
   {
     auth: text('auth').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer)`)
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
     endpoint: text('endpoint').notNull(),
     id: text('id')
@@ -1235,6 +1235,27 @@ export const integrationRelations = relations(integration, ({ one }) => ({
     references: [user.id],
   }),
 }))
+
+export const oauthState = sqliteTable(
+  'oauth_state',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    data: text('data', { mode: 'json' })
+      .$type<{
+        codeVerifier?: string
+        provider: string
+        redirectUrl?: string
+        userId: string
+      }>()
+      .notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+  },
+  (table) => [index('oauth_state_created_idx').on(table.createdAt)]
+)
 
 export const featureFlag = sqliteTable(
   'feature_flag',

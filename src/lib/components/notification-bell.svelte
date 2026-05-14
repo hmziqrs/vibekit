@@ -2,6 +2,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { goto } from '$app/navigation'
   import { onDestroy } from 'svelte'
+  import { formatTimeAgo, notificationTypeColor } from '$lib/notification-utils'
 
   interface NotificationData {
     body: string | null
@@ -91,27 +92,6 @@
     }
   }
 
-  function formatTimeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const minutes = Math.floor(diff / 60_000)
-    if (minutes < 1) return 'just now'
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    if (days < 30) return `${days}d ago`
-    return new Date(dateStr).toLocaleDateString()
-  }
-
-  function typeColor(type: string): string {
-    switch (type) {
-      case 'success': { return 'text-success' }
-      case 'warning': { return 'text-warning' }
-      case 'error': { return 'text-destructive' }
-      default: { return 'text-brand' }
-    }
-  }
-
   $effect(() => {
     if (open) {
       document.addEventListener('click', handleClickOutside)
@@ -167,7 +147,7 @@
               onclick={() => handleNotificationClick(n)}
               class="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-surface {n.readAt ? 'opacity-60' : ''}"
             >
-              <div class="mt-0.5 size-2 shrink-0 rounded-full {typeColor(n.type)} bg-current"></div>
+              <div class="mt-0.5 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current"></div>
               <div class="min-w-0 flex-1">
                 <p class="text-[13px] font-medium text-text-primary">{n.title}</p>
                 {#if n.body}

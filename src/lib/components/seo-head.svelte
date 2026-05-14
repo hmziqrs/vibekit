@@ -55,8 +55,9 @@
   <meta property="og:description" content={meta.openGraph.description} />
   <meta property="og:type" content={meta.openGraph.type} />
   <meta property="og:site_name" content={meta.openGraph.siteName} />
-  {#if meta.openGraph.image}
-    <meta property="og:image" content={meta.openGraph.image} />
+  <meta property="og:url" content={meta.canonical ?? ORIGIN} />
+  {#if resolveImageUrl(meta.openGraph.image)}
+    <meta property="og:image" content={resolveImageUrl(meta.openGraph.image)} />
   {/if}
   {#if meta.openGraph.publishedTime}
     <meta property="article:published_time" content={meta.openGraph.publishedTime} />

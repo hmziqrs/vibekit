@@ -65,6 +65,10 @@
   }
 </script>
 
+<svelte:head>
+  <meta name="robots" content="noindex,nofollow" />
+</svelte:head>
+
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="flex min-h-screen bg-surface-base" onkeydown={handleSearchKeydown}>
     <SearchDialog bind:open={searchOpen} />

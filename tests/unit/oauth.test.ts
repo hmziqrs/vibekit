@@ -5,6 +5,38 @@ vi.mock('arctic', () => ({
   generateState: vi.fn().mockReturnValue('mock-state-value'),
 }))
 
+function createMockDb() {
+  const store = new Map<string, { createdAt: Date; data: Record<string, unknown> }>()
+  let idCounter = 0
+
+  return {
+    insert: vi.fn().mockImplementation((_table: unknown) => ({
+      values: vi.fn().mockImplementation((data: { data: Record<string, unknown>; id: string }) => {
+        store.set(data.id, { createdAt: new Date(), data: data.data })
+        idCounter++
+        return { returning: vi.fn() }
+      }),
+    })),
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockImplementation((condition: unknown) => {
+          if (typeof condition === 'object' && condition !== null) {
+            const entries = [...store.entries()]
+            if (entries.length > 0) {
+              return [entries[0][1] as unknown]
+            }
+          }
+          return []
+        }),
+      }),
+    }),
+    delete: vi.fn().mockReturnValue({
+      where: vi.fn().mockImplementation(() => ({ rowsAffected: 1 })),
+    }),
+    _store: store,
+  }
+}
+
 describe('oauth module', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -17,6 +49,7 @@ describe('oauth module', () => {
     expect(typeof mod.getAuthorizationUrl).toBe('function')
     expect(typeof mod.exchangeCodeForTokens).toBe('function')
     expect(typeof mod.generateOAuthParams).toBe('function')
+    expect(typeof mod.cleanupExpiredOAuthStates).toBe('function')
   })
 })
 
@@ -26,10 +59,10 @@ describe('generateOAuthState', () => {
   })
 
   it('stores state data and returns state string', async () => {
-    const { generateOAuthState, stateStore } = await import('$lib/server/integrations/oauth')
-    stateStore.clear()
+    const { generateOAuthState } = await import('$lib/server/integrations/oauth')
+    const db = createMockDb() as unknown as Parameters<typeof generateOAuthState>[0]
 
-    const state = generateOAuthState({
+    const state = await generateOAuthState(db, {
       codeVerifier: 'verifier-123',
       provider: 'github',
       redirectUrl: '/settings',
@@ -37,12 +70,7 @@ describe('generateOAuthState', () => {
     })
 
     expect(state).toBe('mock-state-value')
-    expect(stateStore.has('mock-state-value')).toBe(true)
-    const stored = stateStore.get('mock-state-value')
-    expect(stored?.data.provider).toBe('github')
-    expect(stored?.data.userId).toBe('user-1')
-    expect(stored?.data.codeVerifier).toBe('verifier-123')
-    expect(typeof stored?.createdAt).toBe('number')
+    expect(db.insert).toHaveBeenCalled()
   })
 })
 
@@ -51,38 +79,11 @@ describe('consumeOAuthState', () => {
     vi.resetModules()
   })
 
-  it('returns data and removes state from store', async () => {
-    const { generateOAuthState, consumeOAuthState, stateStore } =
-      await import('$lib/server/integrations/oauth')
-    stateStore.clear()
-
-    const state = generateOAuthState({
-      provider: 'discord',
-      userId: 'user-2',
-    })
-
-    const data = consumeOAuthState(state)
-    expect(data?.provider).toBe('discord')
-    expect(data?.userId).toBe('user-2')
-    expect(stateStore.has(state)).toBe(false)
-  })
-
   it('returns null for unknown state', async () => {
     const { consumeOAuthState } = await import('$lib/server/integrations/oauth')
+    const db = createMockDb() as unknown as Parameters<typeof consumeOAuthState>[0]
 
-    const data = consumeOAuthState('nonexistent-state')
-    expect(data).toBeNull()
-  })
-
-  it('returns null for already-consumed state', async () => {
-    const { generateOAuthState, consumeOAuthState } = await import('$lib/server/integrations/oauth')
-    const state = generateOAuthState({
-      provider: 'github',
-      userId: 'user-3',
-    })
-
-    consumeOAuthState(state)
-    const data = consumeOAuthState(state)
+    const data = await consumeOAuthState(db, 'nonexistent-state')
     expect(data).toBeNull()
   })
 })

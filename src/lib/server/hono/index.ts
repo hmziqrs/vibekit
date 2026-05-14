@@ -894,7 +894,11 @@ app.post('/billing/webhooks/stripe', async (c) => {
             .get()
 
           if (!existingSub) {
-            const planId = metadata?.planId ?? 'plan_pro'
+            const planId = metadata?.planId
+            if (!planId) {
+              console.error('Webhook: checkout.session.completed missing planId in metadata')
+              break
+            }
             await createSubscription(db, {
               currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
               currentPeriodStart: new Date(),
@@ -935,32 +939,73 @@ app.post('/billing/webhooks/stripe', async (c) => {
       case 'invoice.payment_succeeded': {
         // @ts-expect-error Stripe event data.object has different shape than app Invoice type
         const inv = event.data.object as Record<string, unknown>
+        const stripeInvoiceId = String(inv.id)
+        const existingInvoice = await db
+          .select({ id: invoice.id })
+          .from(invoice)
+          .where(eq(invoice.stripeInvoiceId, stripeInvoiceId))
+          .get()
+        if (existingInvoice) break
+
+        let invoiceUserId: string | null =
+          ((inv.metadata as Record<string, unknown> | undefined)?.userId as string | null) ?? null
+        if (!invoiceUserId && inv.subscription) {
+          const [subRow] = await db
+            .select({ userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+          invoiceUserId = subRow?.userId ?? null
+        }
+
         await db.insert(invoice).values({
           amountInCents: Number(inv.amount_paid),
           currency: String(inv.currency),
           id: uuid(),
           paidAt: new Date(),
           status: 'paid',
-          stripeInvoiceId: String(inv.id),
+          stripeInvoiceId,
           subscriptionId: inv.subscription ? String(inv.subscription) : null,
-          userId: ((inv.customer_email as string | undefined) ??
-            (inv.metadata as Record<string, unknown> | undefined)?.userId) as string | null,
+          userId: invoiceUserId,
         })
         break
       }
       case 'invoice.payment_failed': {
         // @ts-expect-error Stripe event data.object has different shape than app Invoice type
         const inv = event.data.object as Record<string, unknown>
+        const stripeInvoiceId = String(inv.id)
+        const existingInvoice = await db
+          .select({ id: invoice.id })
+          .from(invoice)
+          .where(eq(invoice.stripeInvoiceId, stripeInvoiceId))
+          .get()
+        if (existingInvoice) break
+
+        if (inv.subscription) {
+          await db
+            .update(subscription)
+            .set({ status: 'past_due' })
+            .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+        }
+
+        let invoiceUserId: string | null =
+          ((inv.metadata as Record<string, unknown> | undefined)?.userId as string | null) ?? null
+        if (!invoiceUserId && inv.subscription) {
+          const [subRow] = await db
+            .select({ userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+          invoiceUserId = subRow?.userId ?? null
+        }
+
         await db.insert(invoice).values({
           amountInCents: Number(inv.amount_due),
           currency: String(inv.currency),
           dueDate: inv.due_date ? new Date(Number(inv.due_date) * 1000) : new Date(),
           id: uuid(),
           status: 'open',
-          stripeInvoiceId: String(inv.id),
+          stripeInvoiceId,
           subscriptionId: inv.subscription ? String(inv.subscription) : null,
-          userId: ((inv.customer_email as string | undefined) ??
-            (inv.metadata as Record<string, unknown> | undefined)?.userId) as string | null,
+          userId: invoiceUserId,
         })
         break
       }
@@ -975,7 +1020,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
 
 // ── Items (auth required) ────────────────────────────────────────────
 
-const protectedApp = new Hono<ProtectedEnv>().use('*', requireUser)
+const protectedApp = new Hono<ProtectedEnv>().use('*', withApiKey()).use('*', requireUser)
 
 // ── Content Reports (auth required) ───────────────────────────────────
 
@@ -1758,12 +1803,14 @@ protectedApp.post('/billing/checkout', async (c) => {
 
   const plan = await getPlanById(db, parsed.data.planId)
   if (!plan) throw new NotFoundError()
+  if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
   if (stripe && plan.stripePriceId) {
     const { createCheckoutSession } = await import('$lib/server/billing/stripe')
     const session = await createCheckoutSession(stripe, {
       cancelUrl: parsed.data.cancelUrl,
       customerEmail: currentUser.email,
+      planId: plan.id,
       priceId: plan.stripePriceId,
       successUrl: parsed.data.successUrl,
       trialDays: plan.trialDays,
@@ -2348,7 +2395,8 @@ protectedApp.post('/integrations/connect/:provider', async (c) => {
     provider,
     userId,
   }
-  const state = generateOAuthState(stateData)
+  const { db: oauthDb } = c.get('services')
+  const state = await generateOAuthState(oauthDb, stateData)
 
   const baseUrl = env.origin ?? 'http://localhost:5173'
   const authorizeUrl = getAuthorizationUrl(
@@ -2397,13 +2445,13 @@ app.get('/api/integrations/callback/:provider', async (c) => {
   const state = c.req.query('state')
   if (!code || !state) return c.json({ error: 'Missing code or state' }, 400)
 
-  const stateData = consumeOAuthState(state)
+  const { db, env } = c.get('services')
+
+  const stateData = await consumeOAuthState(db, state)
   if (!stateData) return c.json({ error: 'Invalid or expired state' }, 400)
   if (stateData.provider !== c.req.param('provider')) {
     return c.json({ error: 'Provider mismatch' }, 400)
   }
-
-  const { db, env } = c.get('services')
 
   const { codeVerifier } = stateData
 
@@ -3598,7 +3646,13 @@ adminApp.get('/users', async (c) => {
   }
 
   if (search) {
-    conditions.push(like(user.email, `%${search}%`))
+    conditions.push(
+      or(
+        like(user.email, `%${search}%`),
+        like(user.displayName, `%${search}%`),
+        like(user.name, `%${search}%`)
+      )!
+    )
   }
 
   const whereClause = and(...conditions)

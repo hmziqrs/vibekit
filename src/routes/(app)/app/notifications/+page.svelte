@@ -3,6 +3,7 @@
   import { page } from '$app/state'
   import { goto } from '$app/navigation'
   import { cn } from '$lib/utils'
+  import { formatTimeAgo, notificationTypeColor } from '$lib/notification-utils'
 
   interface NotificationData {
     body: string | null
@@ -85,27 +86,6 @@
     }
   }
 
-  function formatTimeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const minutes = Math.floor(diff / 60_000)
-    if (minutes < 1) return 'just now'
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    if (days < 30) return `${days}d ago`
-    return new Date(dateStr).toLocaleDateString()
-  }
-
-  function typeColor(type: string): string {
-    switch (type) {
-      case 'success': { return 'text-success' }
-      case 'warning': { return 'text-warning' }
-      case 'error': { return 'text-destructive' }
-      default: { return 'text-brand' }
-    }
-  }
-
   function typeBadgeBg(type: string): string {
     switch (type) {
       case 'success': { return 'bg-success/10 text-success' }
@@ -182,7 +162,7 @@
             onclick={() => handleNotificationClick(n)}
             class="flex min-w-0 flex-1 items-start gap-3 text-left"
           >
-            <div class="mt-1 size-2 shrink-0 rounded-full {typeColor(n.type)} bg-current"></div>
+            <div class="mt-1 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current"></div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <p class="text-[14px] font-medium text-text-primary">{n.title}</p>

@@ -17,6 +17,7 @@
 </script>
 
 <SeoHead
+  canonical={data.post.canonicalUrl ?? undefined}
   description={data.post.seoDescription ?? data.post.excerpt ?? ''}
   image={data.post.coverImageUrl ?? undefined}
   publishedTime={data.post.publishedAt ? new Date(data.post.publishedAt).toISOString() : undefined}

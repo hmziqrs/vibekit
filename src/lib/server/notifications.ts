@@ -48,7 +48,13 @@ export async function createBroadcast(
   getUserIds: (target: 'admins' | 'all') => Promise<string[]>
 ): Promise<number> {
   const userIds = await getUserIds(input.target)
-  const values = userIds.map((userId) => ({
+  const filteredIds: string[] = []
+  for (const uid of userIds) {
+    const enabled = await isInAppEnabled(db, uid, 'broadcast')
+    if (enabled) filteredIds.push(uid)
+  }
+
+  const values = filteredIds.map((userId) => ({
     body: input.body ?? null,
     entityId: null,
     entityType: 'broadcast',
@@ -67,7 +73,7 @@ export async function createBroadcast(
     await db.insert(notification).values(values.slice(i, i + 100))
   }
 
-  return userIds.length
+  return filteredIds.length
 }
 
 async function isInAppEnabled(db: DrizzleDb, userId: string, type: string): Promise<boolean> {

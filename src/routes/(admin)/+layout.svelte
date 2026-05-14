@@ -43,6 +43,10 @@
   }
 </script>
 
+<svelte:head>
+  <meta name="robots" content="noindex,nofollow" />
+</svelte:head>
+
   <div class="flex min-h-screen bg-surface-base">
     <!-- Mobile overlay -->
     {#if mobileOpen}

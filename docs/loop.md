@@ -159,7 +159,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Analytics per post (view count, referrer tracking, reading completion)
 
 #### Billing & Payments
-<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
+<!-- Audit: billing-deep-audit.md — 2026-05-14 -->
 - [x] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)
 - [x] Payment processing (Stripe integration, payment method management, invoice generation, payment failure handling, dunning emails)
 - [x] Usage-based billing (metered billing, usage tracking, quota enforcement, overage handling, usage dashboard for users)

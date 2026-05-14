@@ -23,6 +23,7 @@ export async function createCheckoutSession(
     customerEmail?: string
     customerId?: string
     mode?: 'payment' | 'subscription'
+    planId?: string
     priceId?: string
     successUrl: string
     trialDays?: number
@@ -35,6 +36,7 @@ export async function createCheckoutSession(
     customer: input.customerId ?? undefined,
     customer_email: input.customerEmail,
     line_items: input.priceId ? [{ price: input.priceId, quantity: 1 }] : undefined,
+    metadata: input.planId ? { planId: input.planId } : undefined,
     mode: input.mode ?? 'subscription',
     subscription_data:
       input.trialDays && input.trialDays > 0 ? { trial_period_days: input.trialDays } : undefined,

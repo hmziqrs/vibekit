@@ -166,12 +166,12 @@ export async function rotateApiKey(
 }
 
 export async function revokeApiKey(db: DrizzleDb, keyId: string, userId: string): Promise<boolean> {
-  await db
+  const result = await db
     .update(apiKey)
     .set({ revokedAt: new Date() })
     .where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId), isNull(apiKey.revokedAt)))
 
-  return true
+  return (result.rowsAffected ?? 0) > 0
 }
 
 export async function deleteApiKey(db: DrizzleDb, keyId: string, userId: string) {

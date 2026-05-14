@@ -1,4 +1,8 @@
+import { oauthState } from '$lib/server/db/schema'
+import type { DrizzleDb } from '$lib/server/services/types'
+import { uuid } from '$lib/server/uuid'
 import { generateCodeVerifier, generateState } from 'arctic'
+import { eq, lt } from 'drizzle-orm'
 
 import { getProvider } from './providers'
 
@@ -8,38 +12,46 @@ export interface OAuthState {
   userId: string
 }
 
-export const stateStore = new Map<
-  string,
-  { createdAt: number; data: OAuthState & { codeVerifier?: string } }
->()
-
-// Clean up expired states every 10 minutes
 const STATE_TTL_MS = 10 * 60 * 1000
 
-setInterval(
-  () => {
-    const now = Date.now()
-    for (const [key, value] of stateStore.entries()) {
-      if (now - value.createdAt > STATE_TTL_MS) {
-        stateStore.delete(key)
-      }
-    }
-  },
-  10 * 60 * 1000
-)
-
-export function generateOAuthState(data: OAuthState & { codeVerifier?: string }): string {
+export async function generateOAuthState(
+  db: DrizzleDb,
+  data: OAuthState & { codeVerifier?: string }
+): Promise<string> {
   const state = generateState()
-  stateStore.set(state, { createdAt: Date.now(), data })
+  await db.insert(oauthState).values({
+    data: {
+      codeVerifier: data.codeVerifier,
+      provider: data.provider,
+      redirectUrl: data.redirectUrl,
+      userId: data.userId,
+    },
+    id: uuid(),
+  })
   return state
 }
 
-export function consumeOAuthState(state: string): (OAuthState & { codeVerifier?: string }) | null {
-  const entry = stateStore.get(state)
-  if (!entry) return null
-  stateStore.delete(state)
-  if (Date.now() - entry.createdAt > STATE_TTL_MS) return null
-  return entry.data
+export async function consumeOAuthState(
+  db: DrizzleDb,
+  state: string
+): Promise<(OAuthState & { codeVerifier?: string }) | null> {
+  const [row] = await db.select().from(oauthState).where(eq(oauthState.id, state))
+
+  if (!row) return null
+
+  if (Date.now() - row.createdAt.getTime() > STATE_TTL_MS) {
+    await db.delete(oauthState).where(eq(oauthState.id, state))
+    return null
+  }
+
+  await db.delete(oauthState).where(eq(oauthState.id, state))
+  return row.data
+}
+
+export async function cleanupExpiredOAuthStates(db: DrizzleDb): Promise<number> {
+  const cutoff = new Date(Date.now() - STATE_TTL_MS)
+  const result = await db.delete(oauthState).where(lt(oauthState.createdAt, cutoff))
+  return result.rowsAffected ?? 0
 }
 
 // oxlint-disable-next-line max-params
