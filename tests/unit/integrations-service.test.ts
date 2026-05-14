@@ -168,10 +168,10 @@ describe('getIntegration', () => {
 
 describe('checkIntegrationHealth', () => {
   it('returns active status for valid integration', async () => {
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    } as Response)
 
     const { checkIntegrationHealth } = await import('$lib/server/integrations/service')
     const db = createMockDb([
@@ -187,7 +187,7 @@ describe('checkIntegrationHealth', () => {
     const result = await checkIntegrationHealth(db, 'int-1')
 
     expect(result).toEqual({ id: 'int-1', provider: 'github', status: 'active' })
-    globalThis.fetch = originalFetch
+    fetchSpy.mockRestore()
   })
 
   it('returns expired status when token is expired', async () => {
@@ -208,8 +208,7 @@ describe('checkIntegrationHealth', () => {
   })
 
   it('returns error status when provider ping fails', async () => {
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false } as Response)
 
     vi.resetModules()
     const { checkIntegrationHealth } = await import('$lib/server/integrations/service')
@@ -226,7 +225,7 @@ describe('checkIntegrationHealth', () => {
     const result = await checkIntegrationHealth(db, 'int-3')
 
     expect(result?.status).toBe('error')
-    globalThis.fetch = originalFetch
+    fetchSpy.mockRestore()
   })
 
   it('returns null when integration not found', async () => {
