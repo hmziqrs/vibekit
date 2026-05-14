@@ -77,6 +77,7 @@
       type="text"
       placeholder="Filter by event type..."
       bind:value={eventTypeFilter}
+      aria-label="Filter by event type"
       class="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
       onkeydown={(e) => e.key === 'Enter' && refetch()}
     />

@@ -298,6 +298,7 @@
                     type="text"
                     class="w-32 rounded-md border border-white/[0.06] bg-surface-base px-2 py-1 text-[12px] text-text-primary focus:border-brand focus:outline-none"
                     bind:value={editingValue}
+                    aria-label="Config value"
                   />
                   <button
                     class="rounded-md bg-brand px-2 py-1 text-[11px] font-medium text-brand-foreground"

@@ -277,6 +277,7 @@
             type="text"
             bind:value={tzSearch}
             placeholder="Search timezones..."
+            aria-label="Search timezones"
             class="mb-3 w-full rounded-lg border border-white/[0.06] bg-surface-deep px-3 py-2 text-[14px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
           <select

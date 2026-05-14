@@ -22,6 +22,7 @@
   <div
     role="dialog"
     aria-label="Cookie consent"
+    onkeydown={(e) => { if (e.key === 'Escape') open = false }}
     class="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-surface/95 backdrop-blur-lg px-6 py-4"
   >
     <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">

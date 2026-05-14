@@ -699,6 +699,7 @@
             type="password"
             bind:value={enablePassword}
             placeholder="Your password"
+            aria-label="Your password"
             class="w-full max-w-xs rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
           <div class="flex gap-2">
@@ -780,6 +781,7 @@
               bind:value={verifyCode}
               placeholder="000000"
               autocomplete="one-time-code"
+              aria-label="Verification code"
               class="w-40 rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 font-mono text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
             <button
@@ -851,6 +853,7 @@
           type="password"
           bind:value={disablePassword}
           placeholder="Your password"
+          aria-label="Your password"
           class="w-full max-w-xs rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
         />
         <div class="flex gap-2">
@@ -1100,6 +1103,7 @@
           type="text"
           bind:value={passkeyName}
           placeholder="Passkey name (optional)"
+          aria-label="Passkey name"
           class="w-full rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
       </div>
@@ -1238,6 +1242,7 @@
         <input
           type="text"
           bind:value={deleteConfirmText}
+          aria-label="Type DELETE to confirm"
           class="w-full max-w-xs rounded-lg border border-white/6 bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
           placeholder="Type DELETE to confirm"
         />

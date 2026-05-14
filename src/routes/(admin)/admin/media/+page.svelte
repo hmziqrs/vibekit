@@ -187,6 +187,7 @@
       type="text"
       placeholder="Filter by prefix..."
       bind:value={prefixFilter}
+      aria-label="Filter by prefix"
       class="w-48 rounded-md border border-white/[0.08] bg-surface-base px-3 py-1.5 text-xs text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
     />
     {#if selectedKeys.size > 0}
@@ -283,6 +284,7 @@
                     type="checkbox"
                     checked={isSelected}
                     onchange={() => toggleSelect(item.key)}
+                    aria-label="Select file"
                     class="rounded border-white/[0.12]"
                   />
                 </td>

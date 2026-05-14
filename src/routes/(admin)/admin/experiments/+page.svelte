@@ -306,6 +306,7 @@
                 type="text"
                 bind:value={variant.name}
                 placeholder="Variant name"
+                aria-label="Variant name"
                 class="w-40 rounded border border-border bg-surface-base px-2 py-1 text-sm text-text-primary"
               />
               <input
@@ -313,6 +314,7 @@
                 min="1"
                 max="100"
                 bind:value={variant.trafficPercentage}
+                aria-label="Traffic percentage"
                 class="w-20 rounded border border-border bg-surface-base px-2 py-1 text-sm text-text-primary"
               />
               <span class="text-xs text-text-muted">%</span>

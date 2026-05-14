@@ -582,6 +582,7 @@
                           type="button"
                           onclick={() => toggleTag(tagId)}
                           class="text-brand/60 hover:text-brand"
+                          aria-label="Remove tag"
                         >
                           &times;
                         </button>
@@ -594,6 +595,7 @@
                 type="text"
                 bind:value={tagSearch}
                 placeholder="Search tags..."
+                aria-label="Search tags"
                 class="w-full rounded-md border border-border bg-input px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
               />
               {#if allTagsQuery.isPending}
@@ -660,6 +662,7 @@
                           type="button"
                           onclick={() => toggleSeries(seriesId)}
                           class="text-brand/60 hover:text-brand"
+                          aria-label="Remove series"
                         >
                           &times;
                         </button>
@@ -672,6 +675,7 @@
                 type="text"
                 bind:value={seriesSearch}
                 placeholder="Search series..."
+                aria-label="Search series"
                 class="w-full rounded-md border border-border bg-input px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
               />
               {#if allSeriesQuery.isPending}

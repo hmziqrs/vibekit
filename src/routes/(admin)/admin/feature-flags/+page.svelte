@@ -281,6 +281,7 @@
                         type="text"
                         value={editFlag.name as string}
                         oninput={(e) => (editFlag = { ...editFlag, name: (e.target as HTMLInputElement).value })}
+                        aria-label="Flag name"
                         class="w-full rounded border border-brand/30 bg-surface-base px-2 py-1 text-sm text-text-primary"
                       />
                       <input
@@ -288,6 +289,7 @@
                         value={editFlag.description as string ?? ''}
                         oninput={(e) => (editFlag = { ...editFlag, description: (e.target as HTMLInputElement).value })}
                         placeholder="Description"
+                        aria-label="Flag description"
                         class="w-full rounded border border-border bg-surface-base px-2 py-1 text-xs text-text-secondary"
                       />
                     </div>
@@ -321,6 +323,7 @@
                       max="100"
                       value={editFlag.rolloutPercentage as number}
                       oninput={(e) => (editFlag = { ...editFlag, rolloutPercentage: Number((e.target as HTMLInputElement).value) })}
+                      aria-label="Rollout percentage"
                       class="w-20 rounded border border-brand/30 bg-surface-base px-2 py-1 text-sm text-text-primary"
                     />
                   {:else}
