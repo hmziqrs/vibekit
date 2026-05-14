@@ -10,7 +10,7 @@
   } = $props()
 
   let uploading = $state(false)
-  let error = $state('')
+  let errorMessage = $state('')
   let dragOver = $state(false)
 
   const MAX_SIZE = 5 * 1024 * 1024
@@ -18,15 +18,15 @@
 
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) {
-      error = 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF.'
+      errorMessage = 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF.'
       return
     }
     if (file.size > MAX_SIZE) {
-      error = `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max: 5MB.`
+      errorMessage = `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max: 5MB.`
       return
     }
 
-    error = ''
+    errorMessage = ''
     uploading = true
 
     try {
@@ -37,14 +37,14 @@
       const data = (await res.json()) as { url?: string; error?: string }
 
       if (!res.ok || data.error) {
-        error = data.error ?? 'Upload failed'
+        errorMessage = data.error ?? 'Upload failed'
         return
       }
 
       onUpload(data.url!)
-    } catch (err) {
-      console.error('Failed to upload image', err)
-      error = 'Network error'
+    } catch (error) {
+      console.error('Failed to upload image', error)
+      errorMessage = 'Network error'
     } finally {
       uploading = false
     }
@@ -75,8 +75,8 @@
 <div class="space-y-2">
   <label for="image-upload" class="mb-2 block text-sm font-medium text-text-secondary">Cover Image</label>
 
-  {#if error}
-    <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{error}</p>
+  {#if errorMessage}
+    <p class="rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{errorMessage}</p>
   {/if}
 
   {#if currentUrl}

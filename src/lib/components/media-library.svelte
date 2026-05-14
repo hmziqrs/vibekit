@@ -26,7 +26,7 @@
   let hasMore = $state(false)
   let loading = $state(true)
   let loadingMore = $state(false)
-  let error = $state('')
+  let loadError = $state('')
   let uploading = $state(false)
   let uploadError = $state('')
   let previewItem = $state<MediaItem | null>(null)
@@ -78,7 +78,7 @@
     } else {
       loading = true
     }
-    error = ''
+    loadError = ''
     try {
       const params = new URLSearchParams()
       params.set('limit', '24')
@@ -93,9 +93,9 @@
       }
       ({ nextCursor } = data)
       hasMore = data.truncated ?? false
-    } catch (err) {
-      console.error('Failed to load media', err)
-      error = 'Failed to load media'
+    } catch (error) {
+      console.error('Failed to load media', error)
+      loadError = 'Failed to load media'
     } finally {
       loading = false
       loadingMore = false
@@ -116,9 +116,8 @@
       if (!res.ok) throw new Error('Upload failed')
       const { key } = (await res.json()) as { key: string; url: string }
       items = [{ contentType: file.type, key, lastModified: new Date().toISOString(), size: file.size }, ...items]
-      // oxlint-disable-next-line catch-error-name
-    } catch (err) {
-      console.error('Failed to upload file', err)
+    } catch (error) {
+      console.error('Failed to upload file', error)
       uploadError = 'Upload failed'
     } finally {
       uploading = false
@@ -280,8 +279,8 @@
           <div class="aspect-square animate-pulse rounded-lg bg-muted"></div>
         {/each}
       </div>
-    {:else if error}
-      <p class="py-8 text-center text-[13px] text-destructive">{error}</p>
+    {:else if loadError}
+      <p class="py-8 text-center text-[13px] text-destructive">{loadError}</p>
     {:else if filteredItems().length === 0 && items.length === 0}
       <p class="py-8 text-center text-[13px] text-text-muted">No files uploaded yet.</p>
     {:else if filteredItems().length === 0}
