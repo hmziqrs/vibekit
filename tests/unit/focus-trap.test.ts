@@ -59,7 +59,10 @@ describe('createFocusTrap', () => {
     const container = createMockElement('div')
     const input = createMockElement('input', { type: 'text' })
     const button = createMockElement('button')
-    container.querySelectorAll = vi.fn(() => [input, button])
+    container.querySelectorAll = vi.fn(() => [
+      input,
+      button,
+    ]) as unknown as typeof container.querySelectorAll
 
     createFocusTrap(container as unknown as HTMLElement)
     expect(input.focus).toHaveBeenCalled()
@@ -73,7 +76,7 @@ describe('createFocusTrap', () => {
     container.querySelectorAll = vi.fn((selector: string) => {
       calls.push([selector])
       return []
-    })
+    }) as unknown as typeof container.querySelectorAll
 
     createFocusTrap(container as unknown as HTMLElement)
 

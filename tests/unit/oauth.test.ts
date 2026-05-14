@@ -31,7 +31,7 @@ function createMockDb() {
       }),
     }),
     delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockImplementation(() => ({ rowsAffected: 1 })),
+      where: vi.fn().mockImplementation(() => ({ meta: { changes: 1 } })),
     }),
     _store: store,
   }

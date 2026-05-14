@@ -86,6 +86,7 @@
 					{#if dropdownOpen}
 						<div
 							class="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/[0.06] bg-surface py-1 shadow-lg"
+							tabindex="-1"
 							role="menu"
 							onkeydown={handleDropdownKeydown}
 						>

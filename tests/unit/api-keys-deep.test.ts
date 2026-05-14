@@ -58,7 +58,9 @@ describe('api-keys', () => {
   }
 
   function createMockDb(keys: Record<string, unknown>[] = []) {
-    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({ rowsAffected: 1 }) })
+    const setFn = vi
+      .fn()
+      .mockReturnValue({ where: vi.fn().mockResolvedValue({ meta: { changes: 1 } }) })
 
     return {
       _insertFn: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
@@ -73,7 +75,9 @@ describe('api-keys', () => {
   }
 
   function createMockDbWithOrder(keys: Record<string, unknown>[] = []) {
-    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({ rowsAffected: 1 }) })
+    const setFn = vi
+      .fn()
+      .mockReturnValue({ where: vi.fn().mockResolvedValue({ meta: { changes: 1 } }) })
 
     return {
       _insertFn: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),

@@ -7,7 +7,7 @@ import type { SearchDocument } from './types'
 
 function getAdapter(db: DrizzleDb) {
   // Drizzle D1 driver exposes all/run compatible with adapter's expected interface
-  return createD1SearchAdapter(db as Parameters<typeof createD1SearchAdapter>[0])
+  return createD1SearchAdapter(db as unknown as Parameters<typeof createD1SearchAdapter>[0])
 }
 
 export async function indexBlogPost(db: DrizzleDb, postId: string): Promise<void> {

@@ -171,7 +171,7 @@ export async function revokeApiKey(db: DrizzleDb, keyId: string, userId: string)
     .set({ revokedAt: new Date() })
     .where(and(eq(apiKey.id, keyId), eq(apiKey.userId, userId), isNull(apiKey.revokedAt)))
 
-  return (result.rowsAffected ?? 0) > 0
+  return (result.meta?.changes ?? 0) > 0
 }
 
 export async function deleteApiKey(db: DrizzleDb, keyId: string, userId: string) {

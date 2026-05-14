@@ -51,7 +51,7 @@ export async function consumeOAuthState(
 export async function cleanupExpiredOAuthStates(db: DrizzleDb): Promise<number> {
   const cutoff = new Date(Date.now() - STATE_TTL_MS)
   const result = await db.delete(oauthState).where(lt(oauthState.createdAt, cutoff))
-  return result.rowsAffected ?? 0
+  return result.meta?.changes ?? 0
 }
 
 // oxlint-disable-next-line max-params

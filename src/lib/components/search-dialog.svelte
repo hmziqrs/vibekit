@@ -223,7 +223,7 @@
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]" role="dialog" aria-label="Search"
+    class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]" role="dialog" tabindex="-1" aria-label="Search"
     onclick={() => (open = false)}
     onkeydown={(e) => e.key === 'Escape' && (open = false)}
   >

@@ -1,9 +1,19 @@
-<script lang="ts" generics="TField extends FieldApi<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown>">
-  import type { FieldApi, StandardSchemaV1Issue } from '@tanstack/form-core'
+<script lang="ts">
+  import type { StandardSchemaV1Issue } from '@tanstack/form-core'
   import { Input } from '$lib/components/ui/input'
   import { Label } from '$lib/components/ui/label'
   import type { HTMLInputAttributes } from 'svelte/elements'
   import { getFieldError } from '$lib/validation'
+
+  interface FieldLike {
+    name: string | number | symbol
+    handleBlur: () => void
+    handleChange: (value: unknown) => void
+    state: {
+      value: unknown
+      meta: { errors: unknown[] }
+    }
+  }
 
   const {
     field,
@@ -14,7 +24,7 @@
     rows,
     maxlength,
   }: {
-    field: TField
+    field: FieldLike
     label: string
     type?: Exclude<HTMLInputAttributes['type'], null> | 'textarea'
     placeholder?: string
@@ -35,7 +45,7 @@
       {placeholder}
       {rows}
       {maxlength}
-      value={field.state.value}
+      value={field.state.value as string | number | null | undefined}
       oninput={(e) => field.handleChange(e.currentTarget.value)}
       onblur={field.handleBlur}
       class="flex min-h-[80px] w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
@@ -49,7 +59,7 @@
       {placeholder}
       {maxlength}
       {autocomplete}
-      value={field.state.value}
+      value={field.state.value as string | number | null | undefined}
       oninput={(e) => field.handleChange(e.currentTarget.value)}
       onblur={field.handleBlur}
       aria-invalid={hasError ? 'true' : 'false'}

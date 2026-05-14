@@ -177,7 +177,7 @@
 />
 
 {#if previewItem}
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/60" role="dialog" aria-label="File preview" onkeydown={(e) => { if (e.key === 'Escape') previewItem = null }}>
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/60" role="dialog" tabindex="-1" aria-label="File preview" onkeydown={(e) => { if (e.key === 'Escape') previewItem = null }}>
     <div bind:this={previewEl} class="w-full max-w-3xl rounded-lg border border-border bg-surface-base p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[14px] font-medium text-text-primary truncate mr-4">{previewItem.key}</h3>
@@ -221,7 +221,7 @@
   </div>
 {/if}
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50" role="dialog" aria-label="Media Library" onkeydown={(e) => { if (e.key === 'Escape') onClose() }}>
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50" role="dialog" tabindex="-1" aria-label="Media Library" onkeydown={(e) => { if (e.key === 'Escape') onClose() }}>
   <div bind:this={dialogEl} class="w-full max-w-4xl rounded-lg border border-border bg-surface-base p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
@@ -295,6 +295,7 @@
     <!-- Content -->
     {#if loading}
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {#each { length: 8 } as _}
           <div class="aspect-square animate-pulse rounded-lg bg-muted"></div>
         {/each}
       </div>
