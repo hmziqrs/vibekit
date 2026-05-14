@@ -164,7 +164,7 @@
     <div class="w-full max-w-3xl rounded-lg border border-border bg-surface-base p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[14px] font-medium text-text-primary truncate mr-4">{previewItem.key}</h3>
-        <button onclick={() => previewItem = null} class="shrink-0 text-text-muted hover:text-text-primary">
+        <button onclick={() => previewItem = null} class="shrink-0 text-text-muted hover:text-text-primary" aria-label="Close preview">
           <X class="size-5" />
         </button>
       </div>
@@ -260,12 +260,14 @@
           <button
             onclick={() => viewMode = 'grid'}
             class={cn('p-1.5 transition-colors', viewMode === 'grid' ? 'bg-surface-elevated text-text-primary' : 'text-text-muted hover:text-text-primary')}
+            aria-label="Grid view"
           >
             <LayoutGrid class="size-3.5" />
           </button>
           <button
             onclick={() => viewMode = 'list'}
             class={cn('p-1.5 transition-colors', viewMode === 'list' ? 'bg-surface-elevated text-text-primary' : 'text-text-muted hover:text-text-primary')}
+            aria-label="List view"
           >
             <List class="size-3.5" />
           </button>
@@ -290,7 +292,7 @@
       <div class="grid grid-cols-4 gap-3 max-h-[70vh] overflow-y-auto">
         {#each filteredItems() as item (item.key)}
           <div class="group relative overflow-hidden rounded-lg border border-border transition-all hover:border-brand hover:ring-1 hover:ring-brand">
-            <button onclick={() => previewItem = item} class="aspect-square w-full bg-surface">
+            <button onclick={() => previewItem = item} class="aspect-square w-full bg-surface" aria-label="Preview {item.key}">
               {#if item.contentType?.startsWith('image/')}
                 <img src={`/cdn/blog/${item.key}`} alt={item.key} class="h-full w-full object-cover" loading="lazy" />
               {:else}
@@ -306,13 +308,14 @@
               </div>
               <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {#if editor}
-                  <button onclick={() => insertImage(item.key)} class="p-1 text-text-muted hover:text-brand" title="Insert">
+                  <button onclick={() => insertImage(item.key)} class="p-1 text-text-muted hover:text-brand" aria-label="Insert image" title="Insert">
                     <Upload class="size-3" />
                   </button>
                 {/if}
                 <button
                   onclick={() => { deleteTarget = item; showDeleteDialog = true }}
                   class="p-1 text-text-muted hover:text-destructive"
+                  aria-label="Delete file"
                   title="Delete"
                 >
                   <Trash2 class="size-3" />
