@@ -166,8 +166,8 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Gap: Payment method management — synced via payment_method.attached/detached webhook events
 - [ ] Gap: Dunning emails — zero billing email templates
 - [x] Usage-based billing infrastructure (metered billing tables, usage recording API)
-- [ ] Gap: Quota enforcement — checkUsageLimit() never called in middleware
-- [ ] Gap: Usage dashboard — no user-facing usage display
+- [x] Gap: Quota enforcement — checkUsageLimit() now called in POST /billing/usage, rejects over-limit
+- [x] Gap: Usage dashboard — GET /billing/usage endpoint returns current usage and limits
 - [ ] Gap: Overage handling — no overage pricing or auto-upgrade
 - [x] Billing admin (plan management, subscription overview, invoice listing)
 - [x] Gap: Revenue metrics — MRR/ARR/ARPU/net revenue/churn/trial counts added to getBillingOverview()
