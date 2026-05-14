@@ -151,8 +151,8 @@
         const data = (await res.json()) as { events: typeof securityEvents }
         securityEvents = data.events ?? []
       }
-    } catch (err) {
-      console.warn('Failed to load security events:', err)
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      console.warn('Failed to load security events:', caught)
     } finally {
       securityEventsLoading = false
     }
@@ -190,8 +190,8 @@
       if (res.data) {
         userPasskeys = res.data
       }
-    } catch (err) {
-      console.warn('Failed to load passkeys:', err)
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      console.warn('Failed to load passkeys:', caught)
     }
   }
 
@@ -346,8 +346,8 @@
           providerId: a.providerId,
         }))
       }
-    } catch (err) {
-      console.warn('Failed to load linked accounts:', err)
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      console.warn('Failed to load linked accounts:', caught)
     }
   }
 
@@ -460,8 +460,8 @@
           })
         }
       }
-    } catch (err) {
-      console.warn('Failed to load sessions:', err)
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      console.warn('Failed to load sessions:', caught)
     }
   }
 
