@@ -165,6 +165,10 @@
     testLoading = true
     try {
       const res = await fetch(`/api/webhooks/${id}/test`, { method: 'POST' })
+      if (!res.ok) {
+        alert('Test failed')
+        return
+      }
       const result = (await res.json()) as { status: string }
       alert(`Test delivery: ${result.status}`)
     } catch {

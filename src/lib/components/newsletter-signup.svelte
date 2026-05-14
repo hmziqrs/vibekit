@@ -58,6 +58,7 @@
         type="email"
         bind:value={email}
         placeholder="your@email.com"
+        aria-label="Email address"
         required
         class="flex-1 rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />

@@ -59,7 +59,7 @@
   <div class="w-full max-w-lg rounded-lg border border-border bg-surface-base p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-text-primary">Insert Article</h2>
-      <button onclick={onClose} class="text-text-muted hover:text-text-primary">
+      <button onclick={onClose} class="text-text-muted hover:text-text-primary" aria-label="Close">
         <X class="size-5" />
       </button>
     </div>
@@ -68,6 +68,7 @@
       type="text"
       bind:value={query}
       placeholder="Search articles..."
+      aria-label="Search articles"
       class="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-text-primary outline-none focus:border-brand mb-4"
       autofocus
     />

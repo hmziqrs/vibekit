@@ -91,6 +91,7 @@
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
+      if (!res.ok) return
       const data = (await res.json()) as { subscription?: unknown; url?: string }
       if (data.url) {
         window.location.href = data.url

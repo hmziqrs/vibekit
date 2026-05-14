@@ -84,6 +84,7 @@
               checked={allChecked}
               indeterminate={someChecked}
               onchange={toggleAll}
+              aria-label="Select all rows"
               class="rounded border-border"
             />
           </th>
@@ -152,6 +153,7 @@
                   type="checkbox"
                   checked={selectedIds.has(row.id as string)}
                   onchange={() => toggleRow(row.id as string)}
+                  aria-label="Select row"
                   class="rounded border-border"
                 />
               </td>

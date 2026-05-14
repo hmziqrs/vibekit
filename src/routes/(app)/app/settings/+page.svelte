@@ -151,8 +151,8 @@
         const data = (await res.json()) as { events: typeof securityEvents }
         securityEvents = data.events ?? []
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.warn('Failed to load security events:', err)
     } finally {
       securityEventsLoading = false
     }
@@ -190,8 +190,8 @@
       if (res.data) {
         userPasskeys = res.data
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.warn('Failed to load passkeys:', err)
     }
   }
 
@@ -346,8 +346,8 @@
           providerId: a.providerId,
         }))
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.warn('Failed to load linked accounts:', err)
     }
   }
 
@@ -460,8 +460,8 @@
           })
         }
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.warn('Failed to load sessions:', err)
     }
   }
 

@@ -48,6 +48,7 @@
         <input
           type="text"
           name="q"
+          aria-label="Search articles"
           value={data.q ?? ''}
           placeholder="Search articles..."
           class="w-full max-w-md rounded-lg border border-border bg-input px-4 py-2.5 text-[14px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"

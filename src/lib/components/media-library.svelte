@@ -214,7 +214,7 @@
           <input type="file" accept="image/*,video/*,audio/*" class="hidden" onchange={handleUpload} disabled={uploading} />
           {uploading ? 'Uploading...' : 'Upload'}
         </label>
-        <button onclick={onClose} class="text-text-muted hover:text-text-primary">
+        <button onclick={onClose} class="text-text-muted hover:text-text-primary" aria-label="Close">
           <X class="size-5" />
         </button>
       </div>
@@ -251,6 +251,7 @@
           <input
             type="text"
             placeholder="Search files..."
+            aria-label="Search files"
             bind:value={searchQuery}
             class="w-48 rounded-lg border border-border bg-input py-1.5 pl-8 pr-3 text-[12px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
