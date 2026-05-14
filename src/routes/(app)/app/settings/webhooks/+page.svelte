@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query'
+  import { createWebhookEndpointSchema } from '$lib/validators/webhook'
 
   interface WebhookEndpoint {
     active: boolean
@@ -112,17 +113,19 @@
 
   async function createEndpoint() {
     error = ''
-    if (!newUrl || selectedEvents.length === 0) {
-      error = 'URL and at least one event type are required'
+    const payload = {
+      description: newDescription || undefined,
+      events: selectedEvents,
+      url: newUrl,
+    }
+    const parsed = createWebhookEndpointSchema.safeParse(payload)
+    if (!parsed.success) {
+      error = parsed.error.issues[0]?.message ?? 'Invalid input'
       return
     }
     try {
       const res = await fetch('/api/webhooks', {
-        body: JSON.stringify({
-          description: newDescription || undefined,
-          events: selectedEvents,
-          url: newUrl,
-        }),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })

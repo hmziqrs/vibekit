@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { createApiKeySchema } from '$lib/validators/api-key'
 
   interface ApiKey {
     createdAt: string
@@ -50,19 +51,23 @@
   }))
 
   async function handleCreate() {
-    if (!name.trim() || selectedScopes.length === 0) return
-    creating = true
     error = ''
+    const payload: Record<string, unknown> = {
+      name: name.trim(),
+      scopes: selectedScopes,
+    }
+    if (rateLimit && Number(rateLimit) > 0) {
+      payload.rateLimit = Number(rateLimit)
+    }
+    const parsed = createApiKeySchema.safeParse(payload)
+    if (!parsed.success) {
+      error = parsed.error.issues[0]?.message ?? 'Invalid input'
+      return
+    }
+    creating = true
     try {
-      const body: Record<string, unknown> = {
-        name: name.trim(),
-        scopes: selectedScopes,
-      }
-      if (rateLimit && Number(rateLimit) > 0) {
-        body.rateLimit = Number(rateLimit)
-      }
       const res = await fetch('/api/api-keys', {
-        body: JSON.stringify(body),
+        body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
