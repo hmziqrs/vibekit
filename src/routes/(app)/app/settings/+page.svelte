@@ -1151,6 +1151,35 @@
     </button>
   </div>
 
+  <!-- Cookie & Analytics Consent -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Cookie & Analytics Consent</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Manage your cookie and analytics preferences. Analytics help us improve your experience.
+    </p>
+    <div class="mt-4 flex items-center gap-3">
+      {#if typeof localStorage !== 'undefined' && localStorage.getItem('consent') === 'accepted'}
+        <span class="text-[13px] text-text-secondary">Status: <span class="text-green-400">Accepted</span></span>
+        <button
+          onclick={() => { localStorage.removeItem('consent'); location.reload() }}
+          class="rounded-lg border border-white/10 px-3 py-1.5 text-[13px] text-text-secondary transition-colors hover:text-text-primary"
+        >
+          Withdraw Consent
+        </button>
+      {:else if typeof localStorage !== 'undefined' && localStorage.getItem('consent') === 'declined'}
+        <span class="text-[13px] text-text-secondary">Status: <span class="text-text-muted">Declined</span></span>
+        <button
+          onclick={() => { localStorage.setItem('consent', 'accepted'); location.reload() }}
+          class="rounded-lg bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
+        >
+          Accept Analytics
+        </button>
+      {:else}
+        <span class="text-[13px] text-text-muted">No consent decision recorded</span>
+      {/if}
+    </div>
+  </div>
+
   <!-- Deactivate Account -->
   <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
     <h2 class="text-[15px] font-medium text-text-primary">Deactivate Account</h2>

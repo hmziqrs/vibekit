@@ -508,6 +508,7 @@ app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
       })
     } catch (error) {
       console.error('Failed to send ban appeal email:', error)
+      return c.json({ error: { message: 'Failed to submit appeal. Please try again later.' } }, 500)
     }
   }
 
@@ -645,6 +646,7 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     status: 'pending',
   })
 
+  let emailSent = false
   // Send confirmation email
   const { env: env2 } = c.get('services')
   const confirmUrl2 = `${env2.origin}/api/newsletter/confirm?token=${token}`
@@ -653,11 +655,18 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, async () => {
       await handleBounce(db, emailAddress)
     })
+    emailSent = true
   } catch (error) {
     console.error('Failed to send newsletter confirmation email:', error)
   }
 
-  return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)
+  if (emailSent) {
+    return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)
+  }
+  return c.json(
+    { message: 'Subscribed but confirmation email failed to send. Please try again later.' },
+    201
+  )
 })
 
 app.get('/api/newsletter/confirm', async (c) => {
