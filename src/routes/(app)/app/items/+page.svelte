@@ -5,6 +5,7 @@
   import StatusBadge from '$lib/components/status-badge.svelte'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import type { ItemData } from '$lib/types'
+  import { formatDate } from '$lib/i18n.svelte'
 
   let statusFilter = $state<string>('active')
   let search = $state('')
@@ -26,14 +27,6 @@
     },
     queryKey: ['items', { search, status: statusFilter }],
   }))
-
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
 
   async function toggleArchive(id: string, currentStatus: string) {
     mutationError = ''
@@ -167,7 +160,7 @@
               class="min-w-0 flex-1 transition-colors hover:opacity-80"
             >
               <p class="truncate text-[13px] font-medium text-text-primary">{item.name}</p>
-              <p class="mt-0.5 text-[11px] text-text-subtle">{formatDate(item.createdAt)}</p>
+              <p class="mt-0.5 text-[11px] text-text-subtle">{formatDate(item.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </a>
 
             <div class="ml-4 flex items-center gap-2">

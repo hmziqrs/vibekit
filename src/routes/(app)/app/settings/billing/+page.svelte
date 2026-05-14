@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { checkoutSessionSchema } from '$lib/validators/billing'
+  import { formatDate } from '$lib/i18n.svelte'
 
   interface Plan {
     currency: string
@@ -165,13 +166,13 @@
         <p class="mt-2 text-[14px] text-text-muted">
           {formatPrice(currentPlan()!.priceInCents)}/{currentPlan()!.interval}
           {#if sub.trialEnd}
-            &middot; Trial ends {new Date(sub.trialEnd).toLocaleDateString()}
+            &middot; Trial ends {formatDate(sub.trialEnd)}
           {/if}
         </p>
       {/if}
       <p class="mt-1 text-[12px] text-text-faint">
-        Period: {new Date(sub.currentPeriodStart).toLocaleDateString()} &ndash;
-        {new Date(sub.currentPeriodEnd).toLocaleDateString()}
+        Period: {formatDate(sub.currentPeriodStart)} &ndash;
+        {formatDate(sub.currentPeriodEnd)}
       </p>
 
       <div class="mt-4 flex gap-2">
@@ -299,7 +300,7 @@
               <p class="text-[14px] text-text-primary">
                 {formatPrice(invoice.amountInCents)} {invoice.currency.toUpperCase()}
               </p>
-              <p class="text-[12px] text-text-faint">{new Date(invoice.createdAt).toLocaleDateString()}</p>
+              <p class="text-[12px] text-text-faint">{formatDate(invoice.createdAt)}</p>
             </div>
             <span class="rounded-full px-2 py-0.5 text-[11px] {statusColor(invoice.status)}">{invoice.status}</span>
           </div>

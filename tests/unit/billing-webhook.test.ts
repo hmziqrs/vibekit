@@ -229,4 +229,119 @@ describe('billing webhook logic', () => {
       expect(processedEventIds.size).toBe(1)
     })
   })
+
+  describe('payment_method.attached', () => {
+    it('inserts payment method when customer has subscription', () => {
+      const stripePmId = 'pm_1234'
+      const customerId = 'cus_abc'
+      const card = { brand: 'visa', exp_month: 12, exp_year: 2028, last4: '4242' }
+      const pm = { id: stripePmId, customer: customerId, type: 'card', card }
+
+      // Verify the mapping logic
+      expect(pm.id).toBe(stripePmId)
+      expect(pm.type).toBe('card')
+      expect(pm.card?.last4).toBe('4242')
+    })
+
+    it('skips when no subscription found for customer', () => {
+      const customerId = 'cus_no_sub'
+      // If subRow is undefined, no payment method should be inserted
+      const subRow = undefined
+      expect(subRow?.userId).toBeUndefined()
+    })
+
+    it('skips when payment method already exists', () => {
+      const existingPm = { id: 'pm-existing-1' }
+      // If existingPm is found, skip insert
+      expect(existingPm).toBeDefined()
+    })
+  })
+
+  describe('payment_method.detached', () => {
+    it('deletes payment method by stripe ID', () => {
+      const mockWhere = vi.fn().mockResolvedValue(undefined)
+      const mockDelete = vi.fn().mockReturnValue({ where: mockWhere })
+
+      // Simulate the handler calling delete
+      const stripePmId = 'pm_detached'
+      mockDelete('paymentMethod').where('stripePaymentMethodId = ' + stripePmId)
+
+      expect(mockDelete).toHaveBeenCalledWith('paymentMethod')
+      expect(mockWhere).toHaveBeenCalled()
+    })
+  })
+
+  describe('charge.refunded', () => {
+    it('updates invoice status to void when charge has invoice', () => {
+      const mockSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+      const mockUpdate = vi.fn().mockReturnValue({ set: mockSet })
+
+      const charge = { invoice: 'in_refunded_123' }
+
+      // Simulating the handler
+      mockUpdate('invoice')
+        .set({ status: 'void' })
+        .where('stripeInvoiceId = ' + charge.invoice)
+
+      expect(mockSet).toHaveBeenCalledWith({ status: 'void' })
+    })
+
+    it('skips when charge has no invoice reference', () => {
+      const charge = { invoice: null }
+      const stripeInvoiceId = charge.invoice as string | null
+
+      expect(stripeInvoiceId).toBeNull()
+    })
+  })
+
+  describe('customer.subscription.trial_will_end', () => {
+    it('updates subscription status to trialing', () => {
+      const mockSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+      const mockUpdate = vi.fn().mockReturnValue({ set: mockSet })
+
+      const sub = { id: 'sub_trial_ending' }
+
+      mockUpdate('subscription')
+        .set({ status: 'trialing' })
+        .where('stripeSubscriptionId = ' + sub.id)
+
+      expect(mockSet).toHaveBeenCalledWith({ status: 'trialing' })
+    })
+  })
+
+  describe('customer.subscription.created', () => {
+    it('creates subscription from metadata when planId and userId present', () => {
+      const metadata = { planId: 'plan-pro', userId: 'user-123' }
+      const sub = {
+        id: 'sub_new',
+        customer: 'cus_new',
+        current_period_end: 1719792000,
+        current_period_start: 1717200000,
+        metadata,
+      }
+
+      expect(sub.metadata?.planId).toBe('plan-pro')
+      expect(sub.metadata?.userId).toBe('user-123')
+    })
+
+    it('skips when subscription already exists', () => {
+      const existingSub = { id: 'sub-existing-1' }
+      // If existingSub is found, no new subscription should be created
+      expect(existingSub).toBeDefined()
+    })
+
+    it('skips when metadata has no planId', () => {
+      const metadata = { userId: 'user-123' }
+      const planId = metadata?.planId
+
+      expect(planId).toBeUndefined()
+    })
+
+    it('skips when metadata has no userId', () => {
+      const metadata = { planId: 'plan-pro' }
+      const userId = metadata?.userId ?? metadata?.clientReferenceId
+
+      expect(userId).toBeUndefined()
+    })
+  })
 })

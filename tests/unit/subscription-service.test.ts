@@ -415,13 +415,17 @@ describe('getBillingOverview', () => {
     const { getBillingOverview } = await import('$lib/server/billing/subscription-service')
     const db = createMockDb()
 
-    // Mock db.all() for the 3 raw SQL queries
+    // Mock db.all() for the 7 raw SQL queries
     let allCallIdx = 0
     db._allFn.mockImplementation(() => {
       allCallIdx++
       if (allCallIdx === 1) return Promise.resolve([{ count: 42 }])
       if (allCallIdx === 2) return Promise.resolve([{ count: 50 }])
-      return Promise.resolve([{ count: 30, planName: 'Pro' }])
+      if (allCallIdx === 3) return Promise.resolve([{ count: 30, planName: 'Pro' }])
+      if (allCallIdx === 4) return Promise.resolve([{ mrr: 500000 }])
+      if (allCallIdx === 5) return Promise.resolve([{ revenue: 750000 }])
+      if (allCallIdx === 6) return Promise.resolve([{ count: 3 }])
+      return Promise.resolve([{ count: 5 }])
     })
 
     const overview = await getBillingOverview(db)
@@ -429,6 +433,12 @@ describe('getBillingOverview', () => {
     expect(overview.activeSubscriptions).toBe(42)
     expect(overview.totalSubscriptions).toBe(50)
     expect(overview.planDistribution).toEqual([{ count: 30, planName: 'Pro' }])
+    expect(overview.mrr).toBe(500000)
+    expect(overview.arr).toBe(6_000_000)
+    expect(overview.netRevenue30d).toBe(750000)
+    expect(overview.churnedLast30Days).toBe(3)
+    expect(overview.trialSubscriptions).toBe(5)
+    expect(overview.arpu).toBe(Math.round(500000 / 42))
   })
 
   it('handles empty results', async () => {
@@ -441,6 +451,12 @@ describe('getBillingOverview', () => {
     expect(overview.activeSubscriptions).toBe(0)
     expect(overview.totalSubscriptions).toBe(0)
     expect(overview.planDistribution).toEqual([])
+    expect(overview.mrr).toBe(0)
+    expect(overview.arr).toBe(0)
+    expect(overview.netRevenue30d).toBe(0)
+    expect(overview.churnedLast30Days).toBe(0)
+    expect(overview.trialSubscriptions).toBe(0)
+    expect(overview.arpu).toBe(0)
   })
 })
 
@@ -561,6 +577,74 @@ describe('changeSubscriptionPlan success paths', () => {
 
     const eventArg = insertValuesFn.mock.calls[0][0] as Record<string, unknown>
     expect(eventArg.type).toBe('downgraded')
+  })
+
+  it('returns prorationAmountInCents from period dates', async () => {
+    const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
+    const periodStart = new Date('2026-05-01')
+    const periodEnd = new Date('2026-06-01')
+    const now = new Date('2026-05-16')
+    vi.useFakeTimers({ now })
+
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1)
+        return Promise.resolve({
+          currentPeriodEnd: periodEnd,
+          currentPeriodStart: periodStart,
+          planId: 'plan-starter',
+        })
+      if (callIdx === 2) return Promise.resolve({ priceInCents: 2000 })
+      if (callIdx === 3) return Promise.resolve({ priceInCents: 4900 })
+      return Promise.resolve(null)
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn, get: getFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+
+    const db = {
+      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+      select: selectFn,
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    } as unknown as AppDb
+
+    const result = await changeSubscriptionPlan(db, 'sub-1', 'plan-pro')
+
+    expect(result.prorationAmountInCents).toBeGreaterThan(0)
+    expect(result.prorationAmountInCents).toBeLessThanOrEqual(4900)
+
+    vi.useRealTimers()
+  })
+
+  it('returns new plan price as proration when subscription has no period dates', async () => {
+    const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
+    let callIdx = 0
+    const getFn = vi.fn().mockImplementation(() => {
+      callIdx++
+      if (callIdx === 1) return Promise.resolve({ planId: 'plan-starter' })
+      if (callIdx === 2) return Promise.resolve({ priceInCents: 0 })
+      if (callIdx === 3) return Promise.resolve({ priceInCents: 2900 })
+      return Promise.resolve(null)
+    })
+    const whereFn = vi.fn().mockReturnValue({ get: getFn })
+    const fromFn = vi.fn().mockReturnValue({ where: whereFn, get: getFn })
+    const selectFn = vi.fn().mockReturnValue({ from: fromFn })
+
+    const insertValuesFn = vi.fn().mockResolvedValue(undefined)
+    const db = {
+      insert: vi.fn().mockReturnValue({ values: insertValuesFn }),
+      select: selectFn,
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    } as unknown as AppDb
+
+    const result = await changeSubscriptionPlan(db, 'sub-1', 'plan-pro')
+
+    expect(result.prorationAmountInCents).toBe(2900)
   })
 })
 

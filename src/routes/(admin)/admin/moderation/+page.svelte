@@ -1,6 +1,7 @@
 <script lang="ts">
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import FilterTabs from '$lib/components/filter-tabs.svelte'
+  import { formatDate } from '$lib/i18n.svelte'
   import { cn } from '$lib/utils'
   import { createQuery } from '@tanstack/svelte-query'
 
@@ -319,7 +320,7 @@
               </div>
             </td>
             <td class="px-5 py-3.5 text-[12px] text-text-subtle">
-              {new Date(report.createdAt).toLocaleDateString()}
+              {formatDate(report.createdAt)}
             </td>
             <td class="px-5 py-3.5 text-right">
               {#if report.status === 'pending' || report.status === 'reviewing'}

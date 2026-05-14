@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
+  import { formatDate } from '$lib/i18n.svelte'
   import { cn } from '$lib/utils'
 
   interface AuditRow {
@@ -27,10 +28,6 @@
     const params = new URLSearchParams(page.url.searchParams)
     params.set('page', String(p))
     goto(`/admin/audit?${params}`, { keepFocus: true, noScroll: true })
-  }
-
-  function formatDate(date: string | Date) {
-    return new Date(date).toLocaleString()
   }
 
   function formatMetadata(meta: string | null) {
@@ -115,8 +112,8 @@
             <td class="px-5 py-3.5 text-[13px] text-text-secondary">
               {log.userEmail ?? '—'}
             </td>
-            <td class="px-5 py-3.5 text-[12px] text-text-subtle" title={formatDate(log.createdAt)}>
-              {formatDate(log.createdAt)}
+            <td class="px-5 py-3.5 text-[12px] text-text-subtle" title={formatDate(log.createdAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}>
+              {formatDate(log.createdAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </td>
           </tr>
         {/each}

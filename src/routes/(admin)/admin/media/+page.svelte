@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { formatDate } from '$lib/i18n.svelte'
   import { cn } from '$lib/utils'
 
   const queryClient = useQueryClient()
@@ -299,7 +300,7 @@
                 <td class="px-3 py-2 text-xs text-text-muted">{item.contentType ?? 'unknown'}</td>
                 <td class="px-3 py-2 text-right text-xs text-text-secondary">{formatSize(item.size)}</td>
                 <td class="px-3 py-2 text-right text-xs text-text-muted">
-                  {new Date(item.lastModified).toLocaleDateString()}
+                  {formatDate(item.lastModified)}
                 </td>
                 <td class="px-3 py-2">
                   <button

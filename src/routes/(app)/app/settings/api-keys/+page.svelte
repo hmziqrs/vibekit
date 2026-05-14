@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { createApiKeySchema } from '$lib/validators/api-key'
+  import { formatDate } from '$lib/i18n.svelte'
 
   interface ApiKey {
     createdAt: string
@@ -142,9 +143,9 @@
       : [...selectedScopes, scope]
   }
 
-  function formatDate(date: string | null): string {
+  function formatNullableDate(date: string | null): string {
     if (!date) return 'Never'
-    return new Date(date).toLocaleDateString()
+    return formatDate(date)
   }
 </script>
 
@@ -273,14 +274,14 @@
                 {/each}
               </div>
               <div class="text-text-muted mt-2 flex gap-4 text-xs">
-                <span>Created: {formatDate(keyItem.createdAt)}</span>
-                <span>Last used: {formatDate(keyItem.lastUsedAt)}</span>
+                <span>Created: {formatNullableDate(keyItem.createdAt)}</span>
+                <span>Last used: {formatNullableDate(keyItem.lastUsedAt)}</span>
                 <span>Requests: {keyItem.requestCount}</span>
                 {#if keyItem.rateLimit}
                   <span>Rate limit: {keyItem.rateLimit}/min</span>
                 {/if}
                 {#if keyItem.expiresAt}
-                  <span>Expires: {formatDate(keyItem.expiresAt)}</span>
+                  <span>Expires: {formatNullableDate(keyItem.expiresAt)}</span>
                 {/if}
               </div>
             </div>

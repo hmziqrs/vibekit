@@ -2,6 +2,7 @@
 	import SeoHead from '$lib/components/seo-head.svelte'
 	import Nav from '$lib/components/nav.svelte'
 	import Footer from '$lib/components/footer.svelte'
+	import { formatDate } from '$lib/i18n.svelte'
 
 	const { data } = $props()
 </script>
@@ -59,7 +60,7 @@
 							{/if}
 							{#if post.publishedAt}
 								<time class="mt-2 block text-xs text-text-faint">
-									{new Date(post.publishedAt).toLocaleDateString('en-US', {
+									{formatDate(post.publishedAt, {
 										day: 'numeric',
 										month: 'long',
 										year: 'numeric',

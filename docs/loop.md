@@ -159,12 +159,24 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
   - [x] Analytics per post (view count, referrer tracking, reading completion)
 
 #### Billing & Payments
-<!-- Audit: billing-deep-audit.md — 2026-05-14 -->
-- [x] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, proration handling, trial periods)
-- [x] Payment processing (Stripe integration, payment method management, invoice generation, payment failure handling, dunning emails)
-- [x] Usage-based billing (metered billing, usage tracking, quota enforcement, overage handling, usage dashboard for users)
-- [x] Billing admin (revenue metrics, failed payment queue, refund processing, discount/coupon management, tax configuration)
-- [x] Payment webhooks (Stripe webhook handler, idempotent processing, event logging, failure recovery)
+<!-- Audit: billing-deep-audit.md — 2026-05-15 -->
+- [x] Subscription management (plan CRUD, plan comparison page, upgrade/downgrade flows, trial periods)
+- [x] Gap: Proration handling — calculateProration() now called in changeSubscriptionPlan(), returns proration amount in API response
+- [x] Payment processing (Stripe integration, checkout sessions, invoice generation, payment failure detection)
+- [x] Gap: Payment method management — synced via payment_method.attached/detached webhook events
+- [ ] Gap: Dunning emails — zero billing email templates
+- [x] Usage-based billing infrastructure (metered billing tables, usage recording API)
+- [ ] Gap: Quota enforcement — checkUsageLimit() never called in middleware
+- [ ] Gap: Usage dashboard — no user-facing usage display
+- [ ] Gap: Overage handling — no overage pricing or auto-upgrade
+- [x] Billing admin (plan management, subscription overview, invoice listing)
+- [x] Gap: Revenue metrics — MRR/ARR/ARPU/net revenue/churn/trial counts added to getBillingOverview()
+- [ ] Gap: Refund processing — charge.refunded webhook marks invoice as void; no explicit refund API endpoint
+- [ ] Gap: Discount/coupon management — no tables or code
+- [ ] Gap: Tax configuration — no tax calculation
+- [x] Payment webhooks (Stripe webhook handler, idempotent processing with eventId dedup)
+- [x] Gap: Missing webhook events — added 6 more: trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired
+- [ ] Gap: Failure recovery — no retry, no dead letter queue
 
 #### Notifications & Communication
 <!-- Audit: notifications-audit.md — 2026-05-14 -->
@@ -190,17 +202,24 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Configuration service (runtime config without redeploy, environment-specific overrides, config versioning)
 
 #### File Storage & Media
-<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
-- [x] File upload pipeline (chunked uploads for large files, progress tracking, upload resumption, file type validation, virus scanning)
-- [x] Media library (file browser, thumbnail generation, metadata extraction, search/filter, folder organization, bulk operations)
-- [x] Image processing (resize/crop on upload, format conversion to WebP/AVIF, responsive image srcset generation, CDN URL generation)
-- [x] Storage adapter abstraction (R2 primary, S3-compatible fallback, local dev storage, presigned URLs for direct upload)
+<!-- Audit: file-storage-audit.md — 2026-05-15 -->
+- [x] File upload pipeline (single-request upload, file type validation with magic bytes, upload session tracking infrastructure)
+- [x] Media library (file browser with grid/list, type filters, search by filename, pagination, bulk delete)
+- [x] Image processing (Cloudflare Image Resizing URL builders, responsive srcset generation, CDN URL generation)
+- [x] Storage adapter abstraction (R2 primary, S3-compatible fallback, local dev filesystem adapter, GET presigned URLs)
+- [ ] Gap: Chunked upload non-functional (session tracker only, no chunk data transfer/assembly)
+- [ ] Gap: No virus scanning
+- [ ] Gap: No thumbnail generation or resize/crop at upload
+- [ ] Gap: Presigned URLs are GET-only (no PUT for direct browser upload)
 
 #### Search
-<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
-- [x] Full-text search infrastructure (Algolia/Meilisearch/Typesense integration, index management, relevance tuning)
-- [x] Search UI (autocomplete/suggestions, faceted filters, search result previews, keyboard navigation, recent searches)
-- [x] Content indexing (blog posts, user content, admin content — incremental updates on mutation)
+<!-- Audit: search-audit.md — 2026-05-15 -->
+- [x] Full-text search infrastructure (D1/FTS5 adapter, index management, admin reindex)
+- [x] Search UI (debounced search, entity type filters, result previews with highlighting, keyboard navigation, recent searches)
+- [x] Content indexing (blog posts + items + users fully indexed with create/update/delete hooks; comments not indexed)
+- [x] Gap: User indexing fixed — create via databaseHooks in auth.ts, deindex on self-delete and admin delete
+- [x] Gap: Blog search endpoint now uses FTS5 via search service instead of raw SQL LIKE
+- [ ] Gap: No relevance tuning (default BM25 only)
 
 #### SEO & Performance
 <!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
@@ -210,9 +229,14 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)
 
 #### i18n & Accessibility
-<!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
-- [x] i18n completion (all user-facing strings extracted, RTL support verification, plural rules, date/number formatting per locale, language switcher)
-- [x] i18n tooling (missing translation detection, translation key linting, icu message format support, translation workflow for contributors)
+<!-- Audit: i18n-audit.md — 2026-05-15 -->
+- [x] i18n completion (83 translation keys defined, Paraglide runtime, HTML lang/dir attributes, language switcher component)
+- [x] i18n tooling (missing translation detection script, ICU message format, key parity tests)
+- [ ] Gap: Only 2 of 83 translation keys used in UI (all pages hardcoded English)
+- [x] Gap: 27 components replaced hardcoded 'en-US' date/number formatting with locale-aware formatDate/formatNumber from $lib/i18n.svelte
+- [ ] Gap: No RTL-aware CSS (15+ hardcoded directional classes)
+- [ ] Gap: Language switcher not in navigation (placed at bottom of body)
+- [ ] Gap: i18n check script not in CI pipeline
 - [x] Accessibility audit (WCAG 2.2 AA compliance, screen reader testing, focus management, skip links, ARIA attributes, reduced motion support)
 - [x] Keyboard navigation (focus traps in modals, roving tabindex in lists, shortcut collision detection, keyboard shortcuts help panel)
 

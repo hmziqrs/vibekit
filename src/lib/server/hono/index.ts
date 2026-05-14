@@ -59,6 +59,7 @@ import {
   impersonationSession,
   notification,
   invoice,
+  paymentMethod,
   item,
   auditLog,
   organization,
@@ -1033,6 +1034,98 @@ app.post('/billing/webhooks/stripe', async (c) => {
         })
         break
       }
+      case 'customer.subscription.trial_will_end': {
+        // @ts-expect-error Stripe event data.object has different shape than app Subscription type
+        const sub = event.data.object as Record<string, unknown>
+        await db
+          .update(subscription)
+          .set({ status: 'trialing' })
+          .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
+        // TODO: Send trial-ending notification email to user
+        break
+      }
+      case 'customer.subscription.created': {
+        // @ts-expect-error Stripe event data.object has different shape than app Subscription type
+        const sub = event.data.object as Record<string, unknown>
+        const subId = String(sub.id)
+        const customerId = String(sub.customer)
+        const metadata = sub.metadata as Record<string, string> | null
+        const planId = metadata?.planId
+
+        const existingSub = await db
+          .select({ id: subscription.id })
+          .from(subscription)
+          .where(eq(subscription.stripeSubscriptionId, subId))
+          .get()
+        if (!existingSub && planId) {
+          const userId = metadata?.userId ?? metadata?.clientReferenceId
+          if (userId) {
+            await createSubscription(db, {
+              currentPeriodEnd: new Date(Number(sub.current_period_end) * 1000),
+              currentPeriodStart: new Date(Number(sub.current_period_start) * 1000),
+              planId,
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: subId,
+              userId,
+            })
+          }
+        }
+        break
+      }
+      case 'payment_method.attached': {
+        // @ts-expect-error Stripe event data.object has different shape
+        const pm = event.data.object as Record<string, unknown>
+        const customerId = String(pm.customer)
+        const [subRow] = await db
+          .select({ userId: subscription.userId })
+          .from(subscription)
+          .where(eq(subscription.stripeCustomerId, customerId))
+          .limit(1)
+        if (subRow?.userId) {
+          const existingPm = await db
+            .select({ id: paymentMethod.id })
+            .from(paymentMethod)
+            .where(eq(paymentMethod.stripePaymentMethodId, String(pm.id)))
+            .get()
+          if (!existingPm) {
+            const card = pm.card as Record<string, unknown> | undefined
+            await db.insert(paymentMethod).values({
+              brand: card ? String(card.brand) : null,
+              expiryMonth: card ? Number(card.exp_month) : null,
+              expiryYear: card ? Number(card.exp_year) : null,
+              id: uuid(),
+              isDefault: false,
+              last4: card ? String(card.last4) : null,
+              stripePaymentMethodId: String(pm.id),
+              type: String(pm.type),
+              userId: subRow.userId,
+            })
+          }
+        }
+        break
+      }
+      case 'payment_method.detached': {
+        // @ts-expect-error Stripe event data.object has different shape
+        const pm = event.data.object as Record<string, unknown>
+        await db.delete(paymentMethod).where(eq(paymentMethod.stripePaymentMethodId, String(pm.id)))
+        break
+      }
+      case 'charge.refunded': {
+        // @ts-expect-error Stripe event data.object has different shape
+        const charge = event.data.object as Record<string, unknown>
+        const stripeInvoiceId = charge.invoice as string | null
+        if (stripeInvoiceId) {
+          await db
+            .update(invoice)
+            .set({ status: 'void' })
+            .where(eq(invoice.stripeInvoiceId, String(stripeInvoiceId)))
+        }
+        break
+      }
+      case 'checkout.session.expired': {
+        // No action needed — checkout was abandoned
+        break
+      }
     }
 
     // Record the processed event for idempotency
@@ -1583,6 +1676,9 @@ protectedApp.delete('/account', async (c) => {
 
   await db.update(user).set({ deletedAt: new Date() }).where(eq(user.id, userId))
   await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
+  deindexEntity(db, userId, 'user').catch((error) =>
+    console.error('Search deindex failed (account delete):', error)
+  )
 
   return c.json({ success: true })
 })
@@ -1909,9 +2005,9 @@ protectedApp.post('/billing/change-plan', async (c) => {
   const newPlan = await getPlanById(db, parsed.data.newPlanId)
   if (!newPlan) throw new NotFoundError()
 
-  await changeSubscriptionPlan(db, sub.id, parsed.data.newPlanId)
+  const result = await changeSubscriptionPlan(db, sub.id, parsed.data.newPlanId)
 
-  return c.json({ success: true })
+  return c.json({ prorationAmountInCents: result.prorationAmountInCents, success: true })
 })
 
 protectedApp.post('/billing/cancel', async (c) => {
@@ -2682,29 +2778,21 @@ blogApp.get('/search', async (c) => {
   const q = c.req.query('q')?.trim()
   if (!q || q.length < 2) return c.json({ results: [] })
 
-  const results = await db
-    .select({
-      excerpt: blogPost.excerpt,
-      id: blogPost.id,
-      publishedAt: blogPost.publishedAt,
-      slug: blogPost.slug,
-      status: blogPost.status,
-      title: blogPost.title,
-    })
-    .from(blogPost)
-    .where(
-      and(
-        isNull(blogPost.deletedAt),
-        or(
-          like(blogPost.title, `%${q}%`),
-          like(blogPost.slug, `%${q}%`),
-          like(blogPost.excerpt, `%${q}%`),
-          like(blogPost.contentBody, `%${q}%`)
-        )
-      )
-    )
-    .orderBy(desc(blogPost.createdAt))
-    .limit(10)
+  const adapter = createD1SearchAdapter(
+    db as unknown as Parameters<typeof createD1SearchAdapter>[0]
+  )
+  const searchService = createSearchService(adapter)
+  const { hits } = await searchService.search(q, {
+    entityTypes: ['blog_post'],
+    limit: 10,
+  })
+
+  const results = hits.map((hit) => ({
+    excerpt: hit.content.slice(0, 200) || null,
+    id: hit.entityId,
+    slug: ((hit.metadata as Record<string, unknown>)?.slug as string) ?? '',
+    title: hit.title,
+  }))
 
   return c.json({ results })
 })
@@ -3940,6 +4028,9 @@ adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
     .where(eq(user.id, targetId))
 
   await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
+  deindexEntity(db, targetId, 'user').catch((error) =>
+    console.error('Search deindex failed (admin user delete):', error)
+  )
 
   await writeAuditLog(db, {
     action: 'user.delete',
@@ -4969,8 +5060,8 @@ orgApp.post(
     const newPlan = await getPlanById(db, body.newPlanId)
     if (!newPlan) throw new NotFoundError()
 
-    await changeSubscriptionPlan(db, sub.id, body.newPlanId)
-    return c.json({ success: true })
+    const result = await changeSubscriptionPlan(db, sub.id, body.newPlanId)
+    return c.json({ prorationAmountInCents: result.prorationAmountInCents, success: true })
   }
 )
 

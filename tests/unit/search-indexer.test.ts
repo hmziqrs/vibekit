@@ -292,3 +292,130 @@ describe('reindexAllBlogPosts', () => {
     expect(mockIndex).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('indexUser', () => {
+  it('exports indexUser function', async () => {
+    const mod = await import('$lib/server/search/indexer')
+    expect(typeof mod.indexUser).toBe('function')
+  })
+
+  it('indexes a user with displayName', async () => {
+    const { indexUser } = await import('$lib/server/search/indexer')
+    const db = createMockDb([
+      {
+        bio: 'Full-stack developer',
+        displayName: 'Jane Doe',
+        email: 'jane@example.com',
+        id: 'user-1',
+        name: 'Jane',
+      },
+    ])
+
+    await indexUser(db, 'user-1')
+
+    expect(mockIndex).toHaveBeenCalledTimes(1)
+    const doc = mockIndex.mock.calls[0][0]
+    expect(doc.entityId).toBe('user-1')
+    expect(doc.entityType).toBe('user')
+    expect(doc.title).toBe('Jane Doe')
+    expect(doc.content).toContain('Jane Doe')
+    expect(doc.content).toContain('jane@example.com')
+    expect(doc.content).toContain('Full-stack developer')
+    expect(doc.metadata).toEqual({ email: 'jane@example.com' })
+  })
+
+  it('uses name as title fallback when displayName is null', async () => {
+    const { indexUser } = await import('$lib/server/search/indexer')
+    const db = createMockDb([
+      {
+        bio: null,
+        displayName: null,
+        email: 'bob@example.com',
+        id: 'user-2',
+        name: 'Bob Smith',
+      },
+    ])
+
+    await indexUser(db, 'user-2')
+
+    const doc = mockIndex.mock.calls[0][0]
+    expect(doc.title).toBe('Bob Smith')
+  })
+
+  it('uses email as title fallback when name and displayName are null', async () => {
+    const { indexUser } = await import('$lib/server/search/indexer')
+    const db = createMockDb([
+      {
+        bio: null,
+        displayName: null,
+        email: 'noname@example.com',
+        id: 'user-3',
+        name: null,
+      },
+    ])
+
+    await indexUser(db, 'user-3')
+
+    const doc = mockIndex.mock.calls[0][0]
+    expect(doc.title).toBe('noname@example.com')
+  })
+
+  it('skips indexing when user not found', async () => {
+    const { indexUser } = await import('$lib/server/search/indexer')
+    const db = createMockDb([])
+
+    await indexUser(db, 'nonexistent')
+
+    expect(mockIndex).not.toHaveBeenCalled()
+  })
+})
+
+describe('reindexAllUsers', () => {
+  it('exports reindexAllUsers function', async () => {
+    const mod = await import('$lib/server/search/indexer')
+    expect(typeof mod.reindexAllUsers).toBe('function')
+  })
+
+  it('indexes all users', async () => {
+    const { reindexAllUsers } = await import('$lib/server/search/indexer')
+    const db = createMockDb([
+      {
+        bio: 'Dev',
+        displayName: 'Alice',
+        email: 'alice@example.com',
+        id: 'u1',
+        name: 'Alice',
+      },
+      {
+        bio: null,
+        displayName: null,
+        email: 'bob@example.com',
+        id: 'u2',
+        name: 'Bob',
+      },
+    ])
+    // Override for the no-where query
+    const fromFn = db._fromFn
+    fromFn.mockResolvedValue([
+      {
+        bio: 'Dev',
+        displayName: 'Alice',
+        email: 'alice@example.com',
+        id: 'u1',
+        name: 'Alice',
+      },
+      {
+        bio: null,
+        displayName: null,
+        email: 'bob@example.com',
+        id: 'u2',
+        name: 'Bob',
+      },
+    ])
+
+    const count = await reindexAllUsers(db)
+
+    expect(count).toBe(2)
+    expect(mockIndex).toHaveBeenCalledTimes(2)
+  })
+})

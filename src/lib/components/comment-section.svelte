@@ -2,6 +2,7 @@
   import { getContext } from 'svelte'
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
   import type { AuthContext } from '$lib/auth.svelte'
+  import { formatDate } from '$lib/i18n.svelte'
 
   let { postId } = $props()
 
@@ -90,14 +91,6 @@
   function cancelReply() {
     replyTo = null
     replyContent = ''
-  }
-
-  function formatDate(date: Date): string {
-    return new Date(date).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
   }
 
   function canModerate(): boolean {

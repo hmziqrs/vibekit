@@ -187,7 +187,11 @@ export async function reactivateSubscription(db: AppDb, subId: string) {
   })
 }
 
-export async function changeSubscriptionPlan(db: AppDb, subId: string, newPlanId: string) {
+export async function changeSubscriptionPlan(
+  db: AppDb,
+  subId: string,
+  newPlanId: string
+): Promise<{ prorationAmountInCents: number }> {
   const sub = await getSubscriptionById(db, subId)
   if (!sub) throw new Error('Subscription not found')
 
@@ -199,14 +203,27 @@ export async function changeSubscriptionPlan(db: AppDb, subId: string, newPlanId
   const eventType =
     oldPlan && newPlan.priceInCents > oldPlan.priceInCents ? 'upgraded' : 'downgraded'
 
+  const prorationAmountInCents =
+    oldPlan && sub.currentPeriodStart && sub.currentPeriodEnd
+      ? calculateProration({
+          currentPeriodEnd: sub.currentPeriodEnd,
+          currentPeriodStart: sub.currentPeriodStart,
+          newPlanPriceInCents: newPlan.priceInCents,
+          oldPlanPriceInCents: oldPlan.priceInCents,
+        })
+      : newPlan.priceInCents
+
   await db.update(subscription).set({ planId: newPlanId }).where(eq(subscription.id, subId))
 
   await logSubscriptionEvent(db, {
     fromPlanId: oldPlanId,
+    metadata: { prorationAmountInCents },
     subscriptionId: subId,
     toPlanId: newPlanId,
     type: eventType,
   })
+
+  return { prorationAmountInCents }
 }
 
 async function logSubscriptionEvent(
@@ -331,7 +348,15 @@ export async function checkUsageLimit(
 }
 
 export async function getBillingOverview(db: AppDb) {
-  const [activeSubs, totalSubs, planDistribution] = await Promise.all([
+  const [
+    activeSubs,
+    totalSubs,
+    planDistribution,
+    mrrResult,
+    netRevenue30d,
+    churnedCount,
+    trialCount,
+  ] = await Promise.all([
     db.all<{ count: number }>(
       sql`SELECT count(*) as count FROM subscription WHERE status IN ('active', 'trialing')`
     ),
@@ -339,15 +364,36 @@ export async function getBillingOverview(db: AppDb) {
     db.all<{ count: number; planName: string }>(
       sql`SELECT count(*) as count, sp.name as plan_name FROM subscription s INNER JOIN subscription_plan sp ON s.plan_id = sp.id WHERE s.status IN ('active', 'trialing') GROUP BY sp.name`
     ),
+    db.all<{ mrr: number }>(
+      sql`SELECT COALESCE(SUM(CASE WHEN sp.interval = 'year' THEN ROUND(sp.price_in_cents / 12.0) ELSE sp.price_in_cents END), 0) as mrr FROM subscription s INNER JOIN subscription_plan sp ON s.plan_id = sp.id WHERE s.status IN ('active', 'trialing')`
+    ),
+    db.all<{ revenue: number }>(
+      sql`SELECT COALESCE(SUM(amount_in_cents), 0) as revenue FROM invoice WHERE status = 'paid' AND paid_at >= unixepoch('now', '-30 days') * 1000`
+    ),
+    db.all<{ count: number }>(
+      sql`SELECT count(*) as count FROM subscription WHERE status = 'canceled' AND canceled_at >= unixepoch('now', '-30 days') * 1000`
+    ),
+    db.all<{ count: number }>(
+      sql`SELECT count(*) as count FROM subscription WHERE status = 'trialing'`
+    ),
   ])
 
+  const activeCount = activeSubs[0]?.count ?? 0
+  const mrr = mrrResult[0]?.mrr ?? 0
+
   return {
-    activeSubscriptions: activeSubs[0]?.count ?? 0,
+    activeSubscriptions: activeCount,
+    arpu: activeCount > 0 ? Math.round(mrr / activeCount) : 0,
+    arr: mrr * 12,
+    churnedLast30Days: churnedCount[0]?.count ?? 0,
+    mrr,
+    netRevenue30d: netRevenue30d[0]?.revenue ?? 0,
     planDistribution: planDistribution.map((row) => ({
       count: row.count,
       planName: row.planName,
     })),
     totalSubscriptions: totalSubs[0]?.count ?? 0,
+    trialSubscriptions: trialCount[0]?.count ?? 0,
   }
 }
 

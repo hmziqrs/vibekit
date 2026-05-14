@@ -7,6 +7,7 @@
   import { createForm } from '@tanstack/svelte-form'
   import { extractFormError } from '$lib/form-utils'
   import { updateProfileSchema } from '$lib/validators/profile'
+  import { formatDate } from '$lib/i18n.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
 
   type ProfileInput = z.infer<typeof updateProfileSchema>
@@ -116,13 +117,6 @@
     }
   }
 
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-  }
 </script>
 
 <div class="mx-auto max-w-2xl">
@@ -186,7 +180,7 @@
       <div class="rounded-lg border border-white/6 bg-surface-elevated p-4">
         <p class="text-[11px] uppercase tracking-wider text-text-subtle">Member Since</p>
         <p class="mt-1 text-[14px] font-medium text-text-primary">
-          {auth.user?.createdAt ? formatDate(String(auth.user.createdAt)) : 'N/A'}
+          {auth.user?.createdAt ? formatDate(String(auth.user.createdAt), { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
         </p>
       </div>
     </div>

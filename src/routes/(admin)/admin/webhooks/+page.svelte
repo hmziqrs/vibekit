@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createMutation, createQuery } from '@tanstack/svelte-query'
+  import { formatDate } from '$lib/i18n.svelte'
   import { page } from '$app/state'
 
   const { isSuccess, isPending, error, data, refetch } = createQuery(() => ({
@@ -37,10 +38,6 @@
     },
     onSuccess: () => refetch(),
   }))
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleString()
-  }
 
   const statusColors: Record<string, string> = {
     failed: 'bg-destructive/15 text-destructive',
@@ -149,10 +146,10 @@
                   {delivery.attemptCount}
                 </td>
                 <td class="px-4 py-3 text-text-secondary">
-                  {delivery.nextRetryAt ? formatDate(delivery.nextRetryAt) : '-'}
+                  {delivery.nextRetryAt ? formatDate(delivery.nextRetryAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                 </td>
                 <td class="px-4 py-3 text-text-secondary">
-                  {formatDate(delivery.createdAt)}
+                  {formatDate(delivery.createdAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </td>
                 <td class="px-4 py-3">
                   {#if delivery.status !== 'success'}

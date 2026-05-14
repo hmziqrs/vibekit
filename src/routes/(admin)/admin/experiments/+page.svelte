@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { cn } from '$lib/utils'
+  import { formatDate } from '$lib/i18n.svelte'
 
   const queryClient = useQueryClient()
 
@@ -396,7 +397,7 @@
                 </td>
                 <td class="px-4 py-3">
                   <span class="text-xs text-text-muted">
-                    {new Date(exp.createdAt as number).toLocaleDateString()}
+                    {formatDate(exp.createdAt as number)}
                   </span>
                 </td>
                 <td class="px-4 py-3">

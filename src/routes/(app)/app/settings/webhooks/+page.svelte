@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query'
   import { createWebhookEndpointSchema } from '$lib/validators/webhook'
+  import { formatDate } from '$lib/i18n.svelte'
 
   interface WebhookEndpoint {
     active: boolean
@@ -177,9 +178,9 @@
     testLoading = false
   }
 
-  function formatDate(date: string | null): string {
+  function formatDateTime(date: string | null): string {
     if (!date) return 'Never'
-    return new Date(date).toLocaleString()
+    return formatDate(date, { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'numeric', year: 'numeric' })
   }
 
   function statusColor(status: string): string {
@@ -394,7 +395,7 @@
                 {/if}
               </div>
               <p class="mt-1.5 text-[12px] text-text-faint">
-                Created {formatDate(endpoint.createdAt)}
+                Created {formatDateTime(endpoint.createdAt)}
               </p>
             </div>
             <div class="flex gap-2">
@@ -453,7 +454,7 @@
                         <span class="text-[12px] text-text-muted">{delivery.statusCode}</span>
                       {/if}
                       <span class="ml-auto text-[12px] text-text-faint">
-                        {formatDate(delivery.createdAt)} · {delivery.attemptCount} attempt(s)
+                        {formatDateTime(delivery.createdAt)} · {delivery.attemptCount} attempt(s)
                       </span>
                     </div>
                   {/each}

@@ -6,6 +6,7 @@
   import SearchInput from '$lib/components/search-input.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
   import { createQuery } from '@tanstack/svelte-query'
+  import { formatDate } from '$lib/i18n.svelte'
 
   interface PostRow {
     coverImageUrl: string | null
@@ -86,10 +87,9 @@
     { class: 'w-[160px]', key: 'actions', label: '' },
   ]
 
-  function formatDate(val: string | null): string {
+  function formatDateLocal(val: string | null): string {
     if (!val) return '—'
-    return new Date(val).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-
+    return formatDate(val, { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   async function deletePost() {
@@ -281,12 +281,12 @@
         />
       {:else if columnKey === 'publishedAt'}
         {#if row.status === 'scheduled' && row.scheduledAt}
-          <span class="text-info">{formatDate(row.scheduledAt as string)}</span>
+          <span class="text-info">{formatDateLocal(row.scheduledAt as string)}</span>
         {:else}
-          <span class="text-text-muted">{formatDate(row.publishedAt as string | null)}</span>
+          <span class="text-text-muted">{formatDateLocal(row.publishedAt as string | null)}</span>
         {/if}
       {:else if columnKey === 'createdAt'}
-        <span class="text-text-muted">{formatDate(row.createdAt as string)}</span>
+        <span class="text-text-muted">{formatDateLocal(row.createdAt as string)}</span>
       {:else if columnKey === 'actions'}
         <div class="flex items-center gap-2">
           {#if statusFilter === 'trash'}

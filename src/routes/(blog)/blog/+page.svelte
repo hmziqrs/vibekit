@@ -5,6 +5,7 @@
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
   import NewsletterSignup from '$lib/components/newsletter-signup.svelte'
+  import { formatDate } from '$lib/i18n.svelte'
 
   const { data } = $props()
 
@@ -124,7 +125,7 @@
                 <p class="mb-3 text-[14px] leading-relaxed text-text-muted">{post.excerpt}</p>
               {/if}
               <time class="text-[12px] text-text-subtle">
-                {new Date(post.publishedAt ?? post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {formatDate(post.publishedAt ?? post.createdAt, { year: 'numeric', month: 'long', day: 'numeric' })}
               </time>
             </article>
           </a>

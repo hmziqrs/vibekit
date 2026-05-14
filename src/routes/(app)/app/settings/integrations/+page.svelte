@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createMutation, createQuery } from '@tanstack/svelte-query'
+  import { formatDate } from '$lib/i18n.svelte'
 
   const integrationsQuery = createQuery(() => ({
     queryFn: async () => {
@@ -71,10 +72,6 @@
     },
     onSuccess: () => integrationsQuery.refetch(),
   }))
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString()
-  }
 
   const statusColors: Record<string, string> = {
     active: 'bg-success/15 text-success',

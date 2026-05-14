@@ -4,6 +4,7 @@
   import { createQuery } from '@tanstack/svelte-query'
   import { page } from '$app/state'
   import type { ItemData } from '$lib/types'
+  import { formatDate } from '$lib/i18n.svelte'
 
   const auth = getContext<AuthContext>('auth')
   const userName = $derived(auth.user?.name ?? 'User')
@@ -53,14 +54,6 @@
     queryKey: ['audit-log'],
   }))
 
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
-
   function formatTimeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
     const mins = Math.floor(diff / 60_000)
@@ -70,7 +63,7 @@
     if (hours < 24) return `${hours}h ago`
     const days = Math.floor(hours / 24)
     if (days < 7) return `${days}d ago`
-    return formatDate(dateStr)
+    return formatDate(dateStr, { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   function getActionLabel(action: string) {
@@ -208,7 +201,7 @@
             >
               <div class="min-w-0">
                 <p class="truncate text-[13px] font-medium text-text-primary">{item.name}</p>
-                <p class="mt-0.5 text-[11px] text-text-subtle">{formatDate(item.createdAt)}</p>
+                <p class="mt-0.5 text-[11px] text-text-subtle">{formatDate(item.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
               <span
                 class="ml-4 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium {item.status === 'active'

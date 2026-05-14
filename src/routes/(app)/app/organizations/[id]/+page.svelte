@@ -4,6 +4,7 @@
 
   import { hasPermission, type OrgRole } from '$lib/permissions'
   import { inviteMemberSchema } from '$lib/validators/organization'
+  import { formatDate } from '$lib/i18n.svelte'
 
   interface OrgDetail {
     membership: { id: string; joinedAt: string; role: string }
@@ -134,13 +135,6 @@
     return colors[role] ?? 'bg-muted/20 text-muted'
   }
 
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
 </script>
 
 <div class="space-y-6">

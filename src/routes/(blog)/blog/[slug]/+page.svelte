@@ -5,10 +5,11 @@
 	import CommentSection from '$lib/components/comment-section.svelte'
 	import NewsletterSignup from '$lib/components/newsletter-signup.svelte'
 	import ReadingTracker from '$lib/components/reading-tracker.svelte'
+	import { formatDate } from '$lib/i18n.svelte'
 	const { data } = $props()
 
 	const formattedDate = $derived(
-		new Date(data.post.publishedAt ?? data.post.createdAt).toLocaleDateString('en-US', {
+		formatDate(data.post.publishedAt ?? data.post.createdAt, {
 			day: 'numeric',
 			month: 'long',
 			year: 'numeric',
@@ -138,7 +139,7 @@
 								{/if}
 								{#if related.publishedAt}
 									<time class="mt-2 block text-xs text-text-faint">
-										{new Date(related.publishedAt).toLocaleDateString('en-US', {
+										{formatDate(related.publishedAt, {
 											day: 'numeric',
 											month: 'short',
 											year: 'numeric',

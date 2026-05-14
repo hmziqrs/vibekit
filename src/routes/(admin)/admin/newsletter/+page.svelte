@@ -1,6 +1,7 @@
 <script lang="ts">
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import DataTable from '$lib/components/data-table.svelte'
+  import { formatDate } from '$lib/i18n.svelte'
   import { createQuery } from '@tanstack/svelte-query'
 
   interface SubscriberRow {
@@ -73,11 +74,6 @@
         return 'text-text-muted bg-muted'
       }
     }
-  }
-
-  function formatDate(date: Date | null): string {
-    if (!date) return '—'
-    return new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   async function deleteSubscriber() {
@@ -182,7 +178,7 @@
       {:else if columnKey === 'source'}
         <span class="text-text-muted">{row.source ?? 'blog'}</span>
       {:else if columnKey === 'createdAt'}
-        <span class="text-text-muted">{formatDate(row.createdAt)}</span>
+        <span class="text-text-muted">{row.createdAt ? formatDate(row.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
       {:else if columnKey === 'actions'}
         <button
           class="rounded-lg px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"

@@ -2,6 +2,7 @@
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import { cn } from '$lib/utils'
   import { createQuery } from '@tanstack/svelte-query'
+  import { formatDate } from '$lib/i18n.svelte'
 
   interface ConfigEntry {
     createdAt: string | null
@@ -447,7 +448,7 @@
                 <td class="px-4 py-2 text-xs text-text-muted">{v.environment ?? 'All'}</td>
                 <td class="max-w-32 truncate px-4 py-2 font-mono text-xs text-text-muted">{v.oldValue ?? '—'}</td>
                 <td class="max-w-32 truncate px-4 py-2 font-mono text-xs text-brand">{v.newValue ?? '—'}</td>
-                <td class="px-4 py-2 text-xs text-text-faint">{new Date(v.createdAt).toLocaleString()}</td>
+                <td class="px-4 py-2 text-xs text-text-faint">{formatDate(v.createdAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
               </tr>
             {/each}
           </tbody>
@@ -564,12 +565,12 @@
                 </div>
                 <p class="mt-2 text-[13px] text-text-primary">{a.message}</p>
                 <div class="mt-1.5 flex items-center gap-3 text-[11px] text-text-faint">
-                  <span>Created {new Date(a.createdAt).toLocaleDateString()}</span>
+                  <span>Created {formatDate(a.createdAt)}</span>
                   {#if a.startsAt}
-                    <span>Starts {new Date(a.startsAt).toLocaleDateString()}</span>
+                    <span>Starts {formatDate(a.startsAt)}</span>
                   {/if}
                   {#if a.endsAt}
-                    <span>Ends {new Date(a.endsAt).toLocaleDateString()}</span>
+                    <span>Ends {formatDate(a.endsAt)}</span>
                   {/if}
                 </div>
               </div>

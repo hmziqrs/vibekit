@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query'
+  import { formatNumber } from '$lib/i18n.svelte'
 
   interface TopPost {
     slug: string
@@ -32,11 +33,6 @@
     retry: 1,
   }))
 
-  function formatNumber(n: number): string {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-    return n.toString()
-  }
 </script>
 
 <div class="flex items-center justify-between">
@@ -76,13 +72,13 @@
     <div class="rounded-lg border border-border bg-surface p-3">
       <div class="text-[12px] text-text-muted">Total Views</div>
       <div class="text-xl font-semibold text-text-primary">
-        {overviewQuery.data ? formatNumber(overviewQuery.data.totalViews) : '—'}
+        {overviewQuery.data ? formatNumber(overviewQuery.data.totalViews, { notation: 'compact' }) : '—'}
       </div>
     </div>
     <div class="rounded-lg border border-border bg-surface p-3">
       <div class="text-[12px] text-text-muted">Unique Visitors</div>
       <div class="text-xl font-semibold text-text-primary">
-        {overviewQuery.data ? formatNumber(overviewQuery.data.uniqueVisitors) : '—'}
+        {overviewQuery.data ? formatNumber(overviewQuery.data.uniqueVisitors, { notation: 'compact' }) : '—'}
       </div>
     </div>
     <div class="rounded-lg border border-border bg-surface p-3">
@@ -136,7 +132,7 @@
                 </a>
               </td>
               <td class="px-4 py-2.5 text-right text-[13px] text-text-muted">
-                {formatNumber(post.views)}
+                {formatNumber(post.views, { notation: 'compact' })}
               </td>
             </tr>
           {/each}
@@ -175,7 +171,7 @@
             <tr class="border-b border-border last:border-0">
               <td class="px-4 py-2.5 text-[13px] text-text-primary">{ref.domain}</td>
               <td class="px-4 py-2.5 text-right text-[13px] text-text-muted">
-                {formatNumber(ref.count)}
+                {formatNumber(ref.count, { notation: 'compact' })}
               </td>
             </tr>
           {/each}

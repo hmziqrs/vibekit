@@ -1,3 +1,5 @@
+import { formatDate } from '$lib/i18n.svelte'
+
 export function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60_000)
@@ -7,7 +9,7 @@ export function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
   if (days < 30) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
+  return formatDate(dateStr)
 }
 
 export function notificationTypeColor(type: string): string {

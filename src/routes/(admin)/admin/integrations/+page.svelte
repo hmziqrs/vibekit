@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createMutation, createQuery } from '@tanstack/svelte-query'
+  import { formatDate } from '$lib/i18n.svelte'
 
   const integrationsQuery = createQuery(() => ({
     queryFn: async () => {
@@ -30,10 +31,6 @@
     },
     onSuccess: () => integrationsQuery.refetch(),
   }))
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleString()
-  }
 
   const statusColors: Record<string, string> = {
     active: 'bg-success/15 text-success',
@@ -104,10 +101,10 @@
                   {int.scopes.join(', ') || '-'}
                 </td>
                 <td class="px-4 py-3 text-text-secondary">
-                  {int.lastSyncedAt ? formatDate(int.lastSyncedAt) : '-'}
+                  {int.lastSyncedAt ? formatDate(int.lastSyncedAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                 </td>
                 <td class="px-4 py-3 text-text-secondary">
-                  {formatDate(int.createdAt)}
+                  {formatDate(int.createdAt, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </td>
                 <td class="px-4 py-3">
                   <button

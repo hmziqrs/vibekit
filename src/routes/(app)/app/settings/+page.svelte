@@ -8,6 +8,7 @@
   import PasswordStrength from '$lib/components/password-strength.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import { acceptConsent, getConsentStatus, initConsent, withdrawConsent as withdrawConsentAction } from '$lib/consent.svelte'
+  import { formatDate } from '$lib/i18n.svelte'
 
   const changePasswordSchema = z
     .object({
@@ -981,7 +982,7 @@
               <p class="text-[11px] text-text-subtle">
                 {session.ipAddress ?? 'Unknown IP'}
                 {#if session.updatedAt}
-                  &middot; Last active {new Date(session.updatedAt).toLocaleDateString()}
+                  &middot; Last active {formatDate(session.updatedAt)}
                 {/if}
               </p>
             </div>
@@ -1031,7 +1032,7 @@
                     &middot; {evt.ipAddress}
                   {/if}
                   {#if evt.createdAt}
-                    &middot; {new Date(evt.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    &middot; {formatDate(evt.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   {/if}
                 </p>
               </div>
@@ -1064,7 +1065,7 @@
               <div>
                 <p class="text-[13px] font-medium text-text-primary">{pk.name || 'Unnamed passkey'}</p>
                 {#if pk.createdAt}
-                  <p class="text-[11px] text-text-subtle">Added {new Date(pk.createdAt).toLocaleDateString()}</p>
+                  <p class="text-[11px] text-text-subtle">Added {formatDate(pk.createdAt)}</p>
                 {/if}
               </div>
             </div>

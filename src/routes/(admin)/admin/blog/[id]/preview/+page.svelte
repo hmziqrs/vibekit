@@ -1,5 +1,6 @@
 <script lang="ts">
   import purify from 'isomorphic-dompurify'
+  import { formatDate } from '$lib/i18n.svelte'
   import { highlightCodeBlocks, renderAndSanitize, sanitizeHtml } from '$lib/markdown'
   import { onMount } from 'svelte'
 
@@ -111,7 +112,7 @@
           {data.post.title}
         </h1>
         <time class="text-[14px] text-text-subtle">
-          {new Date(data.post.publishedAt ?? data.post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          {formatDate(data.post.publishedAt ?? data.post.createdAt, { year: 'numeric', month: 'long', day: 'numeric' })}
         </time>
       </header>
 

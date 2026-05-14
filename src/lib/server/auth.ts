@@ -170,6 +170,18 @@ export const createAuth = (db: AppDb) =>
   betterAuth({
     ...authConfig,
     database: drizzleAdapter(db, { provider: 'sqlite' }),
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (u) => {
+            const { indexUser } = await import('./search/indexer')
+            await indexUser(db, u.id).catch((error) =>
+              logger.error('Failed to index new user', { error, userId: u.id })
+            )
+          },
+        },
+      },
+    },
     plugins: [
       passkey({
         origin: env.ORIGIN,
