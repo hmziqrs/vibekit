@@ -55,6 +55,70 @@
   let deletePasskeyId = $state('')
   let passkeyName = $state('')
 
+  // Push notification state
+  let pushSupported = $state(false)
+  let pushPermission = $state<NotificationPermission | 'default'>('default')
+  let pushLoading = $state(false)
+  let pushError = $state('')
+
+  async function initPush() {
+    pushSupported = 'serviceWorker' in navigator && 'PushManager' in window
+    if (pushSupported) {
+      pushPermission = Notification.permission
+    }
+  }
+
+  async function enablePush() {
+    pushLoading = true
+    pushError = ''
+    try {
+      const permission = await Notification.requestPermission()
+      pushPermission = permission
+      if (permission !== 'granted') {
+        pushError = 'Notification permission denied'
+        return
+      }
+      const registration = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+      const vapidKey = document.querySelector('meta[name="vapid-key"]')?.getAttribute('content') ?? ''
+      const subscription = await registration.pushManager.subscribe({
+        applicationServerKey: vapidKey,
+        userVisibleOnly: true,
+      })
+      const res = await fetch('/api/push/subscribe', {
+        body: JSON.stringify(subscription.toJSON()),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('Failed to save subscription')
+    } catch (e) {
+      pushError = e instanceof Error ? e.message : 'Failed to enable push'
+    } finally {
+      pushLoading = false
+    }
+  }
+
+  async function disablePush() {
+    pushLoading = true
+    pushError = ''
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+      if (subscription) {
+        await fetch('/api/push/unsubscribe', {
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        })
+        await subscription.unsubscribe()
+      }
+    } catch (e) {
+      pushError = e instanceof Error ? e.message : 'Failed to disable push'
+    } finally {
+      pushLoading = false
+    }
+  }
+
   // Security events state
   interface SecurityEventEntry {
     createdAt: string | null
@@ -252,6 +316,7 @@
   // Load passkeys on mount
   $effect(() => {
     loadPasskeys()
+    initPush()
   })
 
   // Connected accounts state
@@ -1033,6 +1098,39 @@
         {passkeyLoading ? 'Registering...' : 'Add Passkey'}
       </button>
     </div>
+  </div>
+
+  <!-- Push Notifications -->
+  <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    <h2 class="text-[15px] font-medium text-text-primary">Push Notifications</h2>
+    <p class="mt-1 text-[13px] text-text-muted">
+      Receive browser notifications for important updates, even when you are not on this page.
+    </p>
+    {#if pushError}
+      <p class="mt-2 text-[13px] text-destructive">{pushError}</p>
+    {/if}
+    {#if !pushSupported}
+      <p class="mt-3 text-[13px] text-text-subtle">Push notifications are not supported in this browser.</p>
+    {:else if pushPermission === 'granted'}
+      <p class="mt-3 text-[13px] text-success">Push notifications are enabled.</p>
+      <button
+        onclick={disablePush}
+        disabled={pushLoading}
+        class="mt-3 rounded-lg border border-white/10 bg-white/3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-white/6 disabled:opacity-50"
+      >
+        {pushLoading ? 'Disabling...' : 'Disable Push Notifications'}
+      </button>
+    {:else if pushPermission === 'denied'}
+      <p class="mt-3 text-[13px] text-text-subtle">Push notifications are blocked. Enable them in your browser settings.</p>
+    {:else}
+      <button
+        onclick={enablePush}
+        disabled={pushLoading}
+        class="mt-3 rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+      >
+        {pushLoading ? 'Enabling...' : 'Enable Push Notifications'}
+      </button>
+    {/if}
   </div>
 
   <!-- Export Data -->
