@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import { createFocusTrap } from '$lib/keyboard.svelte'
+  import * as m from '$lib/paraglide/messages.js'
 
   let {
     open = $bindable(false),
@@ -223,7 +224,7 @@
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]" role="dialog" tabindex="-1" aria-label="Search"
+    class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]" role="dialog" tabindex="-1" aria-label={m.app_search()}
     onclick={() => (open = false)}
     onkeydown={(e) => e.key === 'Escape' && (open = false)}
   >
@@ -256,9 +257,9 @@
           type="text"
           value={query}
           oninput={handleInput}
-          placeholder="Search everything..."
+          placeholder={m.app_search()}
           class="flex-1 bg-transparent text-[14px] text-text-primary placeholder:text-text-faint focus:outline-none"
-          aria-label="Search"
+          aria-label={m.app_search()}
           role="combobox"
           aria-expanded={results.length > 0 || (query.length < 2 && recentSearches.length > 0)}
           aria-controls="search-results"
@@ -316,21 +317,21 @@
               class="flex w-full items-center justify-center border-t border-white/[0.06] px-4 py-3 text-[13px] text-text-muted transition-colors hover:bg-white/[0.03] hover:text-text-primary"
               onclick={goToFullResults}
             >
-              View all {total} results
+              {m.app_search_view_all({ count: total })}
             </button>
           {/if}
         {:else if query.length >= 2 && !isLoading}
           <div class="px-4 py-8 text-center text-[13px] text-text-muted">
-            No results for "{query}"
+            {m.app_search_no_results({ query })}
           </div>
         {:else if query.length < 2 && recentSearches.length > 0}
           <div class="flex items-center justify-between px-4 pt-3 pb-1">
-            <span class="text-[11px] font-medium uppercase tracking-wider text-text-faint">Recent</span>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-text-faint">{m.app_search_recent()}</span>
             <button
               class="text-[11px] text-text-faint hover:text-text-muted"
               onclick={clearRecentSearches}
             >
-              Clear
+              {m.app_search_clear()}
             </button>
           </div>
           {#each recentSearches as term, i (term)}
@@ -361,7 +362,7 @@
           {/each}
         {:else if query.length < 2}
           <div class="px-4 py-8 text-center text-[13px] text-text-muted">
-            Type at least 2 characters to search
+            {m.app_search_min_chars()}
           </div>
         {/if}
       </div>
@@ -370,15 +371,15 @@
       <div class="flex items-center gap-4 border-t border-white/[0.06] px-4 py-2">
         <span class="flex items-center gap-1 text-[11px] text-text-faint">
           <kbd class="rounded border border-white/[0.08] bg-white/[0.04] px-1 py-0.5 text-[10px]">&uarr;&darr;</kbd>
-          Navigate
+          {m.app_search_navigate()}
         </span>
         <span class="flex items-center gap-1 text-[11px] text-text-faint">
           <kbd class="rounded border border-white/[0.08] bg-white/[0.04] px-1 py-0.5 text-[10px]">&crarr;</kbd>
-          Select
+          {m.app_search_select()}
         </span>
         <span class="flex items-center gap-1 text-[11px] text-text-faint">
           <kbd class="rounded border border-white/[0.08] bg-white/[0.04] px-1 py-0.5 text-[10px]">esc</kbd>
-          Close
+          {m.app_search_close()}
         </span>
       </div>
     </div>

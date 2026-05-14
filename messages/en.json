@@ -81,6 +81,10 @@
   "admin_moderation": "Moderation",
   "admin_feature_flags": "Feature Flags",
   "admin_experiments": "Experiments",
+  "admin_audit": "Audit Log",
+  "admin_integrations": "Integrations",
+  "admin_webhooks": "Webhooks",
+  "admin_settings": "Settings",
   "lang_en": "English",
   "lang_ur": "اردو"
 }

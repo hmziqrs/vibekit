@@ -81,6 +81,10 @@
   "admin_moderation": "اعتدال",
   "admin_feature_flags": "فیچر فلگز",
   "admin_experiments": "تجربات",
+  "admin_audit": "آڈٹ لاگ",
+  "admin_integrations": "انضمام",
+  "admin_webhooks": "ویب ہوکس",
+  "admin_settings": "ترتیبات",
   "lang_en": "English",
   "lang_ur": "اردو"
 }

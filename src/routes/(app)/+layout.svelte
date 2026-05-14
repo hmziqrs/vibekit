@@ -9,6 +9,7 @@
   import { page } from '$app/state'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
+  import * as m from '$lib/paraglide/messages.js'
   import { initWebVitals, reportToConsole } from '$lib/performance.svelte'
 
   const { children } = $props()
@@ -40,15 +41,15 @@
   })
 
   const navItems = [
-    { href: '/app/dashboard', label: 'Dashboard' },
-    { href: '/app/items', label: 'Items' },
-    { href: '/app/notifications', label: 'Notifications' },
-    { href: '/app/organizations', label: 'Organizations' },
-    { href: '/app/profile', label: 'Profile' },
-    { href: '/app/settings', label: 'Settings' },
-    { href: '/app/settings/api-keys', label: 'API Keys' },
-    { href: '/app/settings/integrations', label: 'Integrations' },
-    { href: '/app/settings/webhooks', label: 'Webhooks' },
+    { href: '/app/dashboard', label: m.app_dashboard() },
+    { href: '/app/items', label: m.app_items() },
+    { href: '/app/notifications', label: m.app_notifications() },
+    { href: '/app/organizations', label: m.app_organizations() },
+    { href: '/app/profile', label: m.app_profile() },
+    { href: '/app/settings', label: m.app_settings() },
+    { href: '/app/settings/api-keys', label: m.app_api_keys() },
+    { href: '/app/settings/integrations', label: m.app_integrations() },
+    { href: '/app/settings/webhooks', label: m.app_webhooks() },
   ]
 
   async function handleSignOut() {
@@ -162,7 +163,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
-            Admin Panel
+            {m.nav_admin()}
           </a>
         {/if}
       </nav>

@@ -5,6 +5,7 @@
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
   import LanguageSwitcher from '$lib/components/language-switcher.svelte'
+  import * as m from '$lib/paraglide/messages.js'
 
   const { children } = $props()
   const auth = getContext<AuthContext>('auth')
@@ -16,17 +17,17 @@
   useAnalytics(firebaseConfig)
 
   const navItems = [
-    { href: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
-    { href: '/admin/users', icon: 'users', label: 'Users' },
-    { href: '/admin/blog', icon: 'blog', label: 'Blog' },
-    { href: '/admin/media', icon: 'media', label: 'Media' },
-    { href: '/admin/moderation', icon: 'moderation', label: 'Moderation' },
-    { href: '/admin/audit', icon: 'audit', label: 'Audit Log' },
-    { href: '/admin/integrations', icon: 'webhooks', label: 'Integrations' },
-    { href: '/admin/feature-flags', icon: 'flags', label: 'Feature Flags' },
-    { href: '/admin/experiments', icon: 'experiment', label: 'Experiments' },
-    { href: '/admin/webhooks', icon: 'webhooks', label: 'Webhooks' },
-    { href: '/admin/settings', icon: 'settings', label: 'Settings' },
+    { href: '/admin/dashboard', icon: 'dashboard', label: m.admin_dashboard() },
+    { href: '/admin/users', icon: 'users', label: m.admin_users() },
+    { href: '/admin/blog', icon: 'blog', label: m.admin_blog() },
+    { href: '/admin/media', icon: 'media', label: m.admin_media() },
+    { href: '/admin/moderation', icon: 'moderation', label: m.admin_moderation() },
+    { href: '/admin/audit', icon: 'audit', label: m.admin_audit() },
+    { href: '/admin/integrations', icon: 'webhooks', label: m.admin_integrations() },
+    { href: '/admin/feature-flags', icon: 'flags', label: m.admin_feature_flags() },
+    { href: '/admin/experiments', icon: 'experiment', label: m.admin_experiments() },
+    { href: '/admin/webhooks', icon: 'webhooks', label: m.admin_webhooks() },
+    { href: '/admin/settings', icon: 'settings', label: m.admin_settings() },
   ]
 
   function isActive(href: string) {

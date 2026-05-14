@@ -1,72 +1,83 @@
-# Billing & Payments Deep Audit
+---
+name: Billing & Payments Deep Audit
+description: Detailed audit of billing phase — claimed features vs actual implementation
+type: project
+---
 
-**Date:** 2026-05-14
-**Auditor:** Claude Code (iteration 5)
-**Scope:** Billing module — schema, Stripe integration, webhook handler, subscription service, validators, API routes, UI
+# Billing & Payments Deep Audit — 2026-05-15
 
-## Files Audited
+## Claimed vs Actual
 
-| File                                                 | Lines | Status   |
-| ---------------------------------------------------- | ----- | -------- |
-| `src/lib/server/billing/stripe.ts`                   | 98    | Complete |
-| `src/lib/server/billing/subscription-service.ts`     | 371   | Complete |
-| `src/lib/validators/billing.ts`                      | 50    | Complete |
-| `src/lib/server/db/schema.ts` (billing tables)       | ~200  | Complete |
-| `src/lib/server/hono/index.ts` (billing routes)      | ~200  | Complete |
-| `src/routes/(app)/app/settings/billing/+page.svelte` | 272   | Complete |
-| `src/routes/(admin)/admin/billing/+page.svelte`      | 238   | Complete |
+| Claimed Feature            | Status              | Details                                                                                                                                                                                                               |
+| -------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan CRUD                  | **COMPLETE**        | Schema, service, API, admin UI, validators, seed data                                                                                                                                                                 |
+| Plan comparison page       | **COMPLETE**        | Static/hardcoded HTML on pricing page, not dynamic from DB                                                                                                                                                            |
+| Upgrade/downgrade flows    | **PARTIAL**         | Local DB update only — no Stripe API call for existing Stripe subs                                                                                                                                                    |
+| Proration handling         | **FIXED**           | `calculateProration()` now called in `changeSubscriptionPlan()`, returns proration amount in API response                                                                                                             |
+| Trial periods              | **COMPLETE**        | Schema, Stripe checkout integration, UI display                                                                                                                                                                       |
+| Stripe integration         | **COMPLETE**        | Client factory, checkout sessions, portal, webhook verification                                                                                                                                                       |
+| Payment method management  | **PARTIAL**         | Synced via `payment_method.attached`/`detached` webhook events; no UI for management                                                                                                                                  |
+| Invoice generation         | **PARTIAL**         | Webhook creates records; no PDF generation, no line items                                                                                                                                                             |
+| Payment failure handling   | **PARTIAL**         | Sets subscription to `past_due`; no automated recovery flow                                                                                                                                                           |
+| Dunning emails             | **NOT IMPLEMENTED** | Zero billing email templates                                                                                                                                                                                          |
+| Metered billing            | **PARTIAL**         | Local DB tracking only; never reported to Stripe                                                                                                                                                                      |
+| Usage tracking             | **PARTIAL**         | API endpoint exists but nothing auto-tracks usage                                                                                                                                                                     |
+| Quota enforcement          | **NON-FUNCTIONAL**  | `checkUsageLimit()` defined but never called                                                                                                                                                                          |
+| Overage handling           | **NOT IMPLEMENTED** | No overage pricing or automatic upgrade prompts                                                                                                                                                                       |
+| Usage dashboard for users  | **NOT IMPLEMENTED** | No GET usage endpoint, no UI component                                                                                                                                                                                |
+| Revenue metrics            | **FIXED**           | MRR/ARR/ARPU/net revenue 30d/churned count/trial count in `getBillingOverview()`                                                                                                                                      |
+| Failed payment queue       | **PARTIAL**         | Invoices listable but no dedicated queue or bulk retry                                                                                                                                                                |
+| Refund processing          | **NOT IMPLEMENTED** | No code, only marketing text on pricing page                                                                                                                                                                          |
+| Discount/coupon management | **NOT IMPLEMENTED** | No tables, no code, no Stripe coupon integration                                                                                                                                                                      |
+| Tax configuration          | **NOT IMPLEMENTED** | No tax fields, no calculation, no Stripe Tax                                                                                                                                                                          |
+| Stripe webhook handler     | **PARTIAL**         | 11 events handled (added trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired); still missing customer.updated, payment_method.updated, invoice.upcoming |
+| Idempotent processing      | **COMPLETE**        | Unique constraint on eventId + pre-check                                                                                                                                                                              |
+| Event logging              | **PARTIAL**         | Webhook events logged; errors only to console                                                                                                                                                                         |
+| Failure recovery           | **NOT IMPLEMENTED** | No retry, no dead letter queue, no transaction safety                                                                                                                                                                 |
 
-## Issues Found & Fixed
+## Critical Gaps
 
-### HIGH — Fixed
+1. **`change-plan` doesn't sync with Stripe** — Only updates local DB. Stripe-managed subscriptions will diverge.
+   - **Fix**: Call Stripe's `subscriptions.update` API in the change-plan handler.
+   - **Why**: Downgrades/upgrades won't take effect in Stripe, causing billing discrepancies.
 
-| Issue                                                                                                      | Fix                                                                      |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Missing `)` in SQL default for 8 billing columns (`cast(unixepoch(...) as integer)` had unbalanced parens) | Added missing `)` to all 8 occurrences in schema.ts                      |
-| Webhook creates duplicate invoices on Stripe retry (no idempotency check)                                  | Added `SELECT` check for existing `stripeInvoiceId` before `INSERT`      |
-| Stripe invoices have `userId: null` — invisible to user invoice list                                       | Added subscription lookup fallback when metadata has no userId           |
-| Hardcoded fallback `planId: 'plan_pro'` in webhook                                                         | Removed fallback; webhook now logs error if planId missing from metadata |
-| User checkout doesn't check `plan.isActive`                                                                | Added `isActive` check with `BadRequestError` response                   |
-| `invoice.payment_failed` doesn't update subscription to `past_due`                                         | Added status update to `past_due` on payment failure                     |
-| Checkout session doesn't pass `planId` in Stripe metadata                                                  | Added `planId` to `createCheckoutSession` and Stripe metadata            |
+2. ~~**`calculateProration()` is dead code**~~ — **FIXED**. Now called in `changeSubscriptionPlan()`, returns `{ prorationAmountInCents }` in the API response, and stored in subscription event metadata.
 
-### MEDIUM — Documented, not fixed (requires architecture decisions)
+3. **`checkUsageLimit()` is dead code** — Defined at subscription-service.ts:301-331 but never called.
+   - **Fix**: Add as middleware or call from API route handlers that consume metered resources.
 
-| Issue                                                 | Notes                                              |
-| ----------------------------------------------------- | -------------------------------------------------- |
-| Cancel/reactivate don't call Stripe API               | Requires design: cancel_at_period_end vs immediate |
-| `updatePlan` accepts `Record<string, unknown>`        | Needs typed input matching Zod schema output       |
-| `paymentMethod` table defined but unused in app code  | Dead code, could be removed or wired up            |
-| `formatPrice` always shows `$` regardless of currency | UI issue, not security                             |
+4. **No dunning emails** — Payment failures, trial endings, and past-due status trigger no notifications.
+   - **Fix**: Create billing email templates and trigger from webhook handlers.
 
-### LOW — Documented
+5. **No refund processing** — Pricing page mentions "30-day refund policy" but zero code exists.
+   - **Fix**: Add Stripe refund API call and admin endpoint.
 
-| Issue                                             | Notes                                 |
-| ------------------------------------------------- | ------------------------------------- |
-| `require('stripe')` in ESM context                | Works via interop, inconsistent style |
-| `trial_started` event type defined but never used | Audit log gap                         |
-| Admin delete plan has no confirmation dialog      | UX improvement                        |
-| Admin UI has no edit plan functionality           | Feature gap                           |
+6. **Webhook `checkout.session.completed` hardcodes 30-day period** — Line 927 hardcodes `currentPeriodEnd` instead of reading from Stripe.
+   - **Fix**: Parse `current_period_start`/`current_period_end` from the Stripe subscription object.
+
+7. ~~**`paymentMethod` table is dead schema`**~~ — **FIXED**. Now synced via `payment_method.attached` and `payment_method.detached` webhook events.
+
+8. ~~**No revenue metrics**~~ — **FIXED**. `getBillingOverview()` now computes MRR, ARR, ARPU, net revenue (30d), churned subscriptions (30d), and trial subscription counts.
+
+## Files
+
+- `src/lib/server/billing/stripe.ts` — Stripe client factory
+- `src/lib/server/billing/subscription-service.ts` — Business logic layer
+- `src/lib/validators/billing.ts` — Zod validators
+- `src/lib/server/db/schema.ts` — Billing tables (subscriptionPlan, subscription, invoice, paymentMethod, usageRecord, subscriptionEvent, stripeWebhookEvent)
+- `drizzle/0028_billing.sql` — Migration with seed data
+- `src/lib/server/hono/index.ts` — API routes (billing + admin billing)
+- `src/routes/(app)/app/settings/billing/+page.svelte` — User billing settings
+- `src/routes/(admin)/admin/billing/+page.svelte` — Admin billing page
+- `src/routes/(public)/pricing/+page.svelte` — Public pricing page
 
 ## Tests
 
-- `tests/unit/billing.test.ts` — 35 tests (validators, proration)
-- `tests/unit/subscription-service.test.ts` — 979 lines, comprehensive service tests
-- `tests/unit/billing-validator.test.ts` — 666 lines, 60+ test cases
-- `tests/unit/stripe-client.test.ts` — 348 lines, client tests
-- `tests/unit/billing-webhook.test.ts` — 10 tests (new, webhook logic)
-- `tests/e2e/billing.spec.ts` — 201 lines, E2E API tests
-
-## Test Gaps
-
-- No tests for webhook handler route itself (requires Stripe signature mock)
-- No tests for organization billing routes
-- No tests for race conditions (double checkout, concurrent cancel/reactivate)
-
-## Fixes Applied After Audit (Iteration 8)
-
-| Issue                                                                       | Fix                                                                                                                                                                            |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| No Stripe event ID deduplication (webhook retries could double-process)     | Added `stripe_webhook_event` table with unique `event_id` index. Webhook handler now checks for previously processed events and records event IDs after successful processing. |
-| `withApiKey` not imported in hono middleware (500 errors on pages using it) | Added `withApiKey` to destructured import from `./middleware`                                                                                                                  |
-| Push notifications had no client-side registration UI                       | Added Push Notifications section to settings page with SW registration, permission request, and subscribe/unsubscribe via API                                                  |
+- `tests/unit/billing.test.ts` — Validators + proration + status transitions
+- `tests/unit/billing-stripe.test.ts` — Stripe client operations
+- `tests/unit/billing-webhook.test.ts` — Webhook idempotency + logic
+- `tests/unit/billing-validator.test.ts` — Validator edge cases
+- `tests/unit/stripe-client.test.ts` — Client factory
+- `tests/unit/subscription-service.test.ts` — Full service layer
+- `tests/e2e/billing.spec.ts` — E2E plans + checkout + cancel
+- `tests/e2e/admin-billing-ui.spec.ts` — Admin billing UI

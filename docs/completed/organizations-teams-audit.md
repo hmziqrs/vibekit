@@ -1,62 +1,119 @@
-# Organizations & Teams — Implementation Audit
+---
+phase: 'Organizations & Teams'
+date: '2026-05-15'
+auditor: 'automated'
+status: 'complete'
+---
 
-**Date:** 2026-05-14
-**Status:** Audited with fixes pending
+# Organizations & Teams Audit
 
-## Phase Coverage
+## Summary
 
-| Phase                                            | Status      | Notes                                                  |
-| ------------------------------------------------ | ----------- | ------------------------------------------------------ |
-| Org CRUD (create, read, update, delete)          | ✅ Complete | All 4 operations via Hono API, Svelte pages            |
-| Member management (invite, remove, role changes) | ✅ Complete | Invite/remove/role-change API + UI                     |
-| Role assignment & RBAC                           | ✅ Complete | 4 org roles, 2 team roles, permission matrix           |
-| Transfer ownership                               | ✅ Complete | API endpoint with audit log + notification             |
-| Organization settings                            | ✅ Complete | Name/description update, slug auto-generated           |
-| Organization billing                             | ⚠️ Partial  | Stub only — no real Stripe integration                 |
-| Team collaboration                               | ⚠️ Partial  | Teams CRUD done. Missing @mentions, resource ownership |
-| Slug validation                                  | ✅ Complete | Auto-generated, uniqueness checked                     |
+The Organizations & Teams phase covers org CRUD, member management with roles/permissions, org settings, org billing, and team collaboration features. The implementation is **solid on the CRUD and permissions front** but has notable gaps in transfer ownership, org-level billing, invitation management UI, and @mentions. Overall readiness: **~70%**.
 
-## Issues Found & Fixed
+---
 
-### HIGH Severity
+## Claimed vs. Actual
 
-1. **Missing "Leave Organization" endpoint** — `org.leave` permission defined but no API route exists. Users blocked from self-removal with message "Leave the organization instead" but cannot do so.
-2. **No unique constraint on (userId, organizationId)** — `organizationMember` table lacks composite unique, allowing duplicate memberships under race conditions.
-3. **No unique constraint on (userId, teamId)** — Same issue for `teamMember` table.
-4. **Ownership transfer has no transaction** — Three separate DB operations without wrapping transaction.
-5. **Soft-deleted org slug collision** — DB-level unique constraint on `slug` column conflicts with app-level check that excludes soft-deleted orgs.
-6. **No rate limiting on org creation/invite** — Authenticated users can spam org creation or invitations.
+| #   | Claimed Feature                                     | Status      | Verdict                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | --------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Organization CRUD                                   | Implemented | Create org (name, description), view org detail, update org settings (name, description), soft delete org (with 30-day recovery via `deletedAt`). All backed by validators and Hono API routes.                                                                                                                                                                                                                          |
+| 2   | Team member management (invite, roles, permissions) | Partial     | Member invite works (email + role selection). Role change and member removal work. RBAC permission checks via `hasPermission()` and `requirePermission()` middleware. **No invitation list/management UI** -- sent invitations cannot be viewed, cancelled, or re-sent from the UI. **No invitation acceptance flow** in the org detail page (the API endpoint exists but there is no UI to accept pending invitations). |
+| 3   | Organization settings                               | Implemented | Org settings page at `/organizations/[id]/settings` with name/description editing and delete org (danger zone). Slug is auto-generated and read-only.                                                                                                                                                                                                                                                                    |
+| 4   | Organization billing (separate billing per org)     | Partial     | The `subscription` table has an `organizationId` column. The Stripe webhook handler maps subscriptions to orgs. **No org-level billing UI** -- users cannot manage billing from within an organization context. The billing settings page at `/app/settings/billing` is user-scoped only.                                                                                                                                |
+| 5   | Activity feed per organization                      | Partial     | Team-level activity feed exists at `/organizations/[id]/teams/[teamId]` (shows team member adds/removes/role changes). **No organization-level activity feed** -- the org detail page shows members but no activity timeline.                                                                                                                                                                                            |
 
-### MEDIUM Severity
+### From ROADMAP sub-items (lines 115-120)
 
-7. **`getRoleLevel()` never used for role change validation** — Admin can change another admin's role without restriction.
-8. **Team create uses `org.update` instead of `team.create`** — Members cannot create teams despite RBAC saying they can.
-9. **No invitation cancellation endpoint** — Org admins cannot revoke pending invitations.
-10. **No invitation list per organization** — Cannot see who has been invited.
-11. **Billing checkout/plan-change parse body without Zod validation** — No input validation.
-12. **Duplicate permission files** — `$lib/permissions.ts` and `$lib/server/permissions.ts` nearly identical.
-13. **Team detail uses `window.location.pathname`** — Should use `$page.params` like org pages.
-14. **Invitation decline sets `acceptedAt`** — Semantically incorrect, no `declinedAt` field.
-15. **No `emitEvent()` in org/team endpoints** — Webhooks never dispatched for org/team actions.
+| #   | Claimed Feature                                                                                                            | Status  | Verdict                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 6   | RBAC & permissions system (role definitions, permission granularity, role hierarchy, custom roles, permission inheritance) | Partial | Permission system implemented in `src/lib/server/permissions.ts` with `OrgRole` (owner/admin/member/viewer) and `TeamRole` (lead/member). `hasPermission()` and `hasTeamPermission()` functions check role-based access. **No custom roles** -- roles are hardcoded enums. **No role hierarchy** beyond owner > admin > member > viewer (implicit, not configurable). **Permission inheritance in org hierarchy** is not implemented (org roles do not automatically grant team permissions). |
+| 7   | Organization billing (org-level subscriptions, seat-based pricing, billing owner transfer, split billing across teams)     | Minimal | `subscription.organizationId` column exists. **No seat-based pricing UI**. **No billing owner transfer**. **No split billing across teams**. Org billing is infrastructure-only with no user-facing management.                                                                                                                                                                                                                                                                               |
+| 8   | Team collaboration features (shared workspaces, resource ownership, activity feed per-team, @mentions, team settings)      | Partial | Shared workspaces via org/team membership. Resource ownership on items is user-scoped, not team-scoped. Activity feed per-team is implemented. **No @mentions** anywhere in the codebase. Team settings page exists (name, description, delete).                                                                                                                                                                                                                                              |
 
-### LOW Severity (accepted)
+---
 
-- Breadcrumb shows UUID instead of org name
-- No notification on org/team deletion for members
-- No invitation expiry notification
-- `organizationInvitation` has no explicit `status` column
+## Critical Gaps
 
-## Key Files
+### HIGH
 
-- `src/lib/server/db/schema.ts` — Organization, member, invitation, team tables
-- `src/lib/permissions.ts` / `src/lib/server/permissions.ts` — RBAC permission matrix
-- `src/lib/server/hono/index.ts` — All org/team API routes
-- `src/lib/server/hono/middleware.ts` — Org/team authorization middleware
-- `src/lib/validators/organization.ts` / `team.ts` — Zod validation schemas
-- `src/routes/(app)/app/organizations/` — All org/team Svelte pages
+1. **No invitation management UI**: Users can send invitations from the org detail page, but there is no way to view pending invitations, cancel them, or re-send expired ones. The `organization_invitation` table and API endpoints exist but have no corresponding UI.
 
-## Test Coverage
+2. **No invitation acceptance UI**: When a user receives an org invitation, there is no UI to view and accept/decline it. The API supports accepting via token, but no user-facing page exists for this flow.
 
-- Unit: `tests/unit/organization.test.ts`, `permissions.test.ts`, `hono-middleware-org-team.test.ts`
-- E2E: `tests/e2e/organization.spec.ts`, `tests/e2e/team-collaboration.spec.ts`
-- Gaps: No tests for leave org, ownership transfer, invitation decline, role change boundaries
+3. **No org-level billing management**: The billing page (`/app/settings/billing`) is user-scoped. There is no way to view or manage subscriptions from within an organization context. The infrastructure supports org-scoped subscriptions (the `subscription.organizationId` column) but the UI does not expose this.
+
+4. **No transfer ownership**: The ROADMAP claims "transfer ownership" but there is no API endpoint or UI to transfer org ownership from one user to another. The `organization.ownerId` can only be set at creation time.
+
+### MEDIUM
+
+5. **No custom roles**: Roles are hardcoded as enums (`owner`, `admin`, `member`, `viewer` for orgs; `lead`, `member` for teams). Users cannot create custom roles with specific permission combinations.
+
+6. **No organization-level activity feed**: The org detail page at `/organizations/[id]` shows members and a link to teams/settings, but has no activity timeline. Only teams have activity feeds.
+
+7. **No @mentions**: Claimed in "team collaboration features" but completely absent from the codebase. No mention syntax parsing, no user search popup, no notification on mention.
+
+8. **Items are user-scoped, not org/team-scoped**: Items belong to individual users (`item.userId`). There is no concept of org-owned or team-owned items. This limits collaborative use cases.
+
+9. **No leave organization confirmation**: The API endpoint `POST /:orgId/leave` exists but there is no UI button to leave an organization from the org detail page.
+
+### LOW
+
+10. **Org slug is auto-generated but not editable**: Slugs are derived from the org name at creation. Users cannot customize the slug after creation. The settings page shows the slug as read-only.
+
+11. **No org avatar/logo upload**: Organizations have no image field in the schema. The org detail page shows a text-based initial.
+
+12. **No member search/filter**: The members list on the org detail page has no search or filter capability. This will be problematic for large organizations.
+
+---
+
+## Files
+
+### Routes (UI)
+
+- `src/routes/(app)/app/organizations/+page.svelte` -- Org list + create form
+- `src/routes/(app)/app/organizations/[id]/+page.svelte` -- Org detail (members, invite, role management)
+- `src/routes/(app)/app/organizations/[id]/settings/+page.svelte` -- Org settings (name, description, delete)
+- `src/routes/(app)/app/organizations/[id]/teams/+page.svelte` -- Teams list + create
+- `src/routes/(app)/app/organizations/[id]/teams/[teamId]/+page.svelte` -- Team detail (members, activity feed)
+- `src/routes/(app)/app/organizations/[id]/teams/[teamId]/settings/+page.svelte` -- Team settings (name, description, delete)
+
+### API Routes (Hono)
+
+- `src/lib/server/hono/index.ts` lines 4440-5000 -- Organization routes (CRUD, members, invite, leave)
+- `src/lib/server/hono/index.ts` lines 5003-5400 -- Team routes (CRUD, members, activity)
+
+### Schema
+
+- `src/lib/server/db/schema.ts` -- `organization` (lines 244-270), `organizationMember` (lines 272-296), `organizationInvitation` (lines 298-326), `team` (lines 328-349), `teamMember` (lines 351-375), `teamActivity` (lines 479-500)
+
+### Permissions
+
+- `src/lib/server/permissions.ts` -- `hasPermission()`, `hasTeamPermission()`, role definitions
+
+### Validators
+
+- `src/lib/validators/organization.ts` -- `createOrganizationSchema`, `updateOrganizationSchema`, `inviteMemberSchema`
+- `src/lib/validators/team.ts` -- `createTeamSchema`, `updateTeamSchema`, `addTeamMemberSchema`
+
+### Middleware
+
+- `src/lib/server/hono/middleware.ts` -- `withOrgMembership`, `requirePermission`, `requireTeamPermission`, `withTeamMembership`
+
+### Tests
+
+- `tests/unit/organization-validator.test.ts` -- Org validator tests
+- `tests/unit/organization-leave.test.ts` -- Leave org tests
+
+---
+
+## Recommendations
+
+1. Build an invitation management UI (list pending invitations, cancel, re-send).
+2. Build an invitation acceptance page (accessible via email link with token).
+3. Add org-scoped billing UI (view/manage subscription from org settings).
+4. Implement transfer ownership API + UI (with confirmation and re-authentication).
+5. Add an activity feed to the org detail page (similar to team activity).
+6. Consider adding org/team-scoped items or a "shared items" concept for collaboration.
+7. Add a "Leave Organization" button to the org detail page.
+8. Add member search/filter for large organizations.
