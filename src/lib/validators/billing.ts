@@ -48,3 +48,9 @@ export const recordUsageSchema = z.object({
   metricType: z.enum(['api_calls', 'requests', 'seats', 'storage']),
   quantity: z.number().int().min(1),
 })
+
+export const refundSchema = z.object({
+  amountInCents: z.number().int().min(1).optional(),
+  invoiceId: z.string().trim().min(1),
+  reason: z.enum(['duplicate', 'fraudulent', 'requested_by_customer']).optional(),
+})

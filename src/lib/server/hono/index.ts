@@ -224,6 +224,7 @@ import {
   changePlanSchema,
   createPlanSchema,
   recordUsageSchema,
+  refundSchema,
   updatePlanSchema,
 } from '$lib/validators/billing'
 import {
@@ -6579,6 +6580,49 @@ adminApp.get('/billing/invoices', async (c) => {
     .offset(offset)
 
   return c.json({ invoices, limit, page })
+})
+
+adminApp.post('/billing/refund', validate(refundSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+
+  const inv = await db.select().from(invoice).where(eq(invoice.id, parsed.invoiceId)).get()
+  if (!inv) throw new NotFoundError()
+  if (!inv.stripeInvoiceId) {
+    return c.json({ error: 'Invoice has no Stripe ID — cannot refund' }, 400)
+  }
+  if (inv.status === 'void') {
+    return c.json({ error: 'Invoice already refunded' }, 400)
+  }
+
+  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+  if (!stripe) {
+    return c.json({ error: 'Billing not configured' }, 503)
+  }
+
+  try {
+    const refundParams: Record<string, unknown> = {
+      invoice: inv.stripeInvoiceId,
+      reason: parsed.reason ?? 'requested_by_customer',
+    }
+    if (parsed.amountInCents) {
+      refundParams.amount = parsed.amountInCents
+    }
+    const refund = await stripe.refunds.create(refundParams)
+
+    await db.update(invoice).set({ status: 'void' }).where(eq(invoice.id, inv.id))
+
+    return c.json({
+      refund: {
+        amount: refund.amount,
+        id: refund.id,
+        status: refund.status,
+      },
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Refund failed'
+    return c.json({ error: message }, 500)
+  }
 })
 
 adminApp.get('/billing/stripe-events', async (c) => {
