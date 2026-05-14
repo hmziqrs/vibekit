@@ -94,7 +94,7 @@
     <div class="rounded-lg border border-border bg-surface p-3">
       <div class="text-[12px] text-text-muted">Top Referrers</div>
       <div class="text-xl font-semibold text-text-primary">
-        {overviewQuery.data ? overviewQuery.data.referrers.length : '—'}
+        {overviewQuery.data ? (overviewQuery.data.referrers?.length ?? 0) : '—'}
       </div>
     </div>
   </div>

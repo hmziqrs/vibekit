@@ -105,7 +105,8 @@
   async function handleCancel() {
     canceling = true
     try {
-      await fetch('/api/billing/cancel', { method: 'POST' })
+      const res = await fetch('/api/billing/cancel', { method: 'POST' })
+      if (!res.ok) return
       queryClient.invalidateQueries({ queryKey: ['billing'] })
     } finally {
       canceling = false
@@ -115,7 +116,8 @@
   async function handleReactivate() {
     canceling = true
     try {
-      await fetch('/api/billing/reactivate', { method: 'POST' })
+      const res = await fetch('/api/billing/reactivate', { method: 'POST' })
+      if (!res.ok) return
       queryClient.invalidateQueries({ queryKey: ['billing'] })
     } finally {
       canceling = false

@@ -117,11 +117,12 @@
       const registration = await navigator.serviceWorker.ready
       const subscription = await registration.pushManager.getSubscription()
       if (subscription) {
-        await fetch('/api/push/unsubscribe', {
+        const res = await fetch('/api/push/unsubscribe', {
           body: JSON.stringify({ endpoint: subscription.endpoint }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
         })
+        if (!res.ok) throw new Error('Failed to unsubscribe on server')
         await subscription.unsubscribe()
       }
     } catch (error) {

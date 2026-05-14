@@ -148,9 +148,17 @@
 
   async function deleteEndpoint(id: string) {
     if (!confirm('Delete this webhook endpoint?')) return
-    await fetch(`/api/webhooks/${id}`, { method: 'DELETE' })
-    if (selectedEndpointId === id) selectedEndpointId = null
-    endpointsQuery.refetch()
+    try {
+      const res = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        error = 'Failed to delete webhook'
+        return
+      }
+      if (selectedEndpointId === id) selectedEndpointId = null
+      endpointsQuery.refetch()
+    } catch {
+      error = 'Network error'
+    }
   }
 
   async function testEndpoint(id: string) {
