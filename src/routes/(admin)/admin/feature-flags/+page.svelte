@@ -338,6 +338,7 @@
                 <td class="px-4 py-3">
                   {#if editingKey === key && editFlag}
                     <select
+                      aria-label="Environment"
                       value={editFlag.environment as string ?? ''}
                       onchange={(e) => (editFlag = { ...editFlag, environment: (e.target as HTMLSelectElement).value })}
                       class="rounded border border-brand/30 bg-surface-base px-2 py-1 text-sm text-text-primary"

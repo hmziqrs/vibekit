@@ -175,6 +175,7 @@
 
               <button
                 onclick={() => toggleArchive(item.id, item.status)}
+                aria-label={item.status === 'active' ? 'Archive' : 'Restore'}
                 class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
                 title={item.status === 'active' ? 'Archive' : 'Restore'}
               >
@@ -201,6 +202,7 @@
 
               <a
                 href="/app/items/{item.id}/edit"
+                aria-label="Edit"
                 class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/4 hover:text-text-primary"
                 title="Edit"
               >
@@ -226,6 +228,7 @@
                   deleteTarget = item
                   deleteDialogOpen = true
                 }}
+                aria-label="Delete"
                 class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-destructive/10 hover:text-destructive"
                 title="Delete"
               >

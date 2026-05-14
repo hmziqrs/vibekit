@@ -271,6 +271,7 @@
               <div class="flex items-center gap-3">
                 {#if member.role !== 'owner' && canManageMembers}
                   <select
+                    aria-label="Change role"
                     value={member.role}
                     onchange={(e) => changeRole(member.id, (e.target as HTMLSelectElement).value)}
                     class="rounded border border-white/[0.06] bg-surface-base px-2 py-1 text-xs text-text-secondary focus:border-brand focus:outline-none"

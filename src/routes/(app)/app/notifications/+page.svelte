@@ -139,6 +139,7 @@
   <div class="flex flex-wrap gap-3">
     <select
       bind:value={filterType}
+      aria-label="Filter by type"
       class="rounded-lg border border-white/[0.08] bg-surface px-3 py-1.5 text-[13px] text-text-primary"
     >
       <option value="all">All types</option>
@@ -150,6 +151,7 @@
 
     <select
       bind:value={filterRead}
+      aria-label="Filter by read status"
       class="rounded-lg border border-white/[0.08] bg-surface px-3 py-1.5 text-[13px] text-text-primary"
     >
       <option value="all">All</option>
@@ -212,6 +214,7 @@
             {#if !n.readAt}
               <button
                 onclick={() => markAsRead(n.id)}
+                aria-label="Mark as read"
                 class="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-text-primary"
                 title="Mark as read"
               >
@@ -222,6 +225,7 @@
             {/if}
             <button
               onclick={() => deleteNotification(n.id)}
+              aria-label="Delete notification"
               class="rounded-lg p-1.5 text-text-muted hover:bg-destructive/10 hover:text-destructive"
               title="Delete"
             >

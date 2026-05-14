@@ -372,6 +372,7 @@
                 <div class="flex items-center gap-3">
                   {#if canManageMembers}
                     <select
+                      aria-label="Change role"
                       value={member.role}
                       onchange={(e) => {
                         const select = e.target as HTMLSelectElement

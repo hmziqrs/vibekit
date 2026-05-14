@@ -209,6 +209,7 @@
       <SearchInput bind:value={search} placeholder="Search posts..." />
     </div>
     <select
+      aria-label="Sort posts"
       value={sortValue}
       onchange={(e) => handleSortChange((e.target as HTMLSelectElement).value)}
       class="rounded-lg border border-border bg-input px-3 py-2 text-[12px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"

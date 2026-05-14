@@ -227,6 +227,7 @@
 <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div class="flex items-center gap-3">
     <select
+      aria-label="Filter by entity type"
       class="rounded-lg border border-white/[0.06] bg-surface px-3 py-2 text-[13px] text-text-primary focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       bind:value={entityTypeFilter}
     >

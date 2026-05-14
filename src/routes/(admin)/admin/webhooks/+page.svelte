@@ -61,6 +61,7 @@
   <!-- Filters -->
   <div class="flex flex-wrap items-center gap-3">
     <select
+      aria-label="Filter by delivery status"
       bind:value={statusFilter}
       class="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
       onchange={() => refetch()}
