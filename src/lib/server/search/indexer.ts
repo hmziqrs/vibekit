@@ -6,8 +6,8 @@ import { eq, isNull } from 'drizzle-orm'
 import type { SearchDocument } from './types'
 
 function getAdapter(db: DrizzleDb) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return createD1SearchAdapter(db as any)
+  // Drizzle D1 driver exposes all/run compatible with adapter's expected interface
+  return createD1SearchAdapter(db as Parameters<typeof createD1SearchAdapter>[0])
 }
 
 export async function indexBlogPost(db: DrizzleDb, postId: string): Promise<void> {

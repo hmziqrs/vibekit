@@ -6,7 +6,11 @@ import type {
   StoredObject,
 } from '../../services/types'
 
-export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
+interface R2BucketWithSignedUrl extends R2Bucket {
+  createSignedUrl(key: string, options: { expiresIn: number }): Promise<string>
+}
+
+export function createCloudflareStorage(bucket: R2BucketWithSignedUrl): StorageClient {
   return {
     async delete(key: string): Promise<void> {
       await bucket.delete(key)
@@ -28,9 +32,7 @@ export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
       key: string,
       options?: { contentType?: string; expiresIn?: number }
     ): Promise<string> {
-      // R2 presigned URLs use createSignedUrl for direct access
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const url = await (bucket as any).createSignedUrl(key, {
+      const url = await bucket.createSignedUrl(key, {
         expiresIn: options?.expiresIn ?? 3600,
       })
       return url
