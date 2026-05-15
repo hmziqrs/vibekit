@@ -1,6 +1,8 @@
 import type { getDb } from '$lib/server/db'
 import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
-import { and, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
+import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
+import { createSearchService } from '$lib/server/search/service'
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -20,17 +22,57 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
   const q = url.searchParams.get('q')?.trim()
   const tagSlug = url.searchParams.get('tag')?.trim()
 
-  const conditions = [eq(blogPost.status, 'published'), isNull(blogPost.deletedAt)]
-
+  // Use FTS5 for search queries
   if (q && q.length >= 2) {
-    conditions.push(
-      or(
-        like(blogPost.title, `%${q}%`),
-        like(blogPost.excerpt, `%${q}%`),
-        like(blogPost.contentBody, `%${q}%`)
-      )!
+    const adapter = createD1SearchAdapter(
+      db as unknown as Parameters<typeof createD1SearchAdapter>[0]
     )
+    const searchService = createSearchService(adapter)
+    const results = await searchService.search(q, {
+      entityTypes: ['blog_post'],
+      limit,
+      offset,
+    })
+
+    const postIds = results.hits.map((h) => h.entityId)
+
+    if (postIds.length === 0) {
+      const tags = await db
+        .select({ name: blogTag.name, slug: blogTag.slug })
+        .from(blogTag)
+        .orderBy(blogTag.name)
+      return { page, posts: [], q, tag: tagSlug || null, tags, total: 0 }
+    }
+
+    const posts = await db
+      .select({
+        coverImageUrl: blogPost.coverImageUrl,
+        createdAt: blogPost.createdAt,
+        excerpt: blogPost.excerpt,
+        id: blogPost.id,
+        publishedAt: blogPost.publishedAt,
+        slug: blogPost.slug,
+        title: blogPost.title,
+      })
+      .from(blogPost)
+      .where(
+        and(
+          inArray(blogPost.id, postIds),
+          eq(blogPost.status, 'published'),
+          isNull(blogPost.deletedAt)
+        )
+      )
+      .orderBy(desc(blogPost.publishedAt))
+
+    const tags = await db
+      .select({ name: blogTag.name, slug: blogTag.slug })
+      .from(blogTag)
+      .orderBy(blogTag.name)
+
+    return { page, posts, q, tag: tagSlug || null, tags, total: results.total }
   }
+
+  const conditions = [eq(blogPost.status, 'published'), isNull(blogPost.deletedAt)]
 
   if (tagSlug) {
     const tag = await db

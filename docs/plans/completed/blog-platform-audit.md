@@ -36,14 +36,13 @@ type: project
 3. **No category system** — Only tags exist. The original feature request list mentioned "Category and tag management" but categories were never implemented. Tags serve as the sole taxonomy.
    - **Fix**: Either implement a `blogCategory` table with hierarchy, or update the feature claim to reflect tags-only taxonomy.
 
-4. **Blog search uses LIKE, not FTS** — The admin blog search endpoint (`GET /api/blog/search`) uses raw SQL `LIKE '%q%'` against title, slug, excerpt, and contentBody. This ignores the FTS5 search infrastructure that exists for other entities and was flagged in the search audit.
-   - **Fix**: Rewrite to use FTS5 MATCH query.
+4. ~~**Blog search uses LIKE, not FTS**~~ **FIXED** — Public blog index (`/blog?q=...`) now uses FTS5 search service with bm25 ranking via `createSearchService()`. Admin API was already fixed.
 
 5. ~~**Comment editing does not sanitize HTML**~~ **FIXED** — Both comment creation and edit now call `renderAndSanitize(parsed.content)` to properly render markdown and sanitize HTML for `htmlContent`. The `renderAndSanitize` import from `$lib/markdown` was added to the Hono index.
 
 6. ~~**Visitor hash is plaintext, not hashed**~~ **FIXED** — The `sha256()` helper at `hono/index.ts:322` already hashes `ip:ua` via `crypto.subtle.digest('SHA-256')` before storing. Raw IP/UA is never persisted. Audit incorrectly claimed plaintext storage.
 
-7. **Blog admin search is LIKE-based, not full-text** — The `GET /api/blog/search` endpoint in hono/index.ts (~2683) uses `LIKE` patterns instead of the FTS5 search index. This was also flagged in the search audit.
+7. ~~**Blog admin search is LIKE-based, not full-text**~~ **FIXED** — Both admin API and public blog index now use FTS5 search service.
 
 8. **No public tag pages** — Tags are displayed and used for filtering on the blog index (`?tag=slug`), but there are no dedicated `/blog/tag/:slug` routes. Tag filtering is query-parameter-based only.
 

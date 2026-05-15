@@ -1000,6 +1000,51 @@ app.post('/billing/webhooks/stripe', async (c) => {
         const validStatuses = ['active', 'canceled', 'incomplete', 'past_due', 'paused', 'trialing']
         const subStatus = String(sub.status ?? 'paused')
         const status = validStatuses.includes(subStatus) ? subStatus : 'paused'
+        const stripeSubId = String(sub.id)
+
+        // Check if the plan changed (previous_attributes contains old plan)
+        const prevAttrs = (event.data as Record<string, unknown>)?.previous_attributes as
+          | Record<string, unknown>
+          | undefined
+        const oldPlanId = prevAttrs?.plan?.id
+        const newPlanId = (sub.plan as Record<string, unknown>)?.id
+
+        if (oldPlanId && newPlanId && oldPlanId !== newPlanId) {
+          const [subRow] = await db
+            .select({ planId: subscription.planId, userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, stripeSubId))
+            .limit(1)
+          if (subRow?.userId) {
+            const [userRow] = await db
+              .select({ email: user.email, name: user.name })
+              .from(user)
+              .where(eq(user.id, subRow.userId))
+            const [oldPlan] = await db
+              .select({ name: subscriptionPlan.name })
+              .from(subscriptionPlan)
+              .where(eq(subscriptionPlan.stripePriceId, String(oldPlanId)))
+            const [newPlan] = await db
+              .select({ name: subscriptionPlan.name })
+              .from(subscriptionPlan)
+              .where(eq(subscriptionPlan.stripePriceId, String(newPlanId)))
+            if (userRow?.email) {
+              const emailService = createEmailService(c.get('services').email)
+              c.executionCtx?.waitUntil?.(
+                emailService
+                  .sendPlanChanged(
+                    userRow.email,
+                    userRow.name || 'there',
+                    oldPlan?.name ?? 'Previous plan',
+                    newPlan?.name ?? 'New plan',
+                    new Date().toLocaleDateString()
+                  )
+                  .catch(() => {})
+              )
+            }
+          }
+        }
+
         await db
           .update(subscription)
           .set({
@@ -1007,7 +1052,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             currentPeriodStart: new Date(Number(sub.current_period_start) * 1000),
             status: status as unknown as typeof subscription.status,
           })
-          .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
+          .where(eq(subscription.stripeSubscriptionId, stripeSubId))
         break
       }
       case 'customer.subscription.deleted': {
@@ -1351,27 +1396,37 @@ app.post('/billing/webhooks/stripe', async (c) => {
         const customerId = inv.customer as string
         if (customerId) {
           const [subRow] = await db
-            .select({ userId: subscription.userId })
+            .select({ planId: subscription.planId, userId: subscription.userId })
             .from(subscription)
             .where(eq(subscription.stripeCustomerId, String(customerId)))
             .limit(1)
           if (subRow?.userId) {
-            // Notify user about upcoming invoice
-            c.executionCtx?.waitUntil?.(
-              import('$lib/server/auth')
-                .then(({ getEmailService }) => {
-                  const emailService = getEmailService()
-                  if (emailService) {
-                    return emailService.sendTrialEndingSoon(
-                      '',
-                      '',
-                      'upcoming',
-                      new Date().toISOString()
-                    )
-                  }
-                })
-                .catch(() => {})
-            )
+            const [userRow] = await db
+              .select({ email: user.email, name: user.name })
+              .from(user)
+              .where(eq(user.id, subRow.userId))
+            const [planRow] = subRow.planId
+              ? await db
+                  .select({ name: subscriptionPlan.name })
+                  .from(subscriptionPlan)
+                  .where(eq(subscriptionPlan.id, subRow.planId))
+              : []
+            const periodEnd = inv.period_end
+              ? new Date(Number(inv.period_end) * 1000).toLocaleDateString()
+              : 'next billing cycle'
+            if (userRow?.email) {
+              const emailService = createEmailService(c.get('services').email)
+              c.executionCtx?.waitUntil?.(
+                emailService
+                  .sendTrialEndingSoon(
+                    userRow.email,
+                    userRow.name || 'there',
+                    planRow?.name ?? 'your plan',
+                    periodEnd
+                  )
+                  .catch(() => {})
+              )
+            }
           }
         }
         break

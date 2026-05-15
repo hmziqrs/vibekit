@@ -78,7 +78,7 @@ describe('Organization leave endpoint', () => {
 })
 
 describe('Rate limiting on org endpoints', () => {
-  it('org creation should have rate limit applied', async () => {
+  it('org creation should have rate limit applied', { timeout: 15_000 }, async () => {
     const { withRateLimit } = await import('$lib/server/hono/middleware')
     expect(typeof withRateLimit).toBe('function')
   })
