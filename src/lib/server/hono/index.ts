@@ -2702,15 +2702,23 @@ protectedApp.post('/billing/change-plan', async (c) => {
   if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
     const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
     if (stripe) {
-      const existingItems = await stripe.subscriptionItems.list({
-        subscription: sub.stripeSubscriptionId,
-      })
-      const currentItemId = existingItems.data[0]?.id
-      if (currentItemId) {
-        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-          items: [{ id: currentItemId, price: newPlan.stripePriceId }],
-          proration_behavior: 'create_prorations',
+      try {
+        const existingItems = await stripe.subscriptionItems.list({
+          subscription: sub.stripeSubscriptionId,
         })
+        const currentItemId = existingItems.data[0]?.id
+        if (currentItemId) {
+          await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+            items: [{ id: currentItemId, price: newPlan.stripePriceId }],
+            proration_behavior: 'create_prorations',
+          })
+        }
+      } catch (error) {
+        if (error instanceof StripeApiError) {
+          logger.error('Stripe plan change error', { error: error.cause })
+          throw new BadRequestError('Failed to update billing plan')
+        }
+        throw error
       }
     }
   }
@@ -2728,7 +2736,17 @@ protectedApp.post('/billing/cancel', async (c) => {
 
   if (sub.stripeSubscriptionId) {
     const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-    if (stripe) await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
+    if (stripe) {
+      try {
+        await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
+      } catch (error) {
+        if (error instanceof StripeApiError) {
+          logger.error('Stripe cancel error', { error: error.cause })
+          throw new BadRequestError('Failed to cancel subscription')
+        }
+        throw error
+      }
+    }
   }
 
   await cancelSubscription(db, sub.id)
@@ -2752,7 +2770,17 @@ protectedApp.post('/billing/reactivate', async (c) => {
 
   if (sub.stripeSubscriptionId) {
     const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-    if (stripe) await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
+    if (stripe) {
+      try {
+        await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
+      } catch (error) {
+        if (error instanceof StripeApiError) {
+          logger.error('Stripe reactivate error', { error: error.cause })
+          throw new BadRequestError('Failed to reactivate subscription')
+        }
+        throw error
+      }
+    }
   }
 
   await reactivateSubscription(db, sub.id)
@@ -2940,9 +2968,17 @@ protectedApp.post('/billing/payment-methods/set-default', async (c) => {
   if (sub?.stripeCustomerId) {
     const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
     if (stripe) {
-      await stripe.customers.update(sub.stripeCustomerId, {
-        invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
-      })
+      try {
+        await stripe.customers.update(sub.stripeCustomerId, {
+          invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
+        })
+      } catch (error) {
+        if (error instanceof StripeApiError) {
+          logger.error('Stripe set default payment method error', { error: error.cause })
+          throw new BadRequestError('Failed to update payment method')
+        }
+        throw error
+      }
     }
   }
 
@@ -6437,15 +6473,23 @@ orgApp.post(
     if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
       const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
       if (stripe) {
-        const existingItems = await stripe.subscriptionItems.list({
-          subscription: sub.stripeSubscriptionId,
-        })
-        const currentItemId = existingItems.data[0]?.id
-        if (currentItemId) {
-          await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-            items: [{ id: currentItemId, price: newPlan.stripePriceId }],
-            proration_behavior: 'create_prorations',
+        try {
+          const existingItems = await stripe.subscriptionItems.list({
+            subscription: sub.stripeSubscriptionId,
           })
+          const currentItemId = existingItems.data[0]?.id
+          if (currentItemId) {
+            await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+              items: [{ id: currentItemId, price: newPlan.stripePriceId }],
+              proration_behavior: 'create_prorations',
+            })
+          }
+        } catch (error) {
+          if (error instanceof StripeApiError) {
+            logger.error('Stripe org plan change error', { error: error.cause })
+            throw new BadRequestError('Failed to update billing plan')
+          }
+          throw error
         }
       }
     }
