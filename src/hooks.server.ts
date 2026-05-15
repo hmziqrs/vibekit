@@ -1,10 +1,11 @@
 import { building } from '$app/environment'
 import { getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
-import { createAuth } from '$lib/server/auth'
+import { createAuth, getEmailService, setEmailService } from '$lib/server/auth'
 import { checkLockout, recordFailedAttempt, resetAttempts } from '$lib/server/auth-lockout'
 import type { getDb } from '$lib/server/db'
 import { session as sessionTable, systemConfig } from '$lib/server/db/schema'
+import { createEmailService } from '$lib/server/email/index'
 import { app } from '$lib/server/hono'
 import { createServices } from '$lib/server/services'
 import {
@@ -35,7 +36,14 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
     return resolve(event)
   }
 
-  const response = await resolve(event)
+  // Store nonce for components that need it (e.g. cf-beacon)
+  const nonce = crypto.randomUUID().replace(/-/g, '')
+  event.locals.cspNonce = nonce
+
+  const response = await resolve(event, {
+    // Pass nonce to SvelteKit so it adds it to inline scripts/styles
+    csp: { nonce },
+  })
 
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
@@ -71,6 +79,13 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
   event.locals.services = services
   event.locals.auth = createAuth(services.db)
+
+  // Ensure the global email service is available for auth callbacks and security alerts.
+  // On Node this was already set by createNodeServices(); on Cloudflare this is the
+  // First opportunity since services are per-request.
+  if (!getEmailService()) {
+    setEmailService(createEmailService(services.email))
+  }
 
   const { auth } = event.locals
   const session = await auth.api.getSession({ headers: event.request.headers })
@@ -111,6 +126,17 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           metadata: { email },
           userAgent: requestUA ?? undefined,
         })
+        // Send security alert email
+        const emailService = getEmailService()
+        if (emailService) {
+          emailService
+            .sendSecurityAlert(email, {
+              eventTime: new Date().toISOString(),
+              eventType: 'account_locked',
+              ipAddress: requestIP,
+            })
+            .catch((error) => console.error('Security alert email failed:', error))
+        }
         return Response.json(
           {
             code: 'ACCOUNT_LOCKED',
@@ -187,6 +213,20 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
                 userAgent: requestUA ?? undefined,
                 userId,
               })
+              // Send security alert email
+              const alertService = getEmailService()
+              if (alertService && event.locals.user?.email) {
+                alertService
+                  .sendSecurityAlert(event.locals.user.email, {
+                    details: `Known devices: ${knownIPs.length}`,
+                    eventTime: new Date().toISOString(),
+                    eventType: 'new_device',
+                    ipAddress: requestIP,
+                    userAgent: requestUA ?? undefined,
+                    userName: event.locals.user.name ?? undefined,
+                  })
+                  .catch((error) => console.error('Security alert email failed:', error))
+              }
             }
           } catch (error) {
             // New device detection failed — non-critical, don't block login
@@ -247,6 +287,27 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           userAgent: requestUA ?? undefined,
           userId,
         })
+        // Send security alert for password and 2FA changes
+        if (
+          (eventType === 'password_change' ||
+            eventType === 'two_factor_enabled' ||
+            eventType === 'two_factor_disabled') &&
+          event.locals.user?.email
+        ) {
+          const alertService = getEmailService()
+          if (alertService) {
+            alertService
+              .sendSecurityAlert(event.locals.user.email, {
+                eventTime: new Date().toISOString(),
+                eventType:
+                  eventType === 'password_change' ? 'password_change' : 'two_factor_change',
+                ipAddress: requestIP,
+                userAgent: requestUA ?? undefined,
+                userName: event.locals.user.name ?? undefined,
+              })
+              .catch((error) => console.error('Security alert email failed:', error))
+          }
+        }
       }
       return response
     }

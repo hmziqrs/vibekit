@@ -3,6 +3,8 @@ import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, eq, inArray } from 'drizzle-orm'
 
+import { dispatchToIntegrations } from './integrations/dispatch'
+
 type NotificationType = 'error' | 'info' | 'success' | 'warning'
 
 interface CreateNotificationInput {
@@ -34,6 +36,14 @@ export async function createNotification(
     type: input.type ?? 'info',
     userId: input.userId,
   })
+
+  // Forward to connected Slack/Discord integrations (fire-and-forget)
+  dispatchToIntegrations(db, input.userId, {
+    body: input.body,
+    link: input.link,
+    title: input.title,
+    type: input.type,
+  }).catch((error) => console.error('Integration dispatch failed:', error))
 }
 
 export async function createBroadcast(

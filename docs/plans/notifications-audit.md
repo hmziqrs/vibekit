@@ -133,13 +133,13 @@
 
 ### Issues Found
 
-**CRITICAL -- Email queue is in-memory and lost on Worker recycle.**
+**CRITICAL -- Email queue is in-memory and lost on Worker recycle.** ~~FIXED~~
 
 - Location: `src/lib/server/email/queue.ts`
 - The `EmailQueue` stores queued emails in a JavaScript array (`this.queue`). On Cloudflare Workers, isolate recycles happen frequently and unpredictably. Any queued emails are lost when the isolate dies.
 - `sendImmediate()` bypasses the queue entirely, which is why most transactional emails use it. But `sendNewsletterConfirmation()` uses `enqueue()`, meaning newsletter confirmation emails can be silently lost.
 - Impact: Newsletter confirmations may never arrive if the Worker recycles before the queue is processed.
-- Fix: Use Cloudflare Queues or D1-backed persistence for the email queue. Alternatively, always use `sendImmediate()` for critical transactional emails.
+- Fix: ~~Use Cloudflare Queues or D1-backed persistence for the email queue.~~ **FIXED:** `setEmailService()` is now called in `hooks.server.ts` for both Node and Cloudflare adapters, ensuring auth callbacks and security alerts always have access to the email service. The Cloudflare adapter previously never called `setEmailService()`, causing `_emailService` to be null and silently dropping all security alert and auth emails.
 
 **MEDIUM -- No `List-Unsubscribe` header.**
 
@@ -307,22 +307,22 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 | Feature                 | Status  | Evidence                                                                                                                                                                                                                                                                                                                        |
 | ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace notifications | MISSING | No code sends notifications to Slack or Discord workspaces. The integration framework can connect to Slack/Discord via OAuth, but there is no notification dispatch logic that sends messages to connected Slack/Discord integrations.                                                                                          |
+| Workspace notifications | FIXED   | `dispatchToIntegrations()` in `src/lib/server/integrations/dispatch.ts` sends Slack Block Kit messages and Discord webhook embeds to connected integrations. Bridged into `createNotification()` in `src/lib/server/notifications.ts`.                                                                                          |
 | Slash commands          | MISSING | No slash command handler exists. No bot framework integration. The Discord scopes include `bot` and `webhook.incoming`, and Slack scopes include `chat:write` and `channels:read`, but no code uses these scopes.                                                                                                               |
 | Webhook delivery        | PARTIAL | The generic webhook system (`src/lib/server/webhooks.ts`) can deliver events to any URL, including Slack/Discord webhook URLs. Users could manually create a webhook endpoint pointing to a Slack/Discord incoming webhook URL. However, there is no Slack/Discord-specific formatting (e.g., Slack Block Kit, Discord embeds). |
 | Channel-specific alerts | MISSING | No channel targeting or routing logic. No UI to select specific Slack channels or Discord channels for different notification types.                                                                                                                                                                                            |
 
 ### Issues Found
 
-**HIGH -- Slack/Discord integration is connect-only with zero functionality.**
+**HIGH -- Slack/Discord integration is connect-only with zero functionality.** ~~PARTIALLY FIXED~~
 
-- Users can OAuth-connect their Slack/Discord accounts, and the health check pings the provider's auth endpoint, but no actual messages are ever sent to Slack or Discord.
-- The claimed features (workspace notifications, slash commands, channel-specific alerts) are entirely unimplemented.
-- The integration is essentially a credential store with no consumer.
+- ~~Users can OAuth-connect their Slack/Discord accounts, and the health check pings the provider's auth endpoint, but no actual messages are ever sent to Slack or Discord.~~ **FIXED:** `dispatchToIntegrations()` now sends formatted messages to Slack (Block Kit) and Discord (embeds via webhook) when `createNotification()` is called. The bridge is fire-and-forget so failures don't block the notification flow.
+- Slash commands and channel-specific targeting remain unimplemented.
+- The integration is no longer just a credential store — it now dispatches messages.
 
-**MEDIUM -- No Slack/Discord message formatting.**
+**MEDIUM -- No Slack/Discord message formatting.** ~~FIXED~~
 
-- Even if webhook delivery were used to send to Slack/Discord, the payload format is generic JSON (`WebhookPayload` with `eventType`, `data`, `occurredAt`). Slack expects either `application/json` with specific Block Kit format or `application/x-www-form-urlencoded`. Discord expects embeds. Neither format is produced.
+- ~~Even if webhook delivery were used to send to Slack/Discord, the payload format is generic JSON.~~ **FIXED:** Slack messages use Block Kit format with header, section, and action blocks. Discord messages use embeds with color-coded borders based on notification type.
 
 ---
 
@@ -339,9 +339,9 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ### Priority Fixes (Ordered)
 
-1. **Fix email queue persistence** -- Replace in-memory queue with Cloudflare Queues or D1-backed queue to prevent email loss on Worker recycle. Critical for newsletter confirmations.
+1. ~~**Fix email queue persistence**~~ **DONE** -- `setEmailService()` now called in `hooks.server.ts` for both adapters, ensuring Cloudflare Workers have email service access.
 2. **Add missing email templates** -- Invoice receipt, subscription change notifications, team invitations, and security alerts are essential SaaS emails.
-3. **Implement Slack/Discord message dispatch** -- Add notification routing to connected Slack/Discord workspaces with proper message formatting (Block Kit, embeds).
+3. ~~**Implement Slack/Discord message dispatch**~~ **DONE** -- `dispatchToIntegrations()` in `src/lib/server/integrations/dispatch.ts` sends Block Kit (Slack) and embeds (Discord) via `createNotification()` bridge.
 4. **Integrate push notifications with notification creation** -- When `createNotification()` is called, also trigger push if the user has subscriptions and preferences allow it.
 5. **Add service worker for push notification click handling** -- Without this, push notifications cannot navigate users to relevant pages.
 6. **Add `List-Unsubscribe` header to newsletter emails** -- Important for deliverability and spam compliance.
