@@ -93,7 +93,33 @@ export const linkPreviewSchema = z.object({
     .refine(
       (val) => val.startsWith('https://') || val.startsWith('http://'),
       'URL must use http or https protocol'
-    ),
+    )
+    .refine((val) => {
+      try {
+        const parsed = new URL(val)
+        const hostname = parsed.hostname.toLowerCase()
+        const blockedHosts = [
+          'localhost',
+          '127.0.0.1',
+          '0.0.0.0',
+          '::1',
+          '169.254.169.254',
+          'metadata.google.internal',
+        ]
+        if (blockedHosts.includes(hostname)) return false
+        // Block private IP ranges (10.x, 172.16-31.x, 192.168.x)
+        if (
+          hostname.match(/^10\./) ||
+          hostname.match(/^172\.(1[6-9]|2\d|3[0-1])\./) ||
+          hostname.match(/^192\.168\./)
+        ) {
+          return false
+        }
+        return true
+      } catch {
+        return false
+      }
+    }, 'URL must not point to internal or private addresses'),
 })
 
 export type CreateSeriesInput = z.infer<typeof createSeriesSchema>

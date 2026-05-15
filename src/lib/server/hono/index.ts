@@ -2697,14 +2697,26 @@ protectedApp.post('/billing/reactivate', async (c) => {
 protectedApp.get('/billing/invoices', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
+  const limitParam = c.req.query('limit')
+  const offsetParam = c.req.query('offset')
+  const limit = Math.min(Math.max(Number(limitParam) || 20, 1), 100)
+  const offset = Math.max(Number(offsetParam) || 0, 0)
 
-  const invoices = await db
-    .select()
-    .from(invoice)
-    .where(eq(invoice.userId, userId))
-    .orderBy(desc(invoice.createdAt))
+  const [invoices, [{ count }]] = await Promise.all([
+    db
+      .select()
+      .from(invoice)
+      .where(eq(invoice.userId, userId))
+      .orderBy(desc(invoice.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(invoice)
+      .where(eq(invoice.userId, userId)),
+  ])
 
-  return c.json({ invoices })
+  return c.json({ invoices, limit, offset, total: count })
 })
 
 protectedApp.get('/billing/usage', async (c) => {
