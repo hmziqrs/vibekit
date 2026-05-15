@@ -14,7 +14,10 @@
 
   let passkeyError = $state('')
 
-  const callbackURL = $derived(page.url.searchParams.get('next') ?? '/app')
+  const rawNext = page.url.searchParams.get('next') ?? '/app'
+  const callbackURL = $derived(
+    rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/app'
+  )
 
   // Redirect already-authenticated users away from login page
   $effect(() => {

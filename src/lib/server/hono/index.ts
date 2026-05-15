@@ -1453,16 +1453,28 @@ app.post('/billing/webhooks/stripe', async (c) => {
               : 'next billing cycle'
             if (userRow?.email) {
               const emailService = createEmailService(c.get('services').email)
-              c.executionCtx?.waitUntil?.(
-                emailService
-                  .sendTrialEndingSoon(
-                    userRow.email,
-                    userRow.name || 'there',
-                    planRow?.name ?? 'your plan',
-                    periodEnd
-                  )
-                  .catch(() => {})
-              )
+              // Only send trial ending email if subscription is actually in trial
+              const isTrial =
+                inv.subscription &&
+                (
+                  await db
+                    .select({ status: subscription.status })
+                    .from(subscription)
+                    .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+                    .get()
+                )?.status === 'trialing'
+              if (isTrial) {
+                c.executionCtx?.waitUntil?.(
+                  emailService
+                    .sendTrialEndingSoon(
+                      userRow.email,
+                      userRow.name || 'there',
+                      planRow?.name ?? 'your plan',
+                      periodEnd
+                    )
+                    .catch(() => {})
+                )
+              }
             }
           }
         }
