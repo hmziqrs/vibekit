@@ -289,6 +289,9 @@ import {
   bulkDeleteMediaSchema,
   createUploadSessionSchema,
   listUploadSessionsSchema,
+  storagePresignGetSchema,
+  storagePresignPutSchema,
+  storageThumbnailSchema,
 } from '$lib/validators/upload'
 import {
   WEBHOOK_EVENT_TYPES,
@@ -8249,31 +8252,40 @@ function validateStorageKey(key: string): void {
 }
 
 protectedApp.post('/storage/presign-get', async (c) => {
-  const key = c.req.query('key')
-  if (!key) throw new BadRequestError('Missing key parameter')
-  validateStorageKey(key)
+  const parsed = storagePresignGetSchema.safeParse({ key: c.req.query('key') ?? '' })
+  if (!parsed.success) throw new BadRequestError('Invalid key parameter')
+  validateStorageKey(parsed.data.key)
   const { storage } = c.get('services')
-  const url = await storage.getPresignedUrl(key, { expiresIn: 3600 })
+  const url = await storage.getPresignedUrl(parsed.data.key, { expiresIn: 3600 })
   return c.json({ url })
 })
 
 protectedApp.post('/storage/presign-put', async (c) => {
-  const key = c.req.query('key')
-  if (!key) throw new BadRequestError('Missing key parameter')
-  validateStorageKey(key)
-  const contentType = c.req.query('contentType')
+  const parsed = storagePresignPutSchema.safeParse({
+    contentType: c.req.query('contentType'),
+    key: c.req.query('key') ?? '',
+  })
+  if (!parsed.success) throw new BadRequestError('Invalid parameters')
+  validateStorageKey(parsed.data.key)
   const { storage } = c.get('services')
-  const url = await storage.putPresignedUrl(key, { contentType, expiresIn: 3600 })
+  const url = await storage.putPresignedUrl(parsed.data.key, {
+    contentType: parsed.data.contentType,
+    expiresIn: 3600,
+  })
   return c.json({ url })
 })
 
 adminApp.post('/storage/thumbnail', async (c) => {
-  const key = c.req.query('key')
-  if (!key) throw new BadRequestError('Missing key parameter')
-  const width = parseClampInt(c.req.query('width'), 200, 50, 2000)
-  const height = parseClampInt(c.req.query('height'), 200, 50, 2000)
+  const parsed = storageThumbnailSchema.safeParse({
+    height: c.req.query('height'),
+    key: c.req.query('key') ?? '',
+    width: c.req.query('width'),
+  })
+  if (!parsed.success) throw new BadRequestError('Invalid parameters')
+  const width = parsed.data.width ?? 200
+  const height = parsed.data.height ?? 200
   const { storage } = c.get('services')
-  const result = await generateThumbnail(storage, key, { height, width })
+  const result = await generateThumbnail(storage, parsed.data.key, { height, width })
   if (!result) throw new BadRequestError('Failed to generate thumbnail')
   return c.json(result, 201)
 })

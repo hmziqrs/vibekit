@@ -21,3 +21,18 @@ export const bulkDeleteMediaSchema = z.object({
     .min(1, 'Must provide at least one key')
     .max(100, 'Maximum 100 keys per request'),
 })
+
+export const storagePresignGetSchema = z.object({
+  key: z.string().trim().min(1).max(1024),
+})
+
+export const storagePresignPutSchema = z.object({
+  contentType: z.string().trim().min(1).max(200).optional(),
+  key: z.string().trim().min(1).max(1024),
+})
+
+export const storageThumbnailSchema = z.object({
+  height: z.coerce.number().int().min(50).max(2000).optional(),
+  key: z.string().trim().min(1).max(1024),
+  width: z.coerce.number().int().min(50).max(2000).optional(),
+})
