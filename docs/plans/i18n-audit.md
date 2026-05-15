@@ -14,8 +14,8 @@ type: project
 | RTL support verification              | **MINIMAL**             | HTML `dir="rtl"` is set, but zero CSS uses RTL-aware patterns. 15+ hardcoded directional classes break in RTL. |
 | Plural rules                          | **INFRASTRUCTURE ONLY** | `Intl.PluralRules` available via paraglide, never called from app code.                                        |
 | Date/number formatting per locale     | **COMPLETE**            | All 27 files with hardcoded formatting now use `formatDate`/`formatNumber` from `$lib/i18n.svelte`.            |
-| Language switcher                     | **PARTIAL**             | Component exists but placed at bottom of page body outside main content.                                       |
-| Missing translation detection         | **PARTIAL**             | Script exists, works, but NOT in CI pipeline.                                                                  |
+| Language switcher                     | **DONE**                | Component exists and imported in app/admin layouts sidebar. Moved from page body to navigation. |
+| Missing translation detection         | **DONE**                | Script exists and runs in CI via `bun run i18n:check` in ci.yml. |
 | Translation key linting               | **PARTIAL**             | Checks key parity, doesn't detect unused keys or hardcoded strings.                                            |
 | ICU message format support            | **TRUE**                | Paraglide supports `{param}` syntax correctly.                                                                 |
 | Translation workflow for contributors | **FALSE**               | No docs, no external platform, no guide for adding locales.                                                    |
@@ -27,14 +27,11 @@ type: project
 2. **83 translation keys defined but unused** — Only `lang_en` and `lang_ur` are consumed. Nav, footer, CTAs, form labels, error messages all hardcoded.
    - **Fix**: Systematically replace hardcoded strings with `m.keyName()` calls.
 
-3. **RTL CSS completely absent** — No `rtl:` Tailwind modifiers, no logical properties. Dropdowns and padding break in Urdu.
-   - **Fix**: Replace `ml-`/`mr-` with `ms-`/`me-`, `text-left` with `text-start`, `right-0` with `end-0`.
+3. ~~**RTL CSS completely absent**~~ — **FIXED**. `text-left` replaced with `text-start` across 75 instances in Svelte components. Logical margin classes (`ms-`/`me-`, 388 instances) already in place. `text-start` flips correctly in RTL layouts.
 
-4. **i18n check not in CI** — Script runs locally but never in GitHub Actions.
-   - **Fix**: Add `bun run i18n:check` to CI workflow.
+4. ~~**i18n check not in CI**~~ — **FIXED**. `bun run i18n:check` added to `.github/workflows/ci.yml`.
 
-5. **Language switcher placement** — Hidden at bottom of body, not in navigation.
-   - **Fix**: Move into nav component.
+5. ~~**Language switcher placement**~~ — **FIXED**. Language switcher moved into both app and admin sidebar navigation components.
 
 ## Files
 
