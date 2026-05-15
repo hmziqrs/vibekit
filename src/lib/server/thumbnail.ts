@@ -1,5 +1,4 @@
 import type { StorageClient } from './services/types'
-import { generateStorageKey } from './upload'
 
 export interface ThumbnailOptions {
   height?: number

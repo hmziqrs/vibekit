@@ -79,13 +79,18 @@
   }
 
   async function handleNotificationClick(n: NotificationData) {
-    if (!n.readAt) {
-      await markAsRead(n.id)
-    }
-    const link = getNotificationLink(n)
-    if (link) {
+    try {
+      if (!n.readAt) {
+        await markAsRead(n.id)
+      }
+      const link = getNotificationLink(n)
+      if (link) {
+        open = false
+        goto(link)
+      }
+    } catch {
+      // Navigation or mark-as-read failed — still close the dropdown
       open = false
-      goto(link)
     }
   }
 

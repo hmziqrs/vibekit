@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 
 // Known malicious byte patterns (simplified heuristic detection)
 const DANGEROUS_PATTERNS: { name: string; pattern: number[] }[] = [
