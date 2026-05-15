@@ -53,6 +53,24 @@ type: project
 
 8. ~~**No revenue metrics**~~ — **FIXED**. `getBillingOverview()` now computes MRR, ARR, ARPU, net revenue (30d), churned subscriptions (30d), and trial subscription counts.
 
+9. ~~**`invoice.subscriptionId` stores Stripe ID instead of local UUID**~~ **FIXED** — Webhook handlers now look up the local subscription UUID via `stripeSubscriptionId` before inserting invoice records.
+
+10. ~~**Cancel/reactivate don't sync with Stripe**~~ **FIXED** — Added `cancelStripeSubscription()` and `reactivateStripeSubscription()` to stripe.ts; both cancel and reactivate endpoints now call Stripe before updating local DB.
+
+11. ~~**Missing DB indexes**~~ **FIXED** — Added indexes for invoice(status), invoice(paidAt), invoice(userId+status), paymentMethod(userId), subscriptionPlan(isActive), subscription(canceledAt), stripeWebhookEvent(status+nextRetryAt).
+
+12. ~~**Coupon service has zero tests**~~ **FIXED** — 24 tests covering all 7 coupon functions + createStripeCoupon, including TOCTOU race condition validation.
+
+## Remaining Known Gaps
+
+- Pricing page plans are hardcoded, not fetched from API (will go stale)
+- Pricing page has no awareness of logged-in users (cannot adapt CTAs)
+- No subscription status transition state machine (any status can transition to any other)
+- Org-level cancel/reactivate endpoints don't exist
+- Org checkout creates subscription without Stripe checkout session
+- No confirmation dialogs on destructive actions (cancel, delete plan, detach payment method)
+- Missing billing email templates for `customer.subscription.deleted` and `invoice.upcoming` webhook tests
+
 ## Files
 
 - `src/lib/server/billing/stripe.ts` — Stripe client factory
