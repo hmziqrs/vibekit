@@ -11,6 +11,21 @@ import {
 import type { AppDb } from '../services/types'
 import { uuid } from '../uuid'
 
+type SubStatus = 'active' | 'canceled' | 'past_due' | 'incomplete' | 'trialing' | 'paused'
+
+const VALID_TRANSITIONS: Record<SubStatus, SubStatus[]> = {
+  active: ['canceled', 'past_due', 'paused'],
+  canceled: ['active'],
+  incomplete: ['active', 'canceled'],
+  past_due: ['active', 'canceled'],
+  paused: ['active', 'canceled'],
+  trialing: ['active', 'canceled', 'past_due'],
+}
+
+export function isValidTransition(from: SubStatus, to: SubStatus): boolean {
+  return VALID_TRANSITIONS[from]?.includes(to) ?? false
+}
+
 export async function getActivePlans(db: AppDb) {
   return db
     .select()
@@ -177,6 +192,12 @@ export async function updateSubscriptionStatus(db: AppDb, subId: string, status:
 }
 
 export async function cancelSubscription(db: AppDb, subId: string) {
+  const sub = await getSubscriptionById(db, subId)
+  if (!sub) throw new Error('Subscription not found')
+  if (!isValidTransition(sub.status as SubStatus, 'canceled')) {
+    throw new Error(`Cannot cancel subscription in '${sub.status}' state`)
+  }
+
   await db
     .update(subscription)
     .set({ canceledAt: new Date(), status: 'canceled' })
@@ -189,6 +210,12 @@ export async function cancelSubscription(db: AppDb, subId: string) {
 }
 
 export async function reactivateSubscription(db: AppDb, subId: string) {
+  const sub = await getSubscriptionById(db, subId)
+  if (!sub) throw new Error('Subscription not found')
+  if (!isValidTransition(sub.status as SubStatus, 'active')) {
+    throw new Error(`Cannot reactivate subscription in '${sub.status}' state`)
+  }
+
   await db
     .update(subscription)
     .set({ canceledAt: null, status: 'active' })

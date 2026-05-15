@@ -219,7 +219,7 @@ describe('createSubscription', () => {
 describe('cancelSubscription', () => {
   it('sets status to canceled and logs event', async () => {
     const { cancelSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'active' } })
 
     await cancelSubscription(db, 'sub-1')
 
@@ -233,12 +233,28 @@ describe('cancelSubscription', () => {
     expect(eventValues.type).toBe('canceled')
     expect(eventValues.subscriptionId).toBe('sub-1')
   })
+
+  it('throws when subscription not found', async () => {
+    const { cancelSubscription } = await import('$lib/server/billing/subscription-service')
+    const db = createMockDb({ planRow: null })
+
+    await expect(cancelSubscription(db, 'sub-missing')).rejects.toThrow('Subscription not found')
+  })
+
+  it('throws when subscription is already canceled', async () => {
+    const { cancelSubscription } = await import('$lib/server/billing/subscription-service')
+    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'canceled' } })
+
+    await expect(cancelSubscription(db, 'sub-1')).rejects.toThrow(
+      "Cannot cancel subscription in 'canceled' state"
+    )
+  })
 })
 
 describe('reactivateSubscription', () => {
   it('sets status to active and logs renewed event', async () => {
     const { reactivateSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'canceled' } })
 
     await reactivateSubscription(db, 'sub-1')
 
@@ -248,6 +264,24 @@ describe('reactivateSubscription', () => {
 
     const eventValues = db._valuesFn.mock.calls[0][0] as Record<string, unknown>
     expect(eventValues.type).toBe('renewed')
+  })
+
+  it('throws when subscription not found', async () => {
+    const { reactivateSubscription } = await import('$lib/server/billing/subscription-service')
+    const db = createMockDb({ planRow: null })
+
+    await expect(reactivateSubscription(db, 'sub-missing')).rejects.toThrow(
+      'Subscription not found'
+    )
+  })
+
+  it('throws when subscription is already active', async () => {
+    const { reactivateSubscription } = await import('$lib/server/billing/subscription-service')
+    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'active' } })
+
+    await expect(reactivateSubscription(db, 'sub-1')).rejects.toThrow(
+      "Cannot reactivate subscription in 'active' state"
+    )
   })
 })
 

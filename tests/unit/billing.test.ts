@@ -1,4 +1,4 @@
-import { calculateProration } from '$lib/server/billing/subscription-service'
+import { calculateProration, isValidTransition } from '$lib/server/billing/subscription-service'
 import {
   checkoutSessionSchema,
   changePlanSchema,
@@ -249,5 +249,134 @@ describe('subscription status transitions', () => {
 
   it('sets status to active when trialEnd is undefined', () => {
     expect(getExpectedInitialStatus(undefined)).toBe('active')
+  })
+})
+
+describe('isValidTransition — subscription state machine', () => {
+  const statuses = ['active', 'canceled', 'incomplete', 'past_due', 'paused', 'trialing'] as const
+
+  it('allows active → canceled', () => {
+    expect(isValidTransition('active', 'canceled')).toBe(true)
+  })
+
+  it('allows active → past_due', () => {
+    expect(isValidTransition('active', 'past_due')).toBe(true)
+  })
+
+  it('allows active → paused', () => {
+    expect(isValidTransition('active', 'paused')).toBe(true)
+  })
+
+  it('rejects active → active (no-op)', () => {
+    expect(isValidTransition('active', 'active')).toBe(false)
+  })
+
+  it('rejects active → incomplete', () => {
+    expect(isValidTransition('active', 'incomplete')).toBe(false)
+  })
+
+  it('rejects active → trialing', () => {
+    expect(isValidTransition('active', 'trialing')).toBe(false)
+  })
+
+  it('allows canceled → active (reactivation)', () => {
+    expect(isValidTransition('canceled', 'active')).toBe(true)
+  })
+
+  it('rejects canceled → canceled (double cancel)', () => {
+    expect(isValidTransition('canceled', 'canceled')).toBe(false)
+  })
+
+  it('rejects canceled → past_due', () => {
+    expect(isValidTransition('canceled', 'past_due')).toBe(false)
+  })
+
+  it('rejects canceled → trialing', () => {
+    expect(isValidTransition('canceled', 'trialing')).toBe(false)
+  })
+
+  it('allows incomplete → active', () => {
+    expect(isValidTransition('incomplete', 'active')).toBe(true)
+  })
+
+  it('allows incomplete → canceled', () => {
+    expect(isValidTransition('incomplete', 'canceled')).toBe(true)
+  })
+
+  it('rejects incomplete → past_due', () => {
+    expect(isValidTransition('incomplete', 'past_due')).toBe(false)
+  })
+
+  it('allows past_due → active (payment recovered)', () => {
+    expect(isValidTransition('past_due', 'active')).toBe(true)
+  })
+
+  it('allows past_due → canceled (give up)', () => {
+    expect(isValidTransition('past_due', 'canceled')).toBe(true)
+  })
+
+  it('rejects past_due → trialing', () => {
+    expect(isValidTransition('past_due', 'trialing')).toBe(false)
+  })
+
+  it('allows paused → active', () => {
+    expect(isValidTransition('paused', 'active')).toBe(true)
+  })
+
+  it('allows paused → canceled', () => {
+    expect(isValidTransition('paused', 'canceled')).toBe(true)
+  })
+
+  it('rejects paused → past_due', () => {
+    expect(isValidTransition('paused', 'past_due')).toBe(false)
+  })
+
+  it('allows trialing → active (trial ends, converts)', () => {
+    expect(isValidTransition('trialing', 'active')).toBe(true)
+  })
+
+  it('allows trialing → canceled', () => {
+    expect(isValidTransition('trialing', 'canceled')).toBe(true)
+  })
+
+  it('allows trialing → past_due (payment failed at trial end)', () => {
+    expect(isValidTransition('trialing', 'past_due')).toBe(true)
+  })
+
+  it('rejects trialing → incomplete', () => {
+    expect(isValidTransition('trialing', 'incomplete')).toBe(false)
+  })
+
+  it('rejects trialing → paused', () => {
+    expect(isValidTransition('trialing', 'paused')).toBe(false)
+  })
+
+  it('returns false for unknown source status', () => {
+    expect(isValidTransition('unknown_status' as 'active', 'canceled')).toBe(false)
+  })
+
+  it('returns false for unknown target status', () => {
+    expect(isValidTransition('active', 'unknown_status' as 'active')).toBe(false)
+  })
+
+  it('every status has at least one valid outgoing transition', () => {
+    for (const status of statuses) {
+      const hasOutgoing = statuses.some((target) => isValidTransition(status, target))
+      expect(hasOutgoing).toBe(true)
+    }
+  })
+
+  it('every status except active has a path back to active', () => {
+    for (const status of statuses) {
+      if (status === 'active') continue
+      const canReachActive = isValidTransition(status, 'active')
+      expect(canReachActive).toBe(true)
+    }
+  })
+
+  it('no status can transition to itself', () => {
+    for (const status of statuses) {
+      expect(isValidTransition(status, status)).toBe(false)
+    }
   })
 })
