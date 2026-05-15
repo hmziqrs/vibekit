@@ -117,3 +117,32 @@ The Organizations & Teams phase covers org CRUD, member management with roles/pe
 6. Consider adding org/team-scoped items or a "shared items" concept for collaboration.
 7. Add a "Leave Organization" button to the org detail page.
 8. Add member search/filter for large organizations.
+
+---
+
+## Deep Security Audit — 2026-05-15 (Second Pass)
+
+### Findings Fixed
+
+| ID  | Severity | Finding                                                         | Fix                                                                  |
+| --- | -------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| F1  | CRITICAL | Org deletion ignores active subscriptions                       | Now checks for active/trialing subscription before allowing deletion |
+| F7  | MEDIUM   | Invitation acceptance for soft-deleted orgs                     | Now checks org exists and is not soft-deleted before accepting       |
+| F9  | MEDIUM   | Team creation uses org.update instead of team.create permission | Fixed to use team.create — regular members can now create teams      |
+| P0  | CRITICAL | 3 pages use window.location.pathname for route params           | Fixed to use page.params from $app/state (reactive SPA navigation)   |
+| P0  | HIGH     | Team settings missing error state                               | Added error branch with retry button                                 |
+
+### Remaining Findings
+
+| ID  | Severity | Finding                                                 | Status                                    |
+| --- | -------- | ------------------------------------------------------- | ----------------------------------------- |
+| F2  | HIGH     | Ownership transfer is non-atomic (no DB transaction)    | Open — needs transaction wrapping         |
+| F3  | HIGH     | Admin can demote other admins (no role hierarchy check) | Open — needs getRoleLevel check           |
+| F4  | HIGH     | Invitation acceptance has TOCTOU race                   | Open — needs transaction or atomic INSERT |
+| F5  | MEDIUM   | Invitation token leaked in API response                 | Open — should only return invitation URL  |
+| F10 | MEDIUM   | No rate limiting on member role changes                 | Open — add withRateLimit                  |
+| F11 | MEDIUM   | Org slug collision under concurrency                    | Open — needs unique constraint catch      |
+| F13 | HIGH     | Cron hard-delete ignores subscriptions                  | Open — should check before cascade delete |
+| P1  | MEDIUM   | No confirmation dialog for member removal               | Open                                      |
+| P1  | MEDIUM   | transferOwnershipSchema missing .trim()                 | Open                                      |
+| P2  | MEDIUM   | Duplicate getRoleBadgeColor() in 3 files                | Open — extract to shared util             |
