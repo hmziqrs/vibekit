@@ -5943,13 +5943,25 @@ orgApp.post(
     const org = c.get('organization') as typeof organization.$inferSelect
     const body = await c.req.json<{ newPlanId: string }>().catch(() => ({ newPlanId: '' }))
     if (!body.newPlanId) throw new BadRequestError('newPlanId is required')
-    const { db } = c.get('services')
+    const services = c.get('services')
+    const { db } = services
 
     const sub = await getOrgSubscription(db, org.id)
     if (!sub) throw new BadRequestError('No active subscription')
 
     const newPlan = await getPlanById(db, body.newPlanId)
     if (!newPlan) throw new NotFoundError()
+
+    // Sync with Stripe if subscription has a Stripe ID and the new plan has a price ID
+    if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
+      const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
+      if (stripe) {
+        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+          items: [{ price: newPlan.stripePriceId, subscription: sub.stripeSubscriptionId }],
+          proration_behavior: 'create_prorations',
+        })
+      }
+    }
 
     const result = await changeSubscriptionPlan(db, sub.id, body.newPlanId)
     return c.json({ prorationAmountInCents: result.prorationAmountInCents, success: true })

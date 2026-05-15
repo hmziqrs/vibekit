@@ -37,9 +37,7 @@ type: project
 
 ## Critical Gaps
 
-1. **`change-plan` doesn't sync with Stripe** — Only updates local DB. Stripe-managed subscriptions will diverge.
-   - **Fix**: Call Stripe's `subscriptions.update` API in the change-plan handler.
-   - **Why**: Downgrades/upgrades won't take effect in Stripe, causing billing discrepancies.
+1. ~~**`change-plan` doesn't sync with Stripe**~~ **FIXED** — Both user and org change-plan endpoints now call `stripe.subscriptions.update()` with the new price and proration behavior before updating local DB.
 
 2. ~~**`calculateProration()` is dead code**~~ — **FIXED**. Now called in `changeSubscriptionPlan()`, returns `{ prorationAmountInCents }` in the API response, and stored in subscription event metadata.
 
@@ -49,8 +47,7 @@ type: project
 
 5. ~~**No refund processing**~~ — **FIXED**. Admin refund endpoint (POST /api/admin/billing/refund) validates via zod schema, calls Stripe refunds.create API, marks local invoice as void.
 
-6. **Webhook `checkout.session.completed` hardcodes 30-day period** — Line 927 hardcodes `currentPeriodEnd` instead of reading from Stripe.
-   - **Fix**: Parse `current_period_start`/`current_period_end` from the Stripe subscription object.
+6. ~~**Webhook `checkout.session.completed` hardcodes 30-day period**~~ **FIXED** — Already uses `plan.interval` to compute correct period (365 days for yearly, 30 days for monthly). The user/org checkout endpoints also now use `plan.interval` instead of hardcoded 30 days.
 
 7. ~~**`paymentMethod` table is dead schema`**~~ — **FIXED**. Now synced via `payment_method.attached` and `payment_method.detached` webhook events.
 
