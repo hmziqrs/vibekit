@@ -54,7 +54,7 @@ export const recordUsageSchema = z.object({
 })
 
 export const refundSchema = z.object({
-  amountInCents: z.number().int().min(1).max(10_000_000_00).optional(),
+  amountInCents: z.number().int().min(1).max(1_000_000_000).optional(),
   invoiceId: z.string().trim().min(1),
   reason: z.enum(['duplicate', 'fraudulent', 'requested_by_customer']).optional(),
 })

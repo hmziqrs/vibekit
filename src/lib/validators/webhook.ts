@@ -60,21 +60,21 @@ export const WEBHOOK_EVENT_TYPES = [
   'webhook.test',
 ] as const
 
-const BLOCKED_HOSTS = [
+const BLOCKED_HOSTS = new Set([
   'localhost',
   '127.0.0.1',
   '0.0.0.0',
   '::1',
-  '169.254.169.254', // cloud metadata
+  '169.254.169.254', // Cloud metadata
   'metadata.google.internal',
-]
+])
 
 function isValidWebhookUrl(val: string): boolean {
   if (!val.startsWith('https://')) return false
   try {
     const url = new URL(val)
     const host = url.hostname.toLowerCase()
-    if (BLOCKED_HOSTS.includes(host)) return false
+    if (BLOCKED_HOSTS.has(host)) return false
     // Block private IP ranges
     if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(host)) return false
     if (host.endsWith('.internal') || host.endsWith('.local')) return false
