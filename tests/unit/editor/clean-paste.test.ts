@@ -37,6 +37,18 @@ describe(sanitizeHtml, () => {
     expect(result).not.toContain('onload')
   })
 
+  it('preserves multi-word alt text on images', () => {
+    const html = '<img src="/img/photo.jpg" alt="alt text">'
+    const result = sanitizeHtml(html)
+    expect(result).toContain('alt="alt text"')
+  })
+
+  it('preserves multi-word href query params on links', () => {
+    const html = '<a href="https://example.com/page?q=hello world">link</a>'
+    const result = sanitizeHtml(html)
+    expect(result).toContain('href="https://example.com/page?q=hello world"')
+  })
+
   it('preserves colspan and rowspan on table cells', () => {
     const html = '<td colspan="2" rowspan="3" style="color:red">Cell</td>'
     const result = sanitizeHtml(html)

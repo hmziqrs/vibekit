@@ -39,21 +39,29 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   th: new Set(['colspan', 'rowspan']),
 }
 
+function parseAttrs(attrs: string): string[] {
+  const result: string[] = []
+  const regex = /(\w+)=("[^"]*"|'[^']*'|\S+)/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(attrs)) !== null) {
+    result.push(match[0])
+  }
+  return result
+}
+
 function filterTag(tag: string, attrs: string): string {
   const allowed = ALLOWED_ATTRS[tag]
   if (!allowed) {
     return `<${tag}>`
   }
 
-  const filteredAttrs = attrs
-    .split(/\s+/)
+  const filteredAttrs = parseAttrs(attrs)
     .filter((attr: string) => {
       const name = attr.split('=')[0].toLowerCase()
       return allowed.has(name)
     })
     .filter((attr: string) => {
-      // Block javascript:, data:, and vbscript: URIs in href/src
-      const value = attr.split('=')[1]?.toLowerCase() ?? ''
+      const value = attr.split('=').slice(1).join('=').toLowerCase()
       const unquoted = value.replace(/^["']|["']$/g, '')
       return !/^\s*(javascript|vbscript|data)\s*:/i.test(unquoted)
     })
