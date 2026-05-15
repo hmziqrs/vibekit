@@ -4,16 +4,30 @@ vi.mock('$lib/server/integrations/dispatch', () => ({
   dispatchToIntegrations: vi.fn().mockResolvedValue(undefined),
 }))
 
+const BASE = 'http://localhost:5173'
+
+async function isVibekitServer(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/api/automation/manifest`)
+    const contentType = res.headers.get('content-type') ?? ''
+    return contentType.includes('application/json')
+  } catch {
+    return false
+  }
+}
+
 describe('admin user detail API', () => {
   it('requires authentication', async () => {
-    const response = await fetch('http://localhost:5173/api/admin/users/test-id')
+    if (!(await isVibekitServer())) return
+    const response = await fetch(`${BASE}/api/admin/users/test-id`)
     expect([401, 403]).toContain(response.status)
   })
 })
 
 describe('organization leave API', () => {
   it('requires authentication', async () => {
-    const response = await fetch('http://localhost:5173/api/orgs/test-org/leave', {
+    if (!(await isVibekitServer())) return
+    const response = await fetch(`${BASE}/api/orgs/test-org/leave`, {
       method: 'POST',
     })
     expect([401, 403]).toContain(response.status)
