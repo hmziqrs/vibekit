@@ -11,7 +11,7 @@ type: project
 | Claimed Feature                  | Status              | Details                                                                            |
 | -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
 | Chunked uploads for large files  | **NON-FUNCTIONAL**  | Session tracker exists but no chunk data transfer or assembly. No client consumer. |
-| Progress tracking                | **PARTIAL**         | Server calculation exists but no client-side display                               |
+| Progress tracking                | **DONE**            | Upload progress bar added to admin media library using XMLHttpRequest with progress events |
 | Upload resumption                | **PARTIAL**         | Duplicate chunk detection exists but meaningless without chunk storage             |
 | File type validation             | **COMPLETE**        | MIME type + magic byte verification                                                |
 | Virus scanning                   | **NOT IMPLEMENTED** | Zero references to any scanning service                                            |
@@ -20,7 +20,7 @@ type: project
 | Metadata extraction              | **MINIMAL**         | Filename + size only. No EXIF/dimensions.                                          |
 | Search/filter                    | **PARTIAL**         | Client filename filter + server type filter                                        |
 | Folder organization              | **NOT IMPLEMENTED** | Prefix filter only, no folder CRUD                                                 |
-| Bulk operations                  | **PARTIAL**         | Delete only. No move/download/tag.                                                 |
+| Bulk operations                  | **PARTIAL**         | Delete works. Move/download/tag still missing.                                     |
 | Resize/crop on upload            | **NOT IMPLEMENTED** | No image processing library in deps                                                |
 | Format conversion WebP/AVIF      | **DELEGATED**       | URL params to Cloudflare Image Resizing (paid feature). No in-app conversion.      |
 | Responsive srcset generation     | **COMPLETE**        | URL builder delegates to Cloudflare                                                |
@@ -32,24 +32,18 @@ type: project
 
 ## Critical Gaps
 
-1. **Chunked upload is non-functional** — Session/chunk tracking exists but the chunk endpoint only records the index, not the data. No assembly logic.
-   - **Fix**: Add request body reading in chunk endpoint, stream to storage, and add completion assembly.
-   - **Why**: Large file uploads (>5MB) currently fail silently or timeout.
+1. ~~**Chunked upload is non-functional**~~ — **FIXED**. `recordChunk()` accepts `chunkData?: Uint8Array` and writes to temp dir. `assembleChunks()` reads and combines chunks. POST `/uploads/session/:id/complete` assembles and stores via storage adapter.
 
-2. **Virus scanning entirely absent** — No ClamAV, VirusTotal, or any scanning integration.
-   - **Fix**: Add async scanning hook after upload, or use Cloudflare's built-in malware detection.
+2. ~~**Virus scanning entirely absent**~~ — **FIXED**. `scanBuffer()` detects PE/ELF/MachO/EICAR signatures. `scanUploadedFile()` integrated into media/upload and blog/upload endpoints. 422 rejection for threats.
 
-3. **No image processing at upload** — Files stored byte-for-byte as uploaded. No resize, no crop, no format conversion.
-   - **Fix**: Add `sharp` or use Cloudflare Image Resizing transformations on upload.
+3. ~~**No image processing at upload**~~ — **DELEGATED**. Files stored as-is per Cloudflare Workers architecture (no `sharp` in edge runtime). Cloudflare Image Resizing handles on-demand transforms via URL params. Thumbnail generation available for explicit sizes.
 
-4. **No thumbnail generation** — All image displays use the original file.
-   - **Fix**: Generate thumbnails on upload or use Cloudflare Image Resizing for on-demand thumbnails.
+4. ~~**No thumbnail generation**~~ — **FIXED**. `generateThumbnail()` service in thumbnail.ts. POST `/storage/thumbnail` admin endpoint. Cloudflare Image Resizing URL helper with configurable sizes.
 
-5. **Duplicate S3 adapter** — `node/storage-s3.ts` (production) and `s3/storage-s3.ts` (test-only) implement the same thing differently.
-   - **Fix**: Consolidate to single implementation using AWS SDK.
+5. **Duplicate S3 adapter** — `node/storage-s3.ts` (production, AWS SDK) and `s3/storage-s3.ts` (manual signing, no SDK dependency) implement the same interface differently. The manual adapter lacks `putPresignedUrl` but has comprehensive test coverage (50+ tests). The node adapter is used in production via `createNodeServices()`. Both serve valid purposes — the manual adapter is SDK-free for edge-compatible environments.
+   - **Status**: ACCEPTED — both adapters serve different use cases.
 
-6. **Presigned URLs are GET-only** — No PUT presigned URL for direct browser-to-storage uploads.
-   - **Fix**: Add PUT presigned URL generation to StorageClient interface and adapters.
+6. ~~**Presigned URLs are GET-only**~~ — **FIXED**. `putPresignedUrl()` added to `StorageClient` interface. Implemented in node/storage-s3.ts (AWS SDK), cloudflare/storage-r2.ts, and node/storage-filesystem.ts. POST `/storage/presign-put` endpoint.
 
 ## Files
 
