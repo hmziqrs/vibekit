@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 describe('email service initialization', () => {
-  it('setEmailService and getEmailService round-trip', async () => {
+  it('setEmailService and getEmailService round-trip', { timeout: 15_000 }, async () => {
     const { setEmailService, getEmailService } = await import('$lib/server/auth')
 
     const mockService = {

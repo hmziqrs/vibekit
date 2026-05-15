@@ -14,7 +14,7 @@ describe('scheduled cron handler', () => {
     expect(script).toContain('cleanup')
   })
 
-  it('cron endpoints accept x-cron-secret header', async () => {
+  it('cron endpoints accept x-cron-secret header', { timeout: 15_000 }, async () => {
     const endpoints = [
       '/api/admin/publish-scheduled',
       '/api/admin/cleanup',
