@@ -23,7 +23,7 @@
   let acceptingTerms = $state(false)
 
   $effect(() => {
-    if ($page.data?.user) {
+    if (page.data?.user) {
       fetch('/api/terms/status')
         .then((r) => r.json())
         .then((data) => {
