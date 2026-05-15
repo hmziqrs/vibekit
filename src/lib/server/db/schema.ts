@@ -27,7 +27,7 @@ export const blogPost = sqliteTable(
   {
     authorId: text('author_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     canonicalUrl: text('canonical_url'),
     contentBody: text('content_body'),
     coverImageUrl: text('cover_image_url'),
@@ -185,7 +185,7 @@ export const auditLog = sqliteTable(
     metadata: text('metadata'),
     userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
   },
   (table) => [index('audit_log_action_created_idx').on(table.action, table.createdAt)]
 )
@@ -210,7 +210,7 @@ export const securityEvent = sqliteTable(
     ipAddress: text('ip_address'),
     metadata: text('metadata'),
     userAgent: text('user_agent'),
-    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   },
   (table) => [
     index('security_event_type_created_idx').on(table.eventType, table.createdAt),
@@ -223,7 +223,7 @@ export const blogPostRevision = sqliteTable(
   {
     authorId: text('author_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     changeDescription: text('change_description'),
     contentBody: text('content_body'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
@@ -255,7 +255,7 @@ export const organization = sqliteTable(
     name: text('name').notNull(),
     ownerId: text('owner_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     slug: text('slug').notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -708,7 +708,7 @@ export const comment = sqliteTable(
   {
     authorId: text('author_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     content: text('content').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -898,7 +898,7 @@ export const subscription = sqliteTable(
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
-    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   },
   (table) => [
     index('subscription_canceled_at_idx').on(table.canceledAt),
