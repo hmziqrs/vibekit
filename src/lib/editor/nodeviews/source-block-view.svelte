@@ -41,7 +41,7 @@
           type="url"
           value={url}
           placeholder="https://..."
-          class="w-full rounded border border-border bg-surface-base px-2 py-1 pr-8 text-sm text-text-secondary"
+          class="w-full rounded border border-border bg-surface-base px-2 py-1 pe-8 text-sm text-text-secondary"
           oninput={(e) => update('url', (e.target as HTMLInputElement).value)}
         />
         {#if url}

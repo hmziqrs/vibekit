@@ -31,7 +31,7 @@
   }
 </script>
 
-<blockquote class="my-4 border-l-4 border-brand bg-surface-deep py-4 pl-4 pr-6" contenteditable="false">
+<blockquote class="my-4 border-s-4 border-brand bg-surface-deep py-4 ps-4 pe-6" contenteditable="false">
   {#if editingText}
     <textarea
       bind:value={textInput}

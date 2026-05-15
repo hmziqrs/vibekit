@@ -29,6 +29,6 @@
     bind:value
     {placeholder}
     aria-label={placeholder}
-    class="w-full rounded-lg border border-border bg-input pl-9 pr-4 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+    class="w-full rounded-lg border border-border bg-input ps-9 pe-4 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
   />
 </div>

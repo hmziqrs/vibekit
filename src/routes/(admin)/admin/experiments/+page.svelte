@@ -191,12 +191,12 @@
             <thead>
               <tr class="border-b border-border">
                 <th class="px-3 py-2 text-start text-xs font-medium text-text-muted">Variant</th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Exposures</th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Conversions</th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Conv. Rate</th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Z-Score</th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">P-Value</th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Significant?</th>
+                <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Exposures</th>
+                <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Conversions</th>
+                <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Conv. Rate</th>
+                <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Z-Score</th>
+                <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">P-Value</th>
+                <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Significant?</th>
               </tr>
             </thead>
             <tbody>
@@ -213,18 +213,18 @@
                       {/if}
                     </div>
                   </td>
-                  <td class="px-3 py-2 text-right text-sm text-text-secondary">{result.exposureCount}</td>
-                  <td class="px-3 py-2 text-right text-sm text-text-secondary">{result.conversions}</td>
-                  <td class="px-3 py-2 text-right text-sm font-medium text-text-primary">
+                  <td class="px-3 py-2 text-end text-sm text-text-secondary">{result.exposureCount}</td>
+                  <td class="px-3 py-2 text-end text-sm text-text-secondary">{result.conversions}</td>
+                  <td class="px-3 py-2 text-end text-sm font-medium text-text-primary">
                     {(result.conversionRate * 100).toFixed(2)}%
                   </td>
-                  <td class="px-3 py-2 text-right text-sm text-text-secondary">
+                  <td class="px-3 py-2 text-end text-sm text-text-secondary">
                     {result.zScore !== null ? result.zScore.toFixed(3) : '—'}
                   </td>
-                  <td class="px-3 py-2 text-right text-sm text-text-secondary">
+                  <td class="px-3 py-2 text-end text-sm text-text-secondary">
                     {result.pValue !== null ? result.pValue.toFixed(4) : '—'}
                   </td>
-                  <td class="px-3 py-2 text-right">
+                  <td class="px-3 py-2 text-end">
                     {#if result.pValue !== null && result.pValue < 0.05}
                       <span class="text-xs font-medium text-success">Yes (95%)</span>
                     {:else if result.pValue !== null && result.pValue < 0.1}
@@ -375,7 +375,7 @@
               <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Status</th>
               <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Target Metric</th>
               <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Created</th>
-              <th class="px-4 py-3 text-right text-xs font-medium text-text-muted">Actions</th>
+              <th class="px-4 py-3 text-end text-xs font-medium text-text-muted">Actions</th>
             </tr>
           </thead>
           <tbody>

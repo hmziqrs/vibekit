@@ -117,7 +117,7 @@
         <thead>
           <tr class="border-b border-border bg-surface">
             <th class="px-4 py-2 text-start text-[12px] font-medium text-text-muted">Post</th>
-            <th class="w-[100px] px-4 py-2 text-right text-[12px] font-medium text-text-muted">Views</th>
+            <th class="w-[100px] px-4 py-2 text-end text-[12px] font-medium text-text-muted">Views</th>
           </tr>
         </thead>
         <tbody>
@@ -131,7 +131,7 @@
                   {post.title}
                 </a>
               </td>
-              <td class="px-4 py-2.5 text-right text-[13px] text-text-muted">
+              <td class="px-4 py-2.5 text-end text-[13px] text-text-muted">
                 {formatNumber(post.views, { notation: 'compact' })}
               </td>
             </tr>
@@ -163,14 +163,14 @@
         <thead>
           <tr class="border-b border-border bg-surface">
             <th class="px-4 py-2 text-start text-[12px] font-medium text-text-muted">Source</th>
-            <th class="w-[100px] px-4 py-2 text-right text-[12px] font-medium text-text-muted">Views</th>
+            <th class="w-[100px] px-4 py-2 text-end text-[12px] font-medium text-text-muted">Views</th>
           </tr>
         </thead>
         <tbody>
           {#each overviewQuery.data.referrers as ref}
             <tr class="border-b border-border last:border-0">
               <td class="px-4 py-2.5 text-[13px] text-text-primary">{ref.domain}</td>
-              <td class="px-4 py-2.5 text-right text-[13px] text-text-muted">
+              <td class="px-4 py-2.5 text-end text-[13px] text-text-muted">
                 {formatNumber(ref.count, { notation: 'compact' })}
               </td>
             </tr>

@@ -140,13 +140,13 @@
       <table class="w-full">
         <thead>
           <tr class="border-b border-white/[0.06] bg-white/[0.02]">
-            <th class="px-4 py-3 text-left text-[12px] font-medium text-text-muted">Key</th>
-            <th class="px-4 py-3 text-left text-[12px] font-medium text-text-muted">User</th>
-            <th class="px-4 py-3 text-left text-[12px] font-medium text-text-muted">Scopes</th>
-            <th class="px-4 py-3 text-left text-[12px] font-medium text-text-muted">Requests</th>
-            <th class="px-4 py-3 text-left text-[12px] font-medium text-text-muted">Status</th>
-            <th class="px-4 py-3 text-left text-[12px] font-medium text-text-muted">Created</th>
-            <th class="px-4 py-3 text-right text-[12px] font-medium text-text-muted">Actions</th>
+            <th class="px-4 py-3 text-start text-[12px] font-medium text-text-muted">Key</th>
+            <th class="px-4 py-3 text-start text-[12px] font-medium text-text-muted">User</th>
+            <th class="px-4 py-3 text-start text-[12px] font-medium text-text-muted">Scopes</th>
+            <th class="px-4 py-3 text-start text-[12px] font-medium text-text-muted">Requests</th>
+            <th class="px-4 py-3 text-start text-[12px] font-medium text-text-muted">Status</th>
+            <th class="px-4 py-3 text-start text-[12px] font-medium text-text-muted">Created</th>
+            <th class="px-4 py-3 text-end text-[12px] font-medium text-text-muted">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -189,7 +189,7 @@
               <td class="px-4 py-3 text-[12px] text-text-faint">
                 {formatDate(key.createdAt)}
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-4 py-3 text-end">
                 <div class="flex items-center justify-end gap-1">
                   {#if !key.revokedAt}
                     <button

@@ -265,7 +265,7 @@
               <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Rollout</th>
               <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Environment</th>
               <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Updated</th>
-              <th class="px-4 py-3 text-right text-xs font-medium text-text-muted">Actions</th>
+              <th class="px-4 py-3 text-end text-xs font-medium text-text-muted">Actions</th>
             </tr>
           </thead>
           <tbody>

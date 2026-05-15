@@ -319,8 +319,8 @@
               <th class="w-10 px-3 py-2"></th>
               <th class="px-3 py-2 text-start text-xs font-medium text-text-muted">File</th>
               <th class="px-3 py-2 text-start text-xs font-medium text-text-muted">Type</th>
-              <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Size</th>
-              <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Modified</th>
+              <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Size</th>
+              <th class="px-3 py-2 text-end text-xs font-medium text-text-muted">Modified</th>
               <th class="px-3 py-2"></th>
             </tr>
           </thead>
@@ -346,8 +346,8 @@
                   </div>
                 </td>
                 <td class="px-3 py-2 text-xs text-text-muted">{item.contentType ?? 'unknown'}</td>
-                <td class="px-3 py-2 text-right text-xs text-text-secondary">{formatSize(item.size)}</td>
-                <td class="px-3 py-2 text-right text-xs text-text-muted">
+                <td class="px-3 py-2 text-end text-xs text-text-secondary">{formatSize(item.size)}</td>
+                <td class="px-3 py-2 text-end text-xs text-text-muted">
                   {formatDate(item.lastModified)}
                 </td>
                 <td class="px-3 py-2">

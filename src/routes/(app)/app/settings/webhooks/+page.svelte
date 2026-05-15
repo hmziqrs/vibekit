@@ -303,7 +303,7 @@
                   </span>
                   {group.label}
                 </button>
-                <div class="mt-1.5 flex flex-wrap gap-1.5 pl-6">
+                <div class="mt-1.5 flex flex-wrap gap-1.5 ps-6">
                   {#each group.events as event}
                     <button
                       onclick={() => toggleEvent(event)}

@@ -286,7 +286,7 @@
                 <p class="text-[14px] text-text-primary">
                   &bull;&bull;&bull;&bull; {pm.last4 ?? '????'}
                   {#if pm.isDefault}
-                    <span class="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">Default</span>
+                    <span class="ms-2 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">Default</span>
                   {/if}
                 </p>
                 {#if pm.expiryMonth && pm.expiryYear}

@@ -39,7 +39,7 @@
         role="option"
         aria-selected={i === selectedIndex}
         class={cn(
-          'flex w-full flex-col items-start px-3 py-2 text-left',
+          'flex w-full flex-col items-start px-3 py-2 text-start',
           i === selectedIndex ? 'bg-muted text-text-primary' : 'text-text-secondary',
         )}
         onmouseenter={() => onHover(i)}

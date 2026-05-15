@@ -270,7 +270,7 @@
           <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Status</th>
           <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Reporter</th>
           <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Date</th>
-          <th class="px-5 py-3 text-right text-[12px] font-medium uppercase tracking-wider text-text-subtle">Actions</th>
+          <th class="px-5 py-3 text-end text-[12px] font-medium uppercase tracking-wider text-text-subtle">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-white/[0.04]">
@@ -322,7 +322,7 @@
             <td class="px-5 py-3.5 text-[12px] text-text-subtle">
               {formatDate(report.createdAt)}
             </td>
-            <td class="px-5 py-3.5 text-right">
+            <td class="px-5 py-3.5 text-end">
               {#if report.status === 'pending' || report.status === 'reviewing'}
                 <div class="relative inline-block">
                   <button

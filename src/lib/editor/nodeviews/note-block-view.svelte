@@ -15,7 +15,7 @@
   const label = $derived(type === 'correction' ? 'Correction:' : 'Update:')
 
   const borderClass = $derived(
-    type === 'correction' ? 'border-l-[var(--terminal-yellow)]' : 'border-l-[var(--sidebar-primary)]',
+    type === 'correction' ? 'border-s-[var(--terminal-yellow)]' : 'border-s-[var(--sidebar-primary)]',
   )
 
   const prefixColorClass = $derived(
@@ -28,7 +28,7 @@
   }
 </script>
 
-<div class="my-4 border-l-4 {borderClass} bg-surface-deep py-3 pl-4 pr-6" contenteditable="false">
+<div class="my-4 border-s-4 {borderClass} bg-surface-deep py-3 ps-4 pe-6" contenteditable="false">
   <span class="text-sm font-semibold {prefixColorClass}">{label}</span>
 
   {#if editingText}

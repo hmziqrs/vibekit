@@ -33,8 +33,8 @@
   }
 
   function indentClass(level: number): string {
-    if (level === 3) return 'pl-3'
-    if (level === 4) return 'pl-6'
+    if (level === 3) return 'ps-3'
+    if (level === 4) return 'ps-6'
     return ''
   }
 </script>

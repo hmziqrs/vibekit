@@ -236,7 +236,7 @@
 
             <!-- Replies -->
             {#if commentItem.replies?.length}
-              <div class="mt-3 ms-4 space-y-3 border-s-2 border-border pl-4">
+              <div class="mt-3 ms-4 space-y-3 border-s-2 border-border ps-4">
                 {#each commentItem.replies as reply}
                   <div>
                     <div class="flex items-center gap-2">
