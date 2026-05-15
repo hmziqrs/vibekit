@@ -2033,19 +2033,33 @@ protectedApp.get('/notifications', async (c) => {
   const page = parsePositiveInt(c.req.query('page'), 1)
   const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
   const offset = (page - 1) * limit
+  const typeFilter = c.req.query('type')
+  const readFilter = c.req.query('read')
+
+  const conditions = [eq(notification.userId, userId)]
+  if (typeFilter && ['info', 'success', 'warning', 'error'].includes(typeFilter)) {
+    conditions.push(eq(notification.type, typeFilter as 'error' | 'info' | 'success' | 'warning'))
+  }
+  if (readFilter === 'unread') {
+    conditions.push(sql`${notification.readAt} IS NULL`)
+  } else if (readFilter === 'read') {
+    conditions.push(sql`${notification.readAt} IS NOT NULL`)
+  }
+
+  const where = conditions.length === 1 ? conditions[0] : and(...conditions)
 
   const [rows, countResult] = await Promise.all([
     db
       .select()
       .from(notification)
-      .where(eq(notification.userId, userId))
+      .where(where)
       .orderBy(desc(notification.createdAt))
       .limit(limit)
       .offset(offset),
     db
       .select({ value: sql<number>`count(*)` })
       .from(notification)
-      .where(eq(notification.userId, userId)),
+      .where(where),
   ])
 
   return c.json({

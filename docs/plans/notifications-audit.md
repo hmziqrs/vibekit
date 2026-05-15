@@ -44,6 +44,7 @@
 | PATCH  | `/api/notifications/read-all`     | Mark all unread as read.                                         |
 | PATCH  | `/api/notifications/:id/read`     | Mark single notification as read.                                |
 | DELETE | `/api/notifications/:id`          | Delete single notification.                                      |
+| POST   | `/api/notifications/bulk-delete`  | Bulk delete by IDs or delete all.                                |
 | GET    | `/api/notifications/preferences`  | Get all preference entries.                                      |
 | PATCH  | `/api/notifications/preferences`  | Set a single preference (upsert).                                |
 
@@ -60,9 +61,9 @@
 - The API endpoints for getting/setting preferences exist (`GET/PATCH /api/notifications/preferences`), but there is no user-facing settings page to configure them. The `notificationPreference` channel enum is limited to `in_app` and `email`, with no UI to toggle either.
 - Impact: Users cannot control which notification types they receive. Preferences default to enabled (`isInAppEnabled` returns `true` when no preference exists).
 
-**LOW -- Notification list has no filtering or search.**
+**LOW -- Notification list server-side filtering.**
 
-- `GET /api/notifications` supports pagination but no filtering by type, read status, or date range. Users with many notifications cannot easily find specific ones.
+- `GET /api/notifications` supports `type` and `read` query params for server-side filtering. UI has client-side filter dropdowns that apply to the current page. Server-side filtering enables efficient paginated queries for large notification sets.
 
 **LOW -- No notification archiving.**
 
