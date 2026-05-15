@@ -134,15 +134,15 @@ The Organizations & Teams phase covers org CRUD, member management with roles/pe
 
 ### Remaining Findings
 
-| ID  | Severity | Finding                                                 | Status                                    |
-| --- | -------- | ------------------------------------------------------- | ----------------------------------------- |
-| F2  | HIGH     | Ownership transfer is non-atomic (no DB transaction)    | Open — needs transaction wrapping         |
-| F3  | HIGH     | Admin can demote other admins (no role hierarchy check) | Open — needs getRoleLevel check           |
-| F4  | HIGH     | Invitation acceptance has TOCTOU race                   | Open — needs transaction or atomic INSERT |
-| F5  | MEDIUM   | Invitation token leaked in API response                 | Open — should only return invitation URL  |
-| F10 | MEDIUM   | No rate limiting on member role changes                 | Open — add withRateLimit                  |
-| F11 | MEDIUM   | Org slug collision under concurrency                    | Open — needs unique constraint catch      |
-| F13 | HIGH     | Cron hard-delete ignores subscriptions                  | Open — should check before cascade delete |
-| P1  | MEDIUM   | No confirmation dialog for member removal               | Open                                      |
-| P1  | MEDIUM   | transferOwnershipSchema missing .trim()                 | Open                                      |
-| P2  | MEDIUM   | Duplicate getRoleBadgeColor() in 3 files                | Open — extract to shared util             |
+| ID  | Severity | Finding                                                 | Status                                                                            |
+| --- | -------- | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| F2  | HIGH     | Ownership transfer is non-atomic (no DB transaction)    | ✅ FIXED — now uses `db.batch()` for atomic demote+promote+update                 |
+| F3  | HIGH     | Admin can demote other admins (no role hierarchy check) | ✅ FIXED — added `getRoleLevel()` hierarchy check                                 |
+| F4  | HIGH     | Invitation acceptance has TOCTOU race                   | ✅ FIXED — now uses `db.batch()` for atomic member insert + invitation update     |
+| F5  | MEDIUM   | Invitation token leaked in API response                 | Open — should only return invitation URL                                          |
+| F10 | MEDIUM   | No rate limiting on member role changes                 | Open — add withRateLimit                                                          |
+| F11 | MEDIUM   | Org slug collision under concurrency                    | Open — needs unique constraint catch                                              |
+| F13 | HIGH     | Cron hard-delete ignores subscriptions                  | ✅ FIXED — queries active/trialing subs and excludes protected orgs from deletion |
+| P1  | MEDIUM   | No confirmation dialog for member removal               | Open                                                                              |
+| P1  | MEDIUM   | transferOwnershipSchema missing .trim()                 | Open                                                                              |
+| P2  | MEDIUM   | Duplicate getRoleBadgeColor() in 3 files                | Open — extract to shared util                                                     |

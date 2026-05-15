@@ -148,6 +148,7 @@ import {
   isEmailEnabled,
   setNotificationPreference,
 } from '$lib/server/notifications'
+import { type OrgRole, getRoleLevel } from '$lib/server/permissions'
 import {
   configureWebPush,
   getUserPushSubscriptions,
@@ -5508,10 +5509,42 @@ app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async 
     .where(and(isNotNull(user.deletedAt), lt(user.deletedAt, cutoff)))
     .returning({ id: user.id })
 
-  const deletedOrgs = await db
-    .delete(organization)
+  // Hard-delete soft-deleted orgs (excluding those with active/trialing subscriptions)
+  const orgsWithSubs = await db
+    .select({ organizationId: subscription.organizationId })
+    .from(subscription)
+    .where(
+      and(
+        isNotNull(subscription.organizationId),
+        or(eq(subscription.status, 'active'), eq(subscription.status, 'trialing'))
+      )
+    )
+
+  const protectedOrgIds = new Set(orgsWithSubs.map((s) => s.organizationId))
+
+  const softDeletedOrgs = await db
+    .select({ id: organization.id })
+    .from(organization)
     .where(and(isNotNull(organization.deletedAt), lt(organization.deletedAt, cutoff)))
-    .returning({ id: organization.id })
+
+  const orgsToDelete = softDeletedOrgs.filter((o) => !protectedOrgIds.has(o.id))
+
+  let deletedOrgs: { id: string }[] = []
+  if (orgsToDelete.length > 0) {
+    deletedOrgs = await db
+      .delete(organization)
+      .where(
+        and(
+          isNotNull(organization.deletedAt),
+          lt(organization.deletedAt, cutoff),
+          inArray(
+            organization.id,
+            orgsToDelete.map((o) => o.id)
+          )
+        )
+      )
+      .returning({ id: organization.id })
+  }
 
   // Auto-expire temporary bans
   const expiredBans = await db
@@ -5937,6 +5970,11 @@ orgApp.patch(
       throw new ForbiddenError('Cannot assign owner role. Use ownership transfer instead.')
     }
 
+    const membership = c.get('membership') as { role: string }
+    if (getRoleLevel(targetMember.role) >= getRoleLevel(membership.role as OrgRole)) {
+      throw new ForbiddenError('Cannot modify a member with equal or higher role')
+    }
+
     await db
       .update(organizationMember)
       .set({ role: parsed.role })
@@ -6217,28 +6255,28 @@ orgApp.post(
       throw new BadRequestError('Cannot transfer ownership to yourself')
     }
 
-    await db
-      .update(organizationMember)
-      .set({ role: 'admin' })
-      .where(
-        and(
-          eq(organizationMember.userId, currentUser.id),
-          eq(organizationMember.organizationId, org.id)
-        )
-      )
-
-    await db
-      .update(organizationMember)
-      .set({ role: 'owner' })
-      .where(eq(organizationMember.id, newOwnerMember.id))
-
-    await db
-      .update(organization)
-      .set({
-        ownerId: parsed.newOwnerId,
-        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
-      })
-      .where(eq(organization.id, org.id))
+    await db.batch([
+      db
+        .update(organizationMember)
+        .set({ role: 'admin' })
+        .where(
+          and(
+            eq(organizationMember.userId, currentUser.id),
+            eq(organizationMember.organizationId, org.id)
+          )
+        ),
+      db
+        .update(organizationMember)
+        .set({ role: 'owner' })
+        .where(eq(organizationMember.id, newOwnerMember.id)),
+      db
+        .update(organization)
+        .set({
+          ownerId: parsed.newOwnerId,
+          updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+        })
+        .where(eq(organization.id, org.id)),
+    ])
 
     await writeAuditLog(db, {
       action: 'organization.transfer_ownership',
@@ -6844,17 +6882,18 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
     throw new ConflictError('You are already a member of this organization')
   }
 
-  await db.insert(organizationMember).values({
-    joinedAt: new Date(),
-    organizationId: invitation.organizationId,
-    role: invitation.role,
-    userId: currentUser.id,
-  })
-
-  await db
-    .update(organizationInvitation)
-    .set({ acceptedAt: new Date() })
-    .where(eq(organizationInvitation.id, invitation.id))
+  await db.batch([
+    db.insert(organizationMember).values({
+      joinedAt: new Date(),
+      organizationId: invitation.organizationId,
+      role: invitation.role,
+      userId: currentUser.id,
+    }),
+    db
+      .update(organizationInvitation)
+      .set({ acceptedAt: new Date() })
+      .where(eq(organizationInvitation.id, invitation.id)),
+  ])
 
   await writeAuditLog(db, {
     action: 'organization.accept_invitation',
