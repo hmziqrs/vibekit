@@ -1475,6 +1475,9 @@ protectedApp.get('/items', async (c) => {
   const currentUser = c.get('user')
   const status = c.req.query('status')
   const search = c.req.query('search')?.trim()
+  const page = Math.max(1, Number(c.req.query('page') || '1'))
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || '20')))
+  const offset = (page - 1) * limit
 
   const conditions = [eq(item.userId, currentUser.id), isNull(item.deletedAt)]
 
@@ -1486,20 +1489,32 @@ protectedApp.get('/items', async (c) => {
     conditions.push(like(item.name, `%${search}%`))
   }
 
-  const items = await db
-    .select({
-      createdAt: item.createdAt,
-      description: item.description,
-      id: item.id,
-      name: item.name,
-      status: item.status,
-      updatedAt: item.updatedAt,
-    })
-    .from(item)
-    .where(and(...conditions))
-    .orderBy(desc(item.createdAt))
+  const whereClause = and(...conditions)
 
-  return c.json({ items })
+  const [countResult, items] = await Promise.all([
+    db
+      .select({ value: sql<number>`count(*)` })
+      .from(item)
+      .where(whereClause),
+    db
+      .select({
+        createdAt: item.createdAt,
+        description: item.description,
+        id: item.id,
+        name: item.name,
+        status: item.status,
+        updatedAt: item.updatedAt,
+      })
+      .from(item)
+      .where(whereClause)
+      .orderBy(desc(item.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ])
+
+  const total = (countResult[0] as unknown as { value: number })?.value ?? 0
+
+  return c.json({ items, page, total })
 })
 
 protectedApp.post('/items', validate(createItemSchema), async (c) => {

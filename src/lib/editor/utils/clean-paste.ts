@@ -51,6 +51,12 @@ function filterTag(tag: string, attrs: string): string {
       const name = attr.split('=')[0].toLowerCase()
       return allowed.has(name)
     })
+    .filter((attr: string) => {
+      // Block javascript:, data:, and vbscript: URIs in href/src
+      const value = attr.split('=')[1]?.toLowerCase() ?? ''
+      const unquoted = value.replace(/^["']|["']$/g, '')
+      return !/^\s*(javascript|vbscript|data)\s*:/i.test(unquoted)
+    })
     .join(' ')
 
   return filteredAttrs ? `<${tag} ${filteredAttrs}>` : `<${tag}>`

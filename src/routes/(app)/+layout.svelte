@@ -45,6 +45,7 @@
     { href: '/app/items', label: m.app_items() },
     { href: '/app/notifications', label: m.app_notifications() },
     { href: '/app/organizations', label: m.app_organizations() },
+    { href: '/app/invitations', label: m.app_invitations() },
     { href: '/app/profile', label: m.app_profile() },
     { href: '/app/settings', label: m.app_settings() },
     { href: '/app/settings/api-keys', label: m.app_api_keys() },
