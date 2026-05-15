@@ -14,8 +14,8 @@ type: project
 | RTL support verification              | **MINIMAL**             | HTML `dir="rtl"` is set, but zero CSS uses RTL-aware patterns. 15+ hardcoded directional classes break in RTL. |
 | Plural rules                          | **INFRASTRUCTURE ONLY** | `Intl.PluralRules` available via paraglide, never called from app code.                                        |
 | Date/number formatting per locale     | **COMPLETE**            | All 27 files with hardcoded formatting now use `formatDate`/`formatNumber` from `$lib/i18n.svelte`.            |
-| Language switcher                     | **DONE**                | Component exists and imported in app/admin layouts sidebar. Moved from page body to navigation. |
-| Missing translation detection         | **DONE**                | Script exists and runs in CI via `bun run i18n:check` in ci.yml. |
+| Language switcher                     | **DONE**                | Component exists and imported in app/admin layouts sidebar. Moved from page body to navigation.                |
+| Missing translation detection         | **DONE**                | Script exists and runs in CI via `bun run i18n:check` in ci.yml.                                               |
 | Translation key linting               | **PARTIAL**             | Checks key parity, doesn't detect unused keys or hardcoded strings.                                            |
 | ICU message format support            | **TRUE**                | Paraglide supports `{param}` syntax correctly.                                                                 |
 | Translation workflow for contributors | **FALSE**               | No docs, no external platform, no guide for adding locales.                                                    |

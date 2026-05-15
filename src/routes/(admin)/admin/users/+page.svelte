@@ -173,10 +173,10 @@
     <table class="w-full min-w-[640px]">
       <thead>
         <tr class="border-b border-white/[0.06]">
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">User</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Role</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Status</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Joined</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">User</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Role</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Status</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Joined</th>
           <th class="px-5 py-3 text-right text-[12px] font-medium uppercase tracking-wider text-text-subtle">Actions</th>
         </tr>
       </thead>
@@ -212,16 +212,16 @@
                 {#if openMenuId === user.id}
                   <div class="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-white/[0.06] bg-surface py-1 shadow-lg">
                     {#if user.role !== 'admin'}
-                      <button class="w-full px-4 py-2 text-left text-[12px] text-text-secondary hover:bg-white/[0.04]" onclick={() => changeRole(user, 'admin')}>Promote to Admin</button>
+                      <button class="w-full px-4 py-2 text-start text-[12px] text-text-secondary hover:bg-white/[0.04]" onclick={() => changeRole(user, 'admin')}>Promote to Admin</button>
                     {:else}
-                      <button class="w-full px-4 py-2 text-left text-[12px] text-text-secondary hover:bg-white/[0.04]" onclick={() => changeRole(user, 'user')}>Demote to User</button>
+                      <button class="w-full px-4 py-2 text-start text-[12px] text-text-secondary hover:bg-white/[0.04]" onclick={() => changeRole(user, 'user')}>Demote to User</button>
                     {/if}
                     {#if user.status === 'active'}
-                      <button class="w-full px-4 py-2 text-left text-[12px] text-warning hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Suspend</button>
+                      <button class="w-full px-4 py-2 text-start text-[12px] text-warning hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Suspend</button>
                     {:else}
-                      <button class="w-full px-4 py-2 text-left text-[12px] text-success hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Activate</button>
+                      <button class="w-full px-4 py-2 text-start text-[12px] text-success hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Activate</button>
                     {/if}
-                    <button class="w-full px-4 py-2 text-left text-[12px] text-destructive hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user; showDeleteDialog = true }}>Delete</button>
+                    <button class="w-full px-4 py-2 text-start text-[12px] text-destructive hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user; showDeleteDialog = true }}>Delete</button>
                   </div>
                 {/if}
               </div>

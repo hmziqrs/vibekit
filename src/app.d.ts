@@ -17,6 +17,7 @@ declare global {
     }
 
     interface Locals {
+      cspNonce?: string
       impersonatedBy?: { email: string; id: string; name: string }
       services: AppServices
       user?: AuthUser

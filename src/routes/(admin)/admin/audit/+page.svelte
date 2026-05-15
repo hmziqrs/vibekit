@@ -78,11 +78,11 @@
     <table class="w-full min-w-[700px]">
       <thead>
         <tr class="border-b border-border">
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Action</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Entity</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Entity ID</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">User</th>
-          <th class="px-5 py-3 text-left text-[12px] font-medium uppercase tracking-wider text-text-subtle">Timestamp</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Action</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Entity</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Entity ID</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">User</th>
+          <th class="px-5 py-3 text-start text-[12px] font-medium uppercase tracking-wider text-text-subtle">Timestamp</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-border">

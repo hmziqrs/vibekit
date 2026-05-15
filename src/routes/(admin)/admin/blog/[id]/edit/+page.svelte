@@ -615,7 +615,7 @@
                     <button
                       type="button"
                       onclick={() => toggleTag(tag.id)}
-                      class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-colors {selectedTagIds.has(tag.id)
+                      class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-[12px] transition-colors {selectedTagIds.has(tag.id)
                         ? 'bg-brand/10 text-brand'
                         : 'text-text-muted hover:bg-surface hover:text-text-primary'}"
                     >
@@ -695,7 +695,7 @@
                     <button
                       type="button"
                       onclick={() => toggleSeries(s.id)}
-                      class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-colors {selectedSeries.has(s.id)
+                      class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-[12px] transition-colors {selectedSeries.has(s.id)
                         ? 'bg-brand/10 text-brand'
                         : 'text-text-muted hover:bg-surface hover:text-text-primary'}"
                     >

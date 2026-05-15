@@ -115,13 +115,13 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-border bg-surface-deep">
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Event</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Status</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">HTTP Code</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Attempts</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Next Retry</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Created</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Actions</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Event</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Status</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">HTTP Code</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Attempts</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Next Retry</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Created</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border">

@@ -1,6 +1,12 @@
 import type { AppDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Mock the crypto module so encrypt/decrypt are identity functions in tests
+vi.mock('$lib/server/crypto', () => ({
+  decryptToken: vi.fn((t: string) => Promise.resolve(t)),
+  encryptToken: vi.fn((t: string) => Promise.resolve(t)),
+}))
+
 type MockDb = AppDb & {
   _insertFn: ReturnType<typeof vi.fn>
   _setFn: ReturnType<typeof vi.fn>

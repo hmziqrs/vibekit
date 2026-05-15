@@ -1,3 +1,4 @@
+import { decryptToken } from '$lib/server/crypto'
 import { integration } from '$lib/server/db/schema'
 import { and, eq } from 'drizzle-orm'
 
@@ -34,11 +35,12 @@ export async function dispatchToIntegrations(
   await Promise.allSettled(
     integrations
       .filter((i) => i.provider === 'slack' || i.provider === 'discord')
-      .map((i) =>
-        i.provider === 'slack'
-          ? sendSlackMessage(i.accessToken, message)
+      .map(async (i) => {
+        const plainToken = await decryptToken(i.accessToken).catch(() => i.accessToken)
+        return i.provider === 'slack'
+          ? sendSlackMessage(plainToken, message)
           : sendDiscordMessage(i, message)
-      )
+      })
   )
 }
 

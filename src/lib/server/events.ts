@@ -20,16 +20,17 @@ export async function emitEvent(db: DrizzleDb, input: EmitEventInput): Promise<v
     userId: input.userId,
   })
 
-  // Dispatch to webhook endpoints (fire and forget, don't block the response)
-  // Use try/catch to never fail the main operation if webhook dispatch fails
-  try {
-    await dispatchWebhooksForEvent(db, input.action, {
+  // Dispatch to webhook endpoints owned by this user (true fire-and-forget)
+  dispatchWebhooksForEvent(
+    db,
+    input.action,
+    {
       entityId: input.entityId,
       entityType: input.entityType,
       ...input.metadata,
-    })
-  } catch (error) {
-    // Webhook dispatch failure should never block the main operation
+    },
+    input.userId
+  ).catch((error) => {
     console.error(
       JSON.stringify({
         action: input.action,
@@ -38,5 +39,5 @@ export async function emitEvent(db: DrizzleDb, input: EmitEventInput): Promise<v
         event: 'webhook.dispatch_failed',
       })
     )
-  }
+  })
 }

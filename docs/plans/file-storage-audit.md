@@ -8,27 +8,27 @@ type: project
 
 ## Claimed vs Actual
 
-| Claimed Feature                  | Status              | Details                                                                            |
-| -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
-| Chunked uploads for large files  | **NON-FUNCTIONAL**  | Session tracker exists but no chunk data transfer or assembly. No client consumer. |
+| Claimed Feature                  | Status              | Details                                                                                    |
+| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| Chunked uploads for large files  | **NON-FUNCTIONAL**  | Session tracker exists but no chunk data transfer or assembly. No client consumer.         |
 | Progress tracking                | **DONE**            | Upload progress bar added to admin media library using XMLHttpRequest with progress events |
-| Upload resumption                | **PARTIAL**         | Duplicate chunk detection exists but meaningless without chunk storage             |
-| File type validation             | **COMPLETE**        | MIME type + magic byte verification                                                |
-| Virus scanning                   | **NOT IMPLEMENTED** | Zero references to any scanning service                                            |
-| File browser                     | **COMPLETE**        | Grid/list with pagination in media library                                         |
-| Thumbnail generation             | **NOT IMPLEMENTED** | Returns original image as "thumbnail"                                              |
-| Metadata extraction              | **MINIMAL**         | Filename + size only. No EXIF/dimensions.                                          |
-| Search/filter                    | **PARTIAL**         | Client filename filter + server type filter                                        |
-| Folder organization              | **NOT IMPLEMENTED** | Prefix filter only, no folder CRUD                                                 |
-| Bulk operations                  | **PARTIAL**         | Delete works. Move/download/tag still missing.                                     |
-| Resize/crop on upload            | **NOT IMPLEMENTED** | No image processing library in deps                                                |
-| Format conversion WebP/AVIF      | **DELEGATED**       | URL params to Cloudflare Image Resizing (paid feature). No in-app conversion.      |
-| Responsive srcset generation     | **COMPLETE**        | URL builder delegates to Cloudflare                                                |
-| CDN URL generation               | **COMPLETE**        | `/cdn/blog/` pattern with cache headers                                            |
-| R2 primary adapter               | **COMPLETE**        | Full adapter with presigned URLs                                                   |
-| S3-compatible fallback           | **COMPLETE**        | Two implementations (one redundant)                                                |
-| Local dev storage                | **COMPLETE**        | Filesystem adapter with metadata sidecars                                          |
-| Presigned URLs for direct upload | **INCOMPLETE**      | GET-only. No PUT presigned URL endpoint.                                           |
+| Upload resumption                | **PARTIAL**         | Duplicate chunk detection exists but meaningless without chunk storage                     |
+| File type validation             | **COMPLETE**        | MIME type + magic byte verification                                                        |
+| Virus scanning                   | **NOT IMPLEMENTED** | Zero references to any scanning service                                                    |
+| File browser                     | **COMPLETE**        | Grid/list with pagination in media library                                                 |
+| Thumbnail generation             | **NOT IMPLEMENTED** | Returns original image as "thumbnail"                                                      |
+| Metadata extraction              | **MINIMAL**         | Filename + size only. No EXIF/dimensions.                                                  |
+| Search/filter                    | **PARTIAL**         | Client filename filter + server type filter                                                |
+| Folder organization              | **NOT IMPLEMENTED** | Prefix filter only, no folder CRUD                                                         |
+| Bulk operations                  | **PARTIAL**         | Delete works. Move/download/tag still missing.                                             |
+| Resize/crop on upload            | **NOT IMPLEMENTED** | No image processing library in deps                                                        |
+| Format conversion WebP/AVIF      | **DELEGATED**       | URL params to Cloudflare Image Resizing (paid feature). No in-app conversion.              |
+| Responsive srcset generation     | **COMPLETE**        | URL builder delegates to Cloudflare                                                        |
+| CDN URL generation               | **COMPLETE**        | `/cdn/blog/` pattern with cache headers                                                    |
+| R2 primary adapter               | **COMPLETE**        | Full adapter with presigned URLs                                                           |
+| S3-compatible fallback           | **COMPLETE**        | Two implementations (one redundant)                                                        |
+| Local dev storage                | **COMPLETE**        | Filesystem adapter with metadata sidecars                                                  |
+| Presigned URLs for direct upload | **INCOMPLETE**      | GET-only. No PUT presigned URL endpoint.                                                   |
 
 ## Critical Gaps
 

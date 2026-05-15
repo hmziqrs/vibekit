@@ -160,7 +160,7 @@
         <button
           type="button"
           onclick={() => toggleFaq(i)}
-          class="flex w-full items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-surface px-6 py-5 text-left transition-all hover:border-white/[0.12]"
+          class="flex w-full items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-surface px-6 py-5 text-start transition-all hover:border-white/[0.12]"
         >
           <span class="text-[15px] font-medium text-text-primary">{faq.question}</span>
           <svg

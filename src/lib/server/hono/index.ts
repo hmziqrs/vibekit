@@ -158,8 +158,14 @@ import {
   reindexAllUsers,
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { detectSpam } from '$lib/server/spam-detector'
 import { generateThumbnail } from '$lib/server/thumbnail'
+import {
+  listTrustedDevices,
+  revokeAllTrustedDevices,
+  revokeTrustedDevice,
+} from '$lib/server/trusted-device'
 import {
   generateStorageKey,
   validateFileSignature,
@@ -2029,6 +2035,30 @@ protectedApp.patch('/account/deactivate', async (c) => {
   return c.json({ success: true })
 })
 
+// ── Trusted Devices (2FA) ────────────────────────────────────────────
+
+protectedApp.get('/trusted-devices', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const devices = await listTrustedDevices(db as DrizzleDb, userId)
+  return c.json({ devices })
+})
+
+protectedApp.delete('/trusted-devices/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const deviceId = c.req.param('id')
+  await revokeTrustedDevice(db as DrizzleDb, { deviceId, userId })
+  return c.json({ success: true })
+})
+
+protectedApp.delete('/trusted-devices', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const count = await revokeAllTrustedDevices(db as DrizzleDb, userId)
+  return c.json({ count })
+})
+
 // ── Onboarding ───────────────────────────────────────────────────────
 
 protectedApp.get('/user/onboarding', async (c) => {
@@ -3026,7 +3056,13 @@ protectedApp.get('/integrations', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const integrations = await listIntegrations(db, userId)
-  return c.json({ integrations })
+  // Mask sensitive tokens in API response
+  const masked = (integrations as Record<string, unknown>[]).map((i) => ({
+    ...i,
+    accessToken: '••••••••',
+    refreshToken: i.refreshToken ? '••••••••' : null,
+  }))
+  return c.json({ integrations: masked })
 })
 
 protectedApp.post('/integrations/connect/:provider', async (c) => {

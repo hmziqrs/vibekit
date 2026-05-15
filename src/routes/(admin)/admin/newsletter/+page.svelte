@@ -123,28 +123,28 @@
 <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
   <button
     onclick={() => (statusFilter = 'pending')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Pending</div>
     <div class="text-xl font-semibold text-warning">{stats.pending}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'confirmed')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'confirmed' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'confirmed' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Confirmed</div>
     <div class="text-xl font-semibold text-success">{stats.confirmed}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'unsubscribed')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'unsubscribed' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'unsubscribed' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Unsubscribed</div>
     <div class="text-xl font-semibold text-text-muted">{stats.unsubscribed}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'bounced')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'bounced' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'bounced' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Bounced</div>
     <div class="text-xl font-semibold text-destructive">{stats.bounced}</div>

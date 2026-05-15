@@ -16,6 +16,8 @@ export const createPlanSchema = z.object({
     .regex(/^[a-z0-9-]+$/),
   sortOrder: z.number().int().min(0).optional(),
   stripePriceId: z.string().trim().optional(),
+  taxInclusive: z.boolean().optional(),
+  taxRate: z.number().int().min(0).max(10_000).optional(),
   trialDays: z.number().int().min(0).optional(),
 })
 
@@ -29,6 +31,8 @@ export const updatePlanSchema = z.object({
   priceInCents: z.number().int().min(0).optional(),
   sortOrder: z.number().int().min(0).optional(),
   stripePriceId: z.string().trim().optional().nullable(),
+  taxInclusive: z.boolean().optional(),
+  taxRate: z.number().int().min(0).max(10_000).optional().nullable(),
   trialDays: z.number().int().min(0).optional(),
 })
 
@@ -53,4 +57,30 @@ export const refundSchema = z.object({
   amountInCents: z.number().int().min(1).optional(),
   invoiceId: z.string().trim().min(1),
   reason: z.enum(['duplicate', 'fraudulent', 'requested_by_customer']).optional(),
+})
+
+export const createCouponSchema = z.object({
+  active: z.boolean().optional(),
+  code: z
+    .string()
+    .trim()
+    .min(3)
+    .max(50)
+    .regex(/^[A-Z0-9-]+$/),
+  currency: z.string().trim().length(3).optional(),
+  duration: z.enum(['forever', 'once', 'repeating']).optional(),
+  durationInMonths: z.number().int().min(1).optional(),
+  maxRedemptions: z.number().int().min(1).optional(),
+  name: z.string().trim().min(1).max(100),
+  percentOff: z.number().int().min(1).max(100),
+  redeemBy: z.number().int().positive().optional(),
+})
+
+export const updateCouponSchema = z.object({
+  active: z.boolean().optional(),
+  name: z.string().trim().min(1).max(100).optional(),
+})
+
+export const redeemCouponSchema = z.object({
+  code: z.string().trim().min(1),
 })

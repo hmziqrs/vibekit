@@ -116,7 +116,7 @@
       <table class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface">
-            <th class="px-4 py-2 text-left text-[12px] font-medium text-text-muted">Post</th>
+            <th class="px-4 py-2 text-start text-[12px] font-medium text-text-muted">Post</th>
             <th class="w-[100px] px-4 py-2 text-right text-[12px] font-medium text-text-muted">Views</th>
           </tr>
         </thead>
@@ -162,7 +162,7 @@
       <table class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface">
-            <th class="px-4 py-2 text-left text-[12px] font-medium text-text-muted">Source</th>
+            <th class="px-4 py-2 text-start text-[12px] font-medium text-text-muted">Source</th>
             <th class="w-[100px] px-4 py-2 text-right text-[12px] font-medium text-text-muted">Views</th>
           </tr>
         </thead>

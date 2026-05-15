@@ -78,9 +78,7 @@ export const authConfig = {
     },
     enabled: !process.env.VITEST && __ADAPTER__ !== 'node',
     max: 20,
-    // TODO: Switch to "database" storage after adding rateLimit model to Drizzle schema.
-    // Memory storage works for dev/single-instance but doesn't persist across Workers isolates.
-    storage: 'memory' as const,
+    storage: 'database' as const,
     window: 60,
   },
   secret: env.BETTER_AUTH_SECRET,
@@ -229,6 +227,7 @@ export const createAuth = (db: AppDb) =>
           digits: 6,
           period: 30,
         },
+        trustDeviceMaxAge: 30 * 24 * 60 * 60,
       }),
       sveltekitCookies(getRequestEvent), // Make sure this is the last plugin in the array
     ],

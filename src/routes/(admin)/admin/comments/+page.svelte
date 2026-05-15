@@ -172,28 +172,28 @@
 <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
   <button
     onclick={() => (statusFilter = 'pending')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Pending</div>
     <div class="text-xl font-semibold text-warning">{stats.pending}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'spam')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'spam' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'spam' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Spam</div>
     <div class="text-xl font-semibold text-destructive">{stats.spam}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'approved')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'approved' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'approved' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Approved</div>
     <div class="text-xl font-semibold text-success">{stats.approved}</div>
   </button>
   <button
     onclick={() => (statusFilter = 'rejected')}
-    class="rounded-lg border border-border bg-surface p-3 text-left transition-colors {statusFilter === 'rejected' ? 'border-brand' : ''}"
+    class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'rejected' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Rejected</div>
     <div class="text-xl font-semibold text-destructive">{stats.rejected}</div>

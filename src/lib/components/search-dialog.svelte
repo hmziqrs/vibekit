@@ -277,7 +277,7 @@
           {#each results as result, i (result.entityId + result.entityType)}
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <button
-              class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors {selectedIndex === i ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}"
+              class="flex w-full items-start gap-3 px-4 py-3 text-start transition-colors {selectedIndex === i ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}"
               onclick={() => goToResult(result)}
               onmouseenter={() => (selectedIndex = i)}
               role="option"
@@ -337,7 +337,7 @@
           {#each recentSearches as term, i (term)}
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <button
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-[13px] text-text-secondary transition-colors {selectedIndex === i ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}"
+              class="flex w-full items-center gap-3 px-4 py-2 text-start text-[13px] text-text-secondary transition-colors {selectedIndex === i ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}"
               onclick={() => selectRecent(term)}
               onmouseenter={() => (selectedIndex = i)}
               role="option"

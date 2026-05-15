@@ -19,7 +19,9 @@ export function resetStripeClient(): void {
 export async function createCheckoutSession(
   stripe: Stripe,
   input: {
+    automaticTax?: boolean
     cancelUrl: string
+    couponId?: string
     customerEmail?: string
     customerId?: string
     mode?: 'payment' | 'subscription'
@@ -31,8 +33,10 @@ export async function createCheckoutSession(
   }
 ) {
   const session = await stripe.checkout.sessions.create({
+    automatic_tax: input.automaticTax ? { enabled: true } : undefined,
     cancel_url: input.cancelUrl,
     client_reference_id: input.userId,
+    coupons: input.couponId ? { coupon: input.couponId } : undefined,
     customer: input.customerId ?? undefined,
     customer_email: input.customerEmail,
     line_items: input.priceId ? [{ price: input.priceId, quantity: 1 }] : undefined,
@@ -96,4 +100,26 @@ export async function verifyWebhookSignature(
 ) {
   const event = stripe.webhooks.constructEvent(input.body, input.signature, input.webhookSecret)
   return event
+}
+
+export async function createStripeCoupon(
+  stripe: Stripe,
+  input: {
+    duration?: 'forever' | 'once' | 'repeating'
+    durationInMonths?: number
+    maxRedemptions?: number
+    name: string
+    percentOff: number
+    redeemBy?: number
+  }
+) {
+  const coupon = await stripe.coupons.create({
+    duration: input.duration ?? 'once',
+    duration_in_months: input.durationInMonths,
+    max_redemptions: input.maxRedemptions,
+    name: input.name,
+    percent_off: input.percentOff,
+    redeem_by: input.redeemBy,
+  })
+  return { stripeCouponId: coupon.id }
 }

@@ -1,7 +1,14 @@
 <script lang="ts">
-  const { token }: { token?: string } = $props()
+  const { token, nonce }: { nonce?: string; token?: string } = $props()
 </script>
 
-{#if token}
-  {@html `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"${token}"}'></script>`}
-{/if}
+<svelte:head>
+  {#if token}
+    <script
+      defer
+      nonce={nonce}
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon={`{"token":"${token}"`}
+    ></script>
+  {/if}
+</svelte:head>

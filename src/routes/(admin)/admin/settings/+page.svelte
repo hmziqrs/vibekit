@@ -434,11 +434,11 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-white/[0.06] bg-surface-deep">
-              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Key</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Environment</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Old Value</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">New Value</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-text-muted">Date</th>
+              <th class="px-4 py-2 text-start text-xs font-medium text-text-muted">Key</th>
+              <th class="px-4 py-2 text-start text-xs font-medium text-text-muted">Environment</th>
+              <th class="px-4 py-2 text-start text-xs font-medium text-text-muted">Old Value</th>
+              <th class="px-4 py-2 text-start text-xs font-medium text-text-muted">New Value</th>
+              <th class="px-4 py-2 text-start text-xs font-medium text-text-muted">Date</th>
             </tr>
           </thead>
           <tbody>

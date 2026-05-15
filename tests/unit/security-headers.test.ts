@@ -50,9 +50,10 @@ describe('security headers configuration', () => {
     expect(hooksSource).toContain("event.url.pathname.startsWith('/api/')")
   })
 
-  it('does not set CSP manually (uses SvelteKit built-in)', () => {
+  it('passes nonce to SvelteKit resolve for CSP', () => {
     const hooksSource = readFileSync(resolve(process.cwd(), 'src/hooks.server.ts'), 'utf8')
-    expect(hooksSource).not.toContain("'Content-Security-Policy',")
+    expect(hooksSource).toContain('csp: { nonce }')
+    expect(hooksSource).toContain('crypto.randomUUID')
   })
 })
 
@@ -111,5 +112,16 @@ describe('svelteKit CSP configuration', () => {
   it('allows jsdelivr CDN for Scalar API docs', () => {
     const configSource = readFileSync(resolve(process.cwd(), 'svelte.config.js'), 'utf8')
     expect(configSource).toContain('https://cdn.jsdelivr.net')
+  })
+
+  it('allows blob: scripts for Vite dev server workers', () => {
+    const configSource = readFileSync(resolve(process.cwd(), 'svelte.config.js'), 'utf8')
+    expect(configSource).toContain("'blob:'")
+  })
+
+  it('includes Stripe and CF beacon in connect-src', () => {
+    const configSource = readFileSync(resolve(process.cwd(), 'svelte.config.js'), 'utf8')
+    expect(configSource).toContain('https://api.stripe.com')
+    expect(configSource).toContain('https://static.cloudflareinsights.com')
   })
 })

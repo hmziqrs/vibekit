@@ -333,7 +333,7 @@
         <p class="mt-2 text-[14px] text-text-muted">
           Your account is ready. Here's what you can do next:
         </p>
-        <ul class="mt-4 space-y-2 text-left text-[13px] text-text-secondary">
+        <ul class="mt-4 space-y-2 text-start text-[13px] text-text-secondary">
           <li class="flex items-center gap-2">
             <span class="text-brand">→</span> Create and manage items from the dashboard
           </li>

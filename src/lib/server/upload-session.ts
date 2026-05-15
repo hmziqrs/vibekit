@@ -1,3 +1,6 @@
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+
 import { uploadSession } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
@@ -7,6 +10,7 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
 const MIN_CHUNK_SIZE = 1024 * 1024 // 1MB
 const MAX_CHUNK_SIZE = 50 * 1024 * 1024 // 50MB
+const CHUNK_TEMP_DIR = process.env.CHUNK_TEMP_DIR ?? 'data/chunks'
 
 export async function createUploadSession(
   db: DrizzleDb,
@@ -56,7 +60,12 @@ export async function getUploadSession(db: DrizzleDb, sessionId: string) {
   return (rows[0] as Record<string, unknown> | undefined) ?? null
 }
 
-export async function recordChunk(db: DrizzleDb, sessionId: string, chunkIndex: number) {
+export async function recordChunk(
+  db: DrizzleDb,
+  sessionId: string,
+  chunkIndex: number,
+  chunkData?: Uint8Array
+) {
   const session = await getUploadSession(db, sessionId)
   if (!session) throw new Error('Upload session not found')
   if (session.status === 'expired') throw new Error('Upload session has expired')
@@ -65,6 +74,13 @@ export async function recordChunk(db: DrizzleDb, sessionId: string, chunkIndex: 
   const receivedChunks = (session.receivedChunks as number[]) ?? []
   if (receivedChunks.includes(chunkIndex)) {
     return { complete: false, receivedChunks, totalChunks: session.totalChunks as number }
+  }
+
+  // Store chunk data to temp directory if provided
+  if (chunkData) {
+    const sessionDir = join(CHUNK_TEMP_DIR, sessionId)
+    await mkdir(sessionDir, { recursive: true })
+    await writeFile(join(sessionDir, `${chunkIndex}.chunk`), chunkData)
   }
 
   const updatedChunks = [...receivedChunks, chunkIndex].toSorted((a, b) => a - b)
@@ -137,5 +153,43 @@ export function getUploadProgress(session: Record<string, unknown>) {
     percent: total > 0 ? Math.round((received.length / total) * 100) : 0,
     receivedChunks: received.length,
     totalChunks: total,
+  }
+}
+
+export async function assembleChunks(db: DrizzleDb, sessionId: string): Promise<Uint8Array | null> {
+  const session = await getUploadSession(db, sessionId)
+  if (!session || session.status !== 'complete') return null
+
+  const receivedChunks = (session.receivedChunks as number[]) ?? []
+  const sessionDir = join(CHUNK_TEMP_DIR, sessionId)
+
+  const parts: Uint8Array[] = []
+  for (const idx of receivedChunks) {
+    try {
+      const data = await readFile(join(sessionDir, `${idx}.chunk`))
+      parts.push(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+    } catch {
+      return null
+    }
+  }
+
+  // Combine all chunks into a single buffer
+  const totalLength = parts.reduce((sum, p) => sum + p.length, 0)
+  const assembled = new Uint8Array(totalLength)
+  let offset = 0
+  for (const part of parts) {
+    assembled.set(part, offset)
+    offset += part.length
+  }
+
+  return assembled
+}
+
+export async function cleanupChunks(sessionId: string) {
+  const sessionDir = join(CHUNK_TEMP_DIR, sessionId)
+  try {
+    await rm(sessionDir, { recursive: true, force: true })
+  } catch {
+    // Directory may not exist
   }
 }

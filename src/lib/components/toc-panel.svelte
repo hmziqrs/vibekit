@@ -49,7 +49,7 @@
       {#each items as item}
         <button
           onclick={() => scrollTo(item)}
-          class="block w-full text-left text-xs text-text-muted hover:text-brand transition-colors py-0.5 truncate {indentClass(item.level)}"
+          class="block w-full text-start text-xs text-text-muted hover:text-brand transition-colors py-0.5 truncate {indentClass(item.level)}"
           title={item.text}
         >
           {item.text}

@@ -1,4 +1,4 @@
-import { blogPost, item, user } from '$lib/server/db/schema'
+import { blogPost, comment, item, user } from '$lib/server/db/schema'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { eq, isNull } from 'drizzle-orm'
@@ -203,6 +203,66 @@ export async function reindexAllUsers(db: DrizzleDb): Promise<number> {
       entityType: 'user',
       metadata: { email: row.email },
       title: row.displayName ?? row.name ?? row.email,
+    }
+    // oxlint-disable-next-line no-await-in-loop
+    await getAdapter(db).index(document)
+    count++
+  }
+  return count
+}
+
+export async function indexComment(db: DrizzleDb, commentId: string): Promise<void> {
+  const rows = await db
+    .select({
+      authorId: comment.authorId,
+      content: comment.content,
+      id: comment.id,
+      postId: comment.postId,
+      status: comment.status,
+    })
+    .from(comment)
+    .where(eq(comment.id, commentId))
+    .limit(1)
+
+  const row = rows[0] as
+    | { authorId: string; content: string; id: string; postId: string; status: string }
+    | undefined
+  if (!row) return
+
+  // Only index approved comments
+  if (row.status !== 'approved') return
+
+  const document: SearchDocument = {
+    content: row.content.slice(0, 3000),
+    entityId: row.id,
+    entityType: 'comment',
+    metadata: { authorId: row.authorId, postId: row.postId, status: row.status },
+    title: row.content.slice(0, 100),
+  }
+
+  await getAdapter(db).index(document)
+}
+
+export async function reindexAllComments(db: DrizzleDb): Promise<number> {
+  const comments = await db
+    .select({
+      authorId: comment.authorId,
+      content: comment.content,
+      id: comment.id,
+      postId: comment.postId,
+      status: comment.status,
+    })
+    .from(comment)
+    .where(eq(comment.status, 'approved'))
+
+  let count = 0
+  for (const row of comments) {
+    const document: SearchDocument = {
+      content: row.content.slice(0, 3000),
+      entityId: row.id,
+      entityType: 'comment',
+      metadata: { authorId: row.authorId, postId: row.postId, status: row.status },
+      title: row.content.slice(0, 100),
     }
     // oxlint-disable-next-line no-await-in-loop
     await getAdapter(db).index(document)

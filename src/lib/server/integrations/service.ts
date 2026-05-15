@@ -1,3 +1,4 @@
+import { decryptToken, encryptToken } from '$lib/server/crypto'
 import { integration } from '$lib/server/db/schema'
 import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
@@ -32,8 +33,11 @@ export async function createIntegration(
 ) {
   const id = uuid()
 
+  const encryptedAccess = await encryptToken(input.accessToken)
+  const encryptedRefresh = input.refreshToken ? await encryptToken(input.refreshToken) : null
+
   await db.insert(integration).values({
-    accessToken: input.accessToken,
+    accessToken: encryptedAccess,
     createdAt: new Date(),
     externalAccountId: input.externalAccountId ?? null,
     id,
@@ -42,7 +46,7 @@ export async function createIntegration(
     metadata: input.metadata ?? null,
     organizationId: input.organizationId ?? null,
     provider: input.provider,
-    refreshToken: input.refreshToken ?? null,
+    refreshToken: encryptedRefresh,
     scopes: input.scopes,
     status: 'active',
     tokenExpiresAt: input.expiresAt ?? null,
@@ -62,12 +66,15 @@ export async function updateIntegrationTokens(
     refreshToken?: string
   }
 ) {
+  const encryptedAccess = await encryptToken(input.accessToken)
+  const encryptedRefresh = input.refreshToken ? await encryptToken(input.refreshToken) : undefined
+
   await db
     .update(integration)
     .set({
-      accessToken: input.accessToken,
+      accessToken: encryptedAccess,
       lastSyncedAt: new Date(),
-      refreshToken: input.refreshToken ?? undefined,
+      refreshToken: encryptedRefresh,
       status: 'active',
       tokenExpiresAt: input.expiresAt ?? null,
       updatedAt: new Date(),
@@ -87,7 +94,7 @@ export async function disconnectIntegration(db: AppDb, integrationId: string, us
   await db
     .update(integration)
     .set({
-      accessToken: '',
+      accessToken: await encryptToken(''),
       lastSyncedAt: new Date(),
       refreshToken: null,
       status: 'disconnected',
@@ -132,7 +139,8 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
     const provider = getProvider(record.provider)
     if (provider && record.accessToken) {
       try {
-        const healthResult = await pingProvider(record.provider, record.accessToken)
+        const plainToken = await decryptToken(record.accessToken)
+        const healthResult = await pingProvider(record.provider, plainToken)
         if (!healthResult) {
           newStatus = 'error'
         }

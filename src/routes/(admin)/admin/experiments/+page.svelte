@@ -190,7 +190,7 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-border">
-                <th class="px-3 py-2 text-left text-xs font-medium text-text-muted">Variant</th>
+                <th class="px-3 py-2 text-start text-xs font-medium text-text-muted">Variant</th>
                 <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Exposures</th>
                 <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Conversions</th>
                 <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Conv. Rate</th>
@@ -371,10 +371,10 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-border bg-surface-deep">
-              <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Experiment</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Status</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Target Metric</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-text-muted">Created</th>
+              <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Experiment</th>
+              <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Status</th>
+              <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Target Metric</th>
+              <th class="px-4 py-3 text-start text-xs font-medium text-text-muted">Created</th>
               <th class="px-4 py-3 text-right text-xs font-medium text-text-muted">Actions</th>
             </tr>
           </thead>

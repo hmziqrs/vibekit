@@ -12,10 +12,29 @@ function safeParseJson(value: string | null | undefined): Record<string, unknown
   }
 }
 
-export function createD1SearchAdapter(db: {
-  all: (query: unknown) => Promise<unknown[]>
-  run: (query: unknown) => Promise<void>
-}): SearchAdapter {
+export interface SearchWeights {
+  content: number
+  entityType: number
+  metadata: number
+  title: number
+}
+
+export const DEFAULT_WEIGHTS: SearchWeights = {
+  content: 1.0,
+  entityType: 0.0,
+  metadata: 0.5,
+  title: 10.0,
+}
+
+export function createD1SearchAdapter(
+  db: {
+    all: (query: unknown) => Promise<unknown[]>
+    run: (query: unknown) => Promise<void>
+  },
+  weights?: Partial<SearchWeights>
+): SearchAdapter {
+  const w = { ...DEFAULT_WEIGHTS, ...weights }
+
   return {
     async delete(entityId: string, entityType: string): Promise<void> {
       await db.run(sql`
@@ -63,8 +82,11 @@ export function createD1SearchAdapter(db: {
           )})`
         : sql``
 
+      // Bm25() column weights: entity_type, entity_id, title, content, metadata
+      // Entity_id is not in the bm25 columns, so we use weights for the 5 FTS columns
       const results = await db.all(sql`
-        SELECT entity_type, entity_id, title, content, metadata, rank
+        SELECT entity_type, entity_id, title, content, metadata,
+               bm25(search_index, ${w.entityType}, 0.0, ${w.title}, ${w.content}, ${w.metadata}) as rank
         FROM search_index
         WHERE search_index MATCH ${`${sanitized}*`}
         ${typeFilter}

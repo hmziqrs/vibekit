@@ -156,7 +156,7 @@
           {#each listQuery.data?.notifications ?? [] as n (n.id)}
             <button
               onclick={() => handleNotificationClick(n)}
-              class="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-surface {n.readAt ? 'opacity-60' : ''}"
+              class="flex w-full gap-3 px-4 py-3 text-start transition-colors hover:bg-surface {n.readAt ? 'opacity-60' : ''}"
             >
               <div class="mt-0.5 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current"></div>
               <div class="min-w-0 flex-1">

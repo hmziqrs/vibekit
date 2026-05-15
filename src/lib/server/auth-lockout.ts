@@ -4,7 +4,7 @@ import { loginAttempt } from './db/schema'
 import type { AppDb } from './services/types'
 
 const MAX_ATTEMPTS = 5
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+const BASE_LOCKOUT_MS = 5 * 60 * 1000 // 5 minutes base, doubles each time
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
 
 export interface LockoutStatus {
@@ -64,8 +64,11 @@ export async function recordFailedAttempt(
   }
 
   const newCount = existing.attemptCount + 1
+  // Progressive backoff: 5 min, 10 min, 20 min, 40 min, 80 min...
   const lockoutUntil =
-    newCount >= MAX_ATTEMPTS ? new Date(now.getTime() + LOCKOUT_DURATION_MS) : null
+    newCount >= MAX_ATTEMPTS
+      ? new Date(now.getTime() + BASE_LOCKOUT_MS * Math.pow(2, newCount - MAX_ATTEMPTS))
+      : null
 
   await db
     .update(loginAttempt)

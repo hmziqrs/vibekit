@@ -89,12 +89,9 @@
 - Added cron endpoint `POST /api/admin/retry-webhooks` with cron secret authentication (same pattern as cleanup and publish-scheduled).
 - Can be triggered by Cloudflare cron triggers (every 5 min via wrangler.jsonc) or external schedulers.
 
-**MEDIUM -- `dispatchWebhooksForEvent` fetches ALL active endpoints.**
+~~**MEDIUM -- `dispatchWebhooksForEvent` fetches ALL active endpoints.**~~ **FIXED**
 
-- Location: `src/lib/server/webhooks.ts` line 233
-- `dispatchWebhooksForEvent()` queries `webhookEndpoint WHERE active = true` with no user scoping. This means every event dispatch queries all active webhook endpoints across all users, then filters in JavaScript.
-- Impact: Performance degrades linearly with total active webhooks. On a multi-tenant platform, this is a scalability concern.
-- Fix: Add `userId` filtering if the event has a user context, or maintain an index on `(eventType, active)`.
+- `dispatchWebhooksForEvent()` now accepts an optional `userId` parameter. When provided (via `emitEvent`), it filters endpoints by `userId` using `and(eq(webhookEndpoint.active, true), eq(webhookEndpoint.userId, userId))`. This prevents cross-tenant information leakage and improves query performance.
 
 **FIXED -- Webhook dispatch is now truly fire-and-forget.**
 
@@ -175,8 +172,9 @@
 **MEDIUM -- Access tokens stored in plaintext in the database.**
 
 - Location: `src/lib/server/db/schema.ts` line 1214, `src/lib/server/integrations/service.ts`
-- The `accessToken` and `refreshToken` fields are stored as plain text. On D1 (SQLite), there is no at-rest encryption option. If the database is compromised, all third-party tokens are exposed.
-- Fix: Encrypt tokens at the application layer before storing, decrypt on read. Use a server-side encryption key stored in Workers secrets.
+  ~~**MEDIUM -- Access tokens stored in plaintext in the database.**~~ **FIXED**
+
+- Tokens are now encrypted at rest using AES-256-GCM via Web Crypto API (`src/lib/server/crypto.ts`). `encryptToken()` / `decryptToken()` use HKDF-derived keys from `BETTER_AUTH_SECRET`. The `createIntegration()`, `updateIntegrationTokens()`, and `disconnectIntegration()` functions all encrypt/decrypt transparently. Health checks decrypt before pinging providers. The dispatch module decrypts before sending to Slack/Discord. Tokens are masked (`'••••••••'`) in API responses.
 
 **MEDIUM -- No token refresh flow.**
 

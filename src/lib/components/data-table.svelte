@@ -90,7 +90,7 @@
           </th>
         {/if}
         {#each columns as col}
-          <th class="px-4 py-3 text-left {col.class ?? ''}">
+          <th class="px-4 py-3 text-start {col.class ?? ''}">
             {#if col.sortable && onSort}
               <button
                 onclick={() => handleHeaderSort(col.key)}

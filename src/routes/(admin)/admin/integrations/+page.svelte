@@ -70,13 +70,13 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-border bg-surface-deep">
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Provider</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Status</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Owner</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Scopes</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Last Sync</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Created</th>
-              <th class="px-4 py-3 text-left font-medium text-text-muted">Actions</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Provider</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Status</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Owner</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Scopes</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Last Sync</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Created</th>
+              <th class="px-4 py-3 text-start font-medium text-text-muted">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border">

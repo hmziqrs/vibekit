@@ -1511,4 +1511,33 @@ export const uploadSession = sqliteTable(
   ]
 )
 
+export const rateLimitLog = sqliteTable('rate_limit_log', {
+  count: integer('count').notNull().default(1),
+  key: text('key').primaryKey(),
+  resetAt: integer('reset_at').notNull(),
+})
+
+export const trustedDevice = sqliteTable(
+  'trusted_device',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    ipAddress: text('ip_address'),
+    tokenHash: text('token_hash').notNull(),
+    userAgent: text('user_agent'),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('trusted_device_user_idx').on(table.userId),
+    index('trusted_device_expires_idx').on(table.expiresAt),
+  ]
+)
+
 export * from './auth.schema'

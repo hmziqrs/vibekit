@@ -1,7 +1,7 @@
 import { webhookDelivery, webhookEndpoint } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, lte, sql } from 'drizzle-orm'
 
 function deliveryStatus(ok: boolean, shouldRetry: boolean): 'success' | 'retrying' | 'failed' {
   if (ok) return 'success'
@@ -227,10 +227,18 @@ export async function deliverWebhook(
 export async function dispatchWebhooksForEvent(
   db: DrizzleDb,
   eventType: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  userId?: string
 ) {
-  // Find all active endpoints subscribed to this event type (or with wildcard '*')
-  const endpoints = await db.select().from(webhookEndpoint).where(eq(webhookEndpoint.active, true))
+  // Find active endpoints for this user (or all if userId not specified), subscribed to this event
+  const conditions = [eq(webhookEndpoint.active, true)]
+  if (userId) {
+    conditions.push(eq(webhookEndpoint.userId, userId))
+  }
+  const endpoints = await db
+    .select()
+    .from(webhookEndpoint)
+    .where(and(...conditions))
 
   const matching = (
     endpoints as { events: string[]; id: string; secret: string; url: string }[]
@@ -374,6 +382,36 @@ export async function sendTestWebhook(
     message: 'Test webhook from Vibekit',
     timestamp: new Date().toISOString(),
   })
+}
+
+export async function processRetryableDeliveries(
+  db: DrizzleDb,
+  limit = 25
+): Promise<{ retried: number; failed: number }> {
+  const now = new Date()
+  const retryable = await db
+    .select({ id: webhookDelivery.id })
+    .from(webhookDelivery)
+    .where(and(eq(webhookDelivery.status, 'retrying'), lte(webhookDelivery.nextRetryAt, now)))
+    .limit(limit)
+
+  let retried = 0
+  let failed = 0
+
+  for (const delivery of retryable) {
+    try {
+      const result = await retryWebhookDelivery(db, delivery.id)
+      if (result?.status === 'retrying' || result?.status === 'success') {
+        retried++
+      } else {
+        failed++
+      }
+    } catch {
+      failed++
+    }
+  }
+
+  return { failed, retried }
 }
 
 export { generateSecret, hmacSign }

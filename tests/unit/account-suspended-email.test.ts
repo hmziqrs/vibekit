@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest'
-
 import { renderAccountSuspended } from '$lib/server/email/templates/account-suspended'
+import { describe, expect, it } from 'vitest'
 
 describe('renderAccountSuspended', () => {
   it('renders indefinite suspension email', () => {

@@ -17,8 +17,7 @@ describe('auth security config', () => {
     it('configures storage for rate limiting', () => {
       const authPath = resolve(root, 'src/lib/server/auth.ts')
       const content = readFileSync(authPath, 'utf8')
-      // Currently using memory storage; TODO: migrate to database after adding schema
-      expect(content).toContain("storage: 'memory'")
+      expect(content).toContain("storage: 'database'")
     })
 
     it('sets strict limits on sign-in endpoint', () => {
@@ -165,5 +164,69 @@ describe('login_attempt schema', () => {
     expect(content).toContain('login_attempt')
     expect(content).toContain('attempt_count')
     expect(content).toContain('locked_until')
+  })
+})
+
+describe('progressive backoff', () => {
+  it('uses exponential backoff instead of fixed duration', () => {
+    const source = readFileSync(resolve(root, 'src/lib/server/auth-lockout.ts'), 'utf8')
+    expect(source).toContain('BASE_LOCKOUT_MS')
+    expect(source).toContain('Math.pow(2,')
+  })
+
+  it('base lockout is 5 minutes', () => {
+    const source = readFileSync(resolve(root, 'src/lib/server/auth-lockout.ts'), 'utf8')
+    expect(source).toContain('5 * 60 * 1000')
+  })
+
+  it('no longer uses fixed LOCKOUT_DURATION_MS', () => {
+    const source = readFileSync(resolve(root, 'src/lib/server/auth-lockout.ts'), 'utf8')
+    expect(source).not.toContain('LOCKOUT_DURATION_MS')
+  })
+})
+
+describe('security alert emails', () => {
+  it('hooks import getEmailService', () => {
+    const source = readFileSync(resolve(root, 'src/hooks.server.ts'), 'utf8')
+    expect(source).toContain('getEmailService')
+  })
+
+  it('sends alert on account lockout', () => {
+    const source = readFileSync(resolve(root, 'src/hooks.server.ts'), 'utf8')
+    expect(source).toContain("eventType: 'account_locked'")
+    expect(source).toContain('sendSecurityAlert')
+  })
+
+  it('sends alert on new device detection', () => {
+    const source = readFileSync(resolve(root, 'src/hooks.server.ts'), 'utf8')
+    expect(source).toContain("eventType: 'new_device'")
+  })
+
+  it('sends alert on password change', () => {
+    const source = readFileSync(resolve(root, 'src/hooks.server.ts'), 'utf8')
+    expect(source).toContain("'password_change'")
+  })
+
+  it('sends alert on 2FA changes', () => {
+    const source = readFileSync(resolve(root, 'src/hooks.server.ts'), 'utf8')
+    expect(source).toContain("'two_factor_enabled'")
+    expect(source).toContain("'two_factor_disabled'")
+  })
+
+  it('security alert template renders for all event types', () => {
+    const source = readFileSync(
+      resolve(root, 'src/lib/server/email/templates/security-alert.ts'),
+      'utf8'
+    )
+    expect(source).toContain('account_locked')
+    expect(source).toContain('new_device')
+    expect(source).toContain('password_change')
+    expect(source).toContain('two_factor_change')
+  })
+
+  it('EmailService has sendSecurityAlert method', () => {
+    const source = readFileSync(resolve(root, 'src/lib/server/email/index.ts'), 'utf8')
+    expect(source).toContain('sendSecurityAlert')
+    expect(source).toContain('SecurityAlertData')
   })
 })

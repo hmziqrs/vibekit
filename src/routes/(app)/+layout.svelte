@@ -196,7 +196,7 @@
         <button
           onclick={handleSignOut}
           disabled={signingOut}
-          class="w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
+          class="w-full rounded-lg px-3 py-2 text-start text-[13px] font-medium text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
         >
           {signingOut ? 'Signing out...' : 'Sign out'}
         </button>

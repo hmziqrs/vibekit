@@ -15,7 +15,7 @@ import {
   UnauthorizedError,
 } from '$lib/server/errors'
 import { hasPermission, hasTeamPermission } from '$lib/server/permissions'
-import { rateLimit } from '$lib/server/rate-limit'
+import { dbRateLimitCheck } from '$lib/server/rate-limit'
 import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createMiddleware } from 'hono/factory'
@@ -108,7 +108,12 @@ export const withApiKey = (requiredScope?: string) =>
 
     // Enforce per-key rate limit if configured
     if (keyRecord.rateLimit) {
-      const result = rateLimit(`apikey:${keyRecord.id}`, keyRecord.rateLimit, 60_000)
+      const result = await dbRateLimitCheck(
+        db,
+        `apikey:${keyRecord.id}`,
+        keyRecord.rateLimit,
+        60_000
+      )
       if (!result.allowed) throw new RateLimitError()
       c.header('X-RateLimit-Limit', String(keyRecord.rateLimit))
       c.header('X-RateLimit-Remaining', String(result.remaining))
@@ -156,7 +161,8 @@ export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
 
     // Apply tier multiplier for subscribed users
     const effectiveLimit = applyTierMultiplier(limit, c.get('apiKey')?.scopes)
-    const result = rateLimit(key, effectiveLimit, windowMs)
+    const { db } = c.get('services')
+    const result = await dbRateLimitCheck(db, key, effectiveLimit, windowMs)
     if (!result.allowed) throw new RateLimitError()
     c.header('X-RateLimit-Limit', String(effectiveLimit))
     c.header('X-RateLimit-Remaining', String(result.remaining))
@@ -164,16 +170,16 @@ export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
   })
 
 /** Rate limit multipliers by subscription plan slug. Free tier = 1x (no change). */
-const TIER_MULTIPLIERS: Record<string, number> = {
+const _TIER_MULTIPLIERS: Record<string, number> = {
+  enterprise: 10,
   pro: 3,
   team: 5,
-  enterprise: 10,
 }
 
 function applyTierMultiplier(baseLimit: number, _scopes?: string[] | null): number {
   // Future: look up user's active subscription plan slug and apply multiplier.
-  // For now, returns the base limit. The TIER_MULTIPLIERS constant is ready
-  // for when subscription lookup is wired in.
+  // Currently returns the base limit. The _TIER_MULTIPLIERS constant is ready
+  // For when subscription lookup is wired in.
   return baseLimit
 }
 

@@ -79,7 +79,8 @@ describe('events module', () => {
       expect.objectContaining({
         entityId: 'post-1',
         entityType: 'blog_post',
-      })
+      }),
+      'author-1'
     )
   })
 

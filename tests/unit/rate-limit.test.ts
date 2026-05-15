@@ -1,4 +1,4 @@
-import { rateLimit } from '$lib/server/rate-limit'
+import { rateLimit, dbRateLimitCheck } from '$lib/server/rate-limit'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 describe(rateLimit, () => {
@@ -56,5 +56,18 @@ describe(rateLimit, () => {
       expect(rateLimit(key).allowed).toBeTruthy()
     }
     expect(rateLimit(key).allowed).toBeFalsy()
+  })
+})
+
+describe('dbRateLimitCheck', () => {
+  it('falls back to in-memory when db is null', async () => {
+    const result = await dbRateLimitCheck(null, 'fallback-null', 5, 60_000)
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(4)
+  })
+
+  it('falls back to in-memory when db is undefined', async () => {
+    const result = await dbRateLimitCheck(undefined, 'fallback-undef', 5, 60_000)
+    expect(result.allowed).toBe(true)
   })
 })

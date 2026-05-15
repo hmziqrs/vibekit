@@ -8,5 +8,5 @@
   <link rel="alternate" type="application/rss+xml" title="Vibekit Blog" href="/blog/feed.xml" />
 </svelte:head>
 
-<CfBeacon token={data.cfToken} />
+<CfBeacon nonce={data.nonce} token={data.cfToken} />
 {@render children()}

@@ -168,12 +168,12 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Usage-based billing infrastructure (metered billing tables, usage recording API)
 - [x] Gap: Quota enforcement — checkUsageLimit() now called in POST /billing/usage, rejects over-limit
 - [x] Gap: Usage dashboard — GET /billing/usage endpoint returns current usage and limits
-- [ ] Gap: Overage handling — no overage pricing or auto-upgrade
+- [x] Gap: Overage handling — checkUsageLimit returns overage cost/rate/units; POST /billing/usage allows overage when plan has overagePricing in features JSON; hard-rejects when rate is 0
 - [x] Billing admin (plan management, subscription overview, invoice listing)
 - [x] Gap: Revenue metrics — MRR/ARR/ARPU/net revenue/churn/trial counts added to getBillingOverview()
 - [x] Gap: Refund processing — admin refund endpoint (POST /api/admin/billing/refund) calls Stripe refunds API, marks invoice void; charge.refunded webhook handles automatic Stripe-initiated refunds
-- [ ] Gap: Discount/coupon management — no tables or code
-- [ ] Gap: Tax configuration — no tax calculation
+- [x] Gap: Discount/coupon management — coupon table, admin CRUD, Stripe coupon sync, user redemption endpoint, validators
+- [x] Gap: Tax configuration — taxRate/taxInclusive on subscriptionPlan, calculateTax() utility, Stripe automatic_tax, taxAmountInCents on invoice
 - [x] Payment webhooks (Stripe webhook handler, idempotent processing with eventId dedup)
 - [x] Gap: Missing webhook events — added 6 more: trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired
 - [x] Gap: Failure recovery — stripeWebhookEvent now tracks status/retryCount/nextRetryAt/errorMessage; catch block records failures; admin endpoints for viewing and retrying failed events
@@ -207,10 +207,10 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Media library (file browser with grid/list, type filters, search by filename, pagination, bulk delete)
 - [x] Image processing (Cloudflare Image Resizing URL builders, responsive srcset generation, CDN URL generation)
 - [x] Storage adapter abstraction (R2 primary, S3-compatible fallback, local dev filesystem adapter, GET presigned URLs)
-- [ ] Gap: Chunked upload non-functional (session tracker only, no chunk data transfer/assembly)
-- [ ] Gap: No virus scanning
-- [ ] Gap: No thumbnail generation or resize/crop at upload
-- [ ] Gap: Presigned URLs are GET-only (no PUT for direct browser upload)
+- [x] Gap: Chunked upload — chunk data transfer to temp dir, assembly via assembleChunks(), POST /uploads/session/:id/complete endpoint stores assembled file via storage adapter
+- [x] Gap: Virus scanning — scanBuffer() detects PE/ELF/MachO/EICAR signatures; integrated into media and blog upload endpoints; 422 rejection for threats
+- [x] Gap: Thumbnail generation — generateThumbnail() service, POST /storage/thumbnail admin endpoint, Cloudflare Image Resizing URL helper, configurable sizes
+- [x] Gap: Presigned URLs — putPresignedUrl added to StorageClient interface, implemented in S3/R2/filesystem adapters; POST /storage/presign-get and POST /storage/presign-put endpoints
 
 #### Search
 <!-- Audit: search-audit.md — 2026-05-15 -->
@@ -219,7 +219,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Content indexing (blog posts + items + users fully indexed with create/update/delete hooks; comments not indexed)
 - [x] Gap: User indexing fixed — create via databaseHooks in auth.ts, deindex on self-delete and admin delete
 - [x] Gap: Blog search endpoint now uses FTS5 via search service instead of raw SQL LIKE
-- [ ] Gap: No relevance tuning (default BM25 only)
+- [x] Gap: Search relevance tuning — bm25() with configurable column weights (title 10x, content 1x, metadata 0.5x, entityType 0x); SearchWeights interface for custom overrides
 
 #### SEO & Performance
 <!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
