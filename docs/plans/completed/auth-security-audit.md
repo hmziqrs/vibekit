@@ -125,3 +125,9 @@ This is strong test coverage. However, tests cannot catch missing features (e.g.
 - `/Users/hmziq/os/vibekit/src/routes/(auth)/two-factor/+page.svelte` — 2FA challenge page
 - `/Users/hmziq/os/vibekit/src/routes/(app)/app/settings/+page.svelte` — Session management, 2FA, passkey UI
 - `/Users/hmziq/os/vibekit/src/app.d.ts` — Type declarations (impersonatedBy)
+
+## Session 2026-05-15 Updates
+
+- **"Suspicious login detection type exists but is never emitted"**: VERIFIED FALSE — The `suspicious_login` event IS emitted in `hooks.server.ts:284` via the `cf-ipcountry` header check (new device from unseen country). The audit finding was incorrect.
+- **"No Content-Security-Policy header"**: VERIFIED FALSE — CSP is configured in `svelte.config.js` with comprehensive directives including nonce-based script-src. The audit finding was incorrect (already noted in Critical Gaps #1 above).
+- **Suspicious login detection comment**: CORRECTED — The detection triggers on "new device from unseen IP" (not "country change" as previously described). It compares the login IP against all known session IPs for the user.

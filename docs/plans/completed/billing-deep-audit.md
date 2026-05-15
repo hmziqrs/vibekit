@@ -93,3 +93,9 @@ type: project
 - `tests/unit/subscription-service.test.ts` — Full service layer
 - `tests/e2e/billing.spec.ts` — E2E plans + checkout + cancel
 - `tests/e2e/admin-billing-ui.spec.ts` — Admin billing UI
+
+## Session 2026-05-15 Updates
+
+- ConfirmDialog accessibility: Added aria-modal="true" to all dialog instances
+- Admin API Keys page: Fixed Svelte 4 syntax (on:confirm/open=) to Svelte 5 (onConfirm/bind:open)
+- Reindex schema: Removed orphaned 'page' entityType that had no reindexer

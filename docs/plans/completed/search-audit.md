@@ -46,3 +46,7 @@ type: project
 - `src/lib/server/search/service.ts` — Search service
 - `src/lib/components/search-dialog.svelte` — Search UI (Ctrl/Cmd+K)
 - `src/routes/(app)/app/search/+page.svelte` — Full results page
+
+## Session 2026-05-15 Updates
+
+- **"Admin reindex ignores entityType filter"**: FIXED — The entityType filter in the reindex handler worked correctly, but the `EntityType` enum included `'page'` which had no corresponding reindexer function. Removed `'page'` from the enum so the filter now only offers valid, implementable entity types.

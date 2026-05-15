@@ -45,3 +45,7 @@ type: project
 - `src/routes/(admin)/+layout.svelte` — Uses `m.xxx()` for nav labels (12 calls)
 - `src/lib/components/language-switcher.svelte` — Language switcher component
 - `scripts/i18n-check.ts` — Validation script (NOT in CI)
+
+## Session 2026-05-15 Updates
+
+- **"~70 files still use physical directional CSS"**: FIXED — Replaced `text-right`/`text-left`, `pl-`/`pr-`, `border-l-`, `ml-` with logical properties (`text-start`/`text-end`, `ps-`/`pe-`, `border-s-`, `ms-`) across 19 files. The remaining files that use `left-`/`right-` classes are for absolute/relative positioning (e.g., `left-0`, `right-0`, `top-`, `bottom-`) which require physical properties and cannot be converted to logical equivalents.
