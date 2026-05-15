@@ -261,6 +261,22 @@ describe('S3Storage.delete', () => {
 
     await expect(storage.delete('file.txt')).resolves.toBeUndefined()
   })
+
+  it('throws on non-ok response', async () => {
+    fetchSpy = vi.fn().mockResolvedValue({ ok: false, status: 403 })
+    vi.stubGlobal('fetch', fetchSpy)
+    const storage = createStorage()
+
+    await expect(storage.delete('file.txt')).rejects.toThrow('S3 DELETE failed: 403')
+  })
+
+  it('does not throw on 204 no content', async () => {
+    fetchSpy = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+    vi.stubGlobal('fetch', fetchSpy)
+    const storage = createStorage()
+
+    await expect(storage.delete('file.txt')).resolves.toBeUndefined()
+  })
 })
 
 describe('S3Storage.list', () => {
