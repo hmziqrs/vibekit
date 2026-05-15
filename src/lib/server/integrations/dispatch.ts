@@ -109,6 +109,22 @@ async function sendDiscordMessage(
 
   if (!webhookUrl) return
 
+  // Validate webhook URL is Discord's domain to prevent SSRF
+  try {
+    const parsed = new URL(webhookUrl)
+    if (parsed.hostname !== 'discord.com' && parsed.hostname !== 'discordapp.com') {
+      console.error('Discord webhook URL rejected: invalid hostname')
+      return
+    }
+    if (parsed.protocol !== 'https:') {
+      console.error('Discord webhook URL rejected: must use https')
+      return
+    }
+  } catch {
+    console.error('Discord webhook URL rejected: invalid URL')
+    return
+  }
+
   const color = TYPE_COLORS[message.type ?? 'info'] ?? TYPE_COLORS.info
 
   const payload = {

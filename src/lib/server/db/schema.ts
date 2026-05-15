@@ -664,7 +664,10 @@ export const notification = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [index('notification_user_read_idx').on(table.userId, table.readAt)]
+  (table) => [
+    index('notification_user_read_idx').on(table.userId, table.readAt),
+    index('notification_user_archived_idx').on(table.userId, table.archivedAt),
+  ]
 )
 
 export const notificationRelations = relations(notification, ({ one }) => ({

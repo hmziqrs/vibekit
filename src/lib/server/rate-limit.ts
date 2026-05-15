@@ -1,6 +1,6 @@
 import { rateLimitLog } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
-import { eq, lte } from 'drizzle-orm'
+import { eq, lte, sql } from 'drizzle-orm'
 
 interface RateLimitEntry {
   count: number
@@ -56,25 +56,25 @@ async function dbRateLimit(
   // Delete expired entries for this key (lazy cleanup)
   await db.delete(rateLimitLog).where(lte(rateLimitLog.resetAt, now)).run()
 
-  // Try to insert a new row. If key exists and not expired, increment count.
-  const existing = await db.select().from(rateLimitLog).where(eq(rateLimitLog.key, key)).get()
+  // Atomic upsert: insert or increment in a single statement.
+  // This eliminates the TOCTOU race where two concurrent requests both
+  // SELECT, see the same count, and both increment independently.
+  const result = await db
+    .insert(rateLimitLog)
+    .values({ count: 1, key, resetAt })
+    .onConflictDoUpdate({
+      set: {
+        count: sql`CASE WHEN ${rateLimitLog.resetAt} > ${now} THEN ${rateLimitLog.count} + 1 ELSE 1 END`,
+        resetAt: sql`CASE WHEN ${rateLimitLog.resetAt} > ${now} THEN ${rateLimitLog.resetAt} ELSE ${resetAt} END`,
+      },
+      target: [rateLimitLog.key],
+    })
+    .returning({ count: rateLimitLog.count })
+    .get()
 
-  if (!existing || existing.resetAt <= now) {
-    // New window — upsert with count=1
-    await db
-      .insert(rateLimitLog)
-      .values({ count: 1, key, resetAt })
-      .onConflictDoUpdate({ set: { count: 1, resetAt }, target: [rateLimitLog.key] })
-      .run()
-    return { allowed: true, remaining: limit - 1 }
-  }
-
-  // Existing window — increment
-  const newCount = existing.count + 1
-  await db.update(rateLimitLog).set({ count: newCount }).where(eq(rateLimitLog.key, key)).run()
-
-  if (newCount > limit) return { allowed: false, remaining: 0 }
-  return { allowed: true, remaining: limit - newCount }
+  const currentCount = result?.count ?? 1
+  if (currentCount > limit) return { allowed: false, remaining: 0 }
+  return { allowed: true, remaining: limit - currentCount }
 }
 
 /** In-memory rate limit (no DB). Used when db is unavailable (e.g. tests). */
