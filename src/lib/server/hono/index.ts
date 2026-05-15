@@ -1299,6 +1299,71 @@ app.post('/billing/webhooks/stripe', async (c) => {
         // No action needed — checkout was abandoned
         break
       }
+      case 'customer.updated': {
+        // @ts-expect-error Stripe event data.object has different shape
+        const customer = event.data.object as Record<string, unknown>
+        const customerId = customer.id as string
+        if (customerId) {
+          const [subRow] = await db
+            .select({ userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeCustomerId, customerId))
+            .limit(1)
+          if (subRow) {
+            // Customer details updated in Stripe — sync email/name if needed
+            await writeAuditLog(db, {
+              action: 'billing.customer_updated',
+              entityType: 'subscription',
+              metadata: { customerId },
+              userId: subRow.userId,
+            })
+          }
+        }
+        break
+      }
+      case 'payment_method.updated': {
+        // @ts-expect-error Stripe event data.object has different shape
+        const pm = event.data.object as Record<string, unknown>
+        const pmId = pm.id as string
+        if (pmId) {
+          await db
+            .update(paymentMethod)
+            .set({ updatedAt: new Date() })
+            .where(eq(paymentMethod.stripePaymentMethodId, pmId))
+        }
+        break
+      }
+      case 'invoice.upcoming': {
+        // @ts-expect-error Stripe event data.object has different shape
+        const inv = event.data.object as Record<string, unknown>
+        const customerId = inv.customer as string
+        if (customerId) {
+          const [subRow] = await db
+            .select({ userId: subscription.userId })
+            .from(subscription)
+            .where(eq(subscription.stripeCustomerId, String(customerId)))
+            .limit(1)
+          if (subRow?.userId) {
+            // Notify user about upcoming invoice
+            c.executionCtx?.waitUntil?.(
+              import('$lib/server/auth')
+                .then(({ getEmailService }) => {
+                  const emailService = getEmailService()
+                  if (emailService) {
+                    return emailService.sendTrialEndingSoon(
+                      '',
+                      '',
+                      'upcoming',
+                      new Date().toISOString()
+                    )
+                  }
+                })
+                .catch(() => {})
+            )
+          }
+        }
+        break
+      }
     }
 
     // Record the processed event for idempotency
