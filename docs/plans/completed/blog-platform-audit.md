@@ -39,8 +39,7 @@ type: project
 4. **Blog search uses LIKE, not FTS** — The admin blog search endpoint (`GET /api/blog/search`) uses raw SQL `LIKE '%q%'` against title, slug, excerpt, and contentBody. This ignores the FTS5 search infrastructure that exists for other entities and was flagged in the search audit.
    - **Fix**: Rewrite to use FTS5 MATCH query.
 
-5. **Comment editing does not sanitize HTML** — The `PATCH /comments/:id` endpoint sets `htmlContent: parsed.content` but `parsed.content` is the raw text input. It does not sanitize or render the content as HTML. Public comment display reads `htmlContent` which is null for user-edited comments, so edited comments may display raw text instead of rendered content.
-   - **Fix**: Sanitize and render comment content on edit, or always derive `htmlContent` from `content`.
+5. ~~**Comment editing does not sanitize HTML**~~ **FIXED** — Both comment creation and edit now call `renderAndSanitize(parsed.content)` to properly render markdown and sanitize HTML for `htmlContent`. The `renderAndSanitize` import from `$lib/markdown` was added to the Hono index.
 
 6. ~~**Visitor hash is plaintext, not hashed**~~ **FIXED** — The `sha256()` helper at `hono/index.ts:322` already hashes `ip:ua` via `crypto.subtle.digest('SHA-256')` before storing. Raw IP/UA is never persisted. Audit incorrectly claimed plaintext storage.
 
