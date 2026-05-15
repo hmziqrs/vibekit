@@ -22,6 +22,8 @@ export const user = sqliteTable('user', {
   onboardingStep: integer('onboarding_step').default(0),
   role: text({ enum: ['user', 'admin'] }).default('user'),
   status: text({ enum: ['active', 'suspended', 'deactivated'] }).default('active'),
+  termsAcceptedAt: integer('terms_accepted_at', { mode: 'timestamp_ms' }),
+  termsAcceptedVersion: text('terms_accepted_version').default('1'),
   timezone: text('timezone'),
   twoFactorEnabled: integer('two_factor_enabled', { mode: 'boolean' }).default(false),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' })

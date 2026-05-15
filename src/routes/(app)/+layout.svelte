@@ -19,6 +19,31 @@
   let searchOpen = $state(false)
   let shortcutsOpen = $state(false)
   let stoppingImpersonation = $state(false)
+  let needsTermsAcceptance = $state(false)
+  let acceptingTerms = $state(false)
+
+  $effect(() => {
+    if ($page.data?.user) {
+      fetch('/api/terms/status')
+        .then((r) => r.json())
+        .then((data) => {
+          needsTermsAcceptance = data.needsAcceptance ?? false
+        })
+        .catch(() => {})
+    }
+  })
+
+  async function acceptTerms() {
+    acceptingTerms = true
+    try {
+      const res = await fetch('/api/terms/accept', { method: 'POST' })
+      if (res.ok) needsTermsAcceptance = false
+    } catch {
+      // ignore
+    } finally {
+      acceptingTerms = false
+    }
+  }
 
   const impersonationInfo = $derived.by(() => {
     if (typeof sessionStorage === 'undefined') return null
@@ -253,6 +278,23 @@
             disabled={stoppingImpersonation}
           >
             {stoppingImpersonation ? 'Stopping...' : 'Stop Impersonating'}
+          </button>
+        </div>
+      {/if}
+      {#if needsTermsAcceptance}
+        <div class="flex items-center justify-between gap-3 border-b border-brand/30 bg-brand/10 px-6 py-2">
+          <div class="flex items-center gap-2 text-[12px] text-brand">
+            <span>
+              Our <a href="/terms" class="underline" target="_blank">Terms of Service</a> have been updated.
+              Please review and accept to continue.
+            </span>
+          </div>
+          <button
+            class="rounded-md bg-brand/20 px-3 py-1 text-[11px] font-medium text-brand transition-colors hover:bg-brand/30 disabled:opacity-50"
+            onclick={acceptTerms}
+            disabled={acceptingTerms}
+          >
+            {acceptingTerms ? 'Accepting...' : 'Accept Terms'}
           </button>
         </div>
       {/if}

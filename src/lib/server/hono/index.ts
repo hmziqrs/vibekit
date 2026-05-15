@@ -160,6 +160,7 @@ import {
 import { createSearchService } from '$lib/server/search/service'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { detectSpam } from '$lib/server/spam-detector'
+import { CURRENT_TERMS_VERSION, needsTermsAcceptance } from '$lib/server/terms'
 import { generateThumbnail } from '$lib/server/thumbnail'
 import {
   listTrustedDevices,
@@ -1433,6 +1434,29 @@ app.post('/billing/webhooks/stripe', async (c) => {
 const protectedApp = new Hono<ProtectedEnv>().use('*', withApiKey()).use('*', requireUser)
 
 // ── Content Reports (auth required) ───────────────────────────────────
+
+// ── Terms Acceptance ──────────────────────────────────────────────────
+
+protectedApp.post('/terms/accept', async (c) => {
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+
+  await db
+    .update(user)
+    .set({
+      termsAcceptedAt: new Date(),
+      termsAcceptedVersion: CURRENT_TERMS_VERSION,
+    })
+    .where(eq(user.id, currentUser.id))
+
+  return c.json({ success: true })
+})
+
+protectedApp.get('/terms/status', async (c) => {
+  const currentUser = c.get('user')
+  const needsAcceptance = needsTermsAcceptance(currentUser.termsAcceptedVersion ?? null)
+  return c.json({ currentVersion: CURRENT_TERMS_VERSION, needsAcceptance })
+})
 
 protectedApp.post(
   '/reports',

@@ -217,8 +217,8 @@ None. All three features are fully implemented with schema, server logic, API en
 
 ### Critical Gaps
 
-1. **No automated data retention/deletion** — Soft-deleted accounts never hard-delete. Audit logs and analytics data have no TTL or cleanup.
-2. **No ToS versioning or acceptance tracking** — Terms are static HTML. No record of which version a user accepted.
+1. **No automated data retention/deletion** ✅ FIXED — `POST /api/admin/cleanup` hard-deletes soft-deleted users/items/orgs/posts >30 days, auto-expires bans, purges expired API keys, purges usage logs >90 days. Cron-triggerable via `x-cron-secret` header.
+2. **No ToS versioning or acceptance tracking** ✅ FIXED — Added `termsAcceptedVersion` and `termsAcceptedAt` columns to user table. `CURRENT_TERMS_VERSION` constant in `$lib/server/terms.ts`. `GET /api/terms/status` and `POST /api/terms/accept` endpoints. Banner in app layout prompts re-acceptance when version changes.
 3. **Audit log is mutable** ✅ FIXED — Migration `0041_audit_log_immutable.sql` adds `RAISE ABORT` triggers that prevent UPDATE and DELETE on the `audit_log` table.
 4. **No granular consent categories** — Binary accept/decline violates GDPR guidance on granular consent.
 5. **No DPA documentation** — No Data Processing Agreement template or documentation.

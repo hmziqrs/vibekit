@@ -16,7 +16,7 @@
     <h1 class="mb-4 text-[clamp(2rem,5vw,3rem)] font-semibold tracking-[-0.02em] text-text-primary">
       Terms of Service
     </h1>
-    <p class="mb-12 text-[14px] text-text-muted">Last updated: April 2026</p>
+    <p class="mb-12 text-[14px] text-text-muted">Version 2 &middot; Last updated: May 2026</p>
 
     <div class="prose prose-invert max-w-none">
       <h2 class="text-text-primary">Acceptance</h2>
