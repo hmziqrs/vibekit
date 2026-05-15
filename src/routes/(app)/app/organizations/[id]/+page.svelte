@@ -3,6 +3,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
   import { hasPermission, type OrgRole } from '$lib/permissions'
+  import { getRoleBadgeColor } from '$lib/utils'
   import { inviteMemberSchema } from '$lib/validators/organization'
   import { formatDate } from '$lib/i18n.svelte'
 
@@ -125,6 +126,7 @@
   }
 
   async function removeMember(memberId: string, memberName: string) {
+    if (!confirm(`Remove ${memberName} from this organization?`)) return
     mutationError = ''
     removingMemberId = memberId
     try {
@@ -169,16 +171,6 @@
       showLeaveDialog = false
       leaving = false
     }
-  }
-
-  function getRoleBadgeColor(role: string) {
-    const colors: Record<string, string> = {
-      admin: 'bg-info/20 text-info',
-      member: 'bg-success/20 text-success',
-      owner: 'bg-warning/20 text-warning',
-      viewer: 'bg-muted/20 text-muted',
-    }
-    return colors[role] ?? 'bg-muted/20 text-muted'
   }
 
 </script>

@@ -5941,6 +5941,7 @@ orgApp.get(
 // Change member role
 orgApp.patch(
   '/:orgId/members/:memberId',
+  withRateLimit('org-member-role', 20, 60_000),
   withOrgMembership,
   requirePermission('org.members.manage'),
   validate(updateMemberRoleSchema),

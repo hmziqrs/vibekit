@@ -2,6 +2,7 @@
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { hasTeamPermission, type OrgRole, type TeamRole } from '$lib/permissions'
+  import { getRoleBadgeColor } from '$lib/utils'
   import { addTeamMemberSchema } from '$lib/validators/team'
 
   interface TeamDetail {
@@ -201,14 +202,6 @@
     } catch {
       mutationError = 'Failed to change role'
     }
-  }
-
-  function getRoleBadgeColor(role: string) {
-    const colors: Record<string, string> = {
-      lead: 'bg-warning/20 text-warning',
-      member: 'bg-success/20 text-success',
-    }
-    return colors[role] ?? 'bg-muted/20 text-muted'
   }
 
   function formatTimeAgo(dateStr: string): string {

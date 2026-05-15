@@ -140,9 +140,9 @@ The Organizations & Teams phase covers org CRUD, member management with roles/pe
 | F3  | HIGH     | Admin can demote other admins (no role hierarchy check) | ✅ FIXED — added `getRoleLevel()` hierarchy check                                 |
 | F4  | HIGH     | Invitation acceptance has TOCTOU race                   | ✅ FIXED — now uses `db.batch()` for atomic member insert + invitation update     |
 | F5  | MEDIUM   | Invitation token leaked in API response                 | ✅ FIXED — now returns `invitationUrl` instead of raw `token`                     |
-| F10 | MEDIUM   | No rate limiting on member role changes                 | Open — add withRateLimit                                                          |
+| F10 | MEDIUM   | No rate limiting on member role changes                 | ✅ FIXED — added `withRateLimit('org-member-role', 20, 60_000)`                   |
 | F11 | MEDIUM   | Org slug collision under concurrency                    | ✅ FIXED — auto-appends timestamp suffix on collision                             |
 | F13 | HIGH     | Cron hard-delete ignores subscriptions                  | ✅ FIXED — queries active/trialing subs and excludes protected orgs from deletion |
-| P1  | MEDIUM   | No confirmation dialog for member removal               | Open                                                                              |
+| P1  | MEDIUM   | No confirmation dialog for member removal               | ✅ FIXED — added `confirm()` dialog before removal fetch                          |
 | P1  | MEDIUM   | transferOwnershipSchema missing .trim()                 | ✅ FIXED — added `.trim()` before `.min(1)`                                       |
-| P2  | MEDIUM   | Duplicate getRoleBadgeColor() in 3 files                | Open — extract to shared util                                                     |
+| P2  | MEDIUM   | Duplicate getRoleBadgeColor() in 3 files                | ✅ FIXED — extracted to `$lib/utils.ts`, imported in 3 org/team pages             |

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { getRoleBadgeColor } from '$lib/utils'
   import { createOrganizationSchema } from '$lib/validators/organization'
 
   interface OrgMembership {
@@ -59,16 +60,6 @@
     createDescription = ''
     showCreateForm = false
     creating = false
-  }
-
-  function getRoleBadgeColor(role: string) {
-    const colors: Record<string, string> = {
-      admin: 'bg-info/20 text-info',
-      member: 'bg-success/20 text-success',
-      owner: 'bg-warning/20 text-warning',
-      viewer: 'bg-muted/20 text-muted',
-    }
-    return colors[role] ?? 'bg-muted/20 text-muted'
   }
 </script>
 
