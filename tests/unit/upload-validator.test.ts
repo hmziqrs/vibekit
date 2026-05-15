@@ -2,6 +2,9 @@ import {
   chunkUploadSchema,
   createUploadSessionSchema,
   listUploadSessionsSchema,
+  storagePresignGetSchema,
+  storagePresignPutSchema,
+  storageThumbnailSchema,
 } from '$lib/validators/upload'
 import { describe, expect, it } from 'vitest'
 
@@ -380,5 +383,118 @@ describe('listUploadSessionsSchema', () => {
   it('rejects status that is null', () => {
     const result = listUploadSessionsSchema.safeParse({ status: null })
     expect(result.success).toBeFalsy()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// storagePresignGetSchema
+// ---------------------------------------------------------------------------
+describe('storagePresignGetSchema', () => {
+  it('accepts valid key', () => {
+    const result = storagePresignGetSchema.safeParse({ key: 'uploads/image.png' })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects empty key', () => {
+    const result = storagePresignGetSchema.safeParse({ key: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects whitespace-only key', () => {
+    const result = storagePresignGetSchema.safeParse({ key: '   ' })
+    expect(result.success).toBe(false)
+  })
+
+  it('trims whitespace from key', () => {
+    const data = storagePresignGetSchema.parse({ key: '  uploads/image.png  ' })
+    expect(data.key).toBe('uploads/image.png')
+  })
+
+  it('rejects key exceeding max length', () => {
+    const result = storagePresignGetSchema.safeParse({ key: 'a'.repeat(1025) })
+    expect(result.success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// storagePresignPutSchema
+// ---------------------------------------------------------------------------
+describe('storagePresignPutSchema', () => {
+  it('accepts valid key and contentType', () => {
+    const result = storagePresignPutSchema.safeParse({
+      contentType: 'image/png',
+      key: 'uploads/image.png',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts key without contentType', () => {
+    const result = storagePresignPutSchema.safeParse({ key: 'uploads/file.bin' })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects empty key', () => {
+    const result = storagePresignPutSchema.safeParse({ key: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects whitespace-only contentType', () => {
+    const result = storagePresignPutSchema.safeParse({ contentType: '   ', key: 'valid' })
+    expect(result.success).toBe(false)
+  })
+
+  it('trims whitespace from both fields', () => {
+    const data = storagePresignPutSchema.parse({
+      contentType: '  image/png  ',
+      key: '  uploads/image.png  ',
+    })
+    expect(data.key).toBe('uploads/image.png')
+    expect(data.contentType).toBe('image/png')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// storageThumbnailSchema
+// ---------------------------------------------------------------------------
+describe('storageThumbnailSchema', () => {
+  it('accepts valid key with dimensions', () => {
+    const result = storageThumbnailSchema.safeParse({ height: 200, key: 'img.png', width: 300 })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts key without dimensions', () => {
+    const result = storageThumbnailSchema.safeParse({ key: 'img.png' })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects empty key', () => {
+    const result = storageThumbnailSchema.safeParse({ key: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('coerces string dimensions to numbers', () => {
+    const data = storageThumbnailSchema.parse({ height: '200', key: 'img.png', width: '300' })
+    expect(data.height).toBe(200)
+    expect(data.width).toBe(300)
+  })
+
+  it('rejects width below minimum', () => {
+    const result = storageThumbnailSchema.safeParse({ key: 'img.png', width: 49 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects width above maximum', () => {
+    const result = storageThumbnailSchema.safeParse({ key: 'img.png', width: 2001 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects height below minimum', () => {
+    const result = storageThumbnailSchema.safeParse({ height: 49, key: 'img.png' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects height above maximum', () => {
+    const result = storageThumbnailSchema.safeParse({ height: 2001, key: 'img.png' })
+    expect(result.success).toBe(false)
   })
 })
