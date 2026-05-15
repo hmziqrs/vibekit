@@ -30,7 +30,7 @@ export const reactivateAccountSchema = z.object({
 })
 
 export const notificationPreferenceSchema = z.object({
-  channel: z.enum(['email', 'in_app']),
+  channel: z.enum(['email', 'in_app', 'push']),
   enabled: z.boolean(),
   type: z.string().min(1, 'Type is required'),
 })

@@ -1979,6 +1979,13 @@ protectedApp.post('/uploads/session/:id/complete', async (c) => {
     throw new BadRequestError('Failed to assemble chunks')
   }
 
+  // Validate magic bytes match the declared file type
+  const { matchesMagicBytes } = await import('$lib/server/upload')
+  if (!matchesMagicBytes(new Uint8Array(assembled), session.fileType as string)) {
+    await cleanupChunks(sessionId)
+    throw new BadRequestError('File content does not match declared type')
+  }
+
   const key = generateStorageKey(session.fileName as string)
   await storage.put(key, assembled, {
     contentType: session.fileType as string,
@@ -2310,7 +2317,7 @@ app.post('/api/account/reactivate', withRateLimit('reactivate', 5, 60_000), asyn
 
 // ── Notifications (auth required) ────────────────────────────────────
 
-protectedApp.get('/notifications', async (c) => {
+protectedApp.get('/notifications', withRateLimit('notifications-list', 60, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const page = parsePositiveInt(c.req.query('page'), 1)
@@ -2371,17 +2378,21 @@ protectedApp.get('/notifications/unread-count', async (c) => {
   return c.json({ count: result?.value ?? 0 })
 })
 
-protectedApp.patch('/notifications/read-all', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
+protectedApp.patch(
+  '/notifications/read-all',
+  withRateLimit('notifications-mutate', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
 
-  await db
-    .update(notification)
-    .set({ readAt: new Date() })
-    .where(and(eq(notification.userId, userId), isNull(notification.readAt)))
+    await db
+      .update(notification)
+      .set({ readAt: new Date() })
+      .where(and(eq(notification.userId, userId), isNull(notification.readAt)))
 
-  return c.json({ success: true })
-})
+    return c.json({ success: true })
+  }
+)
 
 protectedApp.patch('/notifications/:id/read', async (c) => {
   const { db } = c.get('services')
@@ -2463,24 +2474,31 @@ protectedApp.patch('/notifications/:id/unarchive', async (c) => {
   return c.json({ success: true })
 })
 
-protectedApp.post('/notifications/bulk-delete', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const body = await c.req.json<{ ids?: string[] }>()
+protectedApp.post(
+  '/notifications/bulk-delete',
+  withRateLimit('notifications-mutate', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const body = await c.req.json<{ ids?: string[] }>().catch(() => ({ ids: [] }))
 
-  if (body.ids && Array.isArray(body.ids)) {
-    const ids = body.ids.filter((id: string) => typeof id === 'string' && id.length > 0)
-    if (ids.length === 0) return c.json({ deleted: 0 })
-    const result = await db
-      .delete(notification)
-      .where(and(eq(notification.userId, userId), inArray(notification.id, ids)))
-    return c.json({ deleted: ids.length })
+    if (body.ids && Array.isArray(body.ids)) {
+      const MAX_BULK_DELETE = 100
+      const ids = body.ids
+        .filter((id: string) => typeof id === 'string' && id.length > 0)
+        .slice(0, MAX_BULK_DELETE)
+      if (ids.length === 0) return c.json({ deleted: 0 })
+      await db
+        .delete(notification)
+        .where(and(eq(notification.userId, userId), inArray(notification.id, ids)))
+      return c.json({ deleted: ids.length })
+    }
+
+    // Delete all notifications for the user
+    await db.delete(notification).where(eq(notification.userId, userId))
+    return c.json({ deleted: 'all' })
   }
-
-  // Delete all notifications for the user
-  const result = await db.delete(notification).where(eq(notification.userId, userId))
-  return c.json({ deleted: 'all' })
-})
+)
 
 // ── Notification Preferences (auth required) ──────────────────────────
 
@@ -7978,9 +7996,16 @@ adminApp.post('/media/bulk-delete', validate(bulkDeleteMediaSchema), async (c) =
 
 // ── Presigned URLs ────────────────────────────────────────────────────
 
+function validateStorageKey(key: string): void {
+  if (key.includes('..') || key.startsWith('/') || key.includes('\0')) {
+    throw new BadRequestError('Invalid storage key')
+  }
+}
+
 protectedApp.post('/storage/presign-get', async (c) => {
   const key = c.req.query('key')
   if (!key) throw new BadRequestError('Missing key parameter')
+  validateStorageKey(key)
   const { storage } = c.get('services')
   const url = await storage.getPresignedUrl(key, { expiresIn: 3600 })
   return c.json({ url })
@@ -7989,6 +8014,7 @@ protectedApp.post('/storage/presign-get', async (c) => {
 protectedApp.post('/storage/presign-put', async (c) => {
   const key = c.req.query('key')
   if (!key) throw new BadRequestError('Missing key parameter')
+  validateStorageKey(key)
   const contentType = c.req.query('contentType')
   const { storage } = c.get('services')
   const url = await storage.putPresignedUrl(key, { contentType, expiresIn: 3600 })

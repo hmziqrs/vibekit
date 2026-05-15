@@ -19,6 +19,12 @@ interface CreateNotificationInput {
   userId: string
 }
 
+function sanitizeLink(link: string | undefined): string | null {
+  if (!link) return null
+  const safe = link.startsWith('/') && !link.startsWith('//')
+  return safe ? link : null
+}
+
 export async function createNotification(
   db: DrizzleDb,
   input: CreateNotificationInput
@@ -26,12 +32,13 @@ export async function createNotification(
   const enabled = await isInAppEnabled(db, input.userId, input.entityType ?? 'general')
   if (!enabled) return
 
+  const safeLink = sanitizeLink(input.link)
   await db.insert(notification).values({
     body: input.body ?? null,
     entityId: input.entityId ?? null,
     entityType: input.entityType ?? null,
     id: uuid(),
-    link: input.link ?? null,
+    link: safeLink,
     metadata: input.metadata ? JSON.stringify(input.metadata) : null,
     title: input.title,
     type: input.type ?? 'info',
@@ -41,7 +48,7 @@ export async function createNotification(
   // Forward to connected Slack/Discord integrations (fire-and-forget)
   dispatchToIntegrations(db, input.userId, {
     body: input.body,
-    link: input.link,
+    link: safeLink ?? undefined,
     title: input.title,
     type: input.type,
   }).catch((error) => console.error('Integration dispatch failed:', error))

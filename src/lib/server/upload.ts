@@ -33,7 +33,7 @@ const FILE_SIGNATURES: Record<string, number[][]> = {
   ],
 }
 
-function matchesMagicBytes(buffer: Uint8Array, mimeType: string): boolean {
+export function matchesMagicBytes(buffer: Uint8Array, mimeType: string): boolean {
   const signatures = FILE_SIGNATURES[mimeType]
   if (!signatures) return true
 
