@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { hasTeamPermission, type OrgRole, type TeamRole } from '$lib/permissions'
   import { createTeamSchema } from '$lib/validators/team'
@@ -24,7 +25,7 @@
 
   const queryClient = useQueryClient()
 
-  const orgId = window.location.pathname.split('/organizations/')[1]?.split('/')[0] ?? ''
+  const orgId = page.params.id
 
   const orgQuery = createQuery(() => ({
     queryFn: async (): Promise<OrgData> => {

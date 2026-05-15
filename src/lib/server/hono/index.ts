@@ -5804,6 +5804,13 @@ orgApp.delete('/:orgId', withOrgMembership, requirePermission('org.delete'), asy
   const currentUser = c.get('user')
   const org = c.get('organization') as typeof organization.$inferSelect
 
+  const sub = await getOrgSubscription(db, org.id)
+  if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+    throw new BadRequestError(
+      'Cannot delete organization with an active subscription. Cancel the subscription first.'
+    )
+  }
+
   await db
     .update(organization)
     .set({
@@ -6362,7 +6369,7 @@ teamApp.get('/', withOrgMembership, requirePermission('org.read'), async (c) => 
 teamApp.post(
   '/',
   withOrgMembership,
-  requirePermission('org.update'),
+  requirePermission('team.create'),
   withRateLimit('team-mutate', 20),
   validate(createTeamSchema),
   async (c) => {
@@ -6752,6 +6759,15 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
 
   if (!invitation) {
     throw new NotFoundError('Invitation not found')
+  }
+
+  const [invOrg] = await db
+    .select({ deletedAt: organization.deletedAt })
+    .from(organization)
+    .where(eq(organization.id, invitation.organizationId))
+
+  if (!invOrg || invOrg.deletedAt) {
+    throw new BadRequestError('This organization no longer exists')
   }
 
   if (invitation.acceptedAt) {

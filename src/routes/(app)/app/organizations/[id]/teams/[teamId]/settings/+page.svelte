@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { hasTeamPermission, type OrgRole, type TeamRole } from '$lib/permissions'
   import { updateTeamSchema } from '$lib/validators/team'
@@ -26,9 +27,8 @@
 
   const queryClient = useQueryClient()
 
-  const pathParts = window.location.pathname.split('/')
-  const orgId = pathParts[3] ?? ''
-  const teamId = pathParts[5] ?? ''
+  const orgId = page.params.id
+  const teamId = page.params.teamId
 
   const orgQuery = createQuery(() => ({
     queryFn: async () => {
@@ -150,6 +150,16 @@
     <div class="animate-pulse space-y-6">
       <div class="h-8 w-64 rounded bg-white/[0.06]"></div>
       <div class="h-40 rounded-lg bg-white/[0.06]"></div>
+    </div>
+  {:else if teamQuery.isError}
+    <div class="rounded-xl border border-destructive/20 bg-surface p-8 text-center">
+      <p class="text-[14px] text-destructive">Failed to load team.</p>
+      <button
+        onclick={() => teamQuery.refetch()}
+        class="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+      >
+        Try again
+      </button>
     </div>
   {:else if teamQuery.data}
     <h1 class="text-2xl font-bold text-text-primary">Team Settings</h1>
