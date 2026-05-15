@@ -97,7 +97,7 @@ export const linkPreviewSchema = z.object({
     .refine((val) => {
       try {
         const parsed = new URL(val)
-        const hostname = parsed.hostname.toLowerCase()
+        const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
         const blockedHosts = [
           'localhost',
           '127.0.0.1',
