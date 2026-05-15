@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { sanitizeHtml } from '$lib/editor/utils/clean-paste'
+  import { sanitizeHtml } from '$lib/markdown'
 
   interface Props {
     articleId: string

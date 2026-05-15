@@ -69,10 +69,13 @@ export function createS3Storage(config: S3Config): StorageClient {
       const { host } = new URL(baseUrl)
       const headers: Record<string, string> = { host }
       const auth = await signRequest('DELETE', path, headers)
-      await fetch(`${baseUrl}${path}`, {
+      const res = await fetch(`${baseUrl}${path}`, {
         headers: { ...headers, authorization: auth },
         method: 'DELETE',
       })
+      if (!res.ok && res.status !== 204) {
+        throw new Error(`S3 DELETE failed: ${res.status}`)
+      }
     },
 
     async get(key: string): Promise<StoredObject | null> {

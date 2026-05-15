@@ -4539,6 +4539,7 @@ blogApp.post(
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
         signal: AbortSignal.timeout(5000),
       })
+      if (!res.ok) return c.json({ error: 'Failed to fetch URL' }, 502)
       const html = await res.text()
 
       // Check for oEmbed link tag in the HTML
@@ -4549,6 +4550,7 @@ blogApp.post(
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
             signal: AbortSignal.timeout(5000),
           })
+          if (!oembedRes.ok) throw new Error('oEmbed fetch failed')
           const oembed = (await oembedRes.json()) as Record<string, unknown>
           const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
           return c.json({

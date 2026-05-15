@@ -25,9 +25,12 @@
   $effect(() => {
     if (page.data?.user) {
       fetch('/api/terms/status')
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) return null
+          return r.json()
+        })
         .then((data) => {
-          needsTermsAcceptance = data.needsAcceptance ?? false
+          if (data) needsTermsAcceptance = data.needsAcceptance ?? false
         })
         .catch(() => {})
     }

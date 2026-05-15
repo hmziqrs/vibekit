@@ -106,23 +106,27 @@
     }
     inviting = true
 
-    const res = await fetch(`/api/orgs/${orgId}/members/invite`, {
-      body: JSON.stringify(parsed.data),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    })
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/members/invite`, {
+        body: JSON.stringify(parsed.data),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
 
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: { message?: string } }
-      inviteError = data.error?.message ?? 'Failed to send invitation'
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: { message?: string } }
+        inviteError = data.error?.message ?? 'Failed to send invitation'
+        return
+      }
+
+      inviteSuccess = `Invitation sent to ${inviteEmail}`
+      inviteEmail = ''
+      inviteRole = 'member'
+    } catch {
+      inviteError = 'Failed to send invitation'
+    } finally {
       inviting = false
-      return
     }
-
-    inviteSuccess = `Invitation sent to ${inviteEmail}`
-    inviteEmail = ''
-    inviteRole = 'member'
-    inviting = false
   }
 
   async function removeMember(memberId: string, memberName: string) {

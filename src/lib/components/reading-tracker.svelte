@@ -14,6 +14,7 @@
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
+      if (!res.ok) return
       const { recorded, viewId: vid } = (await res.json()) as { recorded?: boolean; viewId?: string }
       if (recorded && vid) {
         viewId = vid
