@@ -5689,6 +5689,67 @@ orgApp.post(
   }
 )
 
+// List pending invitations for org
+orgApp.get(
+  '/:orgId/invitations',
+  withOrgMembership,
+  requirePermission('org.members.read'),
+  async (c) => {
+    const { db } = c.get('services')
+    const org = c.get('organization') as typeof organization.$inferSelect
+
+    const invitations = await db
+      .select({
+        createdAt: organizationInvitation.createdAt,
+        email: organizationInvitation.email,
+        expiresAt: organizationInvitation.expiresAt,
+        id: organizationInvitation.id,
+        role: organizationInvitation.role,
+      })
+      .from(organizationInvitation)
+      .where(
+        and(
+          eq(organizationInvitation.organizationId, org.id),
+          isNull(organizationInvitation.acceptedAt),
+          gte(organizationInvitation.expiresAt, new Date())
+        )
+      )
+      .orderBy(desc(organizationInvitation.createdAt))
+
+    return c.json({ invitations })
+  }
+)
+
+// Revoke invitation
+orgApp.delete(
+  '/:orgId/invitations/:invitationId',
+  withOrgMembership,
+  requirePermission('org.members.invite'),
+  async (c) => {
+    const { db } = c.get('services')
+    const org = c.get('organization') as typeof organization.$inferSelect
+    const invitationId = c.req.param('invitationId')
+
+    const [invitation] = await db
+      .select()
+      .from(organizationInvitation)
+      .where(
+        and(
+          eq(organizationInvitation.id, invitationId),
+          eq(organizationInvitation.organizationId, org.id)
+        )
+      )
+
+    if (!invitation) {
+      throw new NotFoundError('Invitation not found')
+    }
+
+    await db.delete(organizationInvitation).where(eq(organizationInvitation.id, invitationId))
+
+    return c.json({ success: true })
+  }
+)
+
 // Transfer ownership
 orgApp.post(
   '/:orgId/transfer-ownership',

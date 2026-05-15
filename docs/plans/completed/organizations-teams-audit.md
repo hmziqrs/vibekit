@@ -37,13 +37,13 @@ The Organizations & Teams phase covers org CRUD, member management with roles/pe
 
 ### HIGH
 
-1. **No invitation management UI**: Users can send invitations from the org detail page, but there is no way to view pending invitations, cancel them, or re-send expired ones. The `organization_invitation` table and API endpoints exist but have no corresponding UI.
+1. **No invitation management UI** ~~: Users can send invitations from the org detail page, but there is no way to view pending invitations, cancel them, or re-send expired ones.~~ ✅ FIXED: Added `GET /api/orgs/:orgId/invitations` and `DELETE /api/orgs/:orgId/invitations/:id` endpoints. Pending invitations now shown on org detail page with revoke buttons.
 
 2. **No invitation acceptance UI**: When a user receives an org invitation, there is no UI to view and accept/decline it. The API supports accepting via token, but no user-facing page exists for this flow.
 
 3. **No org-level billing management**: The billing page (`/app/settings/billing`) is user-scoped. There is no way to view or manage subscriptions from within an organization context. The infrastructure supports org-scoped subscriptions (the `subscription.organizationId` column) but the UI does not expose this.
 
-4. **No transfer ownership**: The ROADMAP claims "transfer ownership" but there is no API endpoint or UI to transfer org ownership from one user to another. The `organization.ownerId` can only be set at creation time.
+4. **No transfer ownership** ~~: The ROADMAP claims "transfer ownership" but there is no API endpoint or UI to transfer org ownership from one user to another.~~ ✅ FIXED: Transfer ownership UI added to org settings page. Owner selects a member from dropdown and confirms. API `POST /api/orgs/:orgId/transfer-ownership` already existed.
 
 ### MEDIUM
 
@@ -55,7 +55,7 @@ The Organizations & Teams phase covers org CRUD, member management with roles/pe
 
 8. **Items are user-scoped, not org/team-scoped**: Items belong to individual users (`item.userId`). There is no concept of org-owned or team-owned items. This limits collaborative use cases.
 
-9. **No leave organization confirmation**: The API endpoint `POST /:orgId/leave` exists but there is no UI button to leave an organization from the org detail page.
+9. **No leave organization confirmation** ~~: The API endpoint `POST /:orgId/leave` exists but there is no UI button to leave an organization from the org detail page.~~ ✅ FIXED: "Leave" button added to org detail page (non-owners only) with confirmation dialog.
 
 ### LOW
 

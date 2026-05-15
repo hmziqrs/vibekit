@@ -24,6 +24,10 @@
   let deleteConfirm = $state(false)
   let deleting = $state(false)
   let deleteError = $state('')
+  let showTransferDialog = $state(false)
+  let transferTargetId = $state('')
+  let transferring = $state(false)
+  let transferError = $state('')
 
   const orgId = $derived(page.params.id)
   const queryClient = useQueryClient()
@@ -91,6 +95,54 @@
 
     await queryClient.invalidateQueries({ queryKey: ['organizations'] })
     window.location.href = '/app/organizations'
+  }
+
+  interface OrgMember {
+    id: string
+    name: string
+    email: string
+    role: string
+    userId: string
+  }
+
+  const membersQuery = createQuery(() => ({
+    enabled: Boolean(orgQuery.data?.membership?.role === 'owner'),
+    queryFn: async (): Promise<OrgMember[]> => {
+      const res = await fetch(`/api/orgs/${orgId}/members`)
+      if (!res.ok) return []
+      const data = (await res.json()) as { members: OrgMember[] }
+      return data.members
+    },
+    queryKey: ['organization-members-settings', orgId],
+  }))
+
+  const transferableMembers = $derived(
+    (membersQuery.data ?? []).filter((m) => m.role !== 'owner'),
+  )
+
+  async function transferOwnership() {
+    if (!transferTargetId) return
+    transferring = true
+    transferError = ''
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/transfer-ownership`, {
+        body: JSON.stringify({ newOwnerId: transferTargetId }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: { message?: string } }
+        throw new Error(data.error?.message ?? 'Failed to transfer ownership')
+      }
+      await queryClient.invalidateQueries({ queryKey: ['organization', orgId] })
+      showTransferDialog = false
+      transferTargetId = ''
+      window.location.href = `/app/organizations/${orgId}`
+    } catch (error) {
+      transferError = error instanceof Error ? error.message : 'Failed to transfer ownership'
+    } finally {
+      transferring = false
+    }
   }
 </script>
 
@@ -167,6 +219,64 @@
         </div>
       </div>
     </form>
+
+    <!-- Transfer Ownership -->
+    {#if orgQuery.data.membership.role === 'owner'}
+      <div class="rounded-lg border border-warning/30 bg-surface p-6">
+        <h2 class="mb-2 text-base font-semibold text-text-primary">Transfer Ownership</h2>
+        <p class="mb-4 text-sm text-text-muted">
+          Transfer ownership to another member. You will be demoted to admin.
+        </p>
+
+        {#if transferableMembers.length === 0}
+          <p class="text-sm text-text-subtle">No other members to transfer ownership to.</p>
+        {:else}
+          {#if showTransferDialog}
+            <div class="space-y-3 rounded-lg border border-warning/30 bg-warning/5 p-4">
+              <p class="text-sm font-medium text-text-primary">
+                Select the new owner for <strong>{org.name}</strong>:
+              </p>
+              <select
+                bind:value={transferTargetId}
+                class="w-full rounded-lg border border-white/[0.06] bg-surface-base px-3 py-2 text-sm text-text-primary focus:border-brand focus:outline-none"
+              >
+                <option value="" disabled selected>Choose a member...</option>
+                {#each transferableMembers as member (member.userId)}
+                  <option value={member.userId}>{member.name || member.email} ({member.role})</option>
+                {/each}
+              </select>
+
+              {#if transferError}
+                <p class="text-sm text-destructive">{transferError}</p>
+              {/if}
+
+              <div class="flex gap-2">
+                <button
+                  onclick={transferOwnership}
+                  disabled={transferring || !transferTargetId}
+                  class="rounded-lg bg-warning px-4 py-2 text-sm font-medium text-warning-foreground transition-colors hover:bg-warning/90 disabled:opacity-50"
+                >
+                  {transferring ? 'Transferring...' : 'Transfer Ownership'}
+                </button>
+                <button
+                  onclick={() => { showTransferDialog = false; transferTargetId = ''; transferError = '' }}
+                  class="rounded-lg border border-white/[0.06] px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.04]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          {:else}
+            <button
+              onclick={() => (showTransferDialog = true)}
+              class="rounded-lg border border-warning/30 px-4 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
+            >
+              Transfer Ownership
+            </button>
+          {/if}
+        {/if}
+      </div>
+    {/if}
 
     <!-- Danger Zone -->
     <div class="rounded-lg border border-destructive/30 bg-surface p-6">

@@ -69,6 +69,32 @@
     Boolean(orgQuery.data && hasPermission(orgQuery.data.membership.role as OrgRole, 'org.members.manage'))
   )
 
+  const invitationsQuery = createQuery(() => ({
+    enabled: Boolean(orgQuery.data && canInvite),
+    queryFn: async (): Promise<{ id: string; email: string; role: string; createdAt: string; expiresAt: string }[]> => {
+      const res = await fetch(`/api/orgs/${orgId}/invitations`)
+      if (!res.ok) return []
+      const data = (await res.json()) as { invitations: { id: string; email: string; role: string; createdAt: string; expiresAt: string }[] }
+      return data.invitations
+    },
+    queryKey: ['organization-invitations', orgId],
+  }))
+
+  let revokingId = $state('')
+
+  async function revokeInvitation(invitationId: string) {
+    revokingId = invitationId
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/invitations/${invitationId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to revoke invitation')
+      await queryClient.invalidateQueries({ queryKey: ['organization-invitations', orgId] })
+    } catch {
+      mutationError = 'Failed to revoke invitation'
+    } finally {
+      revokingId = ''
+    }
+  }
+
   async function inviteMember() {
     inviteError = ''
     inviteSuccess = ''
@@ -326,6 +352,32 @@
         </div>
       {/if}
     </div>
+
+    <!-- Pending Invitations -->
+    {#if canInvite && invitationsQuery.data && invitationsQuery.data.length > 0}
+      <div class="rounded-lg border border-white/[0.06] bg-surface">
+        <div class="border-b border-white/[0.06] px-6 py-4">
+          <h2 class="text-base font-semibold text-text-primary">Pending Invitations</h2>
+        </div>
+        <div class="divide-y divide-white/[0.04]">
+          {#each invitationsQuery.data as inv (inv.id)}
+            <div class="flex items-center justify-between px-6 py-3">
+              <div>
+                <p class="text-sm font-medium text-text-primary">{inv.email}</p>
+                <p class="text-[11px] text-text-subtle">{inv.role} &middot; Invited {formatDate(inv.createdAt)}</p>
+              </div>
+              <button
+                onclick={() => revokeInvitation(inv.id)}
+                disabled={revokingId === inv.id}
+                class="rounded px-2 py-1 text-xs text-text-subtle transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+              >
+                {revokingId === inv.id ? 'Revoking...' : 'Revoke'}
+              </button>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     <!-- Leave Organization Dialog -->
     {#if showLeaveDialog}
