@@ -15,7 +15,7 @@ export const createPlanSchema = z.object({
     .max(50)
     .regex(/^[a-z0-9-]+$/),
   sortOrder: z.number().int().min(0).optional(),
-  stripePriceId: z.string().trim().optional(),
+  stripePriceId: z.string().trim().max(100).optional(),
   taxInclusive: z.boolean().optional(),
   taxRate: z.number().int().min(0).max(10_000).optional(),
   trialDays: z.number().int().min(0).optional(),
@@ -30,17 +30,17 @@ export const updatePlanSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   priceInCents: z.number().int().min(0).optional(),
   sortOrder: z.number().int().min(0).optional(),
-  stripePriceId: z.string().trim().optional().nullable(),
+  stripePriceId: z.string().trim().max(100).optional().nullable(),
   taxInclusive: z.boolean().optional(),
   taxRate: z.number().int().min(0).max(10_000).optional().nullable(),
   trialDays: z.number().int().min(0).optional(),
 })
 
 export const checkoutSessionSchema = z.object({
-  cancelUrl: z.string().trim().min(1),
+  cancelUrl: z.string().trim().min(1).max(2000),
   organizationId: z.string().trim().min(1).optional(),
   planId: z.string().trim().min(1),
-  successUrl: z.string().trim().min(1),
+  successUrl: z.string().trim().min(1).max(2000),
 })
 
 export const changePlanSchema = z.object({
@@ -54,7 +54,7 @@ export const recordUsageSchema = z.object({
 })
 
 export const refundSchema = z.object({
-  amountInCents: z.number().int().min(1).optional(),
+  amountInCents: z.number().int().min(1).max(10_000_000_00).optional(),
   invoiceId: z.string().trim().min(1),
   reason: z.enum(['duplicate', 'fraudulent', 'requested_by_customer']).optional(),
 })

@@ -14,7 +14,7 @@ export const contactSchema = z.object({
 })
 
 export const appealSchema = z.object({
-  email: z.string().trim().min(1, 'Email is required'),
-  message: z.string().trim().min(1, 'Message is required'),
-  name: z.string().trim().min(1, 'Name is required'),
+  email: z.string().trim().min(1, 'Email is required').max(200),
+  message: z.string().trim().min(1, 'Message is required').max(5000),
+  name: z.string().trim().min(1, 'Name is required').max(100),
 })

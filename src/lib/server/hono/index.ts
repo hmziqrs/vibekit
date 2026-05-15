@@ -1,4 +1,7 @@
 import { renderAndSanitize } from '$lib/markdown'
+
+const escapeLike = (s: string) => s.replace(/%/g, '\\%').replace(/_/g, '\\_')
+
 import {
   assignVariant,
   createExperiment,
@@ -1567,7 +1570,7 @@ protectedApp.get('/items', async (c) => {
   }
 
   if (search) {
-    conditions.push(like(item.name, `%${search}%`))
+    conditions.push(like(item.name, `%${escapeLike(search)}%`))
   }
 
   const whereClause = and(...conditions)
@@ -2731,7 +2734,7 @@ protectedApp.get('/billing/payment-methods', async (c) => {
 protectedApp.post('/billing/payment-methods/detach', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = (await c.req.json()) as { paymentMethodId?: string }
+  const body = (await c.req.json().catch(() => ({}))) as { paymentMethodId?: string }
   if (!body.paymentMethodId) throw new BadRequestError('paymentMethodId required')
 
   const pm = await db
@@ -2753,7 +2756,7 @@ protectedApp.post('/billing/payment-methods/detach', async (c) => {
 protectedApp.post('/billing/payment-methods/set-default', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = (await c.req.json()) as { paymentMethodId?: string }
+  const body = (await c.req.json().catch(() => ({}))) as { paymentMethodId?: string }
   if (!body.paymentMethodId) throw new BadRequestError('paymentMethodId required')
 
   const pm = await db
@@ -3643,10 +3646,10 @@ blogApp.get('/', async (c) => {
   if (q && q.length >= 2) {
     conditions.push(
       or(
-        like(blogPost.title, `%${q}%`),
-        like(blogPost.slug, `%${q}%`),
-        like(blogPost.excerpt, `%${q}%`),
-        like(blogPost.contentBody, `%${q}%`)
+        like(blogPost.title, `%${escapeLike(q)}%`),
+        like(blogPost.slug, `%${escapeLike(q)}%`),
+        like(blogPost.excerpt, `%${escapeLike(q)}%`),
+        like(blogPost.contentBody, `%${escapeLike(q)}%`)
       )!
     )
   }
@@ -4579,9 +4582,9 @@ adminApp.get('/users', async (c) => {
   if (search) {
     conditions.push(
       or(
-        like(user.email, `%${search}%`),
-        like(user.displayName, `%${search}%`),
-        like(user.name, `%${search}%`)
+        like(user.email, `%${escapeLike(search)}%`),
+        like(user.displayName, `%${escapeLike(search)}%`),
+        like(user.name, `%${escapeLike(search)}%`)
       )!
     )
   }
@@ -7949,7 +7952,9 @@ adminApp.get('/api-keys', async (c) => {
 
   const conditions = []
   if (search) {
-    conditions.push(or(like(apiKey.name, `%${search}%`), like(user.name, `%${search}%`)))
+    conditions.push(
+      or(like(apiKey.name, `%${escapeLike(search)}%`), like(user.name, `%${escapeLike(search)}%`))
+    )
   }
   if (status === 'active') {
     conditions.push(isNull(apiKey.revokedAt))

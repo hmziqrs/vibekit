@@ -9,7 +9,7 @@ export const subscribeSchema = z.object({
 })
 
 export const unsubscribeSchema = z.object({
-  token: z.string().optional(),
+  token: z.string().max(100).optional(),
 })
 
 export type SubscribeInput = z.infer<typeof subscribeSchema>
