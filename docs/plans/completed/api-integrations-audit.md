@@ -92,9 +92,7 @@
 - Although wrapped in try/catch to not block the main operation, `dispatchWebhooksForEvent` is still awaited. On Cloudflare Workers with a CPU time limit, slow webhook deliveries could eat into the request budget.
 - Fix: Use `executionCtx.waitUntil()` to move webhook dispatch off the critical path, or offload to a Queue.
 
-**LOW -- No webhook endpoint URL validation beyond `url()`.**
-
-- `createWebhookEndpointSchema` in `src/lib/validators/webhook.ts` uses `z.string().url()` but does not restrict to HTTPS or block internal/private IP ranges (e.g., `http://localhost`, `http://169.254.169.254` for SSRF).
+~~**LOW -- No webhook endpoint URL validation beyond `url()`.**~~ **FIXED** — `isValidWebhookUrl()` in `src/lib/validators/webhook.ts` enforces HTTPS-only, blocks private IP ranges (10.x, 172.16-31.x, 192.168.x), cloud metadata endpoints (169.254.169.254, metadata.google.internal), localhost/loopback, .internal/.local domains, and common database ports. Applied to both create and update schemas.
 
 **LOW -- Webhook secret is returned on creation but never shown again.**
 
@@ -164,21 +162,14 @@
 
 ### Issues Found
 
-**MEDIUM -- Access tokens stored in plaintext in the database.**
-
-- Location: `src/lib/server/db/schema.ts` line 1214, `src/lib/server/integrations/service.ts`
-- The `accessToken` and `refreshToken` fields are stored as plain text. On D1 (SQLite), there is no at-rest encryption option. If the database is compromised, all third-party tokens are exposed.
-- Fix: Encrypt tokens at the application layer before storing, decrypt on read. Use a server-side encryption key stored in Workers secrets.
+~~**MEDIUM -- Access tokens stored in plaintext in the database.**~~ **FIXED** — Integration tokens are encrypted at the application layer with AES-256-GCM via `encryptToken()`/`decryptToken()` in `src/lib/server/crypto.ts`. Key derived via HKDF-SHA256 from `BETTER_AUTH_SECRET`. Tokens encrypted before INSERT/UPDATE, decrypted only when needed for API calls. User-facing endpoints mask tokens; admin endpoint now also masks them.
 
 **MEDIUM -- No token refresh flow.**
 
 - `updateIntegrationTokens()` exists to store refreshed tokens, but there is no automatic refresh mechanism. When a token expires (`checkIntegrationHealth()` returns `expired`), no refresh is attempted.
 - Fix: Implement token refresh logic in the health check or as a separate cron job. Most OAuth providers support refresh token grants.
 
-**LOW -- OAuth state cleanup relies on manual invocation.**
-
-- `cleanupExpiredOAuthStates()` exists but is never called automatically. Expired state records accumulate in the `oauth_state` table.
-- Fix: Add to a cron job.
+~~**LOW -- OAuth state cleanup relies on manual invocation.**~~ **FIXED** — `cleanupExpiredOAuthStates()` is called from the admin cleanup endpoint (`POST /api/admin/cleanup`) which runs daily at 3am via the scheduled handler cron trigger.
 
 **LOW -- `disconnectIntegration` does not revoke tokens on the provider side.**
 
