@@ -61,11 +61,11 @@ The Admin & Moderation phase is the most feature-rich area of the codebase. All 
 
 7. **No newsletter campaign creation**: Admins can view subscriber lists and stats but cannot compose or send newsletters. The newsletter system has subscribe/unsubscribe/confirm flows but no sending capability from admin.
 
-8. **No revenue/financial metrics on dashboard**: The admin dashboard shows user, post, and item counts but no revenue, MRR, churn, or subscription metrics. Billing data exists in separate tables but is not surfaced on the main dashboard.
+8. ~~**No revenue/financial metrics on dashboard**~~ **FIXED** — `GET /api/admin/billing/overview` returns MRR, ARR, ARPU, net revenue (30d), churned count, and trial count via `getBillingOverview()`. Admin billing page at `/admin/billing` surfaces these metrics.
 
 9. **No analytics per-post drill-down**: The API endpoint `GET /admin/analytics/posts/:postId` exists but there is no UI link from the analytics page or blog management to view per-post analytics.
 
-10. **No announcement auto-activation**: Announcements have `startsAt`/`endsAt` timestamps and an `isActive` boolean, but there is no cron or middleware that automatically sets `isActive` based on the current time.
+10. ~~**No announcement auto-activation**~~ **FIXED** — The cleanup cron (`POST /api/admin/cleanup`, runs daily at 3am) auto-activates announcements whose `startsAt` has passed and auto-deactivates those whose `endsAt` has passed.
 
 11. **No admin integrations management UI**: The `/admin/integrations` page exists but appears to be a read-only list. No ability to configure OAuth credentials, toggle provider availability, or monitor per-connection health.
 
