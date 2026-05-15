@@ -25,6 +25,11 @@
   let showDeleteConfirm = $state(false)
   let deleteConfirmText = $state('')
 
+  // 2FA enforcement banner for admins
+  const require2fa = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('require2fa') === '1'
+    : false
+
   // 2FA state
   let twoFactorState = $state<'idle' | 'enabling' | 'enabled'>('idle')
   let twoFactorError = $state('')
@@ -676,6 +681,11 @@
 
   <!-- Two-Factor Authentication -->
   <div class="mt-6 rounded-xl border border-white/6 bg-surface p-6">
+    {#if require2fa}
+      <div class="mb-4 rounded-lg bg-destructive/10 px-4 py-3 text-[13px] text-destructive">
+        Two-factor authentication is required for admin accounts. Please enable it below to continue.
+      </div>
+    {/if}
     <h2 class="text-[15px] font-medium text-text-primary">Two-Factor Authentication</h2>
     <p class="mt-1 text-[13px] text-text-muted">
       Add an extra layer of security to your account using an authenticator app.

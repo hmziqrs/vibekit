@@ -434,7 +434,7 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
     })
   }
 
-  // Admin routes require auth + admin role
+  // Admin routes require auth + admin role + 2FA
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     if (!user) {
       return new Response(null, {
@@ -444,6 +444,13 @@ const handleRouteGuards: Handle = async ({ event, resolve }) => {
     }
     if (user.role !== 'admin') {
       throw httpError(403, { message: 'Admin access required' })
+    }
+    // Require 2FA for admin access
+    if (!user.twoFactorEnabled && !pathname.startsWith('/api/')) {
+      return new Response(null, {
+        headers: { Location: '/app/settings?require2fa=1' },
+        status: 302,
+      })
     }
   }
 
