@@ -267,6 +267,8 @@ import {
   changePlanSchema,
   createCouponSchema,
   createPlanSchema,
+  paymentMethodIdSchema,
+  portalSessionSchema,
   recordUsageSchema,
   redeemCouponSchema,
   refundSchema,
@@ -2656,18 +2658,20 @@ protectedApp.post('/billing/portal', async (c) => {
     throw new BadRequestError('No billing account found')
   }
 
-  const body = await c.req.json<{ returnUrl: string }>().catch(() => ({ returnUrl: '' }))
-  if (!body.returnUrl) throw new BadRequestError('returnUrl is required')
-  const isRelative = body.returnUrl.startsWith('/') && !body.returnUrl.startsWith('//')
+  const body = await c.req.json().catch(() => ({}))
+  const parsed = portalSessionSchema.safeParse(body)
+  if (!parsed.success) throw new BadRequestError('returnUrl is required')
+  const returnUrl = parsed.data.returnUrl
+  const isRelative = returnUrl.startsWith('/') && !returnUrl.startsWith('//')
   const servicesEnv = c.get('services').env
-  const isSameOrigin = Boolean(servicesEnv.origin) && body.returnUrl.startsWith(servicesEnv.origin)
+  const isSameOrigin = Boolean(servicesEnv.origin) && returnUrl.startsWith(servicesEnv.origin)
   if (!isRelative && !isSameOrigin) {
     throw new BadRequestError('returnUrl must be a relative path')
   }
   const { createBillingPortalSession } = await import('$lib/server/billing/stripe')
   const session = await createBillingPortalSession(stripe, {
     customerId: sub.stripeCustomerId,
-    returnUrl: body.returnUrl,
+    returnUrl,
   })
 
   return c.json({ url: session.url })
@@ -2884,13 +2888,14 @@ protectedApp.get('/billing/payment-methods', async (c) => {
 protectedApp.post('/billing/payment-methods/detach', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = (await c.req.json().catch(() => ({}))) as { paymentMethodId?: string }
-  if (!body.paymentMethodId) throw new BadRequestError('paymentMethodId required')
+  const raw = await c.req.json().catch(() => ({}))
+  const parsed = paymentMethodIdSchema.safeParse(raw)
+  if (!parsed.success) throw new BadRequestError('paymentMethodId required')
 
   const pm = await db
     .select()
     .from(paymentMethod)
-    .where(and(eq(paymentMethod.id, body.paymentMethodId), eq(paymentMethod.userId, userId)))
+    .where(and(eq(paymentMethod.id, parsed.data.paymentMethodId), eq(paymentMethod.userId, userId)))
     .get()
 
   if (!pm) throw new NotFoundError('Payment method not found')
@@ -2906,13 +2911,14 @@ protectedApp.post('/billing/payment-methods/detach', async (c) => {
 protectedApp.post('/billing/payment-methods/set-default', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const body = (await c.req.json().catch(() => ({}))) as { paymentMethodId?: string }
-  if (!body.paymentMethodId) throw new BadRequestError('paymentMethodId required')
+  const raw = await c.req.json().catch(() => ({}))
+  const parsed = paymentMethodIdSchema.safeParse(raw)
+  if (!parsed.success) throw new BadRequestError('paymentMethodId required')
 
   const pm = await db
     .select()
     .from(paymentMethod)
-    .where(and(eq(paymentMethod.id, body.paymentMethodId), eq(paymentMethod.userId, userId)))
+    .where(and(eq(paymentMethod.id, parsed.data.paymentMethodId), eq(paymentMethod.userId, userId)))
     .get()
 
   if (!pm) throw new NotFoundError('Payment method not found')
@@ -6329,32 +6335,32 @@ orgApp.post(
   async (c) => {
     const org = c.get('organization') as typeof organization.$inferSelect
     const currentUser = c.get('user')
-    const body = await c.req
-      .json<{ cancelUrl: string; planId: string; successUrl: string }>()
-      .catch(() => ({ cancelUrl: '', planId: '', successUrl: '' }))
-    if (!body.planId) throw new BadRequestError('planId is required')
+    const raw = await c.req.json().catch(() => ({}))
+    const parsed = checkoutSessionSchema.safeParse(raw)
+    if (!parsed.success) throw new BadRequestError('Invalid checkout parameters')
+    const { planId, successUrl, cancelUrl } = parsed.data
 
     const servicesEnv = c.get('services').env
     const origin = servicesEnv.origin ?? ''
     const { isSameOrigin, isSafeRedirectUrl } = await import('$lib/server/billing/stripe')
     if (
-      body.successUrl &&
-      !isSafeRedirectUrl(body.successUrl) &&
-      !(origin && isSameOrigin(body.successUrl, origin))
+      successUrl &&
+      !isSafeRedirectUrl(successUrl) &&
+      !(origin && isSameOrigin(successUrl, origin))
     ) {
       throw new BadRequestError('successUrl must be a relative path')
     }
     if (
-      body.cancelUrl &&
-      !isSafeRedirectUrl(body.cancelUrl) &&
-      !(origin && isSameOrigin(body.cancelUrl, origin))
+      cancelUrl &&
+      !isSafeRedirectUrl(cancelUrl) &&
+      !(origin && isSameOrigin(cancelUrl, origin))
     ) {
       throw new BadRequestError('cancelUrl must be a relative path')
     }
 
     const { db } = c.get('services')
 
-    const plan = await getPlanById(db, body.planId)
+    const plan = await getPlanById(db, planId)
     if (!plan) throw new NotFoundError()
     if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
@@ -6365,13 +6371,13 @@ orgApp.post(
       try {
         const session = await createCheckoutSession(stripe, {
           automaticTax: plan.taxRate > 0,
-          cancelUrl: body.cancelUrl,
+          cancelUrl,
           customerEmail: currentUser.email,
           idempotencyKey: `org-checkout-${org.id}-${plan.id}`,
           metadata: { organizationId: org.id },
           planId: plan.id,
           priceId: plan.stripePriceId,
-          successUrl: body.successUrl,
+          successUrl,
           trialDays: plan.trialDays,
           userId: currentUser.id,
         })
@@ -6410,18 +6416,19 @@ orgApp.post(
   requirePermission('org.update'),
   async (c) => {
     const org = c.get('organization') as typeof organization.$inferSelect
-    const body = await c.req.json<{ newPlanId: string }>().catch(() => ({ newPlanId: '' }))
-    if (!body.newPlanId) throw new BadRequestError('newPlanId is required')
+    const raw = await c.req.json().catch(() => ({}))
+    const parsed = changePlanSchema.safeParse(raw)
+    if (!parsed.success) throw new BadRequestError('newPlanId is required')
     const services = c.get('services')
     const { db } = services
 
     const sub = await getOrgSubscription(db, org.id)
     if (!sub) throw new BadRequestError('No active subscription')
 
-    const newPlan = await getPlanById(db, body.newPlanId)
+    const newPlan = await getPlanById(db, parsed.data.newPlanId)
     if (!newPlan) throw new NotFoundError()
     if (!newPlan.isActive) throw new BadRequestError('Plan is not available')
-    if (sub.planId === body.newPlanId) throw new BadRequestError('Already on this plan')
+    if (sub.planId === parsed.data.newPlanId) throw new BadRequestError('Already on this plan')
 
     // Sync with Stripe if subscription has a Stripe ID and the new plan has a price ID
     if (sub.stripeSubscriptionId && newPlan.stripePriceId) {

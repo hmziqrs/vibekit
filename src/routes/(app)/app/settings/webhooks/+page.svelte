@@ -69,6 +69,8 @@
   let selectedEndpointId = $state<string | null>(null)
   let error = $state('')
   let testLoading = $state(false)
+  let creating = $state(false)
+  let deletingId = $state('')
 
   const endpointsQuery = createQuery(() => ({
     queryFn: async () => {
@@ -113,6 +115,8 @@
   }
 
   async function createEndpoint() {
+    if (creating) return
+    creating = true
     error = ''
     const payload = {
       description: newDescription || undefined,
@@ -122,6 +126,7 @@
     const parsed = createWebhookEndpointSchema.safeParse(payload)
     if (!parsed.success) {
       error = parsed.error.issues[0]?.message ?? 'Invalid input'
+      creating = false
       return
     }
     try {
@@ -144,11 +149,15 @@
       endpointsQuery.refetch()
     } catch {
       error = 'Network error'
+    } finally {
+      creating = false
     }
   }
 
   async function deleteEndpoint(id: string) {
+    if (deletingId) return
     if (!confirm('Delete this webhook endpoint?')) return
+    deletingId = id
     try {
       const res = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' })
       if (!res.ok) {
@@ -159,6 +168,8 @@
       endpointsQuery.refetch()
     } catch {
       error = 'Network error'
+    } finally {
+      deletingId = ''
     }
   }
 
@@ -334,7 +345,7 @@
 
         <button
           onclick={createEndpoint}
-          disabled={!newUrl || selectedEvents.length === 0}
+          disabled={creating || !newUrl || selectedEvents.length === 0}
           class="rounded-lg bg-brand px-4 py-2 text-[14px] font-medium text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
         >
           Create Endpoint
@@ -414,7 +425,8 @@
               </button>
               <button
                 onclick={() => deleteEndpoint(endpoint.id)}
-                class="rounded-lg border border-destructive/20 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive/5"
+                disabled={deletingId === endpoint.id}
+                class="rounded-lg border border-destructive/20 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive/5 disabled:opacity-50"
               >
                 Delete
               </button>

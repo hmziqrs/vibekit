@@ -33,6 +33,7 @@
 
   let creating = $state(false)
   let rotating = $state(false)
+  let revokingOrDeleting = $state(false)
   let name = $state('')
   let selectedScopes = $state<string[]>(['read:items'])
   let rateLimit = $state('')
@@ -110,6 +111,8 @@
   }
 
   async function handleRevoke(keyId: string) {
+    if (revokingOrDeleting) return
+    revokingOrDeleting = true
     error = ''
     try {
       const res = await fetch(`/api/api-keys/${keyId}/revoke`, { method: 'POST' })
@@ -120,10 +123,14 @@
       await queryClient.invalidateQueries({ queryKey: ['api-keys'] })
     } catch {
       error = 'Network error'
+    } finally {
+      revokingOrDeleting = false
     }
   }
 
   async function handleDelete(keyId: string) {
+    if (revokingOrDeleting) return
+    revokingOrDeleting = true
     error = ''
     try {
       const res = await fetch(`/api/api-keys/${keyId}`, { method: 'DELETE' })
@@ -134,6 +141,8 @@
       await queryClient.invalidateQueries({ queryKey: ['api-keys'] })
     } catch {
       error = 'Network error'
+    } finally {
+      revokingOrDeleting = false
     }
   }
 
@@ -296,6 +305,7 @@
                 </button>
                 <button
                   class="text-text-muted hover:text-destructive text-xs"
+                  disabled={revokingOrDeleting}
                   onclick={() => handleRevoke(keyItem.id)}
                 >
                   Revoke
@@ -303,6 +313,7 @@
               {/if}
               <button
                 class="text-text-muted hover:text-destructive text-xs"
+                disabled={revokingOrDeleting}
                 onclick={() => handleDelete(keyItem.id)}
               >
                 Delete

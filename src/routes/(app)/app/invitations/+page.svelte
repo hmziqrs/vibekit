@@ -35,7 +35,7 @@
     try {
       const res = await fetch('/api/invitations')
       if (!res.ok) throw new Error('Failed to load invitations')
-      const data = await res.json()
+      const data = await res.json() as { invitations?: Array<{ id: string }> }
       invitations = data.invitations ?? []
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unknown error'
@@ -50,7 +50,7 @@
     try {
       const res = await fetch(`/api/invitations/${token}/accept`, { method: 'POST' })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as { error?: { message?: string } }
         throw new Error(data.error?.message ?? 'Failed to accept invitation')
       }
       invitations = invitations.filter((inv) => inv.id !== id)
@@ -67,7 +67,7 @@
     try {
       const res = await fetch(`/api/invitations/${token}/decline`, { method: 'POST' })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as { error?: { message?: string } }
         throw new Error(data.error?.message ?? 'Failed to decline invitation')
       }
       invitations = invitations.filter((inv) => inv.id !== id)

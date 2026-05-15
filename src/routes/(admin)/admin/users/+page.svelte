@@ -111,19 +111,24 @@
         method: 'POST',
       })
       if (res.ok) {
-        const data = await res.json()
+        const data = await res.json() as { sessionToken?: string; targetUser?: { email?: string; name?: string } }
+        if (!data.sessionToken || !data.targetUser) {
+          mutationError = 'Invalid impersonation response'
+          impersonating = false
+          return
+        }
         sessionStorage.setItem(
           'impersonation',
           JSON.stringify({
             adminEmail: '',
             sessionToken: data.sessionToken,
-            targetEmail: data.targetUser.email,
-            targetName: data.targetUser.name,
+            targetEmail: data.targetUser.email ?? '',
+            targetName: data.targetUser.name ?? '',
           }),
         )
         window.location.href = '/app/dashboard'
       } else {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as { error?: { message?: string } }
         mutationError = data.error?.message ?? 'Failed to start impersonation.'
         impersonating = false
       }

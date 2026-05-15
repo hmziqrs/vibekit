@@ -84,3 +84,11 @@ export const updateCouponSchema = z.object({
 export const redeemCouponSchema = z.object({
   code: z.string().trim().min(1),
 })
+
+export const portalSessionSchema = z.object({
+  returnUrl: z.string().trim().min(1).max(2000),
+})
+
+export const paymentMethodIdSchema = z.object({
+  paymentMethodId: z.string().trim().min(1),
+})

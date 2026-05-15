@@ -36,6 +36,7 @@
   let inviteError = $state('')
   let inviteSuccess = $state('')
   let removingMemberId = $state('')
+  let changingRoleId = $state('')
   let mutationError = $state('')
   let leaving = $state(false)
   let showLeaveDialog = $state(false)
@@ -145,6 +146,8 @@
   }
 
   async function changeRole(memberId: string, newRole: string) {
+    if (changingRoleId) return
+    changingRoleId = memberId
     mutationError = ''
     try {
       const res = await fetch(`/api/orgs/${orgId}/members/${memberId}`, {
@@ -156,6 +159,8 @@
       await queryClient.invalidateQueries({ queryKey: ['organization-members', orgId] })
     } catch {
       mutationError = 'Failed to change role'
+    } finally {
+      changingRoleId = ''
     }
   }
 
@@ -322,8 +327,9 @@
                   <select
                     aria-label="Change role"
                     value={member.role}
+                    disabled={changingRoleId === member.id}
                     onchange={(e) => changeRole(member.id, (e.target as HTMLSelectElement).value)}
-                    class="rounded border border-white/[0.06] bg-surface-base px-2 py-1 text-xs text-text-secondary focus:border-brand focus:outline-none"
+                    class="rounded border border-white/[0.06] bg-surface-base px-2 py-1 text-xs text-text-secondary focus:border-brand focus:outline-none disabled:opacity-50"
                   >
                     <option value="admin">Admin</option>
                     <option value="member">Member</option>
