@@ -205,7 +205,7 @@ describe('notificationPreferenceSchema', () => {
     const result = notificationPreferenceSchema.safeParse({
       channel: 'email',
       enabled: true,
-      type: 'blog_post',
+      type: 'broadcast',
     })
     expect(result.success).toBe(true)
   })
@@ -214,7 +214,16 @@ describe('notificationPreferenceSchema', () => {
     const result = notificationPreferenceSchema.safeParse({
       channel: 'in_app',
       enabled: false,
-      type: 'newsletter',
+      type: 'comment',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts valid push preference with general type', () => {
+    const result = notificationPreferenceSchema.safeParse({
+      channel: 'push',
+      enabled: true,
+      type: 'general',
     })
     expect(result.success).toBe(true)
   })
@@ -223,18 +232,27 @@ describe('notificationPreferenceSchema', () => {
     const result = notificationPreferenceSchema.safeParse({
       channel: 'sms',
       enabled: true,
-      type: 'test',
+      type: 'broadcast',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects invalid type', () => {
+    const result = notificationPreferenceSchema.safeParse({
+      channel: 'email',
+      enabled: true,
+      type: 'invalid_type',
     })
     expect(result.success).toBe(false)
   })
 
   it('rejects missing channel', () => {
-    const result = notificationPreferenceSchema.safeParse({ enabled: true, type: 'test' })
+    const result = notificationPreferenceSchema.safeParse({ enabled: true, type: 'broadcast' })
     expect(result.success).toBe(false)
   })
 
   it('rejects missing enabled', () => {
-    const result = notificationPreferenceSchema.safeParse({ channel: 'email', type: 'test' })
+    const result = notificationPreferenceSchema.safeParse({ channel: 'email', type: 'broadcast' })
     expect(result.success).toBe(false)
   })
 

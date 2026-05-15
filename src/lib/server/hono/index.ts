@@ -3241,7 +3241,7 @@ protectedApp.delete('/webhooks/:id', async (c) => {
   return c.json({ ok: true })
 })
 
-protectedApp.post('/webhooks/:id/test', async (c) => {
+protectedApp.post('/webhooks/:id/test', withRateLimit('webhook-test', 5, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const endpointId = c.req.param('id')

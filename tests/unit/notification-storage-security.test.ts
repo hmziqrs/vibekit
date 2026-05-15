@@ -6,7 +6,7 @@ describe('Notification preference schema', () => {
     const result = notificationPreferenceSchema.safeParse({
       channel: 'push',
       enabled: true,
-      type: 'blog_post',
+      type: 'broadcast',
     })
     expect(result.success).toBe(true)
   })

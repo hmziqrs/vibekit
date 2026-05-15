@@ -1,8 +1,8 @@
 import { z } from 'zod/v4'
 
-import { displayName, name } from './common'
+import { displayName, email, name } from './common'
 
-export { displayName, name }
+export { displayName, email, name }
 
 export const bio = z.string().max(500, 'Bio must be at most 500 characters').optional().nullable()
 
@@ -25,12 +25,12 @@ export const onboardingSchema = z.object({
 })
 
 export const reactivateAccountSchema = z.object({
-  email: z.string().min(1, 'Email is required'),
+  email,
   password: z.string().min(1, 'Password is required'),
 })
 
 export const notificationPreferenceSchema = z.object({
   channel: z.enum(['email', 'in_app', 'push']),
   enabled: z.boolean(),
-  type: z.string().min(1, 'Type is required'),
+  type: z.enum(['broadcast', 'comment', 'general', 'mention']),
 })
