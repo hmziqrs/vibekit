@@ -90,6 +90,7 @@ import {
   teamActivity,
   teamMember,
   user,
+  webhookEndpoint,
 } from '$lib/server/db/schema'
 import { handleBounce } from '$lib/server/email/bounce-handler'
 import { createEmailService } from '$lib/server/email/index'
@@ -189,6 +190,7 @@ import {
   retryWebhookDelivery,
   sendTestWebhook,
   updateWebhookEndpoint,
+  generateSecret,
 } from '$lib/server/webhooks'
 import {
   createAnnouncementSchema,
@@ -2869,6 +2871,34 @@ protectedApp.post('/webhooks/:id/test', async (c) => {
   })
   return c.json(result)
 })
+
+protectedApp.post(
+  '/webhooks/:id/regenerate-secret',
+  withRateLimit('webhook-regen', 3, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const endpointId = c.req.param('id')
+
+    const endpoint = await getWebhookEndpoint(db, endpointId, userId)
+    if (!endpoint) throw new NotFoundError()
+
+    const newSecret = generateSecret()
+    await db
+      .update(webhookEndpoint)
+      .set({ secret: newSecret, updatedAt: new Date() })
+      .where(eq(webhookEndpoint.id, endpointId))
+
+    await emitEvent(db, {
+      action: 'webhook.secret_regenerated',
+      entityId: endpointId,
+      entityType: 'webhook_endpoint',
+      userId,
+    })
+
+    return c.json({ secret: newSecret })
+  }
+)
 
 protectedApp.get('/webhooks/:id/deliveries', async (c) => {
   const { db } = c.get('services')

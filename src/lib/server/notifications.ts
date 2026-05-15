@@ -94,6 +94,20 @@ export async function createBroadcast(
     await db.insert(notification).values(values.slice(i, i + 100))
   }
 
+  // Audit log the broadcast
+  const { writeAuditLog } = await import('./audit')
+  await writeAuditLog(db, {
+    action: 'notification.broadcast',
+    entityType: 'notification',
+    metadata: {
+      link: input.link,
+      target: input.target,
+      title: input.title,
+      totalSent: filteredIds.length,
+    },
+    userId: 'system',
+  }).catch(() => {})
+
   return filteredIds.length
 }
 

@@ -153,8 +153,8 @@ describe('createBroadcast', () => {
 
     expect(count).toBe(3)
     expect(getUserIds).toHaveBeenCalledWith('all')
-    expect(db._insertFn).toHaveBeenCalledTimes(1)
-    expect(db._valuesFn).toHaveBeenCalledTimes(1)
+    expect(db._insertFn).toHaveBeenCalledTimes(2) // 1 notification batch + 1 audit log
+    expect(db._valuesFn).toHaveBeenCalledTimes(2)
   })
 
   it('inserts in batches of 100', async () => {
@@ -173,7 +173,7 @@ describe('createBroadcast', () => {
     )
 
     expect(count).toBe(150)
-    expect(db._insertFn).toHaveBeenCalledTimes(2)
+    expect(db._insertFn).toHaveBeenCalledTimes(3) // 2 batches + 1 audit log
   })
 
   it('broadcasts to admins target', async () => {
@@ -192,7 +192,7 @@ describe('createBroadcast', () => {
 
     expect(getUserIds).toHaveBeenCalledWith('admins')
     expect(count).toBe(2)
-    expect(db._insertFn).toHaveBeenCalledTimes(1)
+    expect(db._insertFn).toHaveBeenCalledTimes(2) // 1 notification batch + 1 audit log
   })
 
   it('returns 0 when no target users', async () => {

@@ -183,7 +183,7 @@ describe('createBroadcast', () => {
     const count = await createBroadcast(db, { title: 'Broadcast', target: 'all' }, getUserIds)
 
     expect(count).toBe(0)
-    expect(db.insert).not.toHaveBeenCalled()
+    expect(db.insert).toHaveBeenCalledTimes(1) // audit log fires even with 0 sends
   })
 
   it('sets entityType to broadcast on all notifications', async () => {

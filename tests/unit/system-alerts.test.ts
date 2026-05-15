@@ -171,7 +171,7 @@ describe('createBroadcast', () => {
 
     expect(count).toBe(250)
     // Should be called at least 3 times (100 + 100 + 50)
-    expect(db.insert).toHaveBeenCalledTimes(3)
+    expect(db.insert).toHaveBeenCalledTimes(4) // 3 batches + 1 audit log
   })
 
   it('broadcast includes body and link', async () => {
