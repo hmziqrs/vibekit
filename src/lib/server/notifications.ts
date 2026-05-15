@@ -1,10 +1,13 @@
 import { notification, notificationPreference } from '$lib/server/db/schema'
+import { createLogger } from '$lib/server/logger'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, eq, inArray } from 'drizzle-orm'
 
 import { dispatchToIntegrations } from './integrations/dispatch'
 import { sendPushNotification } from './push'
+
+const logger = createLogger('notifications')
 
 type NotificationType = 'error' | 'info' | 'success' | 'warning'
 
@@ -51,7 +54,7 @@ export async function createNotification(
     link: safeLink ?? undefined,
     title: input.title,
     type: input.type,
-  }).catch((error) => console.error('Integration dispatch failed:', error))
+  }).catch((error) => logger.error('Integration dispatch failed', { error, userId: input.userId }))
 
   // Send push notification if user has push enabled
   const pushEnabled = await isPushEnabled(db, input.userId, input.entityType ?? 'general')
@@ -60,7 +63,7 @@ export async function createNotification(
       body: input.body,
       data: input.link ? { link: input.link } : undefined,
       title: input.title,
-    }).catch((error) => console.error('Push notification failed:', error))
+    }).catch((error) => logger.error('Push notification failed', { error, userId: input.userId }))
   }
 }
 

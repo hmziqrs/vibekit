@@ -1,8 +1,11 @@
 import { decryptToken } from '$lib/server/crypto'
 import { integration } from '$lib/server/db/schema'
+import { createLogger } from '$lib/server/logger'
 import { and, eq } from 'drizzle-orm'
 
 import type { AppDb } from '../services/types'
+
+const logger = createLogger('dispatch')
 
 export interface DispatchMessage {
   body?: string
@@ -93,10 +96,10 @@ async function sendSlackMessage(token: string, message: DispatchMessage): Promis
     })
 
     if (!res.ok) {
-      console.error(`Slack message dispatch failed: ${res.status}`)
+      logger.error('Slack message dispatch failed', { status: res.status })
     }
   } catch (error) {
-    console.error('Slack message dispatch error:', error)
+    logger.error('Slack message dispatch error', { error })
   }
 }
 
@@ -113,15 +116,15 @@ async function sendDiscordMessage(
   try {
     const parsed = new URL(webhookUrl)
     if (parsed.hostname !== 'discord.com' && parsed.hostname !== 'discordapp.com') {
-      console.error('Discord webhook URL rejected: invalid hostname')
+      logger.error('Discord webhook URL rejected: invalid hostname')
       return
     }
     if (parsed.protocol !== 'https:') {
-      console.error('Discord webhook URL rejected: must use https')
+      logger.error('Discord webhook URL rejected: must use https')
       return
     }
   } catch {
-    console.error('Discord webhook URL rejected: invalid URL')
+    logger.error('Discord webhook URL rejected: invalid URL')
     return
   }
 
@@ -148,10 +151,10 @@ async function sendDiscordMessage(
     })
 
     if (!res.ok) {
-      console.error(`Discord webhook dispatch failed: ${res.status}`)
+      logger.error('Discord webhook dispatch failed', { status: res.status })
     }
   } catch (error) {
-    console.error('Discord webhook dispatch error:', error)
+    logger.error('Discord webhook dispatch error', { error })
   }
 }
 

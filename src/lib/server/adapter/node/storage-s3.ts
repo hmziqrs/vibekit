@@ -1,3 +1,4 @@
+import { createLogger } from '$lib/server/logger'
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -14,6 +15,8 @@ import type {
   StorageClient,
   StoredObject,
 } from '../../services/types'
+
+const logger = createLogger('storage-s3')
 
 export function createS3Storage(): StorageClient {
   const endpoint = process.env.S3_ENDPOINT ?? ''
@@ -49,7 +52,7 @@ export function createS3Storage(): StorageClient {
           size: result.ContentLength ?? undefined,
         }
       } catch (error) {
-        console.error(`S3 get failed for key "${key}":`, error)
+        logger.error('S3 get failed', { error, key })
         return null
       }
     },

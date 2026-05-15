@@ -9,6 +9,8 @@ import {
 } from 'node:fs'
 import { join, relative } from 'node:path'
 
+import { createLogger } from '$lib/server/logger'
+
 import type {
   ListResult,
   PutOptions,
@@ -16,6 +18,8 @@ import type {
   StorageClient,
   StoredObject,
 } from '../../services/types'
+
+const logger = createLogger('storage-filesystem')
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? 'data/uploads'
 
@@ -54,7 +58,7 @@ export function createNodeStorage(): StorageClient {
           contentType = meta['contentType'] ?? contentType
           cacheControl = meta['cacheControl'] ?? cacheControl
         } catch (error) {
-          console.error('Failed to parse storage metadata:', error)
+          logger.error('Failed to parse storage metadata', { error, key })
         }
       }
 

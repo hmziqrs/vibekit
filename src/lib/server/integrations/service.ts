@@ -1,10 +1,13 @@
 import { decryptToken, encryptToken } from '$lib/server/crypto'
 import { integration } from '$lib/server/db/schema'
+import { createLogger } from '$lib/server/logger'
 import type { AppDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, or } from 'drizzle-orm'
 
 import { getProvider, type IntegrationStatus } from './providers'
+
+const logger = createLogger('integrations')
 
 export async function listIntegrations(db: AppDb, userId: string, organizationId?: string) {
   const conditions = organizationId
@@ -145,7 +148,7 @@ export async function checkIntegrationHealth(db: AppDb, integrationId: string) {
           newStatus = 'error'
         }
       } catch (error) {
-        console.error(`Integration health check failed for ${record.provider}:`, error)
+        logger.error('Integration health check failed', { error, provider: record.provider })
         newStatus = 'error'
       }
     }

@@ -1,7 +1,10 @@
 import { webhookDelivery, webhookEndpoint } from '$lib/server/db/schema'
+import { createLogger } from '$lib/server/logger'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { uuid } from '$lib/server/uuid'
 import { and, desc, eq, lte, sql } from 'drizzle-orm'
+
+const logger = createLogger('webhooks')
 
 function deliveryStatus(ok: boolean, shouldRetry: boolean): 'success' | 'retrying' | 'failed' {
   if (ok) return 'success'
@@ -206,7 +209,7 @@ export async function deliverWebhook(
 
     return { id, status: shouldRetry ? ('retrying' as const) : ('failed' as const) }
   } catch (error) {
-    console.error(`Webhook delivery ${id} failed:`, error)
+    logger.error(`Webhook delivery ${id} failed`, { deliveryId: id, error })
     const attemptCount = 1
     const shouldRetry = attemptCount < MAX_RETRIES
 
@@ -322,7 +325,7 @@ export async function retryWebhookDelivery(db: DrizzleDb, deliveryId: string) {
 
     return { id: deliveryId, status: deliveryStatus(response.ok, shouldRetry) }
   } catch (error) {
-    console.error(`Webhook delivery ${deliveryId} retry failed:`, error)
+    logger.error(`Webhook delivery ${deliveryId} retry failed`, { deliveryId, error })
     await db
       .update(webhookDelivery)
       .set({

@@ -1,6 +1,9 @@
 import { writeAuditLog } from '$lib/server/audit'
+import { createLogger } from '$lib/server/logger'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { dispatchWebhooksForEvent } from '$lib/server/webhooks'
+
+const logger = createLogger('events')
 
 export interface EmitEventInput {
   action: string
@@ -31,13 +34,10 @@ export async function emitEvent(db: DrizzleDb, input: EmitEventInput): Promise<v
     },
     input.userId
   ).catch((error) => {
-    console.error(
-      JSON.stringify({
-        action: input.action,
-        entityId: input.entityId,
-        error: error instanceof Error ? error.message : String(error),
-        event: 'webhook.dispatch_failed',
-      })
-    )
+    logger.error('Webhook dispatch failed', {
+      action: input.action,
+      entityId: input.entityId,
+      error,
+    })
   })
 }

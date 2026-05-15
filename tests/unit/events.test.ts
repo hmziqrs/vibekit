@@ -105,7 +105,7 @@ describe('events module', () => {
 
     expect(errorSpy).toHaveBeenCalledTimes(1)
     const logOutput = errorSpy.mock.calls[0][0] as string
-    expect(logOutput).toContain('webhook.dispatch_failed')
+    expect(logOutput).toContain('Webhook dispatch failed')
     errorSpy.mockRestore()
   })
 

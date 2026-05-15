@@ -1,4 +1,7 @@
 import { renderAndSanitize } from '$lib/markdown'
+import { createLogger } from '$lib/server/logger'
+
+const logger = createLogger('api')
 
 const escapeLike = (s: string) => s.replace(/%/g, '\\%').replace(/_/g, '\\_')
 
@@ -378,7 +381,7 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     if (isAppError(error)) {
       return c.json(error.toJSON(), error.status as ContentfulStatusCode)
     }
-    console.error(error)
+    logger.error('Unexpected error', { error })
     return c.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', status: 500 } },
       500
@@ -560,7 +563,7 @@ app.post('/api/appeal', withRateLimit('appeal', 3, 60_000), async (c) => {
         subject: 'Ban Appeal',
       })
     } catch (error) {
-      console.error('Failed to send ban appeal email:', error)
+      logger.error('Failed to send ban appeal email', { error })
       return c.json({ error: { message: 'Failed to submit appeal. Please try again later.' } }, 500)
     }
   }
@@ -695,7 +698,7 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
         await handleBounce(db, emailAddress)
       })
     } catch (error) {
-      console.error('Failed to send newsletter re-subscription email:', error)
+      logger.error('Failed to send newsletter re-subscription email', { error })
     }
   }
 
@@ -723,7 +726,7 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     })
     emailSent = true
   } catch (error) {
-    console.error('Failed to send newsletter confirmation email:', error)
+    logger.error('Failed to send newsletter confirmation email', { error })
   }
 
   if (emailSent) {
@@ -1005,7 +1008,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
           if (!existingSub) {
             const planId = metadata?.planId
             if (!planId) {
-              console.error('Webhook: checkout.session.completed missing planId in metadata')
+              logger.error('Webhook: checkout.session.completed missing planId in metadata')
               break
             }
 
@@ -1135,7 +1138,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             }
           }
         } catch (emailError) {
-          console.error('Failed to send cancellation email:', emailError)
+          logger.error('Failed to send cancellation email', { error: emailError })
         }
         break
       }
@@ -1216,7 +1219,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             }
           }
         } catch (emailError) {
-          console.error('Failed to send payment receipt email:', emailError)
+          logger.error('Failed to send payment receipt email', { error: emailError })
         }
         break
       }
@@ -1288,7 +1291,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             }
           }
         } catch (emailError) {
-          console.error('Failed to send payment failed email:', emailError)
+          logger.error('Failed to send payment failed email', { error: emailError })
         }
         break
       }
@@ -1327,7 +1330,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             }
           }
         } catch (emailError) {
-          console.error('Failed to send trial ending email:', emailError)
+          logger.error('Failed to send trial ending email', { error: emailError })
         }
         break
       }
@@ -1520,7 +1523,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
 
     return c.json({ received: true })
   } catch (error) {
-    console.error('Webhook processing failed:', error)
+    logger.error('Webhook processing failed', { error })
     const message = error instanceof Error ? error.message : 'Unknown error'
     try {
       const MAX_RETRIES = 5
@@ -1547,7 +1550,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
         })
       }
     } catch (dbError) {
-      console.error('Failed to record webhook failure:', dbError)
+      logger.error('Failed to record webhook failure', { error: dbError })
     }
     return c.json({ error: 'Webhook processing failed' }, 500)
   }
@@ -1710,7 +1713,7 @@ protectedApp.post('/items', validate(createItemSchema), async (c) => {
   })
 
   indexItem(db, created.id).catch((error) =>
-    console.error('Search index failed (item create):', error)
+    logger.error('Search index failed (item create)', { error })
   )
 
   return c.json({ item: created }, 201)
@@ -1767,7 +1770,7 @@ protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), asyn
     userId: currentUser.id,
   })
 
-  indexItem(db, id).catch((error) => console.error('Search index failed (item update):', error))
+  indexItem(db, id).catch((error) => logger.error('Search index failed (item update)', { error }))
 
   return c.json({
     item: {
@@ -1803,7 +1806,7 @@ protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
   })
 
   deindexEntity(db, id, 'item').catch((error) =>
-    console.error('Search deindex failed (item delete):', error)
+    logger.error('Search deindex failed (item delete)', { error })
   )
 
   return new Response(null, { status: 204 })
@@ -1921,11 +1924,11 @@ protectedApp.post('/upload-avatar', async (c) => {
     const { db } = c.get('services')
     await db.update(user).set({ image: imageUrl }).where(eq(user.id, userId))
   } catch (error) {
-    console.error('Failed to update avatar in DB:', error)
+    logger.error('Failed to update avatar in DB', { error })
     // Clean up uploaded file if DB update fails
     await storage
       .delete(key)
-      .catch((deleteErr) => console.error('Failed to clean up avatar:', deleteErr)) // eslint-disable-line unicorn/catch-error-name
+      .catch((deleteErr) => logger.error('Failed to clean up avatar', { error: deleteErr })) // eslint-disable-line unicorn/catch-error-name
     throw new Error('Failed to update avatar', { cause: error })
   }
 
@@ -2190,7 +2193,7 @@ protectedApp.delete('/account', withRateLimit('account-delete', 3, 3_600_000), a
   await db.update(user).set({ deletedAt: new Date() }).where(eq(user.id, userId))
   await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
   deindexEntity(db, userId, 'user').catch((error) =>
-    console.error('Search deindex failed (account delete):', error)
+    logger.error('Search deindex failed (account delete)', { error })
   )
 
   // Send deletion confirmation email with reactivation link
@@ -2207,7 +2210,7 @@ protectedApp.delete('/account', withRateLimit('account-delete', 3, 3_600_000), a
             })
           }
         })
-        .catch((error) => console.error('Account deletion email failed:', error))
+        .catch((error) => logger.error('Account deletion email failed', { error }))
     )
   }
 
@@ -2610,7 +2613,7 @@ protectedApp.post('/billing/checkout', async (c) => {
       return c.json({ url: session.url })
     } catch (error) {
       if (error instanceof StripeApiError) {
-        console.error('Stripe checkout error:', error.cause)
+        logger.error('Stripe checkout error', { error: error.cause })
         throw new BadRequestError('Failed to create checkout session')
       }
       throw error
@@ -3596,7 +3599,7 @@ protectedApp.post(
         title: 'New comment on your post',
         type: 'info',
         userId: postAuthor.authorId,
-      }).catch((error) => console.error('Failed to send comment notification:', error))
+      }).catch((error) => logger.error('Failed to send comment notification', { error }))
 
       // Send email notification to post author (if email preference enabled)
       const [authorUser] = await db
@@ -3622,7 +3625,7 @@ protectedApp.post(
                 })
               }
             })
-            .catch((error) => console.error('Comment email notification failed:', error))
+            .catch((error) => logger.error('Comment email notification failed', { error }))
         )
       }
     }
@@ -3630,7 +3633,7 @@ protectedApp.post(
     // Index approved comments for search
     if (commentStatus === 'approved') {
       indexComment(db, id).catch((error) =>
-        console.error('Search index failed (comment create):', error)
+        logger.error('Search index failed (comment create)', { error })
       )
     }
 
@@ -3661,7 +3664,7 @@ protectedApp.patch('/comments/:id', validate(updateCommentSchema), async (c) => 
   // Re-index comment if it was approved
   if (existing.status === 'approved') {
     indexComment(db, id).catch((error) =>
-      console.error('Search index failed (comment update):', error)
+      logger.error('Search index failed (comment update)', { error })
     )
   }
 
@@ -3683,7 +3686,7 @@ protectedApp.delete('/comments/:id', async (c) => {
   await db.delete(comment).where(eq(comment.id, id))
 
   deindexEntity(db, id, 'comment').catch((error) =>
-    console.error('Search deindex failed (comment delete):', error)
+    logger.error('Search deindex failed (comment delete)', { error })
   )
 
   await writeAuditLog(db, {
@@ -3884,7 +3887,9 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
     userId: currentUser.id,
   })
 
-  indexBlogPost(db, id).catch((error) => console.error('Search index failed (blog create):', error))
+  indexBlogPost(db, id).catch((error) =>
+    logger.error('Search index failed (blog create)', { error })
+  )
 
   return c.json({ id }, 201)
 })
@@ -4170,7 +4175,9 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
     userId: c.get('user').id,
   })
 
-  indexBlogPost(db, id).catch((error) => console.error('Search index failed (blog update):', error))
+  indexBlogPost(db, id).catch((error) =>
+    logger.error('Search index failed (blog update)', { error })
+  )
 
   return c.json({ success: true })
 })
@@ -4200,7 +4207,7 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
   })
 
   deindexEntity(db, id, 'blog_post').catch((error) =>
-    console.error('Search deindex failed (blog delete):', error)
+    logger.error('Search deindex failed (blog delete)', { error })
   )
 
   return c.json({ success: true })
@@ -4235,7 +4242,7 @@ blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
   })
 
   indexBlogPost(db, id).catch((error) =>
-    console.error('Search index failed (blog publish):', error)
+    logger.error('Search index failed (blog publish)', { error })
   )
 
   return c.json({ success: true })
@@ -4301,7 +4308,7 @@ blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
   })
 
   deindexEntity(db, id, 'blog_post').catch((error) =>
-    console.error('Search deindex failed (blog archive):', error)
+    logger.error('Search deindex failed (blog archive)', { error })
   )
 
   return c.json({ success: true })
@@ -4336,7 +4343,7 @@ blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
   })
 
   indexBlogPost(db, id).catch((error) =>
-    console.error('Search index failed (blog restore):', error)
+    logger.error('Search index failed (blog restore)', { error })
   )
 
   return c.json({ success: true })
@@ -4492,7 +4499,7 @@ blogApp.post(
             title: ogTitle || (oembed.title as string),
           })
         } catch (error) {
-          console.error('OEmbed fetch failed:', error)
+          logger.error('OEmbed fetch failed', { error })
         }
       }
 
@@ -4909,7 +4916,7 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
 
   // Re-index user in search
   indexUser(db, targetId).catch((error) =>
-    console.error('Search index failed (user update):', error)
+    logger.error('Search index failed (user update)', { error })
   )
 
   return c.json({ user: updated })
@@ -5053,7 +5060,7 @@ adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
 
   await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
   deindexEntity(db, targetId, 'user').catch((error) =>
-    console.error('Search deindex failed (admin user delete):', error)
+    logger.error('Search deindex failed (admin user delete)', { error })
   )
 
   await writeAuditLog(db, {
@@ -5880,7 +5887,7 @@ orgApp.patch(
       title: 'Role updated',
       type: 'info',
       userId: targetMember.userId,
-    }).catch((error) => console.error('Failed to send role notification:', error))
+    }).catch((error) => logger.error('Failed to send role notification', { error }))
 
     return c.json({ success: true })
   }
@@ -5933,7 +5940,7 @@ orgApp.delete(
       title: 'Removed from organization',
       type: 'warning',
       userId: targetMember.userId,
-    }).catch((error) => console.error('Failed to send removal notification:', error))
+    }).catch((error) => logger.error('Failed to send removal notification', { error }))
 
     return c.json({ success: true })
   }
@@ -6178,7 +6185,7 @@ orgApp.post(
       title: 'Organization ownership transferred',
       type: 'success',
       userId: parsed.newOwnerId,
-    }).catch((error) => console.error('Failed to send transfer notification:', error))
+    }).catch((error) => logger.error('Failed to send transfer notification', { error }))
 
     return c.json({ success: true })
   }
@@ -6793,7 +6800,7 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
       title: 'Invitation accepted',
       type: 'success',
       userId: invitation.invitedBy,
-    }).catch((error) => console.error('Failed to send invitation notification:', error))
+    }).catch((error) => logger.error('Failed to send invitation notification', { error }))
   }
 
   return c.json({ organizationId: invitation.organizationId, success: true })
@@ -7459,13 +7466,13 @@ adminApp.patch('/comments/:id/moderate', validate(moderateCommentSchema), async 
       title: 'Comment approved',
       type: 'success',
       userId: existing.authorId,
-    }).catch((error) => console.error('Failed to send approval notification:', error))
+    }).catch((error) => logger.error('Failed to send approval notification', { error }))
     indexComment(db, id).catch((error) =>
-      console.error('Search index failed (comment approve):', error)
+      logger.error('Search index failed (comment approve)', { error })
     )
   } else if (parsed.status === 'rejected' || parsed.status === 'spam') {
     deindexEntity(db, id, 'comment').catch((error) =>
-      console.error('Search deindex failed (comment reject):', error)
+      logger.error('Search deindex failed (comment reject)', { error })
     )
   }
 
@@ -7483,7 +7490,7 @@ adminApp.delete('/comments/:id', async (c) => {
   await db.delete(comment).where(eq(comment.id, id))
 
   deindexEntity(db, id, 'comment').catch((error) =>
-    console.error('Search deindex failed (admin comment delete):', error)
+    logger.error('Search deindex failed (admin comment delete)', { error })
   )
 
   await writeAuditLog(db, {

@@ -1,3 +1,7 @@
+import { createLogger } from '$lib/server/logger'
+
+const logger = createLogger('cache')
+
 export interface CachePlatform {
   caches?: CacheStorage | { default: unknown }
 }
@@ -39,13 +43,7 @@ async function purgeUrls(cache: Cache, paths: string[]): Promise<void> {
         const url = new URL(path, 'https://placeholder')
         await cache.delete(url)
       } catch (error) {
-        console.error(
-          JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            event: 'cache.purge_failed',
-            path,
-          })
-        )
+        logger.error('Cache purge failed', { error, path })
       }
     })
   )

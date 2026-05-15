@@ -1,13 +1,16 @@
+import { createLogger } from '$lib/server/logger'
 import { sql } from 'drizzle-orm'
 
 import type { SearchAdapter, SearchDocument, SearchResult } from './types'
+
+const logger = createLogger('search')
 
 function safeParseJson(value: string | null | undefined): Record<string, unknown> {
   if (!value) return {}
   try {
     return JSON.parse(value)
   } catch (error) {
-    console.error('Failed to parse JSON in search adapter:', error)
+    logger.error('Failed to parse JSON in search adapter', { error })
     return {}
   }
 }
