@@ -24,22 +24,13 @@
 | Key rotation        | DONE    | `rotateApiKey()` in `api-keys.ts` generates a new key+hash, resets `requestCount` to 0, preserves metadata. API endpoint `POST /api-keys/:id/rotate` exists in Hono routes with rate limiting (5/min).                                                                                                                                                                                                                                                      |
 | Usage logging       | DONE    | `logApiKeyUsage()` writes to `apiKeyUsageLog` table (endpoint, method, statusCode, IP, userAgent). `touchApiKey()` updates `lastUsedAt` and increments `requestCount`. Both are called via `executionCtx.waitUntil()` in the `withApiKey` middleware -- fire-and-forget after response.                                                                                                                                                                     |
 | Key revocation      | DONE    | `revokeApiKey()` sets `revokedAt` timestamp. `validateApiKey()` filters by `isNull(apiKey.revokedAt)`. API endpoint `POST /api-keys/:id/revoke` exists.                                                                                                                                                                                                                                                                                                     |
-| Per-key rate limits | PARTIAL | `rateLimit` field is stored on each API key (`apiKey.rateLimit`). However, the `withApiKey` middleware in `src/lib/server/hono/middleware.ts` does **not** read or enforce the per-key rate limit. The `withRateLimit` middleware is a separate, independent middleware that uses a global in-memory `Map` store and is applied per-route with a fixed limit. The per-key `rateLimit` value is stored but **never consumed** during request authentication. |
+| Per-key rate limits | DONE | `rateLimit` field on API keys is fully enforced in `withApiKey` middleware (middleware.ts:110-119). Uses `dbRateLimitCheck(db, 'apikey:{keyId}', keyRecord.rateLimit, 60_000)` with D1-backed store. Sets `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers. |
 
 ### Issues Found
 
-**CRITICAL -- Per-key rate limits are not enforced.**
+~~**CRITICAL -- Per-key rate limits are not enforced.**~~ **FIXED** — Per-key rate limits are fully enforced. `withApiKey` middleware reads `keyRecord.rateLimit` and calls `dbRateLimitCheck` with D1-backed storage. The in-memory `Map` is only a fallback when `db` is null.
 
-- Location: `src/lib/server/hono/middleware.ts` lines 82-141
-- The `withApiKey` middleware validates the key and checks scopes but never reads `keyRecord.rateLimit` to apply per-key throttling. The `withRateLimit` middleware (lines 142-151) is separate and uses a fixed limit, not the key's configured limit.
-- Impact: A user could set a rate limit of 1 req/min on a key, but it would have no effect. All keys share whatever global rate limit is configured on the route.
-- Fix: Inside `withApiKey`, after validating the key, check `keyRecord.rateLimit` and either call `rateLimit()` with that limit or reject the request if the key has exceeded its custom limit.
-
-**MEDIUM -- Rate limit store is in-memory only.**
-
-- Location: `src/lib/server/rate-limit.ts`
-- Uses a `Map<string, RateLimitEntry>` with no persistence. On Cloudflare Workers, each isolate has its own memory, so rate limits are inconsistent across isolates. The `store` is never shared.
-- Impact: Rate limits are approximate at best in a multi-isolate Workers environment.
+~~**MEDIUM -- Rate limit store is in-memory only.**~~ **FIXED** — `dbRateLimitCheck` in `rate-limit.ts` uses the `rate_limit_log` D1 table for production. In-memory `Map` is only used as a fallback when `db` is null (tests).
 
 **MEDIUM -- API key hash lookup has no index hint for non-unique collisions.**
 
@@ -86,13 +77,7 @@
 
 ### Issues Found
 
-**CRITICAL -- No automatic retry processor for scheduled webhook retries.**
-
-- Location: `src/lib/server/webhooks.ts`
-- When `deliverWebhook()` fails, it sets `nextRetryAt` on the delivery record but does **not** schedule any background task to process it later. `retryWebhookDelivery()` exists but is only callable manually via the admin API (`POST /api/admin/webhooks/:deliveryId/retry`).
-- There is no cron endpoint, Durable Object, or Queue consumer that periodically scans for deliveries where `nextRetryAt <= now` and retries them.
-- Impact: Failed webhooks with `status: 'retrying'` and a `nextRetryAt` set will **never** be retried automatically. The exponential backoff logic exists but is dead code unless triggered manually.
-- Fix: Add a cron endpoint (`/api/cron/retry-webhooks`) or use Cloudflare Queues to consume retry-eligible deliveries. The `cronSecret` infrastructure already exists in `RuntimeEnv`.
+~~**CRITICAL -- No automatic retry processor for scheduled webhook retries.**~~ **FIXED** — `POST /api/admin/retry-webhooks` endpoint exists with cron secret authentication. The scheduled handler in `worker.ts` dispatches to this endpoint every 5 minutes via the cron trigger.
 
 **MEDIUM -- `dispatchWebhooksForEvent` fetches ALL active endpoints.**
 

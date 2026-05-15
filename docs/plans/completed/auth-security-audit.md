@@ -49,30 +49,18 @@ Each claimed feature from `docs/loop.md` (Auth & Security section, lines 93-104)
 
 ## Critical Gaps
 
-1. **No Content-Security-Policy header**
-   - **Fix**: Add a CSP header in `handleSecurityHeaders` with nonce-based `script-src`. Generate a nonce per request, pass it to SvelteKit via `event.locals`, and use it in `app.html` for inline scripts.
-   - **Why**: Without CSP, the application is vulnerable to XSS via injected scripts. This is the single largest security gap.
-   - **How**: In `hooks.server.ts`, generate a crypto random nonce, set `Content-Security-Policy: default-src 'self'; script-src 'nonce-{nonce}' ...`, and make it available to the template.
+1. ~~**No Content-Security-Policy header**~~ **FIXED** — `handleSecurityHeaders` in `hooks.server.ts` already generates a nonce per request, passes it to SvelteKit via `csp: { nonce }`, and SvelteKit's CSP config in `svelte.config.js` defines comprehensive directives. The audit incorrectly stated CSP was absent.
 
-2. **Rate limiting uses in-memory storage — ineffective in production**
-   - **Fix**: Switch to database-backed rate limiting as noted in the TODO comment in `auth.ts` line 77. Add a `rateLimit` table to the Drizzle schema and implement a D1-backed store.
-   - **Why**: Cloudflare Workers are stateless isolates. Each request may hit a different isolate with its own `Map`. An attacker can bypass rate limits by distributing requests across isolates.
-   - **How**: Create a `rate_limit` table with key/count/resetAt columns. Replace the `Map`-based store in `rate-limit.ts` with D1 queries. For Better Auth's built-in limiter, set `storage: 'database'` and add the required model.
+2. ~~**Rate limiting uses in-memory storage — ineffective in production**~~ **PARTIALLY FIXED** — D1-backed rate limiting exists in `rate-limit.ts` via `dbRateLimitCheck()` using the `rate_limit_log` table. In-memory `Map` is only a fallback when `db` is null. The `withApiKey` middleware and `withRateLimit` both use D1. Better Auth's built-in limiter may still use in-memory.
 
-3. **HaveIBeenPwned breached password check is completely missing**
-   - **Fix**: Integrate the HIBP k-anonymity API (`https://api.pwnedpasswords.com/range/{prefix}`) into the password validation flow. Hash the password with SHA-1, send the first 5 characters, check if the suffix appears in the response.
-   - **Why**: The claim explicitly states "breached password check via HaveIBeenPwned API." Without it, users can use known-compromised passwords (e.g., from data breaches). The hardcoded common-pattern list is trivially small.
-   - **How**: Add a `checkBreachedPassword(password: string): Promise<boolean>` function. Call it during registration and password change. Show a warning in the UI if the password is breached.
+3. ~~**HaveIBeenPwned breached password check is completely missing**~~ **FIXED** — HIBP k-anonymity check already implemented in `src/lib/server/security/hibp.ts`. SHA-1 hashes password, sends first 5 chars to HIBP API, checks suffix against breach database. Fails open if API unreachable. Audit incorrectly stated this was missing.
 
 4. **No security alert emails**
    - **Fix**: Add methods to `EmailService` for security alerts (new device login, password changed, 2FA enabled/disabled, account locked). Call them from `hooks.server.ts` where security events are written.
    - **Why**: Security events are logged to the database but users are never notified. A new device logging in or a password change should trigger an immediate email alert.
    - **How**: Add `sendSecurityAlert(email, eventType, details)` to `EmailService`. Create an email template. Call it after `writeSecurityEvent` in the relevant hooks.
 
-5. **No concurrent session limits**
-   - **Fix**: Add a configurable max session count per user. On session creation, count existing sessions and revoke the oldest if the limit is exceeded.
-   - **Why**: The claim mentions "concurrent session limits." Currently, a user can accumulate unlimited sessions across unlimited devices.
-   - **How**: Add a check in `hooks.server.ts` after successful login or in a Better Auth `session` hook. Query `session` table for the user's active sessions. If count exceeds limit (e.g., 10), delete the oldest.
+5. ~~**No concurrent session limits**~~ **FIXED** — `handleBetterAuth` in `hooks.server.ts` already enforces a max 5 concurrent sessions limit. On login, it counts existing active sessions and revokes the oldest if the limit is exceeded. Audit incorrectly stated this was missing.
 
 6. **Session IP/UA may not be populated on creation**
    - **Fix**: Verify that Better Auth's session creation populates `ipAddress` and `userAgent` columns. If not, add a database hook or middleware to inject them.
@@ -99,10 +87,7 @@ Each claimed feature from `docs/loop.md` (Auth & Security section, lines 93-104)
     - **Why**: The claim mentions "action quotas per tier." Currently, all rate limits are the same for all users regardless of subscription level.
     - **How**: In `withRateLimit`, look up the user's subscription. Apply tier-specific limits from a configuration map.
 
-11. **Ban evasion detection via email/IP is not implemented**
-    - **Fix**: When a user is banned, store their email domain and IP addresses. On new registrations, check against this blocklist.
-    - **Why**: A banned user can trivially create a new account with the same email or from the same IP.
-    - **How**: Create a `ban_blocklist` table or extend `loginAttempt`. On registration, check email and IP against banned users' data.
+11. ~~**Ban evasion detection via email/IP is not implemented**~~ **FIXED** — `detectBanEvasion()` in `src/lib/server/security/ban-evasion.ts` checks new registrations against banned users by email domain and local part. Called from `auth.ts` during registration. Audit incorrectly stated this was missing.
 
 ## Test Coverage
 

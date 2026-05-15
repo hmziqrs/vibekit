@@ -28,8 +28,7 @@ type: project
 
 ## Critical Gaps
 
-1. **Scheduled publishing cron handler missing** — The wrangler.jsonc defines cron triggers (`"crons": ["0 3 * * *", "*/5 * * * *"]`), and the API endpoint `POST /api/admin/publish-scheduled` exists and correctly promotes due scheduled posts. However, there is no `export const scheduled` handler in the SvelteKit app that receives Cloudflare Workers `scheduled` events and calls this endpoint. Cloudflare cron triggers fire the `scheduled` event on the worker, not HTTP requests. The endpoint can be called manually or by an admin, but the cron triggers are effectively dead code.
-   - **Fix**: Add a `scheduled` export in a service-worker or entry point that calls the publish-scheduled endpoint. With `@sveltejs/adapter-cloudflare`, this may require a custom worker entry or a separate Cloudflare Worker.
+1. ~~**Scheduled publishing cron handler missing**~~ **FIXED** — Added `scheduled` handler to `worker.ts` that dispatches to `/api/admin/publish-scheduled`, `/api/admin/retry-webhooks`, and `/api/admin/cleanup` based on cron expression. Postbuild script (`scripts/postbuild-cron.ts`) injects the handler into the generated worker.
 
 2. **Newsletter sync with external services not implemented** — loop.md claims "Mailchimp/Resend sync" but there is zero integration with either service for subscriber synchronization. The newsletter system only stores subscribers locally in D1 and sends confirmation emails via the app's own email service. No export, no webhook, no API call to external newsletter platforms.
    - **Fix**: Either implement actual sync (push subscribers to Mailchimp/Resend on confirm, handle webhooks back) or remove the claim from loop.md.
@@ -43,8 +42,7 @@ type: project
 5. **Comment editing does not sanitize HTML** — The `PATCH /comments/:id` endpoint sets `htmlContent: parsed.content` but `parsed.content` is the raw text input. It does not sanitize or render the content as HTML. Public comment display reads `htmlContent` which is null for user-edited comments, so edited comments may display raw text instead of rendered content.
    - **Fix**: Sanitize and render comment content on edit, or always derive `htmlContent` from `content`.
 
-6. **Visitor hash is plaintext, not hashed** — The `blogPostView.visitorHash` stores `ip:ua.slice(0, 200)` as plaintext. This is a privacy concern — raw IP addresses and user agent strings are stored in the database.
-   - **Fix**: Hash the visitor identifier with SHA-256 before storing.
+6. ~~**Visitor hash is plaintext, not hashed**~~ **FIXED** — The `sha256()` helper at `hono/index.ts:322` already hashes `ip:ua` via `crypto.subtle.digest('SHA-256')` before storing. Raw IP/UA is never persisted. Audit incorrectly claimed plaintext storage.
 
 7. **Blog admin search is LIKE-based, not full-text** — The `GET /api/blog/search` endpoint in hono/index.ts (~2683) uses `LIKE` patterns instead of the FTS5 search index. This was also flagged in the search audit.
 

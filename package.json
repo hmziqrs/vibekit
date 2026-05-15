@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "ADAPTER=node vite dev",
-    "build": "ADAPTER=cloudflare wrangler types --check && ADAPTER=cloudflare vite build",
+    "build": "ADAPTER=cloudflare wrangler types --check && ADAPTER=cloudflare vite build && bun scripts/postbuild-cron.ts",
+    "postbuild": "bun scripts/postbuild-cron.ts",
     "build:analyze": "ADAPTER=cloudflare vite build -- --analyse",
     "build:check-size": "du -sh build/client && du -sh build/server && find build/client/_app/immutable -name '*.js' -exec du -sh {} + | sort -rh | head -20",
     "build:node": "ADAPTER=node vite build",
