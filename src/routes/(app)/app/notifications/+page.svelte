@@ -27,6 +27,8 @@
   let filterType = $state<string>('all')
   let filterRead = $state<string>('all')
   let mutationError = $state('')
+  let selectedIds = $state<Set<string>>(new Set())
+  let deleting = $state(false)
 
   const queryClient = useQueryClient()
 
@@ -86,9 +88,69 @@
     try {
       const res = await fetch(`/api/notifications/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete notification')
+      selectedIds.delete(id)
+      selectedIds = new Set(selectedIds)
       await queryClient.invalidateQueries({ queryKey: ['notifications'] })
     } catch {
       mutationError = 'Failed to delete notification.'
+    }
+  }
+
+  async function bulkDeleteSelected() {
+    if (selectedIds.size === 0) return
+    deleting = true
+    mutationError = ''
+    try {
+      const res = await fetch('/api/notifications/bulk-delete', {
+        body: JSON.stringify({ ids: [...selectedIds] }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('Failed to delete notifications')
+      selectedIds = new Set()
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      mutationError = 'Failed to delete selected notifications.'
+    } finally {
+      deleting = false
+    }
+  }
+
+  async function deleteAll() {
+    deleting = true
+    mutationError = ''
+    try {
+      const res = await fetch('/api/notifications/bulk-delete', {
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('Failed to delete all notifications')
+      selectedIds = new Set()
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      mutationError = 'Failed to delete all notifications.'
+    } finally {
+      deleting = false
+    }
+  }
+
+  function toggleSelect(id: string) {
+    const next = new Set(selectedIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    selectedIds = next
+  }
+
+  function toggleSelectAll() {
+    const visible = filteredNotifications()
+    if (selectedIds.size === visible.length) {
+      selectedIds = new Set()
+    } else {
+      selectedIds = new Set(visible.map((n) => n.id))
     }
   }
 
@@ -128,12 +190,30 @@
 <div class="mx-auto max-w-3xl space-y-6 p-6">
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold text-text-primary">Notifications</h1>
-    <button
-      onclick={markAllRead}
-      class="rounded-lg px-3 py-1.5 text-[13px] text-brand transition-colors hover:bg-brand/10"
-    >
-      Mark all read
-    </button>
+    <div class="flex items-center gap-2">
+      {#if selectedIds.size > 0}
+        <button
+          onclick={bulkDeleteSelected}
+          disabled={deleting}
+          class="rounded-lg px-3 py-1.5 text-[13px] text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+        >
+          Delete selected ({selectedIds.size})
+        </button>
+      {/if}
+      <button
+        onclick={markAllRead}
+        class="rounded-lg px-3 py-1.5 text-[13px] text-brand transition-colors hover:bg-brand/10"
+      >
+        Mark all read
+      </button>
+      <button
+        onclick={deleteAll}
+        disabled={deleting}
+        class="rounded-lg px-3 py-1.5 text-[13px] text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
+      >
+        Delete all
+      </button>
+    </div>
   </div>
 
   <div class="flex flex-wrap gap-3">
@@ -191,11 +271,19 @@
           class={cn(
             'group relative flex items-start gap-4 rounded-xl border border-white/[0.06] bg-surface p-4 transition-colors hover:border-white/[0.1]',
             !n.readAt && 'border-brand/20 bg-brand/[0.02]',
+            selectedIds.has(n.id) && 'ring-1 ring-brand/30',
           )}
         >
+          <input
+            type="checkbox"
+            checked={selectedIds.has(n.id)}
+            onchange={() => toggleSelect(n.id)}
+            aria-label="Select notification"
+            class="mt-2 size-4 shrink-0 cursor-pointer rounded border-white/20 bg-transparent accent-brand"
+          />
           <button
             onclick={() => handleNotificationClick(n)}
-            class="flex min-w-0 flex-1 items-start gap-3 text-left"
+            class="flex min-w-0 flex-1 items-start gap-3 text-start"
           >
             <div class="mt-1 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current"></div>
             <div class="min-w-0 flex-1">

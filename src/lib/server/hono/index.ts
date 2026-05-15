@@ -2120,6 +2120,25 @@ protectedApp.delete('/notifications/:id', async (c) => {
   return c.json({ success: true })
 })
 
+protectedApp.post('/notifications/bulk-delete', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const body = await c.req.json<{ ids?: string[] }>()
+
+  if (body.ids && Array.isArray(body.ids)) {
+    const ids = body.ids.filter((id: string) => typeof id === 'string' && id.length > 0)
+    if (ids.length === 0) return c.json({ deleted: 0 })
+    const result = await db
+      .delete(notification)
+      .where(and(eq(notification.userId, userId), inArray(notification.id, ids)))
+    return c.json({ deleted: ids.length })
+  }
+
+  // Delete all notifications for the user
+  const result = await db.delete(notification).where(eq(notification.userId, userId))
+  return c.json({ deleted: 'all' })
+})
+
 // ── Notification Preferences (auth required) ──────────────────────────
 
 protectedApp.get('/notifications/preferences', async (c) => {
