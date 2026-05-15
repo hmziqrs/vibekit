@@ -21,6 +21,7 @@
   let loading = $state(true)
   let error = $state('')
   let acceptingId = $state<string | null>(null)
+  let decliningId = $state<string | null>(null)
 
   $effect(() => {
     if ($session.data?.user) {
@@ -36,8 +37,8 @@
       if (!res.ok) throw new Error('Failed to load invitations')
       const data = await res.json()
       invitations = data.invitations ?? []
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Unknown error'
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       loading = false
     }
@@ -53,10 +54,27 @@
         throw new Error(data.error?.message ?? 'Failed to accept invitation')
       }
       invitations = invitations.filter((inv) => inv.id !== id)
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Unknown error'
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       acceptingId = null
+    }
+  }
+
+  async function declineInvitation(token: string, id: string) {
+    decliningId = id
+    error = ''
+    try {
+      const res = await fetch(`/api/invitations/${token}/decline`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error?.message ?? 'Failed to decline invitation')
+      }
+      invitations = invitations.filter((inv) => inv.id !== id)
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      decliningId = null
     }
   }
 
@@ -109,13 +127,23 @@
               &middot; Expires {formatDate(invitation.expiresAt)}
             </p>
           </div>
-          <Button
-            size="sm"
-            onclick={() => acceptInvitation(invitation.token, invitation.id)}
-            disabled={acceptingId === invitation.id}
-          >
-            {acceptingId === invitation.id ? 'Accepting...' : 'Accept'}
-          </Button>
+          <div class="flex gap-2">
+            <Button
+              size="sm"
+              onclick={() => acceptInvitation(invitation.token, invitation.id)}
+              disabled={acceptingId === invitation.id || decliningId === invitation.id}
+            >
+              {acceptingId === invitation.id ? 'Accepting...' : 'Accept'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onclick={() => declineInvitation(invitation.token, invitation.id)}
+              disabled={acceptingId === invitation.id || decliningId === invitation.id}
+            >
+              {decliningId === invitation.id ? 'Declining...' : 'Decline'}
+            </Button>
+          </div>
         </Card.Content>
       </Card.Root>
     {/each}

@@ -147,11 +147,8 @@
 
   function toggleSelectAll() {
     const visible = filteredNotifications()
-    if (selectedIds.size === visible.length) {
-      selectedIds = new Set()
-    } else {
-      selectedIds = new Set(visible.map((n) => n.id))
-    }
+    selectedIds =
+      selectedIds.size === visible.length ? new Set() : new Set(visible.map((n) => n.id))
   }
 
   function handleNotificationClick(n: NotificationData) {
