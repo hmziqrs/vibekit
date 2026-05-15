@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import type { RequestHandler } from './$types'
 
-const ORIGIN = 'https://vibekit.dev'
+const FALLBACK_ORIGIN = 'https://vibekit.dev'
 
 function escapeXml(str: string): string {
   return str
@@ -26,11 +26,13 @@ const STATIC_PAGES = [
   { changefreq: 'weekly', path: '/blog', priority: '0.9' },
 ]
 
-export const GET: RequestHandler = async ({ locals, setHeaders }) => {
+export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
   setHeaders({
     'Cache-Control': 'public, max-age=3600',
     'Content-Type': 'application/xml; charset=utf-8',
   })
+
+  const ORIGIN = url.origin || FALLBACK_ORIGIN
 
   const { db } = locals.services as unknown as { db: DrizzleDb }
 

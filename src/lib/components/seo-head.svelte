@@ -1,12 +1,12 @@
 <script lang="ts">
+  import { page } from '$app/state'
   import { seo, type SeoProps } from '$lib/seo'
-
-  const ORIGIN = 'https://vibekit.dev'
 
   type Props = SeoProps
 
   const props: Props = $props()
   const meta = $derived(seo(props))
+  const ORIGIN = $derived(page.url.origin)
 
   function resolveImageUrl(image: string | undefined): string | undefined {
     if (!image) return undefined
@@ -66,8 +66,8 @@
   <meta name="twitter:card" content={meta.twitter.card} />
   <meta name="twitter:title" content={meta.twitter.title} />
   <meta name="twitter:description" content={meta.twitter.description} />
-  {#if meta.twitter.image}
-    <meta name="twitter:image" content={meta.twitter.image} />
+  {#if resolveImageUrl(meta.twitter.image)}
+    <meta name="twitter:image" content={resolveImageUrl(meta.twitter.image)} />
   {/if}
 
   {@html jsonLdScript}
