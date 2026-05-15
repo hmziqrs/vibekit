@@ -2,7 +2,21 @@
   import { page } from '$app/state'
   import * as Card from '$lib/components/ui/card'
 
-  const errorMessage = $derived(page.url.searchParams.get('error') ?? 'An authentication error occurred')
+  const ERROR_MAP: Record<string, string> = {
+    callback: 'OAuth callback failed. Please try again.',
+    credential_account_not_found: 'No account found with those credentials.',
+    invalid_credentials: 'Invalid email or password.',
+    invalid_verification: 'The verification link is invalid or has expired.',
+    session_expired: 'Your session has expired. Please sign in again.',
+    unauthorized: 'You are not authorized to access this resource.',
+  }
+
+  const errorParam = $derived(page.url.searchParams.get('error') ?? '')
+  const errorMessage = $derived(
+    errorParam && ERROR_MAP[errorParam]
+      ? ERROR_MAP[errorParam]
+      : 'An authentication error occurred'
+  )
 </script>
 
 <div class="w-full max-w-sm">

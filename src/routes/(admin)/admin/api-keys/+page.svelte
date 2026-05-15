@@ -261,27 +261,25 @@
 
 <!-- Revoke Dialog -->
 <ConfirmDialog
-  open={showRevokeDialog}
+  bind:open={showRevokeDialog}
   title="Revoke API Key"
-  description="This will immediately disable the key. Any applications using it will lose access."
+  message="This will immediately disable the key. Any applications using it will lose access."
   confirmLabel={revoking ? 'Revoking...' : 'Revoke'}
-  on:confirm={handleRevoke}
-  on:cancel={() => {
-    showRevokeDialog = false
+  onConfirm={() => {
+    handleRevoke()
     confirmRevoke = null
   }}
 />
 
 <!-- Delete Dialog -->
 <ConfirmDialog
-  open={showDeleteDialog}
+  bind:open={showDeleteDialog}
   title="Delete API Key"
-  description="This will permanently delete the key and all its usage history. This cannot be undone."
+  message="This will permanently delete the key and all its usage history. This cannot be undone."
   confirmLabel={deleting ? 'Deleting...' : 'Delete'}
-  variant="destructive"
-  on:confirm={handleDelete}
-  on:cancel={() => {
-    showDeleteDialog = false
+  variant="danger"
+  onConfirm={() => {
+    handleDelete()
     confirmDelete = null
   }}
 />
