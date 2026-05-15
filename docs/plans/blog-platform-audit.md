@@ -50,7 +50,7 @@ type: project
 ## Minor Issues
 
 - **SEO preview is text-only** — The `seo-panel.svelte` shows a simplified Google-style preview (title + domain + description) but no social card visual preview (Twitter/X card, Facebook share preview). Claim says "Google/social card preview."
-- **RSS feed origin is hardcoded** — `feed.xml/+server.ts` has `const ORIGIN = 'https://vibekit.dev'` hardcoded instead of reading from environment.
+- ~~**RSS feed origin is hardcoded**~~ — **DONE**. Now uses `url.origin` from the request instead of hardcoded `vibekit.dev`.
 - **Comment threading is limited to one level** — Server explicitly rejects replies to replies (`if (parent.parentId) throw new BadRequestError('Cannot reply to a reply')`). True threaded comments would support arbitrary depth.
 - **Spam detector is basic** — Keyword blacklist + pattern matching only. No Akismet, no ML-based detection, no CAPTCHA integration.
 - **No comment email notifications** — The `POST /api/comments/:postId` handler has a `// Notify post author` comment and fetches the post author, but the actual notification send code was not found in the implementation.
