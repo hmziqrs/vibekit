@@ -304,6 +304,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod/v4'
 
+import { renderAndSanitize } from '$lib/markdown'
 import {
   requirePermission,
   requireTeamPermission,
@@ -2443,8 +2444,10 @@ protectedApp.post('/billing/checkout', async (c) => {
   }
 
   // Without Stripe, create subscription directly
+  const intervalMs =
+    plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
   const sub = await createSubscription(db, {
-    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    currentPeriodEnd: new Date(Date.now() + intervalMs),
     currentPeriodStart: new Date(),
     organizationId: parsed.data.organizationId,
     planId: plan.id,
@@ -3278,7 +3281,7 @@ protectedApp.post(
     await db.insert(comment).values({
       authorId: currentUser.id,
       content: parsed.content,
-      htmlContent: null,
+      htmlContent: renderAndSanitize(parsed.content),
       id,
       ipAddress: c.req.header('cf-connecting-ip') ?? null,
       moderatedAt: commentStatus !== 'pending' ? new Date() : null,
@@ -3370,7 +3373,7 @@ protectedApp.patch('/comments/:id', validate(updateCommentSchema), async (c) => 
     .set({
       content: parsed.content,
       editedAt: new Date(),
-      htmlContent: null,
+      htmlContent: renderAndSanitize(parsed.content),
       updatedAt: new Date(),
     })
     .where(eq(comment.id, id))
@@ -5201,12 +5204,47 @@ app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async 
     .where(lt(apiKeyUsageLog.createdAt, usageLogCutoff))
     .returning({ id: apiKeyUsageLog.id })
 
+  // Auto-activate announcements whose startsAt has passed
+  const activatedAnnouncements = await db
+    .update(announcement)
+    .set({ isActive: true })
+    .where(
+      and(
+        eq(announcement.isActive, false),
+        isNotNull(announcement.startsAt),
+        lte(announcement.startsAt, new Date())
+      )
+    )
+    .returning({ id: announcement.id })
+
+  // Auto-deactivate announcements whose endsAt has passed
+  const deactivatedAnnouncements = await db
+    .update(announcement)
+    .set({ isActive: false })
+    .where(
+      and(
+        eq(announcement.isActive, true),
+        isNotNull(announcement.endsAt),
+        lte(announcement.endsAt, new Date())
+      )
+    )
+    .returning({ id: announcement.id })
+
+  // Cleanup expired OAuth states
+  const { cleanupExpiredOAuthStates } = await import('$lib/server/integrations/oauth')
+  const deletedOAuthStates = await cleanupExpiredOAuthStates(db)
+
   return c.json({
+    announcements: {
+      activated: activatedAnnouncements.length,
+      deactivated: deactivatedAnnouncements.length,
+    },
     cutoff: cutoff.toISOString(),
     expiredBans: expiredBans.length,
     purged: {
       apiKeys: deletedApiKeys.length,
       items: deletedItems.length,
+      oAuthStates: deletedOAuthStates,
       organizations: deletedOrgs.length,
       posts: deletedPosts.length,
       usageLogs: deletedUsageLogs.length,
@@ -5879,8 +5917,10 @@ orgApp.post(
     if (!plan) throw new NotFoundError()
     if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
+    const orgIntervalMs =
+      plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
     const sub = await createSubscription(db, {
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentPeriodEnd: new Date(Date.now() + orgIntervalMs),
       currentPeriodStart: new Date(),
       organizationId: org.id,
       planId: plan.id,
