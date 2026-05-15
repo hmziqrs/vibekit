@@ -34,6 +34,10 @@ export class EmailService {
     this.queue.enqueue(
       {
         from: 'Vibekit Blog <noreply@vibekit.com>',
+        headers: {
+          'List-Unsubscribe': '<https://vibekit.com/api/newsletter/unsubscribe>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
         html,
         subject: 'Confirm your subscription to Vibekit Blog',
         text,

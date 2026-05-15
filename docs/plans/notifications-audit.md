@@ -19,14 +19,14 @@
 
 ### Implementation Evidence
 
-| Feature                  | Status  | Evidence                                                                                                                                                                                                                                                                                                              |
-| ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Notification bell        | DONE    | `src/lib/components/notification-bell.svelte` -- Bell icon with unread badge (caps at "9+"). Dropdown panel shows latest 10 notifications with type color dots, time-ago formatting, click-to-navigate.                                                                                                               |
-| Real-time updates        | PARTIAL | The bell polls `GET /api/notifications/unread-count` every 30 seconds via TanStack Query's `refetchInterval: 30_000`. This is polling, not real-time. No WebSocket, SSE, or Server-Sent Events implementation exists.                                                                                                 |
-| Read/unread state        | DONE    | `notification.readAt` column tracks read state. API endpoints: `PATCH /notifications/:id/read` (mark single), `PATCH /notifications/read-all` (mark all). The bell component visually distinguishes read (opacity-60) from unread (blue dot).                                                                         |
-| Notification types       | DONE    | `notification.type` enum: `info`, `success`, `warning`, `error`. Displayed via color-coded dots in the bell (`notificationTypeColor()` in `src/lib/notification-utils.ts`).                                                                                                                                           |
-| Bulk actions             | PARTIAL | `markAllRead()` is implemented (marks all unread as read). No bulk delete or bulk archive exists.                                                                                                                                                                                                                     |
-| Notification preferences | DONE    | `notificationPreference` table with `(userId, type, channel)` unique index. `createNotification()` checks `isInAppEnabled()` before inserting. `GET /notifications/preferences` and `PATCH /notifications/preferences` endpoints exist. However, there is no dedicated UI page for managing notification preferences. |
+| Feature                  | Status  | Evidence                                                                                                                                                                                                                                                                 |
+| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Notification bell        | DONE    | `src/lib/components/notification-bell.svelte` -- Bell icon with unread badge (caps at "9+"). Dropdown panel shows latest 10 notifications with type color dots, time-ago formatting, click-to-navigate.                                                                  |
+| Real-time updates        | PARTIAL | The bell polls `GET /api/notifications/unread-count` every 30 seconds via TanStack Query's `refetchInterval: 30_000`. This is polling, not real-time. No WebSocket, SSE, or Server-Sent Events implementation exists.                                                    |
+| Read/unread state        | DONE    | `notification.readAt` column tracks read state. API endpoints: `PATCH /notifications/:id/read` (mark single), `PATCH /notifications/read-all` (mark all). The bell component visually distinguishes read (opacity-60) from unread (blue dot).                            |
+| Notification types       | DONE    | `notification.type` enum: `info`, `success`, `warning`, `error`. Displayed via color-coded dots in the bell (`notificationTypeColor()` in `src/lib/notification-utils.ts`).                                                                                              |
+| Bulk actions             | DONE    | `markAllRead()` implemented. Bulk delete via `POST /notifications/bulk-delete` accepts `{ids: string[]}` or deletes all. UI has checkboxes, "Delete selected", and "Delete all" buttons.                                                                                 |
+| Notification preferences | DONE    | `notificationPreference` table with `(userId, type, channel)` unique index. `createNotification()` checks `isInAppEnabled()` before inserting. API endpoints exist. Dedicated UI page at `/app/settings/notifications` with toggle matrix for 6 types across 2 channels. |
 
 ### Database Schema
 
@@ -74,7 +74,7 @@
 | ----------------------------- | ------- | ------------------------------------------------------------------------------------ |
 | Notification bell             | DONE    | `src/lib/components/notification-bell.svelte`                                        |
 | Notifications list page       | DONE    | `src/routes/(app)/app/notifications/+page.svelte` (exists, referenced in layout nav) |
-| Notification preferences page | MISSING | No dedicated route or settings section.                                              |
+| Notification preferences page | DONE    | `src/routes/(app)/app/settings/notifications/+page.svelte` — Toggle matrix for 6 types across 2 channels. |
 | Notification link in app nav  | DONE    | `src/routes/(app)/+layout.svelte` line 44 -- "Notifications" link.                   |
 
 ---
@@ -90,12 +90,12 @@
 
 ### Implementation Evidence
 
-| Feature                 | Status  | Evidence                                                                                                                                                                                                                                                                                                              |
-| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Broadcast announcements | DONE    | `createBroadcast()` in `src/lib/server/notifications.ts` -- Sends to all users or admins only. Bulk preference check (single query for disabled users). Batched inserts (100 per batch). Admin validator: `broadcastNotificationSchema` in `src/lib/validators/admin.ts`. Admin API endpoint exists for broadcasting. |
-| Payment receipts        | MISSING | No email template or notification logic for payment receipts. The `invoice` table exists with status tracking, but no code triggers a notification when an invoice is paid.                                                                                                                                           |
-| Admin warnings          | PARTIAL | Admins can broadcast notifications, but there is no targeted warning system (e.g., "warn this specific user about a policy violation"). The ban system exists (`banUserSchema`) but does not send a notification to the banned user.                                                                                  |
-| Account status changes  | MISSING | No notifications are sent when a user's account status changes (suspended, deactivated, banned, unbanned). The auth middleware checks status in `withSession` but does not trigger notifications.                                                                                                                     |
+| Feature                 | Status | Evidence                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Broadcast announcements | DONE   | `createBroadcast()` in `src/lib/server/notifications.ts` -- Sends to all users or admins only. Bulk preference check (single query for disabled users). Batched inserts (100 per batch). Admin validator: `broadcastNotificationSchema` in `src/lib/validators/admin.ts`. Admin API endpoint exists for broadcasting. |
+| Payment receipts        | DONE   | `sendPaymentSucceeded()` and `sendPaymentFailed()` in EmailService with HTML/text templates. Wired into Stripe webhook handlers.                                                                                                                                                                                      |
+| Admin warnings          | DONE   | Admins can broadcast notifications. Ban system sends account suspended email via `sendAccountSuspended()` with reason, expiry date, and appeal URL.                                                                                                                                                                   |
+| Account status changes  | DONE   | Both `POST /users/:id/ban` and `PATCH /users/:id` (with `status: 'suspended'`) send account suspended emails to the affected user.                                                                                                                                                                                    |
 
 ### Issues Found
 
@@ -129,7 +129,7 @@
 | Transactional emails     | DONE    | `EmailService` class in `src/lib/server/email/index.ts` wraps `EmailQueue`. Methods: `sendWelcome()`, `sendEmailVerification()`, `sendPasswordReset()`, `sendContactNotification()`, `sendNewsletterConfirmation()`. All use `sendImmediate()` which bypasses the queue.                                     |
 | Email queue with retries | DONE    | `EmailQueue` in `src/lib/server/email/queue.ts` -- In-memory queue with exponential backoff (`min(1000 * 2^(attempts-1), 15000)`, max 15s). Configurable `maxRetries` (default 3). `onFinalFailure` callback for bounce handling.                                                                            |
 | Bounce handling          | PARTIAL | `handleBounce()` in `src/lib/server/email/bounce-handler.ts` -- Updates `newsletterSubscriber.status` to `bounced`. Only handles newsletter subscriber bounces, not general email bounces (e.g., verification emails, password resets). No webhook receiver for ESP bounce events (SendGrid, Mailgun, etc.). |
-| Unsubscribe flow         | PARTIAL | `POST /api/newsletter/unsubscribe` endpoint exists. Updates `newsletterSubscriber.status` to `unsubscribed` with timestamp. No `List-Unsubscribe` header in outgoing emails. No one-click unsubscribe (RFC 8058) support. No email preference center.                                                        |
+| Unsubscribe flow         | PARTIAL | `POST /api/newsletter/unsubscribe` endpoint exists. `List-Unsubscribe` and `List-Unsubscribe-Post` headers added to newsletter confirmation email. No email preference center beyond notification preferences page. |
 
 ### Issues Found
 
@@ -184,18 +184,18 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ### Implementation Evidence
 
-| Template                | Status  | Location                                                                                                                                                                                                     |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Welcome                 | DONE    | `src/lib/server/email/templates/welcome.ts` -- Greeting, getting-started checklist, CTA to dashboard.                                                                                                        |
-| Email verification      | DONE    | `src/lib/server/email/templates/email-verification.ts` -- Verify button, fallback link, ignore-if-not-you note.                                                                                              |
-| Password reset          | DONE    | `src/lib/server/email/templates/password-reset.ts` -- Reset button, 1-hour expiry warning.                                                                                                                   |
-| Invoice                 | MISSING | No invoice template. The `invoice` table and billing infrastructure exist, but no email is sent when an invoice is created or paid.                                                                          |
-| Subscription changes    | MISSING | No template for plan upgrades, downgrades, cancellations, renewals, or trial events. The `subscriptionEvent` table tracks these events but triggers no emails.                                               |
-| Team invites            | MISSING | No invitation email template. The `organizationInvitation` table stores invite tokens and emails, but no email is sent when an invitation is created.                                                        |
-| Security alerts         | MISSING | No templates for: new login from unknown device, password changed, 2FA enabled/disabled, account banned/unbanned, suspicious activity detected. The `securityEvent` table logs these but triggers no emails. |
-| Contact notification    | DONE    | `src/lib/server/email/templates/contact-notification.ts` -- Admin notification for contact form submissions.                                                                                                 |
-| Newsletter confirmation | DONE    | `src/lib/server/email/templates/newsletter-confirm.ts` -- Confirmation button for newsletter subscription.                                                                                                   |
-| Custom templates        | MISSING | No template editor, no admin UI for creating/editing templates. Templates are code-only.                                                                                                                     |
+| Template                | Status  | Location                                                                                                                                                                          |
+| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Welcome                 | DONE    | `src/lib/server/email/templates/welcome.ts` -- Greeting, getting-started checklist, CTA to dashboard.                                                                             |
+| Email verification      | DONE    | `src/lib/server/email/templates/email-verification.ts` -- Verify button, fallback link, ignore-if-not-you note.                                                                   |
+| Password reset          | DONE    | `src/lib/server/email/templates/password-reset.ts` -- Reset button, 1-hour expiry warning.                                                                                        |
+| Invoice                 | DONE    | `src/lib/server/email/templates/billing.ts` — `renderPaymentSucceeded()` and `renderPaymentFailed()` templates with plan name, amount, retry date.                                |
+| Subscription changes    | DONE    | `src/lib/server/email/templates/billing.ts` — `renderSubscriptionCanceled()`, `renderPlanChanged()`, `renderTrialEndingSoon()` templates. All wired into Stripe webhook handlers. |
+| Team invites            | MISSING | No invitation email template. The `organizationInvitation` table stores invite tokens and emails, but no email is sent when an invitation is created.                             |
+| Security alerts         | DONE    | `src/lib/server/email/templates/security-alert.ts` — Covers account_locked, new_device, password_change, two_factor_change. Also `account-suspended.ts` for ban notifications.    |
+| Contact notification    | DONE    | `src/lib/server/email/templates/contact-notification.ts` -- Admin notification for contact form submissions.                                                                      |
+| Newsletter confirmation | DONE    | `src/lib/server/email/templates/newsletter-confirm.ts` -- Confirmation button for newsletter subscription.                                                                        |
+| Custom templates        | MISSING | No template editor, no admin UI for creating/editing templates. Templates are code-only.                                                                                          |
 
 ### Template Quality Assessment
 
@@ -305,12 +305,12 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ### Implementation Evidence
 
-| Feature                 | Status  | Evidence                                                                                                                                                                                                                                                                                                                        |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace notifications | FIXED   | `dispatchToIntegrations()` in `src/lib/server/integrations/dispatch.ts` sends Slack Block Kit messages and Discord webhook embeds to connected integrations. Bridged into `createNotification()` in `src/lib/server/notifications.ts`.                                                                                          |
-| Slash commands          | MISSING | No slash command handler exists. No bot framework integration. The Discord scopes include `bot` and `webhook.incoming`, and Slack scopes include `chat:write` and `channels:read`, but no code uses these scopes.                                                                                                               |
-| Webhook delivery        | PARTIAL | The generic webhook system (`src/lib/server/webhooks.ts`) can deliver events to any URL, including Slack/Discord webhook URLs. Users could manually create a webhook endpoint pointing to a Slack/Discord incoming webhook URL. However, there is no Slack/Discord-specific formatting (e.g., Slack Block Kit, Discord embeds). |
-| Channel-specific alerts | MISSING | No channel targeting or routing logic. No UI to select specific Slack channels or Discord channels for different notification types.                                                                                                                                                                                            |
+| Feature                 | Status  | Evidence                                                                                                                                                                                                                               |
+| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace notifications | FIXED   | `dispatchToIntegrations()` in `src/lib/server/integrations/dispatch.ts` sends Slack Block Kit messages and Discord webhook embeds to connected integrations. Bridged into `createNotification()` in `src/lib/server/notifications.ts`. |
+| Slash commands          | MISSING | No slash command handler exists. No bot framework integration. The Discord scopes include `bot` and `webhook.incoming`, and Slack scopes include `chat:write` and `channels:read`, but no code uses these scopes.                      |
+| Webhook delivery        | DONE    | The generic webhook system delivers events to any URL. Dedicated Slack/Discord dispatch with Block Kit and embed formatting via `dispatchToIntegrations()`.                                                                            |
+| Channel-specific alerts | MISSING | No channel targeting or routing logic. No UI to select specific Slack channels or Discord channels for different notification types.                                                                                                   |
 
 ### Issues Found
 

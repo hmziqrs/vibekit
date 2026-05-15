@@ -49,6 +49,7 @@ export interface StorageClient {
   delete(key: string): Promise<void>
   list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult>
   getPresignedUrl(key: string, options?: PresignedUrlOptions): Promise<string>
+  putPresignedUrl(key: string, options?: PresignedUrlOptions): Promise<string>
 }
 
 export interface EmailMessage {
@@ -56,6 +57,7 @@ export interface EmailMessage {
   from: string
   subject: string
   html?: string
+  headers?: Record<string, string>
   text?: string
   replyTo?: string
 }
