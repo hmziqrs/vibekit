@@ -647,12 +647,27 @@ export async function redeemCoupon(db: AppDb, code: string) {
   const validation = await validateCouponForRedemption(db, code)
   if (!validation.valid) return { error: validation.error, redeemed: false }
 
-  await db
-    .update(coupon)
-    .set({
-      timesRedeemed: sql`${coupon.timesRedeemed} + 1`,
-    })
-    .where(eq(coupon.id, validation.coupon!.id))
+  // Atomic increment with maxRedemptions guard to prevent TOCTOU race
+  const c = validation.coupon!
+  if (c.maxRedemptions) {
+    const result = await db
+      .update(coupon)
+      .set({
+        timesRedeemed: sql`${coupon.timesRedeemed} + 1`,
+      })
+      .where(and(eq(coupon.id, c.id), sql`${coupon.timesRedeemed} < ${c.maxRedemptions}`))
+      .returning({ id: coupon.id })
+    if (!result || result.length === 0) {
+      return { error: 'Coupon has reached max redemptions', redeemed: false }
+    }
+  } else {
+    await db
+      .update(coupon)
+      .set({
+        timesRedeemed: sql`${coupon.timesRedeemed} + 1`,
+      })
+      .where(eq(coupon.id, c.id))
+  }
 
   return { coupon: validation.coupon, redeemed: true }
 }

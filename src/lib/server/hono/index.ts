@@ -1048,13 +1048,26 @@ app.post('/billing/webhooks/stripe', async (c) => {
           }
         }
 
+        // Persist plan change from Stripe to local DB
+        const updateData: Record<string, unknown> = {
+          currentPeriodEnd: new Date(Number(sub.current_period_end) * 1000),
+          currentPeriodStart: new Date(Number(sub.current_period_start) * 1000),
+          status: status as unknown as typeof subscription.status,
+        }
+        if (newPlanId) {
+          const [localPlan] = await db
+            .select({ id: subscriptionPlan.id, stripePriceId: subscriptionPlan.stripePriceId })
+            .from(subscriptionPlan)
+            .where(eq(subscriptionPlan.stripePriceId, String(newPlanId)))
+          if (localPlan) {
+            updateData.planId = localPlan.id
+            updateData.stripePriceId = localPlan.stripePriceId
+          }
+        }
+
         await db
           .update(subscription)
-          .set({
-            currentPeriodEnd: new Date(Number(sub.current_period_end) * 1000),
-            currentPeriodStart: new Date(Number(sub.current_period_start) * 1000),
-            status: status as unknown as typeof subscription.status,
-          })
+          .set(updateData)
           .where(eq(subscription.stripeSubscriptionId, stripeSubId))
         break
       }
@@ -1107,6 +1120,20 @@ app.post('/billing/webhooks/stripe', async (c) => {
           .where(eq(invoice.stripeInvoiceId, stripeInvoiceId))
           .get()
         if (existingInvoice) break
+
+        // Recover subscription from past_due to active on successful payment
+        if (inv.subscription) {
+          const [subRow] = await db
+            .select({ id: subscription.id, status: subscription.status })
+            .from(subscription)
+            .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+          if (subRow && subRow.status === 'past_due') {
+            await db
+              .update(subscription)
+              .set({ status: 'active' })
+              .where(eq(subscription.id, subRow.id))
+          }
+        }
 
         let invoiceUserId: string | null =
           ((inv.metadata as Record<string, unknown> | undefined)?.userId as string | null) ?? null
@@ -1386,9 +1413,16 @@ app.post('/billing/webhooks/stripe', async (c) => {
         const pm = event.data.object as Record<string, unknown>
         const pmId = pm.id as string
         if (pmId) {
+          const card = pm.card as Record<string, unknown> | undefined
           await db
             .update(paymentMethod)
-            .set({ updatedAt: new Date() })
+            .set({
+              brand: card?.brand ? String(card.brand) : undefined,
+              expiryMonth: card?.exp_month ? Number(card.exp_month) : undefined,
+              expiryYear: card?.exp_year ? Number(card.exp_year) : undefined,
+              last4: card?.last4 ? String(card.last4) : undefined,
+              updatedAt: new Date(),
+            })
             .where(eq(paymentMethod.stripePaymentMethodId, pmId))
         }
         break
@@ -2562,6 +2596,8 @@ protectedApp.post('/billing/change-plan', async (c) => {
 
   const newPlan = await getPlanById(db, parsed.data.newPlanId)
   if (!newPlan) throw new NotFoundError()
+  if (!newPlan.isActive) throw new BadRequestError('Plan is not available')
+  if (sub.planId === parsed.data.newPlanId) throw new BadRequestError('Already on this plan')
 
   // Sync with Stripe if subscription has a Stripe ID and the new plan has a price ID
   if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
@@ -6110,6 +6146,8 @@ orgApp.post(
 
     const newPlan = await getPlanById(db, body.newPlanId)
     if (!newPlan) throw new NotFoundError()
+    if (!newPlan.isActive) throw new BadRequestError('Plan is not available')
+    if (sub.planId === body.newPlanId) throw new BadRequestError('Already on this plan')
 
     // Sync with Stripe if subscription has a Stripe ID and the new plan has a price ID
     if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
@@ -7460,6 +7498,12 @@ adminApp.post('/billing/refund', validate(refundSchema), async (c) => {
   }
   if (inv.status === 'void') {
     return c.json({ error: 'Invoice already refunded' }, 400)
+  }
+  if (inv.status === 'draft') {
+    return c.json({ error: 'Invoice is a draft — cannot refund' }, 400)
+  }
+  if (parsed.amountInCents && parsed.amountInCents > inv.amountInCents) {
+    return c.json({ error: 'Refund amount exceeds invoice total' }, 400)
   }
 
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)

@@ -897,102 +897,131 @@ export const subscription = sqliteTable(
   (table) => [
     index('subscription_org_idx').on(table.organizationId),
     index('subscription_status_idx').on(table.status),
+    index('subscription_stripe_customer_idx').on(table.stripeCustomerId),
+    index('subscription_stripe_sub_idx').on(table.stripeSubscriptionId),
     index('subscription_user_idx').on(table.userId),
+    index('subscription_user_status_idx').on(table.userId, table.status),
   ]
 )
 
-export const subscriptionEvent = sqliteTable('subscription_event', {
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  fromPlanId: text('from_plan_id'),
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  metadata: text('metadata'), // JSON
-  subscriptionId: text('subscription_id')
-    .notNull()
-    .references(() => subscription.id, { onDelete: 'cascade' }),
-  toPlanId: text('to_plan_id'),
-  type: text('type', {
-    enum: [
-      'canceled',
-      'created',
-      'downgraded',
-      'past_due',
-      'payment_failed',
-      'renewed',
-      'trial_ended',
-      'trial_started',
-      'upgraded',
-    ],
-  }).notNull(),
-})
+export const subscriptionEvent = sqliteTable(
+  'subscription_event',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    fromPlanId: text('from_plan_id'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    metadata: text('metadata'), // JSON
+    subscriptionId: text('subscription_id')
+      .notNull()
+      .references(() => subscription.id, { onDelete: 'cascade' }),
+    toPlanId: text('to_plan_id'),
+    type: text('type', {
+      enum: [
+        'canceled',
+        'created',
+        'downgraded',
+        'past_due',
+        'payment_failed',
+        'renewed',
+        'trial_ended',
+        'trial_started',
+        'upgraded',
+      ],
+    }).notNull(),
+  },
+  (table) => [index('subscription_event_sub_idx').on(table.subscriptionId)]
+)
 
-export const usageRecord = sqliteTable('usage_record', {
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  metricType: text('metric_type', {
-    enum: ['api_calls', 'requests', 'seats', 'storage'],
-  }).notNull(),
-  periodEnd: integer('period_end', { mode: 'timestamp_ms' }).notNull(),
-  periodStart: integer('period_start', { mode: 'timestamp_ms' }).notNull(),
-  quantity: integer('quantity').notNull().default(0),
-  subscriptionId: text('subscription_id')
-    .notNull()
-    .references(() => subscription.id, { onDelete: 'cascade' }),
-})
+export const usageRecord = sqliteTable(
+  'usage_record',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    metricType: text('metric_type', {
+      enum: ['api_calls', 'requests', 'seats', 'storage'],
+    }).notNull(),
+    periodEnd: integer('period_end', { mode: 'timestamp_ms' }).notNull(),
+    periodStart: integer('period_start', { mode: 'timestamp_ms' }).notNull(),
+    quantity: integer('quantity').notNull().default(0),
+    subscriptionId: text('subscription_id')
+      .notNull()
+      .references(() => subscription.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('usage_record_sub_period_idx').on(
+      table.subscriptionId,
+      table.periodStart,
+      table.periodEnd
+    ),
+  ]
+)
 
-export const invoice = sqliteTable('invoice', {
-  amountInCents: integer('amount_in_cents').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  currency: text('currency', { length: 3 })
-    .notNull()
-    .$defaultFn(() => 'usd'),
-  dueDate: integer('due_date', { mode: 'timestamp_ms' }),
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  organizationId: text('organization_id'),
-  paidAt: integer('paid_at', { mode: 'timestamp_ms' }),
-  pdfUrl: text('pdf_url'),
-  status: text('status', {
-    enum: ['draft', 'open', 'paid', 'uncollectible', 'void'],
-  })
-    .notNull()
-    .default('draft'),
-  stripeInvoiceId: text('stripe_invoice_id'),
-  subscriptionId: text('subscription_id').references(() => subscription.id, {
-    onDelete: 'set null',
-  }),
-  taxAmountInCents: integer('tax_amount_in_cents').default(0),
-  userId: text('user_id'),
-})
+export const invoice = sqliteTable(
+  'invoice',
+  {
+    amountInCents: integer('amount_in_cents').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    currency: text('currency', { length: 3 })
+      .notNull()
+      .$defaultFn(() => 'usd'),
+    dueDate: integer('due_date', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    organizationId: text('organization_id'),
+    paidAt: integer('paid_at', { mode: 'timestamp_ms' }),
+    pdfUrl: text('pdf_url'),
+    status: text('status', {
+      enum: ['draft', 'open', 'paid', 'uncollectible', 'void'],
+    })
+      .notNull()
+      .default('draft'),
+    stripeInvoiceId: text('stripe_invoice_id'),
+    subscriptionId: text('subscription_id').references(() => subscription.id, {
+      onDelete: 'set null',
+    }),
+    taxAmountInCents: integer('tax_amount_in_cents').default(0),
+    userId: text('user_id'),
+  },
+  (table) => [
+    index('invoice_stripe_idx').on(table.stripeInvoiceId),
+    index('invoice_user_idx').on(table.userId),
+    index('invoice_org_idx').on(table.organizationId),
+  ]
+)
 
-export const paymentMethod = sqliteTable('payment_method', {
-  brand: text('brand'),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  expiryMonth: integer('expiry_month'),
-  expiryYear: integer('expiry_year'),
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  isDefault: integer('is_default', { mode: 'boolean' }).default(false).notNull(),
-  last4: text('last4'),
-  stripePaymentMethodId: text('stripe_payment_method_id').notNull(),
-  type: text('type', { enum: ['bank_transfer', 'card'] }).notNull(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-})
+export const paymentMethod = sqliteTable(
+  'payment_method',
+  {
+    brand: text('brand'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    expiryMonth: integer('expiry_month'),
+    expiryYear: integer('expiry_year'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    isDefault: integer('is_default', { mode: 'boolean' }).default(false).notNull(),
+    last4: text('last4'),
+    stripePaymentMethodId: text('stripe_payment_method_id').notNull(),
+    type: text('type', { enum: ['bank_transfer', 'card'] }).notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [index('payment_method_stripe_idx').on(table.stripePaymentMethodId)]
+)
 
 // ── Coupons ────────────────────────────────────────────────────────────
 
