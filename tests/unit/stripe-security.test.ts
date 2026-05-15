@@ -239,3 +239,50 @@ describe('coupons → discounts migration', () => {
     expect(callArgs.discounts).toBeUndefined()
   })
 })
+
+describe('cancelStripeSubscription', () => {
+  it('calls stripe.subscriptions.update with cancel_at_period_end: true', async () => {
+    const { cancelStripeSubscription } = await import('$lib/server/billing/stripe')
+    const mockUpdate = vi.fn().mockResolvedValue({ cancel_at_period_end: true })
+    const mockStripe = { subscriptions: { update: mockUpdate } }
+
+    const result = await cancelStripeSubscription(mockStripe as never, 'sub_123')
+
+    expect(mockUpdate).toHaveBeenCalledWith('sub_123', { cancel_at_period_end: true })
+    expect(result.cancelAtPeriodEnd).toBe(true)
+  })
+
+  it('wraps errors in StripeApiError', async () => {
+    const { cancelStripeSubscription, StripeApiError } = await import('$lib/server/billing/stripe')
+    const mockUpdate = vi.fn().mockRejectedValue(new Error('Stripe down'))
+    const mockStripe = { subscriptions: { update: mockUpdate } }
+
+    await expect(cancelStripeSubscription(mockStripe as never, 'sub_123')).rejects.toThrow(
+      StripeApiError
+    )
+  })
+})
+
+describe('reactivateStripeSubscription', () => {
+  it('calls stripe.subscriptions.update with cancel_at_period_end: false', async () => {
+    const { reactivateStripeSubscription } = await import('$lib/server/billing/stripe')
+    const mockUpdate = vi.fn().mockResolvedValue({ cancel_at_period_end: false })
+    const mockStripe = { subscriptions: { update: mockUpdate } }
+
+    const result = await reactivateStripeSubscription(mockStripe as never, 'sub_123')
+
+    expect(mockUpdate).toHaveBeenCalledWith('sub_123', { cancel_at_period_end: false })
+    expect(result.cancelAtPeriodEnd).toBe(false)
+  })
+
+  it('wraps errors in StripeApiError', async () => {
+    const { reactivateStripeSubscription, StripeApiError } =
+      await import('$lib/server/billing/stripe')
+    const mockUpdate = vi.fn().mockRejectedValue(new Error('Stripe down'))
+    const mockStripe = { subscriptions: { update: mockUpdate } }
+
+    await expect(reactivateStripeSubscription(mockStripe as never, 'sub_123')).rejects.toThrow(
+      StripeApiError
+    )
+  })
+})

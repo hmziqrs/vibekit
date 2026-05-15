@@ -860,7 +860,10 @@ export const subscriptionPlan = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index('subscription_plan_slug_idx').on(table.slug)]
+  (table) => [
+    index('subscription_plan_active_idx').on(table.isActive),
+    index('subscription_plan_slug_idx').on(table.slug),
+  ]
 )
 
 export const subscription = sqliteTable(
@@ -898,6 +901,7 @@ export const subscription = sqliteTable(
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [
+    index('subscription_canceled_at_idx').on(table.canceledAt),
     index('subscription_org_idx').on(table.organizationId),
     index('subscription_status_idx').on(table.status),
     index('subscription_stripe_customer_idx').on(table.stripeCustomerId),
@@ -997,8 +1001,11 @@ export const invoice = sqliteTable(
     userId: text('user_id'),
   },
   (table) => [
+    index('invoice_paid_at_idx').on(table.paidAt),
     index('invoice_stripe_idx').on(table.stripeInvoiceId),
+    index('invoice_status_idx').on(table.status),
     index('invoice_user_idx').on(table.userId),
+    index('invoice_user_status_idx').on(table.userId, table.status),
     index('invoice_org_idx').on(table.organizationId),
   ]
 )
@@ -1023,7 +1030,10 @@ export const paymentMethod = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [index('payment_method_stripe_idx').on(table.stripePaymentMethodId)]
+  (table) => [
+    index('payment_method_stripe_idx').on(table.stripePaymentMethodId),
+    index('payment_method_user_idx').on(table.userId),
+  ]
 )
 
 // ── Coupons ────────────────────────────────────────────────────────────
@@ -1100,23 +1110,27 @@ export const paymentMethodRelations = relations(paymentMethod, ({ one }) => ({
 
 // ── Stripe Webhook Events (idempotency) ──────────────────────────────
 
-export const stripeWebhookEvent = sqliteTable('stripe_webhook_event', {
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  errorMessage: text('error_message'),
-  eventId: text('event_id').notNull().unique(),
-  eventType: text('event_type').notNull(),
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => uuid()),
-  nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
-  processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
-  retryCount: integer('retry_count').notNull().default(0),
-  status: text('status', { enum: ['failed', 'pending', 'processed', 'retrying'] })
-    .notNull()
-    .default('pending'),
-})
+export const stripeWebhookEvent = sqliteTable(
+  'stripe_webhook_event',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    errorMessage: text('error_message'),
+    eventId: text('event_id').notNull().unique(),
+    eventType: text('event_type').notNull(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
+    processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
+    retryCount: integer('retry_count').notNull().default(0),
+    status: text('status', { enum: ['failed', 'pending', 'processed', 'retrying'] })
+      .notNull()
+      .default('pending'),
+  },
+  (table) => [index('stripe_webhook_status_next_retry_idx').on(table.status, table.nextRetryAt)]
+)
 
 // ── Push Notifications ─────────────────────────────────────────────────
 

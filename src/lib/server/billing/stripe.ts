@@ -187,3 +187,25 @@ export async function createStripeCoupon(
     throw new StripeApiError('Failed to create Stripe coupon', error)
   }
 }
+
+export async function cancelStripeSubscription(stripe: Stripe, stripeSubscriptionId: string) {
+  try {
+    const updated = await stripe.subscriptions.update(stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    })
+    return { cancelAtPeriodEnd: updated.cancel_at_period_end }
+  } catch (error) {
+    throw new StripeApiError('Failed to cancel Stripe subscription', error)
+  }
+}
+
+export async function reactivateStripeSubscription(stripe: Stripe, stripeSubscriptionId: string) {
+  try {
+    const updated = await stripe.subscriptions.update(stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    })
+    return { cancelAtPeriodEnd: updated.cancel_at_period_end }
+  } catch (error) {
+    throw new StripeApiError('Failed to reactivate Stripe subscription', error)
+  }
+}

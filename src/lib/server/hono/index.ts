@@ -27,8 +27,10 @@ import {
 } from '$lib/server/api-keys'
 import { writeAuditLog } from '$lib/server/audit'
 import {
+  cancelStripeSubscription,
   createStripeCoupon,
   getStripeClient,
+  reactivateStripeSubscription,
   StripeApiError,
   verifyWebhookSignature,
 } from '$lib/server/billing/stripe'
@@ -1169,12 +1171,14 @@ app.post('/billing/webhooks/stripe', async (c) => {
 
         let invoiceUserId: string | null =
           ((inv.metadata as Record<string, unknown> | undefined)?.userId as string | null) ?? null
-        if (!invoiceUserId && inv.subscription) {
-          const [subRow] = await db
-            .select({ userId: subscription.userId })
+        let invoiceSubscriptionId: string | null = null
+        if (inv.subscription) {
+          const [localSub] = await db
+            .select({ id: subscription.id, userId: subscription.userId })
             .from(subscription)
             .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
-          invoiceUserId = subRow?.userId ?? null
+          invoiceSubscriptionId = localSub?.id ?? null
+          if (!invoiceUserId) invoiceUserId = localSub?.userId ?? null
         }
 
         await db.insert(invoice).values({
@@ -1184,7 +1188,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
           paidAt: new Date(),
           status: 'paid',
           stripeInvoiceId,
-          subscriptionId: inv.subscription ? String(inv.subscription) : null,
+          subscriptionId: invoiceSubscriptionId,
           userId: invoiceUserId,
         })
         try {
@@ -1243,12 +1247,14 @@ app.post('/billing/webhooks/stripe', async (c) => {
 
         let invoiceUserId: string | null =
           ((inv.metadata as Record<string, unknown> | undefined)?.userId as string | null) ?? null
-        if (!invoiceUserId && inv.subscription) {
-          const [subRow] = await db
-            .select({ userId: subscription.userId })
+        let failedSubscriptionId: string | null = null
+        if (inv.subscription) {
+          const [localSub] = await db
+            .select({ id: subscription.id, userId: subscription.userId })
             .from(subscription)
             .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
-          invoiceUserId = subRow?.userId ?? null
+          failedSubscriptionId = localSub?.id ?? null
+          if (!invoiceUserId) invoiceUserId = localSub?.userId ?? null
         }
 
         await db.insert(invoice).values({
@@ -1258,7 +1264,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
           id: uuid(),
           status: 'open',
           stripeInvoiceId,
-          subscriptionId: inv.subscription ? String(inv.subscription) : null,
+          subscriptionId: failedSubscriptionId,
           userId: invoiceUserId,
         })
         try {
@@ -2711,6 +2717,11 @@ protectedApp.post('/billing/cancel', async (c) => {
   const sub = await getUserSubscription(db, userId)
   if (!sub) throw new BadRequestError('No active subscription')
 
+  if (sub.stripeSubscriptionId) {
+    const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+    if (stripe) await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
+  }
+
   await cancelSubscription(db, sub.id)
 
   return c.json({ success: true })
@@ -2729,6 +2740,11 @@ protectedApp.post('/billing/reactivate', async (c) => {
     .get()
 
   if (!sub) throw new BadRequestError('No canceled subscription found')
+
+  if (sub.stripeSubscriptionId) {
+    const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+    if (stripe) await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
+  }
 
   await reactivateSubscription(db, sub.id)
 
