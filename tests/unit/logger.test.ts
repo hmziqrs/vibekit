@@ -145,3 +145,52 @@ describe('format', () => {
     spy.mockRestore()
   })
 })
+
+describe('error object serialization', () => {
+  it('serializes Error objects with message and name', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const logger = createLogger()
+    logger.error('operation failed', { error: new Error('database connection lost') })
+
+    const output = spy.mock.calls[0][0] as string
+    expect(output).toContain('database connection lost')
+    expect(output).toContain('Error')
+    spy.mockRestore()
+  })
+
+  it('serializes Error with cause chain', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const logger = createLogger()
+    const cause = new Error('ECONNREFUSED')
+    const error = new Error('stripe api failed', { cause })
+    logger.error('billing error', { error })
+
+    const output = spy.mock.calls[0][0] as string
+    expect(output).toContain('stripe api failed')
+    expect(output).toContain('ECONNREFUSED')
+    spy.mockRestore()
+  })
+
+  it('serializes TypeError with name', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const logger = createLogger()
+    logger.error('type error', { error: new TypeError('x is not a function') })
+
+    const output = spy.mock.calls[0][0] as string
+    expect(output).toContain('TypeError')
+    expect(output).toContain('x is not a function')
+    spy.mockRestore()
+  })
+
+  it('preserves non-Error metadata values', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const logger = createLogger()
+    logger.error('mixed metadata', { error: new Error('fail'), requestId: 'req-123', status: 500 })
+
+    const output = spy.mock.calls[0][0] as string
+    expect(output).toContain('fail')
+    expect(output).toContain('req-123')
+    expect(output).toContain('500')
+    spy.mockRestore()
+  })
+})
