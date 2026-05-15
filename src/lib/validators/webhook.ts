@@ -60,6 +60,31 @@ export const WEBHOOK_EVENT_TYPES = [
   'webhook.test',
 ] as const
 
+const BLOCKED_HOSTS = [
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '::1',
+  '169.254.169.254', // cloud metadata
+  'metadata.google.internal',
+]
+
+function isValidWebhookUrl(val: string): boolean {
+  if (!val.startsWith('https://')) return false
+  try {
+    const url = new URL(val)
+    const host = url.hostname.toLowerCase()
+    if (BLOCKED_HOSTS.includes(host)) return false
+    // Block private IP ranges
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(host)) return false
+    if (host.endsWith('.internal') || host.endsWith('.local')) return false
+    if (url.port && ['22', '25', '3306', '5432', '6379'].includes(url.port)) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const createWebhookEndpointSchema = z.object({
   description: z.string().trim().max(200).optional(),
   events: z.array(z.enum(WEBHOOK_EVENT_TYPES)).min(1, 'Select at least one event').max(50),
@@ -67,17 +92,19 @@ export const createWebhookEndpointSchema = z.object({
     .string()
     .trim()
     .url()
-    .refine(
-      (val) => val.startsWith('https://') || val.startsWith('http://'),
-      'URL must start with http:// or https://'
-    ),
+    .refine(isValidWebhookUrl, 'URL must use HTTPS and not target private/internal addresses'),
 })
 
 export const updateWebhookEndpointSchema = z.object({
   active: z.boolean().optional(),
   description: z.string().trim().max(200).optional(),
   events: z.array(z.enum(WEBHOOK_EVENT_TYPES)).min(1).max(50).optional(),
-  url: z.string().trim().url().optional(),
+  url: z
+    .string()
+    .trim()
+    .url()
+    .refine(isValidWebhookUrl, 'URL must use HTTPS and not target private/internal addresses')
+    .optional(),
 })
 
 export const listDeliveriesSchema = z.object({

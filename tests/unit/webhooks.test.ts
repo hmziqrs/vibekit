@@ -106,12 +106,52 @@ describe('webhook validators', () => {
       expect(result.success).toBeTruthy()
     })
 
-    it('accepts http url', () => {
+    it('rejects http url (HTTPS required)', () => {
       const result = createWebhookEndpointSchema.safeParse({
         events: ['blog.create'],
         url: 'http://localhost:3000/webhooks',
       })
-      expect(result.success).toBeTruthy()
+      expect(result.success).toBeFalsy()
+    })
+
+    it('rejects localhost with HTTPS', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://localhost/webhooks',
+      })
+      expect(result.success).toBeFalsy()
+    })
+
+    it('rejects 127.0.0.1', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://127.0.0.1/webhooks',
+      })
+      expect(result.success).toBeFalsy()
+    })
+
+    it('rejects private IP 10.x.x.x', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://10.0.0.1/webhooks',
+      })
+      expect(result.success).toBeFalsy()
+    })
+
+    it('rejects cloud metadata endpoint', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://169.254.169.254/webhooks',
+      })
+      expect(result.success).toBeFalsy()
+    })
+
+    it('rejects .internal TLD', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://something.internal/webhooks',
+      })
+      expect(result.success).toBeFalsy()
     })
 
     it('rejects description over 200 chars', () => {

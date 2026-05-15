@@ -144,12 +144,12 @@ describe('createWebhookEndpointSchema', () => {
       expect(result.success).toBe(true)
     })
 
-    it('accepts http URLs', () => {
+    it('rejects http URLs (HTTPS required)', () => {
       const result = createWebhookEndpointSchema.safeParse({
         events: ['blog.create'],
         url: 'http://example.com/webhook',
       })
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
     })
 
     it('accepts URLs with ports', () => {
@@ -176,12 +176,12 @@ describe('createWebhookEndpointSchema', () => {
       expect(result.success).toBe(true)
     })
 
-    it('accepts localhost URLs', () => {
+    it('rejects localhost URLs (SSRF protection)', () => {
       const result = createWebhookEndpointSchema.safeParse({
         events: ['blog.create'],
         url: 'http://localhost:3000/webhook',
       })
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
     })
 
     it('rejects missing URL', () => {
@@ -229,6 +229,46 @@ describe('createWebhookEndpointSchema', () => {
         url: '  https://example.com/webhook  ',
       })
       expect(result.url).toBe('https://example.com/webhook')
+    })
+
+    it('rejects localhost with HTTPS', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://localhost/webhook',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects 127.0.0.1', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://127.0.0.1/webhook',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects private IP 10.x.x.x', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://10.0.0.1/webhook',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects cloud metadata endpoint 169.254.169.254', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://169.254.169.254/webhook',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects .internal TLD', () => {
+      const result = createWebhookEndpointSchema.safeParse({
+        events: ['blog.create'],
+        url: 'https://something.internal/webhook',
+      })
+      expect(result.success).toBe(false)
     })
   })
 
@@ -507,11 +547,11 @@ describe('updateWebhookEndpointSchema', () => {
       expect(result.success).toBe(true)
     })
 
-    it('accepts an http URL', () => {
+    it('rejects an http URL (HTTPS required)', () => {
       const result = updateWebhookEndpointSchema.safeParse({
         url: 'http://example.com/webhook',
       })
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
     })
 
     it('accepts URLs with ports', () => {

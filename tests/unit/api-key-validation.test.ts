@@ -84,13 +84,13 @@ describe('webhook validators', () => {
     expect(result.success).toBe(true)
   })
 
-  it('createWebhookEndpointSchema accepts http url', async () => {
+  it('createWebhookEndpointSchema rejects http url', async () => {
     const { createWebhookEndpointSchema } = await import('$lib/validators/webhook')
     const result = createWebhookEndpointSchema.safeParse({
       events: ['blog.create'],
       url: 'http://localhost:3000/hooks',
     })
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
   })
 
   it('createWebhookEndpointSchema accepts wildcard event', async () => {
@@ -116,6 +116,42 @@ describe('webhook validators', () => {
     const result = createWebhookEndpointSchema.safeParse({
       events: ['item.create'],
       url: 'ftp://example.com',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('createWebhookEndpointSchema rejects localhost', async () => {
+    const { createWebhookEndpointSchema } = await import('$lib/validators/webhook')
+    const result = createWebhookEndpointSchema.safeParse({
+      events: ['item.create'],
+      url: 'https://localhost/webhook',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('createWebhookEndpointSchema rejects private IP', async () => {
+    const { createWebhookEndpointSchema } = await import('$lib/validators/webhook')
+    const result = createWebhookEndpointSchema.safeParse({
+      events: ['item.create'],
+      url: 'https://10.0.0.1/webhook',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('createWebhookEndpointSchema rejects cloud metadata', async () => {
+    const { createWebhookEndpointSchema } = await import('$lib/validators/webhook')
+    const result = createWebhookEndpointSchema.safeParse({
+      events: ['item.create'],
+      url: 'https://169.254.169.254/webhook',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('createWebhookEndpointSchema rejects .internal TLD', async () => {
+    const { createWebhookEndpointSchema } = await import('$lib/validators/webhook')
+    const result = createWebhookEndpointSchema.safeParse({
+      events: ['item.create'],
+      url: 'https://something.internal/webhook',
     })
     expect(result.success).toBe(false)
   })

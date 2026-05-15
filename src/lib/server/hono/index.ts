@@ -57,6 +57,8 @@ import {
 } from '$lib/server/db/auth.schema'
 import {
   announcement,
+  apiKey,
+  apiKeyUsageLog,
   blogPost,
   blogPostRevision,
   blogPostView,
@@ -2122,6 +2124,12 @@ protectedApp.get('/notifications', async (c) => {
   const readFilter = c.req.query('read')
 
   const conditions = [eq(notification.userId, userId)]
+  const archivedFilter = c.req.query('archived')
+  if (archivedFilter === 'true') {
+    conditions.push(sql`${notification.archivedAt} IS NOT NULL`)
+  } else {
+    conditions.push(sql`${notification.archivedAt} IS NULL`)
+  }
   if (typeFilter && ['info', 'success', 'warning', 'error'].includes(typeFilter)) {
     conditions.push(eq(notification.type, typeFilter as 'error' | 'info' | 'success' | 'warning'))
   }
@@ -2215,6 +2223,46 @@ protectedApp.delete('/notifications/:id', async (c) => {
   }
 
   await db.delete(notification).where(eq(notification.id, id))
+
+  return c.json({ success: true })
+})
+
+protectedApp.patch('/notifications/:id/archive', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ id: notification.id })
+    .from(notification)
+    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+    .get()
+
+  if (!existing) {
+    throw new NotFoundError()
+  }
+
+  await db.update(notification).set({ archivedAt: new Date() }).where(eq(notification.id, id))
+
+  return c.json({ success: true })
+})
+
+protectedApp.patch('/notifications/:id/unarchive', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ id: notification.id })
+    .from(notification)
+    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+    .get()
+
+  if (!existing) {
+    throw new NotFoundError()
+  }
+
+  await db.update(notification).set({ archivedAt: null }).where(eq(notification.id, id))
 
   return c.json({ success: true })
 })
@@ -4964,13 +5012,28 @@ app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async 
     )
   )
 
+  // Purge expired API keys
+  const deletedApiKeys = await db
+    .delete(apiKey)
+    .where(and(isNotNull(apiKey.expiresAt), lt(apiKey.expiresAt, new Date())))
+    .returning({ id: apiKey.id })
+
+  // Purge usage logs older than 90 days
+  const usageLogCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  const deletedUsageLogs = await db
+    .delete(apiKeyUsageLog)
+    .where(lt(apiKeyUsageLog.createdAt, usageLogCutoff))
+    .returning({ id: apiKeyUsageLog.id })
+
   return c.json({
     cutoff: cutoff.toISOString(),
     expiredBans: expiredBans.length,
     purged: {
+      apiKeys: deletedApiKeys.length,
       items: deletedItems.length,
       organizations: deletedOrgs.length,
       posts: deletedPosts.length,
+      usageLogs: deletedUsageLogs.length,
       users: deletedUsers.length,
     },
   })

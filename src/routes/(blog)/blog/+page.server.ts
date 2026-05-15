@@ -1,6 +1,6 @@
 import type { getDb } from '$lib/server/db'
 import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
-import { and, desc, eq, isNull, like, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -39,15 +39,18 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
       .where(eq(blogTag.slug, tagSlug))
       .get()
     if (tag) {
+      // Get post IDs for this tag using a single query
       const taggedIds = await db
         .select({ postId: blogPostTag.postId })
         .from(blogPostTag)
         .where(eq(blogPostTag.tagId, tag.id))
-      const idSet = new Set(taggedIds.map((t) => t.postId))
-      if (idSet.size > 0) {
-        // Drizzle doesn't support inArray with a set directly in and(), so filter after
-        const whereClause = and(...conditions)
-        const [_countResult, allPosts] = await Promise.all([
+      const postIdArray = taggedIds.map((t) => t.postId)
+
+      if (postIdArray.length > 0) {
+        const postConditions = [...conditions, inArray(blogPost.id, postIdArray)]
+        const whereClause = and(...postConditions)
+
+        const [countResult, posts] = await Promise.all([
           db
             .select({ value: sql<number>`count(*)` })
             .from(blogPost)
@@ -64,19 +67,18 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
             })
             .from(blogPost)
             .where(whereClause)
-            .orderBy(desc(blogPost.publishedAt)),
+            .orderBy(desc(blogPost.publishedAt))
+            .limit(limit)
+            .offset(offset),
         ])
-        const _countRow = _countResult[0] as unknown as { value: number }
-        const filtered = allPosts.filter((p) => idSet.has(p.id))
-        const total = filtered.length
-        const posts = filtered.slice(offset, offset + limit)
 
         const tags = await db
           .select({ name: blogTag.name, slug: blogTag.slug })
           .from(blogTag)
           .orderBy(blogTag.name)
 
-        return { page, posts, q: q || null, tag: tagSlug, tags, total }
+        const countRow = countResult[0] as unknown as { value: number }
+        return { page, posts, q: q || null, tag: tagSlug, tags, total: countRow?.value ?? 0 }
       }
     }
     // Tag not found or no posts with that tag

@@ -643,6 +643,7 @@ export const organizationInvitationRelations = relations(organizationInvitation,
 export const notification = sqliteTable(
   'notification',
   {
+    archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
     body: text('body'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -848,6 +849,8 @@ export const subscriptionPlan = sqliteTable(
     slug: text('slug').notNull().unique(),
     sortOrder: integer('sort_order').default(0).notNull(),
     stripePriceId: text('stripe_price_id'),
+    taxInclusive: integer('tax_inclusive', { mode: 'boolean' }).default(false).notNull(),
+    taxRate: integer('tax_rate'), // Percentage, e.g. 850 = 8.5%
     trialDays: integer('trial_days').default(0).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -968,6 +971,7 @@ export const invoice = sqliteTable('invoice', {
   subscriptionId: text('subscription_id').references(() => subscription.id, {
     onDelete: 'set null',
   }),
+  taxAmountInCents: integer('tax_amount_in_cents').default(0),
   userId: text('user_id'),
 })
 
@@ -988,6 +992,35 @@ export const paymentMethod = sqliteTable('payment_method', {
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
+})
+
+// ── Coupons ────────────────────────────────────────────────────────────
+
+export const coupon = sqliteTable('coupon', {
+  active: integer('active', { mode: 'boolean' }).default(true).notNull(),
+  code: text('code').notNull().unique(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  currency: text('currency', { length: 3 }).$defaultFn(() => 'usd'),
+  duration: text('duration', { enum: ['forever', 'once', 'repeating'] })
+    .notNull()
+    .default('once'),
+  durationInMonths: integer('duration_in_months'),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => uuid()),
+  maxRedemptions: integer('max_redemptions'),
+  name: text('name').notNull(),
+  percentOff: integer('percent_off'),
+  redeemBy: integer('redeem_by', { mode: 'timestamp_ms' }),
+  stripeCouponId: text('stripe_coupon_id'),
+  timesRedeemed: integer('times_redeemed').notNull().default(0),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => new Date())
+    .notNull(),
+  valid: integer('valid', { mode: 'boolean' }).default(true).notNull(),
 })
 
 export const subscriptionPlanRelations = relations(subscriptionPlan, ({ many }) => ({
