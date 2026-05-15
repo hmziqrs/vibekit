@@ -169,6 +169,7 @@ import {
   reindexAllUsers,
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
+import { isSafeUrl } from '$lib/server/security/ssrf'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { detectSpam } from '$lib/server/spam-detector'
 import { CURRENT_TERMS_VERSION, needsTermsAcceptance } from '$lib/server/terms'
@@ -4591,6 +4592,9 @@ blogApp.post(
       const oembedHref = extractOembedLink(html)
       if (oembedHref) {
         try {
+          if (!isSafeUrl(oembedHref, { allowHttp: true })) {
+            throw new Error('oEmbed URL failed safety check')
+          }
           const oembedRes = await fetch(oembedHref, {
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
             signal: AbortSignal.timeout(5000),
