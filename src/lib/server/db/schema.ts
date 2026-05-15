@@ -396,6 +396,7 @@ export const impersonationSession = sqliteTable(
   (table) => [
     index('impersonation_admin_idx').on(table.adminUserId),
     index('impersonation_session_token_idx').on(table.sessionToken),
+    uniqueIndex('impersonation_session_token_unique_idx').on(table.sessionToken),
   ]
 )
 
@@ -906,6 +907,7 @@ export const subscription = sqliteTable(
     index('subscription_status_idx').on(table.status),
     index('subscription_stripe_customer_idx').on(table.stripeCustomerId),
     index('subscription_stripe_sub_idx').on(table.stripeSubscriptionId),
+    uniqueIndex('subscription_stripe_sub_unique_idx').on(table.stripeSubscriptionId),
     index('subscription_user_idx').on(table.userId),
     index('subscription_user_status_idx').on(table.userId, table.status),
   ]
@@ -1003,6 +1005,7 @@ export const invoice = sqliteTable(
   (table) => [
     index('invoice_paid_at_idx').on(table.paidAt),
     index('invoice_stripe_idx').on(table.stripeInvoiceId),
+    uniqueIndex('invoice_stripe_unique_idx').on(table.stripeInvoiceId),
     index('invoice_status_idx').on(table.status),
     index('invoice_user_idx').on(table.userId),
     index('invoice_user_status_idx').on(table.userId, table.status),
@@ -1032,6 +1035,7 @@ export const paymentMethod = sqliteTable(
   },
   (table) => [
     index('payment_method_stripe_idx').on(table.stripePaymentMethodId),
+    uniqueIndex('payment_method_stripe_unique_idx').on(table.stripePaymentMethodId),
     index('payment_method_user_idx').on(table.userId),
   ]
 )

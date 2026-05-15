@@ -120,6 +120,7 @@ export const passkey = sqliteTable(
   },
   (table) => [
     index('passkey_credentialID_idx').on(table.credentialID),
+    uniqueIndex('passkey_credentialID_unique_idx').on(table.credentialID),
     index('passkey_userId_idx').on(table.userId),
   ]
 )
@@ -138,6 +139,7 @@ export const twoFactor = sqliteTable(
   (table) => [
     index('twoFactor_secret_idx').on(table.secret),
     index('twoFactor_userId_idx').on(table.userId),
+    uniqueIndex('twoFactor_userId_unique_idx').on(table.userId),
   ]
 )
 
