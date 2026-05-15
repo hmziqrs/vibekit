@@ -2564,10 +2564,16 @@ protectedApp.post('/billing/change-plan', async (c) => {
   if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
     const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
     if (stripe) {
-      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-        items: [{ price: newPlan.stripePriceId, subscription: sub.stripeSubscriptionId }],
-        proration_behavior: 'create_prorations',
+      const existingItems = await stripe.subscriptionItems.list({
+        subscription: sub.stripeSubscriptionId,
       })
+      const currentItemId = existingItems.data[0]?.id
+      if (currentItemId) {
+        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+          items: [{ id: currentItemId, price: newPlan.stripePriceId }],
+          proration_behavior: 'create_prorations',
+        })
+      }
     }
   }
 
@@ -2771,9 +2777,11 @@ protectedApp.post('/billing/payment-methods/set-default', async (c) => {
   const sub = await getUserSubscription(db, userId)
   if (sub?.stripeCustomerId) {
     const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-    await stripe.customers.update(sub.stripeCustomerId, {
-      invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
-    })
+    if (stripe) {
+      await stripe.customers.update(sub.stripeCustomerId, {
+        invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
+      })
+    }
   }
 
   return c.json({ success: true })
@@ -6104,10 +6112,16 @@ orgApp.post(
     if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
       const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
       if (stripe) {
-        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-          items: [{ price: newPlan.stripePriceId, subscription: sub.stripeSubscriptionId }],
-          proration_behavior: 'create_prorations',
+        const existingItems = await stripe.subscriptionItems.list({
+          subscription: sub.stripeSubscriptionId,
         })
+        const currentItemId = existingItems.data[0]?.id
+        if (currentItemId) {
+          await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+            items: [{ id: currentItemId, price: newPlan.stripePriceId }],
+            proration_behavior: 'create_prorations',
+          })
+        }
       }
     }
 

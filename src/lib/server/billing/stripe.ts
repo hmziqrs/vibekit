@@ -2,18 +2,21 @@
 import type Stripe from 'stripe'
 
 let _stripe: Stripe | null = null
+let _cachedKey: string | null = null
 
 export function getStripeClient(secretKey?: string): Stripe | null {
   if (!secretKey) return null
-  if (!_stripe) {
+  if (!_stripe || _cachedKey !== secretKey) {
     const Stripe = require('stripe')
     _stripe = new Stripe(secretKey, { apiVersion: '2025-04-30.basil' })
+    _cachedKey = secretKey
   }
   return _stripe
 }
 
 export function resetStripeClient(): void {
   _stripe = null
+  _cachedKey = null
 }
 
 export async function createCheckoutSession(

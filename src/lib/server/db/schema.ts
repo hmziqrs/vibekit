@@ -1002,7 +1002,9 @@ export const coupon = sqliteTable('coupon', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
-  currency: text('currency', { length: 3 }).$defaultFn(() => 'usd'),
+  currency: text('currency', { length: 3 })
+    .notNull()
+    .$defaultFn(() => 'usd'),
   duration: text('duration', { enum: ['forever', 'once', 'repeating'] })
     .notNull()
     .default('once'),
@@ -1012,7 +1014,7 @@ export const coupon = sqliteTable('coupon', {
     .$defaultFn(() => uuid()),
   maxRedemptions: integer('max_redemptions'),
   name: text('name').notNull(),
-  percentOff: integer('percent_off'),
+  percentOff: integer('percent_off').notNull(),
   redeemBy: integer('redeem_by', { mode: 'timestamp_ms' }),
   stripeCouponId: text('stripe_coupon_id'),
   timesRedeemed: integer('times_redeemed').notNull().default(0),
@@ -1566,7 +1568,7 @@ export const emailQueue = sqliteTable(
       .notNull(),
     nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
     processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
-    status: text('status', { enum: ['failed', 'pending', 'sent'] })
+    status: text('status', { enum: ['failed', 'pending', 'processing', 'sent'] })
       .notNull()
       .default('pending'),
   },

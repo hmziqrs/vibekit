@@ -2,7 +2,7 @@
 -- Replaces in-memory queue to survive Cloudflare Workers isolate recycling
 CREATE TABLE IF NOT EXISTS email_queue (
   id TEXT PRIMARY KEY,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed', 'processing')),
   message TEXT NOT NULL,
   attempts INTEGER NOT NULL DEFAULT 0,
   max_retries INTEGER NOT NULL DEFAULT 3,

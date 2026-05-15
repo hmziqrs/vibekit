@@ -1,4 +1,4 @@
-import { asc, eq, lt, sql } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { emailQueue } from '../db/schema'
 import type { AppDb } from '../services/types'
@@ -53,7 +53,7 @@ export class EmailQueue {
           processedAt: new Date(),
           status: 'sent',
         })
-        .where(eq(emailQueue.id, id))
+        .where(and(eq(emailQueue.id, id), eq(emailQueue.status, 'pending')))
     } else {
       // Mark for retry
       const nextRetry = new Date(Date.now() + 60_000)
@@ -65,7 +65,7 @@ export class EmailQueue {
           lastAttemptAt: new Date(),
           nextRetryAt: nextRetry,
         })
-        .where(eq(emailQueue.id, id))
+        .where(and(eq(emailQueue.id, id), eq(emailQueue.status, 'pending')))
     }
   }
 
@@ -73,7 +73,7 @@ export class EmailQueue {
     return this.client.send(message)
   }
 
-  /** Process pending and due-for-retry emails. Called by cron. */
+  /** Process pending and due-for-retry emails. Called by cron. Uses atomic claim to prevent duplicates. */
   async processPending(db: AppDb): Promise<{ failed: number; retried: number; sent: number }> {
     const now = new Date()
     const stats = { failed: 0, retried: 0, sent: 0 }
@@ -88,6 +88,17 @@ export class EmailQueue {
       .limit(50)
 
     for (const item of pending) {
+      // Atomically claim this email by setting status to 'processing'
+      // Only proceed if the status was still 'pending' or 'failed' (not already claimed by another worker)
+      const claimed = await db
+        .update(emailQueue)
+        .set({ lastAttemptAt: new Date(), status: 'processing' })
+        .where(and(eq(emailQueue.id, item.id), sql`${emailQueue.status} = ${item.status}`))
+        .returning({ id: emailQueue.id })
+
+      // If no rows were updated, another worker already claimed this email
+      if (!claimed || claimed.length === 0) continue
+
       const result = await this.client.send(item.message as EmailMessage)
       const attempts = item.attempts + 1
 
@@ -122,6 +133,7 @@ export class EmailQueue {
             errorMessage: result.reason,
             lastAttemptAt: new Date(),
             nextRetryAt: new Date(Date.now() + delay),
+            status: 'failed',
           })
           .where(eq(emailQueue.id, item.id))
         stats.retried++
