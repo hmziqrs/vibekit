@@ -86,7 +86,7 @@
       <div class="mb-8 flex flex-wrap gap-2">
         {#each data.tags as tag}
           <a
-            href="/blog?tag={tag.slug}"
+            href="/blog/tag/{tag.slug}"
             class="rounded-full px-3 py-1 text-[12px] font-medium transition-colors {data.tag === tag.slug
               ? 'bg-brand text-brand-foreground'
               : 'bg-white/[0.06] text-text-muted hover:bg-white/[0.1] hover:text-text-primary'}"
