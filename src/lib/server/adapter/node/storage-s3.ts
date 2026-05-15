@@ -63,21 +63,6 @@ export function createS3Storage(): StorageClient {
       })
     },
 
-    async putPresignedUrl(
-      key: string,
-      options?: { contentType?: string; expiresIn?: number }
-    ): Promise<string> {
-      return getSignedUrl(
-        client,
-        new PutObjectCommand({
-          Bucket: bucket,
-          ContentType: options?.contentType,
-          Key: key,
-        }),
-        { expiresIn: options?.expiresIn ?? 3600 }
-      )
-    },
-
     async list(prefix?: string, cursor?: string, limit?: number): Promise<ListResult> {
       const result = await client.send(
         new ListObjectsV2Command({
@@ -151,6 +136,21 @@ export function createS3Storage(): StorageClient {
         size: bytes.length,
         url: `/cdn/blog/${key}`,
       }
+    },
+
+    async putPresignedUrl(
+      key: string,
+      options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      return getSignedUrl(
+        client,
+        new PutObjectCommand({
+          Bucket: bucket,
+          ContentType: options?.contentType,
+          Key: key,
+        }),
+        { expiresIn: options?.expiresIn ?? 3600 }
+      )
     },
   }
 }

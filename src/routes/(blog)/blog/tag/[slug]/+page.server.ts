@@ -1,6 +1,6 @@
 import type { getDb } from '$lib/server/db'
 import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 

@@ -188,7 +188,7 @@ export async function assembleChunks(db: DrizzleDb, sessionId: string): Promise<
 export async function cleanupChunks(sessionId: string) {
   const sessionDir = join(CHUNK_TEMP_DIR, sessionId)
   try {
-    await rm(sessionDir, { recursive: true, force: true })
+    await rm(sessionDir, { force: true, recursive: true })
   } catch {
     // Directory may not exist
   }

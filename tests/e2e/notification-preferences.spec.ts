@@ -29,15 +29,16 @@ test.describe('Notification Preferences', () => {
 
     await expect(page.getByRole('columnheader', { name: 'In-App' })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Email' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Push' })).toBeVisible()
   })
 
   test('renders toggle switches for each type and channel', async ({ page }) => {
     await login(page, { email: 'user@vibekit.local', password: 'user12345678' })
     await page.goto('/app/settings/notifications', { waitUntil: 'networkidle' })
 
-    // Should have 12 toggle switches: 6 types × 2 channels
+    // Should have 18 toggle switches: 6 types × 3 channels (in-app, email, push)
     const switches = page.getByRole('switch')
-    await expect(switches).toHaveCount(12)
+    await expect(switches).toHaveCount(18)
   })
 
   test('toggle switch sends PATCH request', async ({ page }) => {

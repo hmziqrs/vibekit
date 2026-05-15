@@ -76,16 +76,16 @@
       }
       return results
     },
+    onError: () => {
+      uploading = false
+      uploadProgress = 0
+      uploadFileName = ''
+    },
     onSuccess: () => {
       uploading = false
       uploadProgress = 0
       uploadFileName = ''
       void queryClient.invalidateQueries({ queryKey: ['admin', 'media'] })
-    },
-    onError: () => {
-      uploading = false
-      uploadProgress = 0
-      uploadFileName = ''
     },
   }))
 

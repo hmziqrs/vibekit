@@ -1,7 +1,6 @@
-import { writeAuditLog } from '$lib/server/audit'
 import { user } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
-import { and, eq, gte, ne, or, sql } from 'drizzle-orm'
+import { and, eq, ne, or, sql } from 'drizzle-orm'
 
 interface BanEvasionResult {
   flagged: boolean

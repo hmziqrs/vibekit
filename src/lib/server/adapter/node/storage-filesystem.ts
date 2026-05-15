@@ -79,14 +79,6 @@ export function createNodeStorage(): StorageClient {
       return `/cdn/blog/${key}`
     },
 
-    async putPresignedUrl(
-      key: string,
-      _options?: { contentType?: string; expiresIn?: number }
-    ): Promise<string> {
-      // Local dev: return a PUT-able endpoint URL
-      return `/api/admin/storage/upload/${key}`
-    },
-
     async list(prefix?: string, _cursor?: string, limit = 100): Promise<ListResult> {
       const items: ListResult['items'] = []
 
@@ -182,6 +174,14 @@ export function createNodeStorage(): StorageClient {
         size: bytes.length,
         url: `/cdn/blog/${key}`,
       }
+    },
+
+    async putPresignedUrl(
+      key: string,
+      _options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      // Local dev: return a PUT-able endpoint URL
+      return `/api/admin/storage/upload/${key}`
     },
   }
 }

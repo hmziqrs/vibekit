@@ -2483,8 +2483,8 @@ protectedApp.post('/billing/change-plan', async (c) => {
     const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
     if (stripe) {
       await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-        proration_behavior: 'create_prorations',
         items: [{ price: newPlan.stripePriceId, subscription: sub.stripeSubscriptionId }],
+        proration_behavior: 'create_prorations',
       })
     }
   }
