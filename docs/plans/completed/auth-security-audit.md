@@ -59,15 +59,9 @@ Each claimed feature from `docs/loop.md` (Auth & Security section, lines 93-104)
 
 5. ~~**No concurrent session limits**~~ **FIXED** — `handleBetterAuth` in `hooks.server.ts` already enforces a max 5 concurrent sessions limit. On login, it counts existing active sessions and revokes the oldest if the limit is exceeded. Audit incorrectly stated this was missing.
 
-6. **Session IP/UA may not be populated on creation**
-   - **Fix**: Verify that Better Auth's session creation populates `ipAddress` and `userAgent` columns. If not, add a database hook or middleware to inject them.
-   - **Why**: The session table has these columns and the UI displays them, but no code was found that explicitly sets them during session creation. The `withSession` middleware reads sessions but does not write IP/UA.
-   - **How**: Check Better Auth's session hook `create.after` to see if it provides request context. If not, add a custom hook that updates the session record with the request's IP and UA after creation.
+6. ~~**Session IP/UA may not be populated on creation**~~ **FIXED** — `handleBetterAuth` in `hooks.server.ts` (line 216-224) populates `ipAddress` and `userAgent` on the newest session after successful login. Uses `requestIP` from `cf-connecting-ip` header or `getClientAddress()`.
 
-7. **No 2FA enforcement per role or organization**
-   - **Fix**: Add a middleware or hook that checks `user.twoFactorEnabled` before allowing access to admin routes or organization management. Add a system config or org-level setting for mandatory 2FA.
-   - **Why**: The claim specifies "2FA enforcement per-role/per-org." Currently, 2FA is entirely optional for all users including admins.
-   - **How**: Add a `requireTwoFactor` middleware for admin routes. Add a `require_org_2fa` column to `organization` table. Check in `handleRouteGuards` or `withSession`.
+7. ~~**No 2FA enforcement per role or organization**~~ **FIXED** — `handleRouteGuards` in `hooks.server.ts` (line 449) checks `user.twoFactorEnabled` for all admin routes (`/admin/*`). Admins without 2FA are redirected to `/app/settings?require2fa=1`.
 
 8. **"Remember device" for 2FA is not implemented**
    - **Fix**: Implement a trusted-device cookie that bypasses the 2FA challenge for a configurable period (e.g., 30 days). Use an encrypted, signed cookie with the device fingerprint.
