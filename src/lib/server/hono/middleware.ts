@@ -153,12 +153,29 @@ export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
     const key = user
       ? `${prefix}:${user.id}`
       : `${prefix}:ip:${c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'anon'}`
-    const result = rateLimit(key, limit, windowMs)
+
+    // Apply tier multiplier for subscribed users
+    const effectiveLimit = applyTierMultiplier(limit, c.get('apiKey')?.scopes)
+    const result = rateLimit(key, effectiveLimit, windowMs)
     if (!result.allowed) throw new RateLimitError()
-    c.header('X-RateLimit-Limit', String(limit))
+    c.header('X-RateLimit-Limit', String(effectiveLimit))
     c.header('X-RateLimit-Remaining', String(result.remaining))
     await next()
   })
+
+/** Rate limit multipliers by subscription plan slug. Free tier = 1x (no change). */
+const TIER_MULTIPLIERS: Record<string, number> = {
+  pro: 3,
+  team: 5,
+  enterprise: 10,
+}
+
+function applyTierMultiplier(baseLimit: number, _scopes?: string[] | null): number {
+  // Future: look up user's active subscription plan slug and apply multiplier.
+  // For now, returns the base limit. The TIER_MULTIPLIERS constant is ready
+  // for when subscription lookup is wired in.
+  return baseLimit
+}
 
 export const withOwnedItem = createMiddleware<ProtectedEnv>(async (c, next) => {
   const { db } = c.get('services')
