@@ -70,12 +70,12 @@
 
 ### UI Components
 
-| Component                     | Status  | Location                                                                             |
-| ----------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| Notification bell             | DONE    | `src/lib/components/notification-bell.svelte`                                        |
-| Notifications list page       | DONE    | `src/routes/(app)/app/notifications/+page.svelte` (exists, referenced in layout nav) |
-| Notification preferences page | DONE    | `src/routes/(app)/app/settings/notifications/+page.svelte` — Toggle matrix for 6 types across 2 channels. |
-| Notification link in app nav  | DONE    | `src/routes/(app)/+layout.svelte` line 44 -- "Notifications" link.                   |
+| Component                     | Status | Location                                                                                                  |
+| ----------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
+| Notification bell             | DONE   | `src/lib/components/notification-bell.svelte`                                                             |
+| Notifications list page       | DONE   | `src/routes/(app)/app/notifications/+page.svelte` (exists, referenced in layout nav)                      |
+| Notification preferences page | DONE   | `src/routes/(app)/app/settings/notifications/+page.svelte` — Toggle matrix for 6 types across 2 channels. |
+| Notification link in app nav  | DONE   | `src/routes/(app)/+layout.svelte` line 44 -- "Notifications" link.                                        |
 
 ---
 
@@ -129,7 +129,7 @@
 | Transactional emails     | DONE    | `EmailService` class in `src/lib/server/email/index.ts` wraps `EmailQueue`. Methods: `sendWelcome()`, `sendEmailVerification()`, `sendPasswordReset()`, `sendContactNotification()`, `sendNewsletterConfirmation()`. All use `sendImmediate()` which bypasses the queue.                                     |
 | Email queue with retries | DONE    | `EmailQueue` in `src/lib/server/email/queue.ts` -- In-memory queue with exponential backoff (`min(1000 * 2^(attempts-1), 15000)`, max 15s). Configurable `maxRetries` (default 3). `onFinalFailure` callback for bounce handling.                                                                            |
 | Bounce handling          | PARTIAL | `handleBounce()` in `src/lib/server/email/bounce-handler.ts` -- Updates `newsletterSubscriber.status` to `bounced`. Only handles newsletter subscriber bounces, not general email bounces (e.g., verification emails, password resets). No webhook receiver for ESP bounce events (SendGrid, Mailgun, etc.). |
-| Unsubscribe flow         | PARTIAL | `POST /api/newsletter/unsubscribe` endpoint exists. `List-Unsubscribe` and `List-Unsubscribe-Post` headers added to newsletter confirmation email. No email preference center beyond notification preferences page. |
+| Unsubscribe flow         | PARTIAL | `POST /api/newsletter/unsubscribe` endpoint exists. `List-Unsubscribe` and `List-Unsubscribe-Post` headers added to newsletter confirmation email. No email preference center beyond notification preferences page.                                                                                          |
 
 ### Issues Found
 

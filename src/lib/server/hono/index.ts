@@ -3081,6 +3081,13 @@ protectedApp.patch('/comments/:id', validate(updateCommentSchema), async (c) => 
     })
     .where(eq(comment.id, id))
 
+  // Re-index comment if it was approved
+  if (existing.status === 'approved') {
+    indexComment(db, id).catch((error) =>
+      console.error('Search index failed (comment update):', error)
+    )
+  }
+
   return c.json({ success: true })
 })
 
