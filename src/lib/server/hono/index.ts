@@ -1,9 +1,9 @@
-import { renderAndSanitize } from '$lib/markdown'
+import { renderAndSanitize, sanitizeHtml } from '$lib/markdown'
 import { createLogger } from '$lib/server/logger'
 
 const logger = createLogger('api')
 
-const escapeLike = (s: string) => s.replace(/%/g, '\\%').replace(/_/g, '\\_')
+const escapeLike = (s: string) => s.replace(/%/g, String.raw`\%`).replace(/_/g, String.raw`\_`)
 
 import {
   assignVariant,
@@ -217,6 +217,7 @@ import {
   createPostSchema,
   createSeriesSchema,
   createTagSchema,
+  updateTagSchema,
   bulkActionSchema,
   linkPreviewSchema,
   createReportSchema,
@@ -305,6 +306,7 @@ import {
   like,
   lt,
   lte,
+  ne,
   or,
   sql,
   type SQL,
@@ -332,9 +334,7 @@ import type { Bindings, OrgEnv, ProtectedEnv, TeamEnv, Variables } from './types
 async function sha256(input: string): Promise<string> {
   const data = new TextEncoder().encode(input)
   const hash = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 function parsePositiveInt(value: string | null | undefined, fallback: number): number {
@@ -3867,9 +3867,10 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
   const id = uuid()
   const { title, slug, excerpt, contentBody, coverImageUrl, seoTitle, seoDescription, status } =
     parsed
+  const sanitizedBody = contentBody ? sanitizeHtml(contentBody) : contentBody
   await db.insert(blogPost).values({
     authorId: currentUser.id,
-    contentBody: toNullable(contentBody),
+    contentBody: toNullable(sanitizedBody),
     coverImageUrl: toNullable(coverImageUrl),
     excerpt: toNullable(excerpt),
     id,
@@ -3957,6 +3958,45 @@ blogApp.post('/tags', withRateLimit('blog-mutate'), validate(createTagSchema), a
   })
 
   return c.json({ id }, 201)
+})
+
+blogApp.patch('/tags/:id', withRateLimit('blog-mutate'), validate(updateTagSchema), async (c) => {
+  const { name } = c.req.valid('json')
+  const { db } = c.get('services')
+  const currentUser = c.get('user')
+  const id = c.req.param('id')
+
+  const existing = await db
+    .select({ name: blogTag.name })
+    .from(blogTag)
+    .where(eq(blogTag.id, id))
+    .get()
+  if (!existing) throw new NotFoundError()
+
+  const slugValue = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  const slugConflict = await db
+    .select({ id: blogTag.id })
+    .from(blogTag)
+    .where(and(eq(blogTag.slug, slugValue), ne(blogTag.id, id)))
+    .get()
+  if (slugConflict) throw new ConflictError('Tag slug already exists')
+
+  await db.update(blogTag).set({ name: name.trim(), slug: slugValue }).where(eq(blogTag.id, id))
+
+  await writeAuditLog(db, {
+    action: 'blog_tag.update',
+    entityId: id,
+    entityType: 'blog_tag',
+    metadata: { name: name.trim(), oldName: existing.name, slug: slugValue },
+    userId: currentUser.id,
+  })
+
+  return c.json({ success: true })
 })
 
 blogApp.delete('/tags/:id', withRateLimit('blog-mutate'), async (c) => {
@@ -4127,7 +4167,9 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
   const updates: Partial<typeof blogPost.$inferInsert> = { updatedAt: new Date() }
   if (data.title !== undefined) updates.title = data.title
   if (data.excerpt !== undefined) updates.excerpt = data.excerpt
-  if (data.contentBody !== undefined) updates.contentBody = data.contentBody
+  if (data.contentBody !== undefined) {
+    updates.contentBody = data.contentBody ? sanitizeHtml(data.contentBody) : data.contentBody
+  }
   if (data.coverImageUrl !== undefined) updates.coverImageUrl = data.coverImageUrl
   if (data.seoTitle !== undefined) updates.seoTitle = data.seoTitle
   if (data.seoDescription !== undefined) updates.seoDescription = data.seoDescription
@@ -5619,6 +5661,11 @@ app.post('/api/admin/publish-scheduled', withRateLimit('admin-publish', 5, 60_00
         metadata: { reason: 'scheduled', slug: post.slug, title: post.title },
         userId: 'system',
       })
+    ),
+    ...due.map((post) =>
+      indexBlogPost(db, post.id).catch((error) =>
+        logger.error('Search index failed (scheduled publish)', { error })
+      )
     ),
   ])
 

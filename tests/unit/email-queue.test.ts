@@ -31,7 +31,7 @@ function createMockDb() {
           orderBy: vi.fn(() => ({
             limit: vi.fn(() =>
               Promise.resolve(
-                Array.from(store.values()).map((v) => ({
+                [...store.values()].map((v) => ({
                   ...v,
                   message: {
                     from: 'noreply@vibekit.com',

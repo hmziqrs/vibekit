@@ -32,7 +32,7 @@ export interface HIBPCheckResult {
 async function sha1(input: string): Promise<string> {
   const encoded = new TextEncoder().encode(input)
   const buffer = await crypto.subtle.digest('SHA-1', encoded)
-  return Array.from(new Uint8Array(buffer))
+  return [...new Uint8Array(buffer)]
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
     .toUpperCase()
