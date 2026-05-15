@@ -27,8 +27,20 @@
     trialEnd: string | null
   }
 
+  interface PaymentMethod {
+    brand: string | null
+    expiryMonth: number | null
+    expiryYear: number | null
+    id: string
+    isDefault: boolean
+    last4: string | null
+    type: string
+  }
+
   let changing = $state(false)
   let canceling = $state(false)
+  let detaching = $state<string | null>(null)
+  let settingDefault = $state<string | null>(null)
 
   function tryParseFeatures(features: string | null): string[] {
     if (!features) return []
@@ -69,6 +81,16 @@
       return data.invoices
     },
     queryKey: ['billing', 'invoices'],
+  }))
+
+  const paymentMethodsQuery = createQuery(() => ({
+    queryFn: async (): Promise<PaymentMethod[]> => {
+      const res = await fetch('/api/billing/payment-methods')
+      if (!res.ok) return []
+      const data = (await res.json()) as { paymentMethods: PaymentMethod[] }
+      return data.paymentMethods
+    },
+    queryKey: ['billing', 'payment-methods'],
   }))
 
   const currentPlan = $derived(() => {
@@ -124,6 +146,41 @@
     } finally {
       canceling = false
     }
+  }
+
+  async function handleDetachPaymentMethod(pmId: string) {
+    detaching = pmId
+    try {
+      const res = await fetch('/api/billing/payment-methods/detach', {
+        body: JSON.stringify({ paymentMethodId: pmId }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) return
+      queryClient.invalidateQueries({ queryKey: ['billing', 'payment-methods'] })
+    } finally {
+      detaching = null
+    }
+  }
+
+  async function handleSetDefault(pmId: string) {
+    settingDefault = pmId
+    try {
+      const res = await fetch('/api/billing/payment-methods/set-default', {
+        body: JSON.stringify({ paymentMethodId: pmId }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (!res.ok) return
+      queryClient.invalidateQueries({ queryKey: ['billing', 'payment-methods'] })
+    } finally {
+      settingDefault = null
+    }
+  }
+
+  function formatCardBrand(brand: string | null): string {
+    if (!brand) return 'Card'
+    return brand.charAt(0).toUpperCase() + brand.slice(1)
   }
 
   function formatPrice(cents: number): string {
@@ -199,6 +256,72 @@
     <div class="rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
       <p class="text-text-muted">No active subscription</p>
       <p class="mt-1 text-[13px] text-text-faint">Choose a plan below to get started</p>
+    </div>
+  {/if}
+
+  <!-- Payment Methods -->
+  {#if paymentMethodsQuery.isPending}
+    <div class="space-y-3">
+      {#each Array(2) as _}
+        <div class="h-12 animate-pulse rounded-lg bg-white/[0.04]"></div>
+      {/each}
+    </div>
+  {:else if paymentMethodsQuery.data && paymentMethodsQuery.data.length > 0}
+    <div>
+      <h2 class="mb-3 text-lg font-semibold text-text-primary">Payment Methods</h2>
+      <div class="space-y-2">
+        {#each paymentMethodsQuery.data as pm (pm.id)}
+          <div
+            class="flex items-center justify-between rounded-xl border border-white/[0.06] bg-surface px-4 py-3"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="flex h-8 w-12 items-center justify-center rounded bg-white/[0.06] text-[12px] font-medium text-text-muted"
+              >
+                {formatCardBrand(pm.brand)}
+              </div>
+              <div>
+                <p class="text-[14px] text-text-primary">
+                  &bull;&bull;&bull;&bull; {pm.last4 ?? '????'}
+                  {#if pm.isDefault}
+                    <span class="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">Default</span>
+                  {/if}
+                </p>
+                {#if pm.expiryMonth && pm.expiryYear}
+                  <p class="text-[12px] text-text-faint">
+                    Expires {String(pm.expiryMonth).padStart(2, '0')}/{pm.expiryYear}
+                  </p>
+                {/if}
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              {#if !pm.isDefault}
+                <button
+                  onclick={() => handleSetDefault(pm.id)}
+                  disabled={settingDefault === pm.id}
+                  class="rounded-lg px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary disabled:opacity-50"
+                >
+                  {settingDefault === pm.id ? 'Setting...' : 'Set default'}
+                </button>
+              {/if}
+              <button
+                onclick={() => handleDetachPaymentMethod(pm.id)}
+                disabled={detaching === pm.id}
+                class="rounded-lg px-3 py-1.5 text-[12px] text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+              >
+                {detaching === pm.id ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {:else if subQuery.data}
+    <div class="rounded-xl border border-white/[0.06] bg-surface p-6 text-center">
+      <p class="text-text-muted">No payment methods on file</p>
+      <p class="mt-1 text-[13px] text-text-faint">
+        Payment methods are added automatically during checkout.
+      </p>
     </div>
   {/if}
 

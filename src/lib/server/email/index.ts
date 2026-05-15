@@ -1,4 +1,4 @@
-import type { EmailClient, EmailResult } from '../services/types'
+import type { AppDb, EmailClient, EmailResult } from '../services/types'
 import { EmailQueue } from './queue'
 import { renderAccountDeleted, type AccountDeletedData } from './templates/account-deleted'
 import { renderAccountSuspended, type AccountSuspendedData } from './templates/account-suspended'
@@ -27,8 +27,8 @@ import { renderWelcome } from './templates/welcome'
 export class EmailService {
   private queue: EmailQueue
 
-  constructor(client: EmailClient) {
-    this.queue = new EmailQueue(client)
+  constructor(client: EmailClient, db?: AppDb) {
+    this.queue = new EmailQueue(client, db)
   }
 
   async sendNewsletterConfirmation(
@@ -251,6 +251,6 @@ export class EmailService {
   }
 }
 
-export function createEmailService(client: EmailClient): EmailService {
-  return new EmailService(client)
+export function createEmailService(client: EmailClient, db?: AppDb): EmailService {
+  return new EmailService(client, db)
 }

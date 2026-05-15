@@ -12,13 +12,14 @@ import { createS3Storage } from './storage-s3'
 export async function createNodeServices(): Promise<AppServices> {
   const storage = process.env.S3_ENDPOINT ? createS3Storage() : createNodeStorage()
   const emailClient = createNodeEmail()
+  const db = await createNodeDb()
 
-  const emailService = createEmailService(emailClient)
+  const emailService = createEmailService(emailClient, db)
   setEmailService(emailService)
 
   return {
     cache: createNodeCache(),
-    db: await createNodeDb(),
+    db,
     email: emailClient,
     env: readNodeEnv(),
     storage,

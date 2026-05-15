@@ -84,7 +84,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   // On Node this was already set by createNodeServices(); on Cloudflare this is the
   // First opportunity since services are per-request.
   if (!getEmailService()) {
-    setEmailService(createEmailService(services.email))
+    setEmailService(createEmailService(services.email, services.db))
   }
 
   const { auth } = event.locals

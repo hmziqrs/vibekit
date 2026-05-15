@@ -1540,4 +1540,40 @@ export const trustedDevice = sqliteTable(
   ]
 )
 
+export const emailQueue = sqliteTable(
+  'email_queue',
+  {
+    attempts: integer('attempts').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    errorMessage: text('error_message'),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    lastAttemptAt: integer('last_attempt_at', { mode: 'timestamp_ms' }),
+    maxRetries: integer('max_retries').notNull().default(3),
+    message: text('message', { mode: 'json' })
+      .$type<{
+        to: string | string[]
+        from: string
+        subject: string
+        html?: string
+        text?: string
+        headers?: Record<string, string>
+        replyTo?: string
+      }>()
+      .notNull(),
+    nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
+    processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
+    status: text('status', { enum: ['failed', 'pending', 'sent'] })
+      .notNull()
+      .default('pending'),
+  },
+  (table) => [
+    index('email_queue_status_idx').on(table.status, table.createdAt),
+    index('email_queue_next_retry_idx').on(table.nextRetryAt),
+  ]
+)
+
 export * from './auth.schema'

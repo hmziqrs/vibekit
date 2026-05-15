@@ -1,8 +1,55 @@
 import { describe, expect, it, vi } from 'vitest'
 
-function createMockClient(result: { ok: boolean } = { ok: true }) {
+function createMockClient(result: { ok: boolean; reason?: string } = { ok: true }) {
   return {
     send: vi.fn().mockResolvedValue(result),
+  }
+}
+
+function createMockDb() {
+  const store = new Map<string, Record<string, unknown>>()
+
+  return {
+    _store: store,
+    insert: vi.fn((table: unknown) => ({
+      values: vi.fn((data: Record<string, unknown>) => {
+        store.set(data.id as string, data)
+        return { returning: vi.fn().mockResolvedValue([data]) }
+      }),
+    })),
+    update: vi.fn((table: unknown) => ({
+      set: vi.fn((data: Record<string, unknown>) => ({
+        where: vi.fn(() => {
+          // Find and update matching entries
+          return Promise.resolve([])
+        }),
+      })),
+    })),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn(() => ({
+            limit: vi.fn(() =>
+              Promise.resolve(
+                Array.from(store.values()).map((v) => ({
+                  ...v,
+                  message: {
+                    from: 'noreply@vibekit.com',
+                    subject: 'Test',
+                    to: 'test@example.com',
+                  },
+                }))
+              )
+            ),
+          })),
+        })),
+      })),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn(() => ({
+        returning: vi.fn().mockResolvedValue([]),
+      })),
+    })),
   }
 }
 
@@ -12,90 +59,68 @@ describe('EmailQueue', () => {
     expect(typeof mod.EmailQueue).toBe('function')
   })
 
-  it('sends email successfully', async () => {
+  it('sends immediately without db', async () => {
     const { EmailQueue } = await import('$lib/server/email/queue')
     const client = createMockClient({ ok: true })
     const queue = new EmailQueue(client)
 
-    queue.enqueue({
+    await queue.enqueue({
       from: 'noreply@vibekit.com',
       html: '<p>Hello</p>',
       subject: 'Test',
       to: 'test@example.com',
     })
 
-    // Wait for async processing
-    await vi.waitFor(() => {
-      expect(client.send).toHaveBeenCalledTimes(1)
-    })
-
+    expect(client.send).toHaveBeenCalledTimes(1)
     const sent = client.send.mock.calls[0][0]
     expect(sent.to).toBe('test@example.com')
     expect(sent.subject).toBe('Test')
   })
 
-  it('retries on failure', async () => {
+  it('persists to db and marks sent on success', async () => {
+    const { EmailQueue } = await import('$lib/server/email/queue')
+    const client = createMockClient({ ok: true })
+    const db = createMockDb()
+    const queue = new EmailQueue(
+      client,
+      db as unknown as import('$lib/server/services/types').AppDb
+    )
+
+    await queue.enqueue({
+      from: 'noreply@vibekit.com',
+      html: '<p>Hello</p>',
+      subject: 'Test',
+      to: 'test@example.com',
+    })
+
+    expect(client.send).toHaveBeenCalledTimes(1)
+    expect(db.insert).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks for retry on send failure', async () => {
     const { EmailQueue } = await import('$lib/server/email/queue')
     const client = {
-      send: vi
-        .fn()
-        .mockRejectedValueOnce(new Error('SMTP error'))
-        .mockResolvedValueOnce({ ok: true }),
+      send: vi.fn().mockResolvedValue({ ok: false, reason: 'Rate limited' }),
     }
-    vi.useFakeTimers()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const queue = new EmailQueue(client)
+    const db = createMockDb()
+    const queue = new EmailQueue(
+      client,
+      db as unknown as import('$lib/server/services/types').AppDb
+    )
 
-    queue.enqueue(
+    await queue.enqueue(
       {
         from: 'noreply@vibekit.com',
-        html: '<p>Retry</p>',
+        html: '<p>Fail</p>',
         subject: 'Test',
-        to: 'retry@example.com',
+        to: 'fail@example.com',
       },
       { maxRetries: 3 }
     )
 
-    // First attempt fails immediately
-    await vi.advanceTimersByTimeAsync(0)
     expect(client.send).toHaveBeenCalledTimes(1)
-
-    // Advance past retry delay
-    await vi.advanceTimersByTimeAsync(2000)
-    expect(client.send).toHaveBeenCalledTimes(2)
-
-    errorSpy.mockRestore()
-    vi.useRealTimers()
-  })
-
-  it('calls onFinalFailure after max retries exceeded', async () => {
-    const { EmailQueue } = await import('$lib/server/email/queue')
-    const client = {
-      send: vi.fn().mockRejectedValue(new Error('Permanent failure')),
-    }
-    vi.useFakeTimers()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const onFinalFailure = vi.fn().mockResolvedValue(undefined)
-    const queue = new EmailQueue(client)
-
-    queue.enqueue(
-      { from: 'noreply@vibekit.com', html: '<p>Fail</p>', subject: 'Test', to: 'fail@example.com' },
-      { maxRetries: 2, onFinalFailure }
-    )
-
-    // Attempt 1
-    await vi.advanceTimersByTimeAsync(0)
-    expect(client.send).toHaveBeenCalledTimes(1)
-
-    // Attempt 2 (retry 1)
-    await vi.advanceTimersByTimeAsync(2000)
-    expect(client.send).toHaveBeenCalledTimes(2)
-
-    // onFinalFailure should have been called
-    expect(onFinalFailure).toHaveBeenCalledTimes(1)
-
-    errorSpy.mockRestore()
-    vi.useRealTimers()
+    // Should have called update to set nextRetryAt
+    expect(db.update).toHaveBeenCalled()
   })
 
   it('sendImmediate returns result directly', async () => {
@@ -114,147 +139,84 @@ describe('EmailQueue', () => {
     expect(client.send).toHaveBeenCalledTimes(1)
   })
 
-  it('processes queued emails in order', async () => {
+  it('sendImmediate works with db too', async () => {
     const { EmailQueue } = await import('$lib/server/email/queue')
     const client = createMockClient({ ok: true })
-    const queue = new EmailQueue(client)
+    const db = createMockDb()
+    const queue = new EmailQueue(
+      client,
+      db as unknown as import('$lib/server/services/types').AppDb
+    )
 
-    queue.enqueue({ from: 'noreply@vibekit.com', html: '1', subject: 'First', to: 'a@test.com' })
-    queue.enqueue({ from: 'noreply@vibekit.com', html: '2', subject: 'Second', to: 'b@test.com' })
-    queue.enqueue({ from: 'noreply@vibekit.com', html: '3', subject: 'Third', to: 'c@test.com' })
-
-    await vi.waitFor(() => {
-      expect(client.send).toHaveBeenCalledTimes(3)
+    const result = await queue.sendImmediate({
+      from: 'noreply@vibekit.com',
+      html: '<p>Direct</p>',
+      subject: 'Direct',
+      to: 'direct@example.com',
     })
 
-    expect(client.send.mock.calls[0][0].subject).toBe('First')
-    expect(client.send.mock.calls[1][0].subject).toBe('Second')
-    expect(client.send.mock.calls[2][0].subject).toBe('Third')
+    expect(result.ok).toBe(true)
+    // sendImmediate should NOT use db — it bypasses queue entirely
+    expect(db.insert).not.toHaveBeenCalled()
   })
 
-  it('logs error when send fails', async () => {
+  it('processPending returns stats', async () => {
     const { EmailQueue } = await import('$lib/server/email/queue')
-    const client = {
-      send: vi.fn().mockRejectedValue(new Error('SMTP timeout')),
-    }
-    vi.useFakeTimers()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const onFinalFailure = vi.fn().mockResolvedValue(undefined)
-    const queue = new EmailQueue(client)
-
-    queue.enqueue(
-      { from: 'noreply@vibekit.com', html: '<p>Test</p>', subject: 'Test', to: 'log@test.com' },
-      { maxRetries: 1, onFinalFailure }
+    const client = createMockClient({ ok: true })
+    const db = createMockDb()
+    const queue = new EmailQueue(
+      client,
+      db as unknown as import('$lib/server/services/types').AppDb
     )
 
-    await vi.advanceTimersByTimeAsync(0)
+    const stats = await queue.processPending(
+      db as unknown as import('$lib/server/services/types').AppDb
+    )
 
-    expect(errorSpy).toHaveBeenCalledTimes(1)
-    const logOutput = errorSpy.mock.calls[0][0] as string
-    expect(logOutput).toContain('email.send_failed')
-
-    errorSpy.mockRestore()
-    vi.useRealTimers()
+    expect(stats).toHaveProperty('sent')
+    expect(stats).toHaveProperty('failed')
+    expect(stats).toHaveProperty('retried')
+    expect(typeof stats.sent).toBe('number')
   })
 
-  it('retries when send resolves with ok: false (non-exception failure)', async () => {
+  it('cleanup returns count of deleted records', async () => {
     const { EmailQueue } = await import('$lib/server/email/queue')
-    const client = {
-      send: vi.fn().mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce({ ok: true }),
-    }
-    vi.useFakeTimers()
-    const queue = new EmailQueue(client)
-
-    queue.enqueue(
-      {
-        from: 'noreply@vibekit.com',
-        html: '<p>Soft fail</p>',
-        subject: 'Test',
-        to: 'soft@test.com',
-      },
-      { maxRetries: 3 }
+    const client = createMockClient({ ok: true })
+    const db = createMockDb()
+    const queue = new EmailQueue(
+      client,
+      db as unknown as import('$lib/server/services/types').AppDb
     )
 
-    // First attempt returns ok: false
-    await vi.advanceTimersByTimeAsync(0)
-    expect(client.send).toHaveBeenCalledTimes(1)
-
-    // Retry should happen after delay
-    await vi.advanceTimersByTimeAsync(2000)
-    expect(client.send).toHaveBeenCalledTimes(2)
-
-    vi.useRealTimers()
-  })
-
-  it('calls onFinalFailure when send consistently returns ok: false', async () => {
-    const { EmailQueue } = await import('$lib/server/email/queue')
-    const client = {
-      send: vi.fn().mockResolvedValue({ ok: false }),
-    }
-    vi.useFakeTimers()
-    const onFinalFailure = vi.fn().mockResolvedValue(undefined)
-    const queue = new EmailQueue(client)
-
-    queue.enqueue(
-      {
-        from: 'noreply@vibekit.com',
-        html: '<p>Permanent soft fail</p>',
-        subject: 'Test',
-        to: 'permsoft@test.com',
-      },
-      { maxRetries: 2, onFinalFailure }
+    const count = await queue.cleanup(
+      db as unknown as import('$lib/server/services/types').AppDb,
+      30
     )
 
-    // Attempt 1
-    await vi.advanceTimersByTimeAsync(0)
-    expect(client.send).toHaveBeenCalledTimes(1)
-
-    // Attempt 2 (retry 1)
-    await vi.advanceTimersByTimeAsync(2000)
-    expect(client.send).toHaveBeenCalledTimes(2)
-
-    // onFinalFailure should have been called
-    expect(onFinalFailure).toHaveBeenCalledTimes(1)
-
-    vi.useRealTimers()
+    expect(typeof count).toBe('number')
   })
 
   it('uses default maxRetries of 3 when not specified', async () => {
     const { EmailQueue } = await import('$lib/server/email/queue')
-    const client = {
-      send: vi.fn().mockRejectedValue(new Error('fail')),
-    }
-    vi.useFakeTimers()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const onFinalFailure = vi.fn().mockResolvedValue(undefined)
-    const queue = new EmailQueue(client)
-
-    queue.enqueue(
-      {
-        from: 'noreply@vibekit.com',
-        html: '<p>Default</p>',
-        subject: 'Test',
-        to: 'default@test.com',
-      },
-      { onFinalFailure }
+    const client = createMockClient({ ok: false, reason: 'fail' })
+    const db = createMockDb()
+    const queue = new EmailQueue(
+      client,
+      db as unknown as import('$lib/server/services/types').AppDb
     )
 
-    // Attempt 1
-    await vi.advanceTimersByTimeAsync(0)
-    expect(client.send).toHaveBeenCalledTimes(1)
+    await queue.enqueue({
+      from: 'noreply@vibekit.com',
+      html: '<p>Default</p>',
+      subject: 'Test',
+      to: 'default@test.com',
+    })
 
-    // Attempt 2 (retry 1)
-    await vi.advanceTimersByTimeAsync(2000)
-    expect(client.send).toHaveBeenCalledTimes(2)
-
-    // Attempt 3 (retry 2)
-    await vi.advanceTimersByTimeAsync(4000)
-    expect(client.send).toHaveBeenCalledTimes(3)
-
-    // Should be final failure now (3 attempts = default maxRetries)
-    expect(onFinalFailure).toHaveBeenCalledTimes(1)
-
-    errorSpy.mockRestore()
-    vi.useRealTimers()
+    // Check that the insert was called with maxRetries: 3
+    const insertCall = db.insert.mock.results[0]
+    const valuesCall = insertCall.value
+    expect(valuesCall.values).toHaveBeenCalledTimes(1)
+    const valuesArg = valuesCall.values.mock.calls[0][0]
+    expect(valuesArg.maxRetries).toBe(3)
   })
 })

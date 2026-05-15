@@ -2698,6 +2698,87 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
   })
 })
 
+// ── Payment Methods ──────────────────────────────────────────────────
+
+protectedApp.get('/billing/payment-methods', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+
+  const methods = await db
+    .select({
+      brand: paymentMethod.brand,
+      expiryMonth: paymentMethod.expiryMonth,
+      expiryYear: paymentMethod.expiryYear,
+      id: paymentMethod.id,
+      isDefault: paymentMethod.isDefault,
+      last4: paymentMethod.last4,
+      stripePaymentMethodId: paymentMethod.stripePaymentMethodId,
+      type: paymentMethod.type,
+    })
+    .from(paymentMethod)
+    .where(eq(paymentMethod.userId, userId))
+    .orderBy(desc(paymentMethod.isDefault), desc(paymentMethod.createdAt))
+
+  return c.json({ paymentMethods: methods })
+})
+
+protectedApp.post('/billing/payment-methods/detach', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const body = (await c.req.json()) as { paymentMethodId?: string }
+  if (!body.paymentMethodId) throw new BadRequestError('paymentMethodId required')
+
+  const pm = await db
+    .select()
+    .from(paymentMethod)
+    .where(and(eq(paymentMethod.id, body.paymentMethodId), eq(paymentMethod.userId, userId)))
+    .get()
+
+  if (!pm) throw new NotFoundError('Payment method not found')
+
+  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+  await stripe?.paymentMethods.detach(pm.stripePaymentMethodId)
+
+  await db.delete(paymentMethod).where(eq(paymentMethod.id, pm.id))
+
+  return c.json({ success: true })
+})
+
+protectedApp.post('/billing/payment-methods/set-default', async (c) => {
+  const { db } = c.get('services')
+  const { id: userId } = c.get('user')
+  const body = (await c.req.json()) as { paymentMethodId?: string }
+  if (!body.paymentMethodId) throw new BadRequestError('paymentMethodId required')
+
+  const pm = await db
+    .select()
+    .from(paymentMethod)
+    .where(and(eq(paymentMethod.id, body.paymentMethodId), eq(paymentMethod.userId, userId)))
+    .get()
+
+  if (!pm) throw new NotFoundError('Payment method not found')
+
+  // Unset current default
+  await db
+    .update(paymentMethod)
+    .set({ isDefault: false })
+    .where(and(eq(paymentMethod.userId, userId), eq(paymentMethod.isDefault, true)))
+
+  // Set new default
+  await db.update(paymentMethod).set({ isDefault: true }).where(eq(paymentMethod.id, pm.id))
+
+  // Sync with Stripe if customer exists
+  const sub = await getUserSubscription(db, userId)
+  if (sub?.stripeCustomerId) {
+    const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+    await stripe.customers.update(sub.stripeCustomerId, {
+      invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
+    })
+  }
+
+  return c.json({ success: true })
+})
+
 // ── Push Notifications (auth required) ──────────────────────────────────
 
 protectedApp.post(
@@ -5289,12 +5370,24 @@ app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async 
   const { cleanupExpiredOAuthStates } = await import('$lib/server/integrations/oauth')
   const deletedOAuthStates = await cleanupExpiredOAuthStates(db)
 
+  // Process pending email queue (retry failed emails)
+  const { EmailQueue } = await import('$lib/server/email/queue')
+  const emailQueue = new EmailQueue(c.get('services').email, db)
+  const emailStats = await emailQueue.processPending(db)
+
+  // Cleanup old sent/failed emails
+  const deletedEmails = await emailQueue.cleanup(db)
+
   return c.json({
     announcements: {
       activated: activatedAnnouncements.length,
       deactivated: deactivatedAnnouncements.length,
     },
     cutoff: cutoff.toISOString(),
+    emailQueue: {
+      ...emailStats,
+      cleaned: deletedEmails,
+    },
     expiredBans: expiredBans.length,
     purged: {
       apiKeys: deletedApiKeys.length,
@@ -7830,7 +7923,105 @@ adminApp.post('/search/reindex', validate(reindexSchema), async (c) => {
   })
 })
 
-// ── Mount sub-apps ───────────────────────────────────────────────────
+// ── Admin API Keys ──────────────────────────────────────────────────
+
+adminApp.get('/api-keys', async (c) => {
+  const { db } = c.get('services')
+  const url = new URL(c.req.url)
+  const page = Math.max(1, Number(url.searchParams.get('page') ?? '1'))
+  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? '20')))
+  const search = url.searchParams.get('search')?.trim()
+  const status = url.searchParams.get('status')?.trim()
+
+  const conditions = []
+  if (search) {
+    conditions.push(or(like(apiKey.name, `%${search}%`), like(user.name, `%${search}%`)))
+  }
+  if (status === 'active') {
+    conditions.push(isNull(apiKey.revokedAt))
+  } else if (status === 'revoked') {
+    conditions.push(isNotNull(apiKey.revokedAt))
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined
+
+  const [keys, totalResult] = await Promise.all([
+    db
+      .select({
+        createdAt: apiKey.createdAt,
+        expiresAt: apiKey.expiresAt,
+        id: apiKey.id,
+        keyPrefix: apiKey.keyPrefix,
+        lastUsedAt: apiKey.lastUsedAt,
+        name: apiKey.name,
+        rateLimit: apiKey.rateLimit,
+        requestCount: apiKey.requestCount,
+        revokedAt: apiKey.revokedAt,
+        scopes: apiKey.scopes,
+        userEmail: user.email,
+        userName: user.name,
+      })
+      .from(apiKey)
+      .innerJoin(user, eq(apiKey.userId, user.id))
+      .where(where)
+      .orderBy(desc(apiKey.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(apiKey)
+      .innerJoin(user, eq(apiKey.userId, user.id))
+      .where(where)
+      .get() as unknown as { count: number } | undefined,
+  ])
+
+  return c.json({
+    apiKeys: keys,
+    page,
+    total: totalResult?.count ?? 0,
+    totalPages: Math.ceil((totalResult?.count ?? 0) / limit),
+  })
+})
+
+adminApp.post('/api-keys/:id/revoke', async (c) => {
+  const { db } = c.get('services')
+  const { id } = c.req.param()
+
+  const key = await db.select().from(apiKey).where(eq(apiKey.id, id)).get()
+  if (!key) throw new NotFoundError('API key not found')
+
+  await db.update(apiKey).set({ revokedAt: new Date() }).where(eq(apiKey.id, id))
+
+  await writeAuditLog(db, {
+    action: 'admin.api_key_revoke',
+    entityId: id,
+    entityType: 'api_key',
+    metadata: { keyName: key.name, userId: key.userId },
+    userId: c.get('user').id,
+  })
+
+  return c.json({ success: true })
+})
+
+adminApp.delete('/api-keys/:id', async (c) => {
+  const { db } = c.get('services')
+  const { id } = c.req.param()
+
+  const key = await db.select().from(apiKey).where(eq(apiKey.id, id)).get()
+  if (!key) throw new NotFoundError('API key not found')
+
+  await db.delete(apiKey).where(eq(apiKey.id, id))
+
+  await writeAuditLog(db, {
+    action: 'admin.api_key_delete',
+    entityId: id,
+    entityType: 'api_key',
+    metadata: { keyName: key.name, userId: key.userId },
+    userId: c.get('user').id,
+  })
+
+  return c.json({ success: true })
+})
 
 const routes = app
   .route('/api', protectedApp)
