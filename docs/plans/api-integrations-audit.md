@@ -18,22 +18,19 @@
 
 ### Implementation Evidence
 
-| Feature             | Status  | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scoped tokens       | DONE    | `src/lib/server/api-keys.ts` -- `createApiKey()` accepts `scopes: string[]`. `hasScope()` enforces hierarchical scope checking (`admin` > `write:X` > `read:X`). 12 scopes defined in `src/lib/validators/api-key.ts` (`API_KEY_SCOPES`).                                                                                                                                                                                                                   |
-| Key rotation        | DONE    | `rotateApiKey()` in `api-keys.ts` generates a new key+hash, resets `requestCount` to 0, preserves metadata. API endpoint `POST /api-keys/:id/rotate` exists in Hono routes with rate limiting (5/min).                                                                                                                                                                                                                                                      |
-| Usage logging       | DONE    | `logApiKeyUsage()` writes to `apiKeyUsageLog` table (endpoint, method, statusCode, IP, userAgent). `touchApiKey()` updates `lastUsedAt` and increments `requestCount`. Both are called via `executionCtx.waitUntil()` in the `withApiKey` middleware -- fire-and-forget after response.                                                                                                                                                                     |
-| Key revocation      | DONE    | `revokeApiKey()` sets `revokedAt` timestamp. `validateApiKey()` filters by `isNull(apiKey.revokedAt)`. API endpoint `POST /api-keys/:id/revoke` exists.                                                                                                                                                                                                                                                                                                     |
-| Per-key rate limits | PARTIAL | `rateLimit` field is stored on each API key (`apiKey.rateLimit`). However, the `withApiKey` middleware in `src/lib/server/hono/middleware.ts` does **not** read or enforce the per-key rate limit. The `withRateLimit` middleware is a separate, independent middleware that uses a global in-memory `Map` store and is applied per-route with a fixed limit. The per-key `rateLimit` value is stored but **never consumed** during request authentication. |
+| Feature             | Status | Evidence                                                                                                                                                                                                                                                                                |
+| ------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scoped tokens       | DONE   | `src/lib/server/api-keys.ts` -- `createApiKey()` accepts `scopes: string[]`. `hasScope()` enforces hierarchical scope checking (`admin` > `write:X` > `read:X`). 12 scopes defined in `src/lib/validators/api-key.ts` (`API_KEY_SCOPES`).                                               |
+| Key rotation        | DONE   | `rotateApiKey()` in `api-keys.ts` generates a new key+hash, resets `requestCount` to 0, preserves metadata. API endpoint `POST /api-keys/:id/rotate` exists in Hono routes with rate limiting (5/min).                                                                                  |
+| Usage logging       | DONE   | `logApiKeyUsage()` writes to `apiKeyUsageLog` table (endpoint, method, statusCode, IP, userAgent). `touchApiKey()` updates `lastUsedAt` and increments `requestCount`. Both are called via `executionCtx.waitUntil()` in the `withApiKey` middleware -- fire-and-forget after response. |
+| Key revocation      | DONE   | `revokeApiKey()` sets `revokedAt` timestamp. `validateApiKey()` filters by `isNull(apiKey.revokedAt)`. API endpoint `POST /api-keys/:id/revoke` exists.                                                                                                                                 |
+| Per-key rate limits | DONE   | `withApiKey` middleware checks `keyRecord.rateLimit` and enforces it via `rateLimit(`apikey:${keyId}`, keyRecord.rateLimit, 60_000)`. Keys without a custom rate limit fall through to route-level limits. `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers set on responses.    |
 
 ### Issues Found
 
-**CRITICAL -- Per-key rate limits are not enforced.**
+**FIXED -- Per-key rate limits now enforced.**
 
-- Location: `src/lib/server/hono/middleware.ts` lines 82-141
-- The `withApiKey` middleware validates the key and checks scopes but never reads `keyRecord.rateLimit` to apply per-key throttling. The `withRateLimit` middleware (lines 142-151) is separate and uses a fixed limit, not the key's configured limit.
-- Impact: A user could set a rate limit of 1 req/min on a key, but it would have no effect. All keys share whatever global rate limit is configured on the route.
-- Fix: Inside `withApiKey`, after validating the key, check `keyRecord.rateLimit` and either call `rateLimit()` with that limit or reject the request if the key has exceeded its custom limit.
+- `withApiKey` middleware now checks `keyRecord.rateLimit` and calls `rateLimit()` with the key's configured limit when set. Keys without a custom rate limit fall through to the default route-level limit.
 
 **MEDIUM -- Rate limit store is in-memory only.**
 
@@ -86,13 +83,11 @@
 
 ### Issues Found
 
-**CRITICAL -- No automatic retry processor for scheduled webhook retries.**
+**FIXED -- Automatic webhook retry processor.**
 
-- Location: `src/lib/server/webhooks.ts`
-- When `deliverWebhook()` fails, it sets `nextRetryAt` on the delivery record but does **not** schedule any background task to process it later. `retryWebhookDelivery()` exists but is only callable manually via the admin API (`POST /api/admin/webhooks/:deliveryId/retry`).
-- There is no cron endpoint, Durable Object, or Queue consumer that periodically scans for deliveries where `nextRetryAt <= now` and retries them.
-- Impact: Failed webhooks with `status: 'retrying'` and a `nextRetryAt` set will **never** be retried automatically. The exponential backoff logic exists but is dead code unless triggered manually.
-- Fix: Add a cron endpoint (`/api/cron/retry-webhooks`) or use Cloudflare Queues to consume retry-eligible deliveries. The `cronSecret` infrastructure already exists in `RuntimeEnv`.
+- Added `processRetryableDeliveries()` in `src/lib/server/webhooks.ts` — queries deliveries where `status='retrying'` and `nextRetryAt <= now`, retries each via `retryWebhookDelivery()`.
+- Added cron endpoint `POST /api/admin/retry-webhooks` with cron secret authentication (same pattern as cleanup and publish-scheduled).
+- Can be triggered by Cloudflare cron triggers (every 5 min via wrangler.jsonc) or external schedulers.
 
 **MEDIUM -- `dispatchWebhooksForEvent` fetches ALL active endpoints.**
 
@@ -101,11 +96,9 @@
 - Impact: Performance degrades linearly with total active webhooks. On a multi-tenant platform, this is a scalability concern.
 - Fix: Add `userId` filtering if the event has a user context, or maintain an index on `(eventType, active)`.
 
-**MEDIUM -- Webhook dispatch is synchronous within `emitEvent`.**
+**FIXED -- Webhook dispatch is now truly fire-and-forget.**
 
-- Location: `src/lib/server/events.ts` line 26
-- Although wrapped in try/catch to not block the main operation, `dispatchWebhooksForEvent` is still awaited. On Cloudflare Workers with a CPU time limit, slow webhook deliveries could eat into the request budget.
-- Fix: Use `executionCtx.waitUntil()` to move webhook dispatch off the critical path, or offload to a Queue.
+- `emitEvent()` now calls `dispatchWebhooksForEvent()` without `await`, using `.catch()` for error handling. Webhook delivery no longer blocks the response.
 
 **LOW -- No webhook endpoint URL validation beyond `url()`.**
 
@@ -227,13 +220,10 @@
 
 ### Issues Found
 
-**MEDIUM -- Automation manifest scope names do not match actual API key scopes.**
+**FIXED -- Automation manifest scope names now match actual API key scopes.**
 
-- Location: `src/lib/server/hono/index.ts` lines 2377-2390
-- The manifest advertises scopes like `blog.read`, `blog.write`, `items.read`, `items.write`, `orgs.read`, `orgs.write`, `teams.read`, `teams.write`, `users.read`, `webhooks.read`, `webhooks.write`, `analytics.read`.
-- The actual API key scopes defined in `src/lib/validators/api-key.ts` are: `read:blog`, `write:blog`, `read:items`, `write:items`, `read:organizations`, `write:organizations`, `read:teams`, `write:teams`, `read:billing`, `write:billing`, `delete:items`, `admin`.
-- These are completely different naming conventions. An automation developer using the manifest's scope names would create keys that don't match any valid scope.
-- Fix: Align manifest scope names with the actual `API_KEY_SCOPES` constant.
+- Manifest now lists: `read:blog`, `write:blog`, `read:billing`, `write:billing`, `read:items`, `write:items`, `delete:items`, `read:organizations`, `write:organizations`, `read:teams`, `write:teams`, `admin`.
+- These align exactly with `API_KEY_SCOPES` in `src/lib/validators/api-key.ts`.
 
 **LOW -- Manifest is static/hardcoded, not generated from route definitions.**
 

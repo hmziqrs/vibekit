@@ -1,5 +1,6 @@
 import type { EmailClient, EmailResult } from '../services/types'
 import { EmailQueue } from './queue'
+import { renderAccountSuspended, type AccountSuspendedData } from './templates/account-suspended'
 import {
   renderPaymentFailed,
   renderPaymentSucceeded,
@@ -14,6 +15,7 @@ import {
 import { renderEmailVerification } from './templates/email-verification'
 import { renderNewsletterConfirm } from './templates/newsletter-confirm'
 import { renderPasswordReset } from './templates/password-reset'
+import { renderSecurityAlert, type SecurityAlertData } from './templates/security-alert'
 import { renderWelcome } from './templates/welcome'
 
 export class EmailService {
@@ -170,6 +172,32 @@ export class EmailService {
       from: 'Vibekit <noreply@vibekit.com>',
       html,
       subject: `Subscription updated — ${newPlanName}`,
+      text,
+      to: email,
+    })
+  }
+
+  async sendSecurityAlert(email: string, data: SecurityAlertData): Promise<EmailResult> {
+    const { html, text } = renderSecurityAlert(data)
+    const subject = `Security alert: ${data.eventType.replace(/_/g, ' ')}`
+    return this.queue.sendImmediate({
+      from: 'Vibekit Security <noreply@vibekit.com>',
+      html,
+      subject,
+      text,
+      to: email,
+    })
+  }
+
+  async sendAccountSuspended(email: string, data: AccountSuspendedData): Promise<EmailResult> {
+    const { html, text } = renderAccountSuspended(data)
+    const subject = data.expiresAt
+      ? 'Your account has been temporarily suspended'
+      : 'Your account has been suspended'
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject,
       text,
       to: email,
     })

@@ -106,6 +106,14 @@ export const withApiKey = (requiredScope?: string) =>
       throw new ForbiddenError(`API key missing scope: ${requiredScope}`)
     }
 
+    // Enforce per-key rate limit if configured
+    if (keyRecord.rateLimit) {
+      const result = rateLimit(`apikey:${keyRecord.id}`, keyRecord.rateLimit, 60_000)
+      if (!result.allowed) throw new RateLimitError()
+      c.header('X-RateLimit-Limit', String(keyRecord.rateLimit))
+      c.header('X-RateLimit-Remaining', String(result.remaining))
+    }
+
     c.set('apiKey', keyRecord)
 
     // Set user from API key's userId
@@ -145,8 +153,10 @@ export const withRateLimit = (prefix: string, limit = 20, windowMs = 60_000) =>
     const key = user
       ? `${prefix}:${user.id}`
       : `${prefix}:ip:${c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'anon'}`
-    const { allowed } = rateLimit(key, limit, windowMs)
-    if (!allowed) throw new RateLimitError()
+    const result = rateLimit(key, limit, windowMs)
+    if (!result.allowed) throw new RateLimitError()
+    c.header('X-RateLimit-Limit', String(limit))
+    c.header('X-RateLimit-Remaining', String(result.remaining))
     await next()
   })
 

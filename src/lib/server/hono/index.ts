@@ -19,25 +19,35 @@ import {
   updateApiKey,
 } from '$lib/server/api-keys'
 import { writeAuditLog } from '$lib/server/audit'
-import { getStripeClient, verifyWebhookSignature } from '$lib/server/billing/stripe'
+import {
+  createStripeCoupon,
+  getStripeClient,
+  verifyWebhookSignature,
+} from '$lib/server/billing/stripe'
 import {
   cancelSubscription,
   changeSubscriptionPlan,
   checkUsageLimit,
+  createCoupon,
   createPlan,
   createSubscription,
   deactivatePlan,
   getActivePlans,
   getAllPlans,
   getBillingOverview,
+  getCouponByCode,
   getFailedStripeWebhooks,
   getOrgSubscription,
   getPlanById,
   getUserSubscription,
+  listCoupons,
   reactivateSubscription,
   recordUsage,
+  redeemCoupon,
   retryStripeWebhook,
+  updateCoupon,
   updatePlan,
+  validateCouponForRedemption,
 } from '$lib/server/billing/subscription-service'
 import { getConfigHistory, resolveConfig } from '$lib/server/config-service'
 import {
@@ -59,6 +69,7 @@ import {
   comment,
   contactSubmission,
   contentReport,
+  coupon,
   impersonationSession,
   notification,
   invoice,
@@ -134,14 +145,17 @@ import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
 import {
   deindexEntity,
   indexBlogPost,
+  indexComment,
   indexItem,
   indexUser,
   reindexAllBlogPosts,
+  reindexAllComments,
   reindexAllItems,
   reindexAllUsers,
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
 import { detectSpam } from '$lib/server/spam-detector'
+import { generateThumbnail } from '$lib/server/thumbnail'
 import {
   generateStorageKey,
   validateFileSignature,
@@ -149,6 +163,9 @@ import {
   validateMediaUpload,
 } from '$lib/server/upload'
 import {
+  assembleChunks,
+  cleanupChunks,
+  completeUploadSession,
   createUploadSession,
   deleteUploadSession,
   getUploadProgress,
@@ -157,6 +174,7 @@ import {
   recordChunk,
 } from '$lib/server/upload-session'
 import { uuid } from '$lib/server/uuid'
+import { scanUploadedFile } from '$lib/server/virus-scan'
 import {
   createWebhookEndpoint,
   deleteWebhookEndpoint,
@@ -164,6 +182,7 @@ import {
   listAllDeliveries,
   listWebhookDeliveries,
   listWebhookEndpoints,
+  processRetryableDeliveries,
   retryWebhookDelivery,
   sendTestWebhook,
   updateWebhookEndpoint,
@@ -222,9 +241,12 @@ import { createApiKeySchema, updateApiKeySchema } from '$lib/validators/api-key'
 import {
   checkoutSessionSchema,
   changePlanSchema,
+  createCouponSchema,
   createPlanSchema,
   recordUsageSchema,
+  redeemCouponSchema,
   refundSchema,
+  updateCouponSchema,
   updatePlanSchema,
 } from '$lib/validators/billing'
 import {
@@ -236,7 +258,7 @@ import {
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
 import { pushSubscribeSchema, pushUnsubscribeSchema } from '$lib/validators/push'
-import { deleteSearchIndexSchema, indexDocumentSchema } from '$lib/validators/search'
+import { deleteSearchIndexSchema, indexDocumentSchema, reindexSchema } from '$lib/validators/search'
 import {
   bulkDeleteMediaSchema,
   createUploadSessionSchema,
@@ -284,6 +306,14 @@ import {
   withTeamMembership,
 } from './middleware'
 import type { Bindings, OrgEnv, ProtectedEnv, TeamEnv, Variables } from './types'
+
+async function sha256(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
 
 function parsePositiveInt(value: string | null | undefined, fallback: number): number {
   if (!value) return fallback
@@ -769,7 +799,7 @@ app.post('/api/analytics/view', withRateLimit('analytics-view', 30, 60_000), asy
   // Create visitor hash from IP + User-Agent (no raw PII stored long-term)
   const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown'
   const ua = c.req.header('user-agent') ?? 'unknown'
-  const visitorHash = `${ip}:${ua}`.slice(0, 200) // Simple hash for dedup
+  const visitorHash = await sha256(`${ip}:${ua}`)
 
   // Dedup: skip if same visitor viewed same post within last hour
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
@@ -837,7 +867,7 @@ app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000
   // Find most recent view for this visitor + post
   const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown'
   const ua = c.req.header('user-agent') ?? 'unknown'
-  const visitorHash = `${ip}:${ua}`.slice(0, 200)
+  const visitorHash = await sha256(`${ip}:${ua}`)
 
   const view = await db
     .select({
@@ -933,8 +963,14 @@ app.post('/billing/webhooks/stripe', async (c) => {
               console.error('Webhook: checkout.session.completed missing planId in metadata')
               break
             }
+
+            // Try to get period from session, fall back to plan interval
+            const plan = await getPlanById(db, planId)
+            const intervalMs =
+              plan?.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
+
             await createSubscription(db, {
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              currentPeriodEnd: new Date(Date.now() + intervalMs),
               currentPeriodStart: new Date(),
               planId,
               stripeCustomerId: customerId ?? undefined,
@@ -1671,12 +1707,47 @@ protectedApp.post('/uploads/session/:id/chunk', async (c) => {
   if (!session || (session.userId as string) !== userId) throw new NotFoundError()
 
   const chunkIndex = parseClampInt(c.req.query('index'), 0, 0)
-  if (chunkIndex < 0) {
+  if (chunkIndex < 0 || chunkIndex >= (session.totalChunks as number)) {
     throw new BadRequestError('Invalid chunk index')
   }
 
-  const result = await recordChunk(db, sessionId, chunkIndex)
+  // Read actual chunk data from request body
+  const body = await c.req.arrayBuffer()
+  const chunkData = new Uint8Array(body)
+
+  const chunkSizeLimit = (session.chunkSize as number) + 1024 // Allow slight overhead
+  if (chunkData.length > chunkSizeLimit) {
+    throw new BadRequestError(`Chunk size exceeds limit of ${session.chunkSize as number} bytes`)
+  }
+
+  const result = await recordChunk(db, sessionId, chunkIndex, chunkData)
   return c.json(result)
+})
+
+protectedApp.post('/uploads/session/:id/complete', async (c) => {
+  const { db, storage } = c.get('services')
+  const { id: userId } = c.get('user')
+  const sessionId = c.req.param('id')
+  const session = await getUploadSession(db, sessionId)
+  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+  if (session.status !== 'complete') {
+    throw new BadRequestError('Not all chunks received yet')
+  }
+
+  const assembled = await assembleChunks(db, sessionId)
+  if (!assembled) {
+    throw new BadRequestError('Failed to assemble chunks')
+  }
+
+  const key = generateStorageKey(session.fileName as string)
+  await storage.put(key, assembled, {
+    contentType: session.fileType as string,
+  })
+
+  await completeUploadSession(db, sessionId, key)
+  await cleanupChunks(sessionId)
+
+  return c.json({ key, size: assembled.length, success: true })
 })
 
 protectedApp.delete('/uploads/session/:id', async (c) => {
@@ -2171,13 +2242,25 @@ protectedApp.post('/billing/change-plan', async (c) => {
     throw new BadRequestError('Invalid plan change parameters')
   }
 
-  const { db } = c.get('services')
+  const services = c.get('services')
+  const { db } = services
   const { id: userId } = c.get('user')
   const sub = await getUserSubscription(db, userId)
   if (!sub) throw new BadRequestError('No active subscription')
 
   const newPlan = await getPlanById(db, parsed.data.newPlanId)
   if (!newPlan) throw new NotFoundError()
+
+  // Sync with Stripe if subscription has a Stripe ID and the new plan has a price ID
+  if (sub.stripeSubscriptionId && newPlan.stripePriceId) {
+    const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
+    if (stripe) {
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+        proration_behavior: 'create_prorations',
+        items: [{ price: newPlan.stripePriceId, subscription: sub.stripeSubscriptionId }],
+      })
+    }
+  }
 
   const result = await changeSubscriptionPlan(db, sub.id, parsed.data.newPlanId)
 
@@ -2242,7 +2325,17 @@ protectedApp.get('/billing/usage', async (c) => {
         periodStart: sub.currentPeriodStart,
         userId,
       })
-      return { ...result, metricType }
+      return {
+        current: result.current,
+        exceeded: result.exceeded,
+        limit: result.limit,
+        metricType,
+        overage: {
+          costInCents: result.overageCostInCents,
+          rateInCents: result.overageRateInCents,
+          units: result.overageUnits,
+        },
+      }
     })
   )
 
@@ -2264,7 +2357,10 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
     userId,
   })
 
-  if (limitCheck.exceeded) {
+  const wouldExceed =
+    limitCheck.limit !== null && limitCheck.current + parsed.quantity > limitCheck.limit
+
+  if (wouldExceed && limitCheck.overageRateInCents === 0) {
     throw new BadRequestError(
       `Usage limit exceeded for ${parsed.metricType}: ${limitCheck.current}/${limitCheck.limit}`
     )
@@ -2278,8 +2374,17 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
     subscriptionId: sub.id,
   })
 
+  const newCurrent = limitCheck.current + parsed.quantity
+  const newOverageUnits =
+    limitCheck.limit !== null && newCurrent > limitCheck.limit ? newCurrent - limitCheck.limit : 0
+
   return c.json({
-    remaining: (limitCheck.limit ?? 0) - limitCheck.current - parsed.quantity,
+    overage: {
+      costInCents: newOverageUnits * limitCheck.overageRateInCents,
+      rateInCents: limitCheck.overageRateInCents,
+      units: newOverageUnits,
+    },
+    remaining: limitCheck.limit !== null ? Math.max(0, limitCheck.limit - newCurrent) : null,
     success: true,
   })
 })
@@ -2679,19 +2784,18 @@ app.get('/api/automation/manifest', async (c) => {
       headerName: 'Authorization',
       headerValueFormat: 'Bearer vk_your_api_key',
       scopes: [
-        'blog.read',
-        'blog.write',
-        'billing.read',
-        'items.read',
-        'items.write',
-        'orgs.read',
-        'orgs.write',
-        'teams.read',
-        'teams.write',
-        'users.read',
-        'webhooks.read',
-        'webhooks.write',
-        'analytics.read',
+        'read:blog',
+        'write:blog',
+        'read:billing',
+        'write:billing',
+        'read:items',
+        'write:items',
+        'delete:items',
+        'read:organizations',
+        'write:organizations',
+        'read:teams',
+        'write:teams',
+        'admin',
       ],
       type: 'bearer',
     },
@@ -2927,7 +3031,14 @@ protectedApp.post(
       }).catch((error) => console.error('Failed to send comment notification:', error))
     }
 
-    return c.json({ id, status }, 201)
+    // Index approved comments for search
+    if (commentStatus === 'approved') {
+      indexComment(db, id).catch((error) =>
+        console.error('Search index failed (comment create):', error)
+      )
+    }
+
+    return c.json({ id, status: commentStatus }, 201)
   }
 )
 
@@ -2946,7 +3057,7 @@ protectedApp.patch('/comments/:id', validate(updateCommentSchema), async (c) => 
     .set({
       content: parsed.content,
       editedAt: new Date(),
-      htmlContent: parsed.content,
+      htmlContent: null,
       updatedAt: new Date(),
     })
     .where(eq(comment.id, id))
@@ -2967,6 +3078,10 @@ protectedApp.delete('/comments/:id', async (c) => {
   }
 
   await db.delete(comment).where(eq(comment.id, id))
+
+  deindexEntity(db, id, 'comment').catch((error) =>
+    console.error('Search deindex failed (comment delete):', error)
+  )
 
   await writeAuditLog(db, {
     action: 'comment.delete',
@@ -3836,6 +3951,14 @@ blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
     throw new BadRequestError(sigError)
   }
 
+  const scanResult = await scanUploadedFile(file)
+  if (!scanResult.clean) {
+    return c.json(
+      { error: `File rejected: threat detected (${scanResult.threats.join(', ')})` },
+      422
+    )
+  }
+
   const key = generateStorageKey(file.name)
   const result = await c.get('services').storage.put(key, file.stream(), {
     contentType: file.type,
@@ -4108,6 +4231,20 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
   // Revoke all sessions when user is suspended
   if (updates.status === 'suspended') {
     await db.delete(sessionTable).where(eq(sessionTable.userId, targetId))
+
+    // Notify the suspended user via email (fire-and-forget)
+    c.executionCtx?.waitUntil?.(
+      import('$lib/server/auth').then(({ getEmailService }) => {
+        const emailService = getEmailService()
+        if (emailService) {
+          return emailService.sendAccountSuspended(existing.email, {
+            appealUrl: '{{APP_URL}}/appeal',
+            reason: 'Account suspended by administrator.',
+            userName: existing.name,
+          })
+        }
+      })
+    )
   }
 
   // Re-index user in search
@@ -4173,6 +4310,21 @@ adminApp.post(
       },
       userId: currentUser.id,
     })
+
+    // Notify the banned user via email (fire-and-forget)
+    c.executionCtx?.waitUntil?.(
+      import('$lib/server/auth').then(({ getEmailService }) => {
+        const emailService = getEmailService()
+        if (emailService) {
+          return emailService.sendAccountSuspended(target.email, {
+            appealUrl: '{{APP_URL}}/appeal',
+            expiresAt: banExpiresAt?.toLocaleDateString() ?? undefined,
+            reason: body.reason.trim(),
+            userName: target.name,
+          })
+        }
+      })
+    )
 
     return c.json({ success: true })
   }
@@ -4723,6 +4875,24 @@ app.post('/api/admin/publish-scheduled', withRateLimit('admin-publish', 5, 60_00
 
   return c.json({ posts: due.map((p) => p.slug), published: due.length })
 })
+
+app.post(
+  '/api/admin/retry-webhooks',
+  withRateLimit('admin-webhooks-retry', 5, 60_000),
+  async (c) => {
+    const cronSecret = c.req.header('x-cron-secret')
+    const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
+    const currentUser = c.get('user')
+
+    if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
+      throw new ForbiddenError()
+    }
+
+    const { db } = c.get('services')
+    const result = await processRetryableDeliveries(db)
+    return c.json(result)
+  }
+)
 
 // ── Organizations (auth required) ─────────────────────────────────────
 
@@ -6444,6 +6614,13 @@ adminApp.patch('/comments/:id/moderate', validate(moderateCommentSchema), async 
       type: 'success',
       userId: existing.authorId,
     }).catch((error) => console.error('Failed to send approval notification:', error))
+    indexComment(db, id).catch((error) =>
+      console.error('Search index failed (comment approve):', error)
+    )
+  } else if (parsed.status === 'rejected' || parsed.status === 'spam') {
+    deindexEntity(db, id, 'comment').catch((error) =>
+      console.error('Search deindex failed (comment reject):', error)
+    )
   }
 
   return c.json({ success: true })
@@ -6458,6 +6635,10 @@ adminApp.delete('/comments/:id', async (c) => {
   if (!existing) throw new NotFoundError()
 
   await db.delete(comment).where(eq(comment.id, id))
+
+  deindexEntity(db, id, 'comment').catch((error) =>
+    console.error('Search deindex failed (admin comment delete):', error)
+  )
 
   await writeAuditLog(db, {
     action: 'comment.admin_delete',
@@ -6619,10 +6800,117 @@ adminApp.post('/billing/refund', validate(refundSchema), async (c) => {
         status: refund.status,
       },
     })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Refund failed'
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Refund failed'
     return c.json({ error: message }, 500)
   }
+})
+
+// ── Admin Coupon Management ────────────────────────────────────────────
+
+adminApp.get('/billing/coupons', async (c) => {
+  const { db } = c.get('services')
+  const coupons = await listCoupons(db)
+  return c.json({ coupons })
+})
+
+adminApp.post('/billing/coupons', validate(createCouponSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+
+  const existing = await getCouponByCode(db, parsed.code)
+  if (existing) return c.json({ error: 'Coupon code already exists' }, 409)
+
+  let stripeCouponId: string | undefined
+  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+  if (stripe) {
+    try {
+      const result = await createStripeCoupon(stripe, {
+        duration: parsed.duration,
+        durationInMonths: parsed.durationInMonths,
+        maxRedemptions: parsed.maxRedemptions,
+        name: parsed.name,
+        percentOff: parsed.percentOff,
+        redeemBy: parsed.redeemBy,
+      })
+      stripeCouponId = result.stripeCouponId
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create Stripe coupon'
+      return c.json({ error: message }, 500)
+    }
+  }
+
+  const newCoupon = await createCoupon(db, {
+    active: parsed.active,
+    code: parsed.code,
+    currency: parsed.currency,
+    duration: parsed.duration,
+    durationInMonths: parsed.durationInMonths,
+    maxRedemptions: parsed.maxRedemptions,
+    name: parsed.name,
+    percentOff: parsed.percentOff,
+    redeemBy: parsed.redeemBy,
+    stripeCouponId,
+  })
+
+  return c.json({ coupon: newCoupon }, 201)
+})
+
+adminApp.patch('/billing/coupons/:id', validate(updateCouponSchema), async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+  const parsed = c.req.valid('json')
+
+  const existing = await db.select().from(coupon).where(eq(coupon.id, id)).get()
+  if (!existing) throw new NotFoundError()
+
+  const updated = await updateCoupon(db, id, parsed)
+  return c.json({ coupon: updated })
+})
+
+adminApp.delete('/billing/coupons/:id', async (c) => {
+  const { db } = c.get('services')
+  const id = c.req.param('id')
+
+  const existing = await db.select().from(coupon).where(eq(coupon.id, id)).get()
+  if (!existing) throw new NotFoundError()
+
+  await updateCoupon(db, id, { active: false })
+  return c.json({ success: true })
+})
+
+// ── User Coupon Redemption ─────────────────────────────────────────────
+
+protectedApp.post('/billing/coupons/redeem', validate(redeemCouponSchema), async (c) => {
+  const parsed = c.req.valid('json')
+  const { db } = c.get('services')
+
+  const result = await redeemCoupon(db, parsed.code)
+  if (!result.redeemed) {
+    return c.json({ error: result.error }, 400)
+  }
+
+  return c.json({ coupon: result.coupon, redeemed: true })
+})
+
+protectedApp.get('/billing/coupons/:code', async (c) => {
+  const code = c.req.param('code')
+  const { db } = c.get('services')
+
+  const validation = await validateCouponForRedemption(db, code)
+  if (!validation.valid) {
+    return c.json({ error: validation.error, valid: false }, 404)
+  }
+
+  return c.json({
+    coupon: {
+      code: validation.coupon!.code,
+      duration: validation.coupon!.duration,
+      name: validation.coupon!.name,
+      percentOff: validation.coupon!.percentOff,
+    },
+    valid: true,
+  })
 })
 
 adminApp.get('/billing/stripe-events', async (c) => {
@@ -6845,6 +7133,14 @@ adminApp.post('/media/upload', withRateLimit('upload', 10, 60_000), async (c) =>
   const sigError = await validateFileSignature(file)
   if (sigError) throw new BadRequestError(sigError)
 
+  const scanResult = await scanUploadedFile(file)
+  if (!scanResult.clean) {
+    return c.json(
+      { error: `File rejected: threat detected (${scanResult.threats.join(', ')})` },
+      422
+    )
+  }
+
   const key = generateStorageKey(file.name)
   const arrayBuffer = await file.arrayBuffer()
   const body = new Uint8Array(arrayBuffer)
@@ -6865,6 +7161,36 @@ adminApp.post('/media/bulk-delete', validate(bulkDeleteMediaSchema), async (c) =
     await services.storage.delete(key)
   }
   return c.json({ deleted: keys.length })
+})
+
+// ── Presigned URLs ────────────────────────────────────────────────────
+
+protectedApp.post('/storage/presign-get', async (c) => {
+  const key = c.req.query('key')
+  if (!key) throw new BadRequestError('Missing key parameter')
+  const { storage } = c.get('services')
+  const url = await storage.getPresignedUrl(key, { expiresIn: 3600 })
+  return c.json({ url })
+})
+
+protectedApp.post('/storage/presign-put', async (c) => {
+  const key = c.req.query('key')
+  if (!key) throw new BadRequestError('Missing key parameter')
+  const contentType = c.req.query('contentType')
+  const { storage } = c.get('services')
+  const url = await storage.putPresignedUrl(key, { contentType, expiresIn: 3600 })
+  return c.json({ url })
+})
+
+adminApp.post('/storage/thumbnail', async (c) => {
+  const key = c.req.query('key')
+  if (!key) throw new BadRequestError('Missing key parameter')
+  const width = parseClampInt(c.req.query('width'), 200, 50, 2000)
+  const height = parseClampInt(c.req.query('height'), 200, 50, 2000)
+  const { storage } = c.get('services')
+  const result = await generateThumbnail(storage, key, { height, width })
+  if (!result) throw new BadRequestError('Failed to generate thumbnail')
+  return c.json(result, 201)
 })
 
 // ── Admin Search Index ────────────────────────────────────────────────
@@ -6891,14 +7217,36 @@ adminApp.delete('/search/index', validate(deleteSearchIndexSchema), async (c) =>
   return c.json({ deleted: true })
 })
 
-adminApp.post('/search/reindex', async (c) => {
+adminApp.post('/search/reindex', validate(reindexSchema), async (c) => {
   const { db } = c.get('services')
-  const [blogCount, itemCount, userCount] = await Promise.all([
+  const parsed = c.req.valid('json')
+  const entityType = parsed?.entityType
+
+  if (entityType) {
+    const reindexers: Record<string, () => Promise<number>> = {
+      blog_post: () => reindexAllBlogPosts(db),
+      comment: () => reindexAllComments(db),
+      item: () => reindexAllItems(db),
+      user: () => reindexAllUsers(db),
+    }
+    const reindexer = reindexers[entityType]
+    if (!reindexer) return c.json({ error: `Unknown entity type: ${entityType}` }, 400)
+    const count = await reindexer()
+    return c.json({ [entityType]: count })
+  }
+
+  const [blogCount, itemCount, userCount, commentCount] = await Promise.all([
     reindexAllBlogPosts(db),
     reindexAllItems(db),
     reindexAllUsers(db),
+    reindexAllComments(db),
   ])
-  return c.json({ blogPosts: blogCount, items: itemCount, users: userCount })
+  return c.json({
+    blogPosts: blogCount,
+    comments: commentCount,
+    items: itemCount,
+    users: userCount,
+  })
 })
 
 // ── Mount sub-apps ───────────────────────────────────────────────────
