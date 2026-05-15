@@ -39,7 +39,7 @@ The Organizations & Teams phase covers org CRUD, member management with roles/pe
 
 1. **No invitation management UI** ~~: Users can send invitations from the org detail page, but there is no way to view pending invitations, cancel them, or re-send expired ones.~~ ✅ FIXED: Added `GET /api/orgs/:orgId/invitations` and `DELETE /api/orgs/:orgId/invitations/:id` endpoints. Pending invitations now shown on org detail page with revoke buttons.
 
-2. **No invitation acceptance UI**: When a user receives an org invitation, there is no UI to view and accept/decline it. The API supports accepting via token, but no user-facing page exists for this flow.
+2. **No invitation acceptance UI** ~~: When a user receives an org invitation, there is no UI to view and accept/decline it.~~ ✅ FIXED: `/app/invitations` page lists pending invitations with Accept and Decline buttons.
 
 3. **No org-level billing management**: The billing page (`/app/settings/billing`) is user-scoped. There is no way to view or manage subscriptions from within an organization context. The infrastructure supports org-scoped subscriptions (the `subscription.organizationId` column) but the UI does not expose this.
 

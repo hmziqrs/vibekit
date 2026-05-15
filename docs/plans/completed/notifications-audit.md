@@ -242,7 +242,7 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 | -------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Web Push API               | DONE    | `src/lib/server/push.ts` -- Uses `web-push` library. `configureWebPush()` sets VAPID keys. `sendPushNotification()` sends to all user subscriptions.                                                                                                                                                                                      |
 | Subscription management    | DONE    | `subscribeToPush()` with upsert (on conflict, update keys). `unsubscribeFromPush()` removes by endpoint. `getUserPushSubscriptions()` lists subs (limit 50). API endpoints: `POST /push/subscribe`, `POST /push/unsubscribe`, `GET /push/subscriptions`.                                                                                  |
-| Notification click actions | PARTIAL | Push payload includes `data: { url: '/app/notifications' }` in the test notification. The notification bell component handles click-to-navigate for in-app notifications, but there is no service worker to handle push notification click events (which would need `self.addEventListener('notificationclick', ...)` in a `sw.js` file). |
+| Notification click actions | PARTIAL | Push payload includes `data: { url: '/app/notifications' }` in the test notification. ✅ Service worker exists at `static/sw.js` with `push` and `notificationclick` event listeners. Registration happens in settings page via `navigator.serviceWorker.register('/sw.js')`. |
 
 ### Database Schema
 
@@ -267,7 +267,7 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 - `configureWebPush()` is called inside the `/push/test` endpoint handler, not during app initialization. For the test endpoint this is fine (it's the only place that sends push), but if push sending were integrated into other flows (e.g., notification creation), VAPID keys would need to be configured each time.
 - Fix: Configure VAPID keys once during app boot or in a middleware.
 
-**MEDIUM -- No service worker for handling push notification clicks.**
+**MEDIUM -- No service worker for handling push notification clicks.** ✅ FIXED: `static/sw.js` exists with `push` and `notificationclick` event handlers. Service worker registered in settings page.
 
 - Location: `src/web-push.d.ts` (type declaration exists, but no `sw.js` or `service-worker.js` file)
 - The `web-push` library handles sending notifications to push services, but the browser side requires a service worker with `push` and `notificationclick` event listeners to display and handle clicked notifications.
