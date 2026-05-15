@@ -141,3 +141,59 @@ describe('Magic bytes validation for chunked upload', () => {
     expect(matchesMagicBytes(pngHeader, 'image/png')).toBe(true)
   })
 })
+
+describe('Chunked upload virus scanning', () => {
+  it('blocks assembled chunk with PE executable header', async () => {
+    const { scanBuffer } = await import('$lib/server/virus-scan')
+    const { matchesMagicBytes } = await import('$lib/server/upload')
+
+    // Simulate assembled chunk data that has MZ header
+    const assembled = new Uint8Array([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00])
+
+    // Magic bytes would pass for unknown type
+    expect(matchesMagicBytes(assembled, 'application/octet-stream')).toBe(true)
+
+    // But virus scan catches it
+    const scanResult = await scanBuffer(assembled)
+    expect(scanResult.clean).toBe(false)
+    expect(scanResult.threats).toContain('PE-Executable')
+  })
+
+  it('blocks assembled chunk with ELF executable header', async () => {
+    const { scanBuffer } = await import('$lib/server/virus-scan')
+    const assembled = new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01])
+    const result = await scanBuffer(assembled)
+    expect(result.clean).toBe(false)
+    expect(result.threats).toContain('ELF-Executable')
+  })
+
+  it('blocks assembled chunk with EICAR test signature', async () => {
+    const { scanBuffer } = await import('$lib/server/virus-scan')
+    const assembled = new Uint8Array([0x58, 0x35, 0x4f, 0x21, 0x50, 0x25, 0x40, 0x41, 0x50, 0x5b])
+    const result = await scanBuffer(assembled)
+    expect(result.clean).toBe(false)
+    expect(result.threats).toContain('EICAR-Test')
+  })
+
+  it('passes assembled chunk with valid JPEG data', async () => {
+    const { scanBuffer } = await import('$lib/server/virus-scan')
+    const assembled = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46])
+    const result = await scanBuffer(assembled)
+    expect(result.clean).toBe(true)
+    expect(result.threats).toEqual([])
+  })
+
+  it('detects embedded PE header within first 1KB of large assembled chunk', async () => {
+    const { scanBuffer } = await import('$lib/server/virus-scan')
+    // Simulate a large assembled file (e.g., from chunked upload)
+    const assembled = new Uint8Array(2048)
+    // Place PE header at offset 200 (within scan window)
+    assembled[200] = 0x50
+    assembled[201] = 0x45
+    assembled[202] = 0x00
+    assembled[203] = 0x00
+    const result = await scanBuffer(assembled)
+    expect(result.clean).toBe(false)
+    expect(result.threats).toContain('Embedded-PE')
+  })
+})

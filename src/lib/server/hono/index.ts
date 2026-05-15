@@ -190,7 +190,7 @@ import {
   recordChunk,
 } from '$lib/server/upload-session'
 import { uuid } from '$lib/server/uuid'
-import { scanUploadedFile } from '$lib/server/virus-scan'
+import { scanBuffer, scanUploadedFile } from '$lib/server/virus-scan'
 import {
   createWebhookEndpoint,
   deleteWebhookEndpoint,
@@ -1997,6 +1997,13 @@ protectedApp.post('/uploads/session/:id/complete', async (c) => {
   if (!matchesMagicBytes(new Uint8Array(assembled), session.fileType as string)) {
     await cleanupChunks(sessionId)
     throw new BadRequestError('File content does not match declared type')
+  }
+
+  // Scan for malicious content
+  const scanResult = await scanBuffer(new Uint8Array(assembled))
+  if (!scanResult.clean) {
+    await cleanupChunks(sessionId)
+    throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
   }
 
   const key = generateStorageKey(session.fileName as string)
