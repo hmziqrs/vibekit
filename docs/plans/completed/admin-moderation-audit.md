@@ -45,15 +45,15 @@ The Admin & Moderation phase is the most feature-rich area of the codebase. All 
 
 ### HIGH
 
-1. **No impersonation UI**: The impersonation API is fully implemented (start/stop, audit trail, reason logging, `impersonation_session` table) but there is no button or form in the admin UI to initiate impersonation. An admin cannot impersonate a user without calling the API directly.
+1. **No impersonation UI** ✅ FIXED: Impersonation dialog with reason textarea added to the admin users page. Admins can now initiate impersonation from the UI.
 
-2. **No user detail view**: The admin users list shows name, email, role, status, and created date. There is no way to click into a user to see their full profile, items, organizations, sessions, audit history, or perform impersonation.
+2. **No user detail view** ✅ FIXED: New `GET /api/admin/users/:id` endpoint and detail page at `src/routes/(admin)/admin/users/[id]/+page.svelte` with profile info, stats cards, recent activity, and action buttons.
 
 3. **No bulk operations on users**: No select-all checkbox, no bulk ban, no bulk role change, no bulk delete. Each action must be performed one user at a time.
 
 4. **No email template editor**: Email templates are hardcoded in `src/lib/server/email/`. There is no admin UI to preview or edit email templates. The ROADMAP explicitly claims "email template editor."
 
-5. **No audit log page**: The `/admin/audit` route file exists but appears to be a stub. There is no dedicated, searchable, paginated audit log browser. Audit entries are only visible as a feed on the dashboard (last N entries, no filtering).
+5. **No audit log page** ✅ FIXED: Admin audit page exists at `src/routes/(admin)/admin/audit/+page.svelte` with filtering and pagination.
 
 ### MEDIUM
 

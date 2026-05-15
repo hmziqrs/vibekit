@@ -273,10 +273,10 @@
         {#each usersQuery.data.users as user (user.id)}
           <tr class="transition-colors hover:bg-white/[0.02]">
             <td class="px-5 py-3.5">
-              <div>
-                <p class="text-[13px] font-medium text-text-primary">{user.name || '—'}</p>
+              <a href="/admin/users/{user.id}" class="block">
+                <p class="text-[13px] font-medium text-text-primary hover:text-brand transition-colors">{user.name || '—'}</p>
                 <p class="text-[12px] text-text-subtle">{user.email}</p>
-              </div>
+              </a>
             </td>
             <td class="px-5 py-3.5">
               <StatusBadge status={user.role ?? 'user'} colorMap={roleColors} />

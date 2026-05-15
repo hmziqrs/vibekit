@@ -36,6 +36,8 @@
   let inviteSuccess = $state('')
   let removingMemberId = $state('')
   let mutationError = $state('')
+  let leaving = $state(false)
+  let showLeaveDialog = $state(false)
 
   const orgId = $derived(page.params.id)
   const queryClient = useQueryClient()
@@ -125,6 +127,24 @@
     }
   }
 
+  async function leaveOrganization() {
+    leaving = true
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/leave`, { method: 'POST' })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: { message?: string } }
+        throw new Error(data.error?.message ?? 'Failed to leave organization')
+      }
+      await queryClient.invalidateQueries({ queryKey: ['organization', orgId] })
+      window.location.href = '/app/organizations'
+    } catch (error) {
+      mutationError = error instanceof Error ? error.message : 'Failed to leave organization'
+      showLeaveDialog = false
+      leaving = false
+    }
+  }
+
   function getRoleBadgeColor(role: string) {
     const colors: Record<string, string> = {
       admin: 'bg-info/20 text-info',
@@ -173,6 +193,14 @@
           >
             Settings
           </a>
+        {/if}
+        {#if membership.role !== 'owner'}
+          <button
+            onclick={() => (showLeaveDialog = true)}
+            class="rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+          >
+            Leave
+          </button>
         {/if}
       </div>
     </div>
@@ -298,5 +326,44 @@
         </div>
       {/if}
     </div>
+
+    <!-- Leave Organization Dialog -->
+    {#if showLeaveDialog}
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Leave organization"
+      >
+        <div class="w-full max-w-md rounded-xl border border-white/[0.06] bg-surface p-6 shadow-xl">
+          <h2 class="text-lg font-semibold text-text-primary">Leave Organization</h2>
+          <p class="mt-2 text-[13px] text-text-muted">
+            Are you sure you want to leave <span class="font-medium text-text-secondary">{org.name}</span>?
+            You will lose access to all organization resources.
+          </p>
+
+          {#if mutationError}
+            <p class="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{mutationError}</p>
+          {/if}
+
+          <div class="mt-5 flex justify-end gap-3">
+            <button
+              class="rounded-lg border border-white/[0.06] px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-white/[0.04]"
+              onclick={() => { showLeaveDialog = false; mutationError = '' }}
+              disabled={leaving}
+            >
+              Cancel
+            </button>
+            <button
+              class="rounded-lg bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+              onclick={leaveOrganization}
+              disabled={leaving}
+            >
+              {leaving ? 'Leaving...' : 'Leave Organization'}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
   {/if}
 </div>

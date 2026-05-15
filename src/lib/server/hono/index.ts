@@ -4446,6 +4446,63 @@ adminApp.get('/users', async (c) => {
   return c.json({ total: countResult[0]?.count ?? 0, users })
 })
 
+adminApp.get('/users/:id', async (c) => {
+  const { db } = c.get('services')
+  const targetId = c.req.param('id')
+
+  const [target] = await db
+    .select({
+      createdAt: user.createdAt,
+      displayName: user.displayName,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      id: user.id,
+      image: user.image,
+      lastLoginAt: user.lastLoginAt,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+      updatedAt: user.updatedAt,
+    })
+    .from(user)
+    .where(and(eq(user.id, targetId), isNull(user.deletedAt)))
+
+  if (!target) {
+    throw new NotFoundError('User not found')
+  }
+
+  const [itemStats] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(item)
+    .where(eq(item.userId, targetId))
+
+  const [orgStats] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(organizationMember)
+    .where(eq(organizationMember.userId, targetId))
+
+  const recentAudit = await db
+    .select({
+      action: auditLog.action,
+      createdAt: auditLog.createdAt,
+      entityId: auditLog.entityId,
+      entityType: auditLog.entityType,
+      id: auditLog.id,
+      metadata: auditLog.metadata,
+    })
+    .from(auditLog)
+    .where(eq(auditLog.userId, targetId))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(10)
+
+  return c.json({
+    audit: recentAudit,
+    items: itemStats?.count ?? 0,
+    organizations: orgStats?.count ?? 0,
+    user: target,
+  })
+})
+
 adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchema), async (c) => {
   const parsed = c.req.valid('json')
   const currentUser = c.get('user')

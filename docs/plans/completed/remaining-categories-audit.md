@@ -174,11 +174,11 @@ None. All three features are fully implemented with schema, server logic, API en
 ### Critical Gaps
 
 1. **No IP anonymization** — Analytics requests to `/api/analytics/view` use a `visitorHash` but the hashing is done server-side. The raw IP reaches the worker.
-2. **No Do Not Track support** — `navigator.doNotTrack` is never checked.
+2. **No Do Not Track support** ✅ FIXED — `isDoNotTrack()` checks `navigator.doNotTrack`. `shouldTrack()` short-circuits on DNT.
 3. **No product analytics** — Only blog reading metrics. No signup funnels, retention cohorts, or conversion tracking.
 4. **No infrastructure analytics** — No worker CPU time, D1 latency, R2 bandwidth, or cache hit rate monitoring.
 5. **No CSV export or scheduled reports** — Analytics are API-only with no export capability.
-6. **CF Web Analytics beacon loads before consent** — `cf-beacon.svelte` is rendered in the public layout regardless of consent status (mitigated by empty token default).
+6. **CF Web Analytics beacon loads before consent** ✅ FIXED — `cf-beacon.svelte` is now gated on `shouldTrack()`.
 
 ### Files
 
@@ -219,10 +219,10 @@ None. All three features are fully implemented with schema, server logic, API en
 
 1. **No automated data retention/deletion** — Soft-deleted accounts never hard-delete. Audit logs and analytics data have no TTL or cleanup.
 2. **No ToS versioning or acceptance tracking** — Terms are static HTML. No record of which version a user accepted.
-3. **Audit log is mutable** — No database-level constraints prevent deletion or modification of audit entries.
+3. **Audit log is mutable** ✅ FIXED — Migration `0041_audit_log_immutable.sql` adds `RAISE ABORT` triggers that prevent UPDATE and DELETE on the `audit_log` table.
 4. **No granular consent categories** — Binary accept/decline violates GDPR guidance on granular consent.
 5. **No DPA documentation** — No Data Processing Agreement template or documentation.
-6. **CF Web Analytics bypasses consent** — Beacon loads before consent check in public layout.
+6. **CF Web Analytics bypasses consent** ✅ FIXED — Beacon now gated on `shouldTrack()` which checks consent status.
 7. **Privacy policy lacks GDPR-required specifics** — No legal basis disclosure, no data retention periods per category, no third-country transfer information.
 
 ### Files

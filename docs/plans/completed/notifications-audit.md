@@ -55,10 +55,11 @@
 - Notifications are polled every 30 seconds. In a Cloudflare Workers environment, implementing WebSockets is not straightforward, but Server-Sent Events (SSE) could work via the streaming response API.
 - Impact: Users may not see notifications for up to 30 seconds. For time-sensitive alerts (security, payments), this is inadequate.
 
-**MEDIUM -- No notification preferences UI.**
+**MEDIUM -- No notification preferences UI.** ✅ FIXED
 
 - The API endpoints for getting/setting preferences exist (`GET/PATCH /api/notifications/preferences`), but there is no user-facing settings page to configure them. The `notificationPreference` channel enum is limited to `in_app` and `email`, with no UI to toggle either.
 - Impact: Users cannot control which notification types they receive. Preferences default to enabled (`isInAppEnabled` returns `true` when no preference exists).
+- **Fix applied:** Notification preferences page already exists at `/app/settings/notifications` with `in_app`, `email`, and `push` channels.
 
 **LOW -- Notification list has no filtering or search.**
 
@@ -272,14 +273,16 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 - The `web-push` library handles sending notifications to push services, but the browser side requires a service worker with `push` and `notificationclick` event listeners to display and handle clicked notifications.
 - Impact: Push notifications may be received by the browser but not displayed, or if displayed, clicking them will not navigate the user to the relevant page.
 
-**MEDIUM -- Push notifications are not integrated into the notification creation flow.**
+**MEDIUM -- Push notifications are not integrated into the notification creation flow.** ✅ FIXED
 
 - `createNotification()` in `src/lib/server/notifications.ts` only creates in-app notifications. It does not trigger push notifications. The two systems are completely disconnected.
 - Impact: Users who have enabled push notifications will only receive the test notification, not actual system notifications.
+- **Fix applied:** `createNotification()` now calls `sendPushNotification()` when the user's push notification preference is enabled.
 
-**LOW -- No push notification preferences.**
+**LOW -- No push notification preferences.** ✅ FIXED
 
 - The `notificationPreference` table supports `channel: 'in_app' | 'email'` but has no `push` channel. There is no way for users to opt out of push while keeping in-app notifications enabled.
+- **Fix applied:** `'push'` added to the `notificationPreference` channel enum.
 
 **LOW -- Invalid subscription cleanup is synchronous.**
 

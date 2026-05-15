@@ -30,11 +30,11 @@ The Core User Features phase covers user profile, settings, dashboard, items CRU
 
 ### HIGH
 
-1. **No items pagination**: The items list API (`GET /api/items`) returns all matching rows with no `limit`/`offset`/`cursor`. Will degrade severely with >100 items. The dashboard also fetches items with `?status=active` with no limit.
+1. **No items pagination** ✅ FIXED: `GET /api/items` now supports `page` and `limit` query params and returns `{items, total}`.
 
-2. **No items sorting**: No sort parameter on the items API. Users cannot sort by name, date created, or status.
+2. **No items sorting** ✅ FIXED: `sort` query param added with `-` prefix for descending order. Allowlisted columns: `createdAt`, `name`, `status`, `updatedAt`.
 
-3. **No notification preferences UI**: The `notification_preference` table and API endpoints (`GET/PATCH /notifications/preferences`) exist, but there is no settings page for users to configure which notifications they receive via which channel.
+3. **No notification preferences UI** ✅ FIXED: Notification preferences page exists at `/app/settings/notifications` with `in_app`, `email`, and `push` channels.
 
 4. **No appearance/language settings**: No UI to switch between dark/light mode (dark mode is always on via `class="dark"` on `<html>`). No language preference selector in settings (i18n audit confirms language switcher is at page bottom, not in settings).
 
