@@ -142,10 +142,7 @@
 - Impact: Newsletter confirmations may never arrive if the Worker recycles before the queue is processed.
 - Fix: Use Cloudflare Queues or D1-backed persistence for the email queue. Alternatively, always use `sendImmediate()` for critical transactional emails.
 
-**MEDIUM -- No `List-Unsubscribe` header.**
-
-- Outgoing emails do not include `List-Unsubscribe` or `List-Unsubscribe-Post` headers. This is a deliverability concern -- Gmail and other providers may flag emails without unsubscribe headers as spam.
-- Fix: Add `List-Unsubscribe: <https://vibekit.dev/api/newsletter/unsubscribe?token=...>` header to newsletter emails.
+~~**MEDIUM -- No `List-Unsubscribe` header.**~~ **FIXED** — `sendNewsletterConfirmation()` already includes `List-Unsubscribe: <https://vibekit.com/api/newsletter/unsubscribe>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers (email/index.ts lines 43-45).
 
 **MEDIUM -- Bounce handling only covers newsletter subscribers.**
 
@@ -338,7 +335,7 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 | ------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | In-App Notifications      | 7/10  | Solid bell component with polling. Missing real-time, preferences UI, and filtering.                                                                                 |
 | System-to-User Alerts     | 8/10  | Broadcast, payment receipts, admin warnings, and account status changes all implemented and wired to email service. Broadcast not auto-triggered.                    |
-| Email Infrastructure      | 5/10  | Template system and queue exist, but queue is in-memory (lost on Worker recycle). Bounce handling is newsletter-only. No unsubscribe headers.                        |
+| Email Infrastructure      | 7/10  | Template system and queue exist. List-Unsubscribe header on newsletter emails. Queue is in-memory (Worker recycle concern). Bounce handling is newsletter-only.      |
 | Email Templates           | 8/10  | 12 of 13 templates exist including all critical SaaS emails (billing, security, team invite). Only custom template editor missing. No preview mechanism.             |
 | Push Notifications        | 7/10  | VAPID subscription flow works. Service worker integrated. Push dispatched from createNotification. Push preference channel added. VAPID keys configured per-request. |
 | Slack/Discord Integration | 1/10  | OAuth connection exists. Zero actual functionality -- no messages sent, no slash commands, no channel routing.                                                       |

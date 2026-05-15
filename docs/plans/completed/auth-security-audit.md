@@ -68,10 +68,7 @@ Each claimed feature from `docs/loop.md` (Auth & Security section, lines 93-104)
    - **Why**: The claim lists "remember device" as a 2FA feature. Without it, users must enter a TOTP code on every login, which is a poor UX that discourages 2FA adoption.
    - **How**: Set an HttpOnly cookie on successful 2FA verification. In the 2FA challenge flow, check for this cookie and skip the TOTP prompt if valid.
 
-9. **Progressive backoff is not implemented**
-   - **Fix**: Increase the lockout duration on repeated lockouts (e.g., 15min, 1hr, 24hr, permanent).
-   - **Why**: The claim mentions "progressive backoff." Currently, the lockout is always 15 minutes regardless of how many times the user has been locked out.
-   - **How**: Track the number of lockouts in the `loginAttempt` table. Multiply the lockout duration by a factor based on lockout count.
+9. ~~**Progressive backoff is not implemented**~~ **FIXED** — `recordFailedAttempt()` in `auth-lockout.ts` implements exponential backoff: `BASE_LOCKOUT_MS * Math.pow(2, newCount - MAX_ATTEMPTS)` gives 5min, 10min, 20min, 40min, 80min... progression on repeated lockouts.
 
 10. **Action quotas per subscription tier do not exist**
     - **Fix**: Add tier-based rate limit configuration. Look up the user's subscription tier and apply different limits.
