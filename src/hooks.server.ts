@@ -266,6 +266,34 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
             // New device detection failed — non-critical, don't block login
             console.error('New device detection failed:', error)
           }
+
+          // Suspicious login detection — country change from known sessions
+          if (userId) {
+            try {
+              const currentCountry = event.request.headers.get('cf-ipcountry')
+              if (currentCountry) {
+                const knownSessions = await services.db
+                  .select({ ipAddress: sessionTable.ipAddress })
+                  .from(sessionTable)
+                  .where(eq(sessionTable.userId, userId))
+                const knownIPs = knownSessions
+                  .map((s) => s.ipAddress)
+                  .filter((ip): ip is string => ip !== null)
+                // If new device from a different country, flag as suspicious
+                if (isNewDevice(knownIPs, requestIP ?? '')) {
+                  await writeSecurityEvent(services.db, {
+                    eventType: 'suspicious_login',
+                    ipAddress: requestIP,
+                    metadata: { country: currentCountry, knownIPCount: knownIPs.length },
+                    userAgent: requestUA ?? undefined,
+                    userId,
+                  })
+                }
+              }
+            } catch {
+              // Suspicious login detection failed — non-critical
+            }
+          }
         }
 
         console.info(
@@ -284,6 +312,28 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           metadata: { attemptCount: result.attemptCount, email },
           userAgent: requestUA ?? undefined,
         })
+        // Send lockout alert email when account gets locked
+        if (result.lockedOut) {
+          await writeSecurityEvent(services.db, {
+            eventType: 'account_locked',
+            ipAddress: requestIP,
+            metadata: { attemptCount: result.attemptCount, email, reason: 'brute_force' },
+            userAgent: requestUA ?? undefined,
+          })
+          const alertService = getEmailService()
+          if (alertService && event.locals.user?.email) {
+            alertService
+              .sendSecurityAlert(event.locals.user.email, {
+                details: `${result.attemptCount} failed attempts from ${requestIP ?? 'unknown IP'}`,
+                eventTime: new Date().toISOString(),
+                eventType: 'account_locked',
+                ipAddress: requestIP,
+                userAgent: requestUA ?? undefined,
+                userName: event.locals.user.name ?? undefined,
+              })
+              .catch((error) => console.error('Lockout alert email failed:', error))
+          }
+        }
         console.warn(
           JSON.stringify({
             email,

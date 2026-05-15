@@ -39,7 +39,7 @@ export async function checkLockout(db: AppDb, email: string): Promise<LockoutSta
 export async function recordFailedAttempt(
   db: AppDb,
   email: string
-): Promise<{ attemptCount: number }> {
+): Promise<{ attemptCount: number; lockedOut: boolean }> {
   const now = new Date()
 
   const [existing] = await db.select().from(loginAttempt).where(eq(loginAttempt.id, email))
@@ -50,7 +50,7 @@ export async function recordFailedAttempt(
       id: email,
       lastAttemptAt: now,
     })
-    return { attemptCount: 1 }
+    return { attemptCount: 1, lockedOut: false }
   }
 
   // Reset counter if outside the attempt window
@@ -60,7 +60,7 @@ export async function recordFailedAttempt(
       .update(loginAttempt)
       .set({ attemptCount: 1, lastAttemptAt: now, lockedUntil: null })
       .where(eq(loginAttempt.id, email))
-    return { attemptCount: 1 }
+    return { attemptCount: 1, lockedOut: false }
   }
 
   const newCount = existing.attemptCount + 1
@@ -79,7 +79,7 @@ export async function recordFailedAttempt(
     })
     .where(eq(loginAttempt.id, email))
 
-  return { attemptCount: newCount }
+  return { attemptCount: newCount, lockedOut: lockoutUntil !== null }
 }
 
 export async function resetAttempts(db: AppDb, email: string): Promise<void> {
