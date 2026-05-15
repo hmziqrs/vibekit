@@ -12,9 +12,9 @@ export const password = z
 
 export const name = z
   .string()
+  .trim()
   .min(1, 'Name is required')
   .max(100, 'Name must be at most 100 characters')
-  .trim()
 
 export const slug = z
   .string()
@@ -24,8 +24,8 @@ export const slug = z
 
 export const displayName = z
   .string()
+  .trim()
   .min(1, 'Display name is required')
   .max(100, 'Display name must be at most 100 characters')
-  .trim()
   .optional()
   .nullable()

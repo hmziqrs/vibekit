@@ -90,12 +90,9 @@ describe('recordViewSchema', () => {
     expect(result.success).toBeFalsy()
   })
 
-  it('accepts whitespace-only postId (no trim on postId)', () => {
+  it('rejects whitespace-only postId', () => {
     const result = recordViewSchema.safeParse({ postId: '   ' })
-    expect(result.success).toBeTruthy()
-    if (result.success) {
-      expect(result.data.postId).toBe('   ')
-    }
+    expect(result.success).toBe(false)
   })
 
   it('accepts referrer at exactly max length (500)', () => {
@@ -141,11 +138,11 @@ describe('recordViewSchema', () => {
     expect(data.referrer).toBe('https://example.com/blog')
   })
 
-  it('does not trim whitespace from postId (no trim on postId)', () => {
+  it('trims whitespace from postId', () => {
     const data = recordViewSchema.parse({
       postId: '  my-post-id  ',
     })
-    expect(data.postId).toBe('  my-post-id  ')
+    expect(data.postId).toBe('my-post-id')
   })
 
   it('trims referrer with only whitespace to empty string', () => {
@@ -300,12 +297,9 @@ describe('recordReadingSchema', () => {
     expect(result.success).toBeFalsy()
   })
 
-  it('accepts whitespace-only postId (no trim on postId)', () => {
+  it('rejects whitespace-only postId', () => {
     const result = recordReadingSchema.safeParse({ ...validInput, postId: '   ' })
-    expect(result.success).toBeTruthy()
-    if (result.success) {
-      expect(result.data.postId).toBe('   ')
-    }
+    expect(result.success).toBe(false)
   })
 
   it('rejects progress below minimum (-1)', () => {

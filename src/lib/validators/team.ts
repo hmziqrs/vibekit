@@ -18,14 +18,14 @@ export const updateTeamSchema = z.object({
     .nullable(),
   name: z
     .string()
+    .trim()
     .min(1, 'Name is required')
-    .max(100, 'Name must be at most 100 characters')
-    .trim(),
+    .max(100, 'Name must be at most 100 characters'),
 })
 
 export const addTeamMemberSchema = z.object({
   role: teamRoleEnum.default('member'),
-  userId: z.string().min(1, 'User ID is required'),
+  userId: z.string().trim().min(1, 'User ID is required').max(200),
 })
 
 export const updateTeamMemberRoleSchema = z.object({

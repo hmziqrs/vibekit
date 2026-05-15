@@ -6,7 +6,7 @@ export const createReportSchema = z.object({
     .max(1000, 'Description must be at most 1000 characters')
     .trim()
     .optional(),
-  entityId: z.string().min(1, 'Entity ID is required'),
+  entityId: z.string().trim().min(1, 'Entity ID is required').max(200),
   entityType: z.enum([
     'blogPost',
     'comment',
@@ -22,9 +22,9 @@ export const createReportSchema = z.object({
 export const resolveReportSchema = z.object({
   resolutionNote: z
     .string()
+    .trim()
     .min(1, 'Resolution note is required')
-    .max(500, 'Note must be at most 500 characters')
-    .trim(),
+    .max(500, 'Note must be at most 500 characters'),
   status: z.enum(['resolved', 'dismissed']),
 })
 

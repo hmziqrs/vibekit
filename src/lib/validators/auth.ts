@@ -27,7 +27,7 @@ export const resetPasswordSchema = z
   .object({
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     password,
-    token: z.string().min(1, 'Reset token is required'),
+    token: z.string().min(1, 'Reset token is required').max(500),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

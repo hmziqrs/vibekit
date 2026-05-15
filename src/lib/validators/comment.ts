@@ -6,7 +6,7 @@ export const createCommentSchema = z.object({
     .trim()
     .min(1, 'Comment cannot be empty')
     .max(5000, 'Comment is too long (max 5000 characters)'),
-  parentId: z.string().optional(),
+  parentId: z.string().trim().min(1).max(200).optional(),
 })
 
 export const updateCommentSchema = z.object({

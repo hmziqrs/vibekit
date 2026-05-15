@@ -6,11 +6,11 @@ export const contactSchema = z.object({
   email,
   message: z
     .string()
+    .trim()
     .min(10, 'Message must be at least 10 characters')
-    .max(5000, 'Message is too long')
-    .trim(),
+    .max(5000, 'Message is too long'),
   name,
-  subject: z.string().min(1, 'Subject is required').max(200, 'Subject is too long').trim(),
+  subject: z.string().trim().min(1, 'Subject is required').max(200, 'Subject is too long'),
 })
 
 export const appealSchema = z.object({

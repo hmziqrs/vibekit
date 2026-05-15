@@ -740,14 +740,14 @@ describe('listDeliveriesSchema', () => {
       expect(result.success).toBe(true)
     })
 
-    it('accepts empty string eventType', () => {
+    it('rejects empty string eventType', () => {
       const result = listDeliveriesSchema.safeParse({ eventType: '' })
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
     })
 
-    it('accepts numeric string eventType', () => {
+    it('rejects invalid eventType string', () => {
       const result = listDeliveriesSchema.safeParse({ eventType: '123' })
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
     })
 
     it('omits eventType from output when not provided', () => {

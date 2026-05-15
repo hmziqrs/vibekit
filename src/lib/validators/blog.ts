@@ -27,11 +27,13 @@ export const createPostSchema = z.object({
   ogImageUrl: urlOrPath,
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
-  seriesIds: z.array(z.object({ id: z.string(), sortOrder: z.number().int().min(0) })).optional(),
+  seriesIds: z
+    .array(z.object({ id: z.string().min(1).max(200), sortOrder: z.number().int().min(0) }))
+    .optional(),
   slug,
   status: z.enum(['draft', 'published', 'archived', 'scheduled']).default('draft'),
-  tagIds: z.array(z.string()).optional(),
-  title: z.string().min(1, 'Title is required').max(200, 'Title is too long').trim(),
+  tagIds: z.array(z.string().min(1).max(200)).optional(),
+  title: z.string().trim().min(1, 'Title is required').max(200, 'Title is too long'),
 })
 
 export const updatePostSchema = z.object({
@@ -52,11 +54,13 @@ export const updatePostSchema = z.object({
     }),
   seoDescription: z.string().max(500).trim().optional().nullable(),
   seoTitle: z.string().max(200).trim().optional().nullable(),
-  seriesIds: z.array(z.object({ id: z.string(), sortOrder: z.number().int().min(0) })).optional(),
+  seriesIds: z
+    .array(z.object({ id: z.string().min(1).max(200), sortOrder: z.number().int().min(0) }))
+    .optional(),
   slug: slug.optional(),
   status: z.enum(['draft', 'published', 'archived', 'scheduled']).optional(),
-  tagIds: z.array(z.string()).optional(),
-  title: z.string().min(1).max(200).trim().optional(),
+  tagIds: z.array(z.string().min(1).max(200)).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
 })
 
 export type CreatePostInput = z.infer<typeof createPostSchema>
@@ -65,14 +69,14 @@ export type UpdatePostInput = z.infer<typeof updatePostSchema>
 export const createSeriesSchema = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   description: z.string().max(1000).trim().optional().nullable(),
-  name: z.string().min(1, 'Name is required').max(200).trim(),
+  name: z.string().trim().min(1, 'Name is required').max(200),
   slug,
 })
 
 export const updateSeriesSchema = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   description: z.string().max(1000).trim().optional().nullable(),
-  name: z.string().min(1).max(200).trim().optional(),
+  name: z.string().trim().min(1).max(200).optional(),
   slug: slug.optional(),
 })
 

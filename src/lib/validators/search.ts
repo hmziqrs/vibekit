@@ -8,7 +8,7 @@ export const searchSchema = z.object({
 })
 
 export const indexDocumentSchema = z.object({
-  content: z.string().min(1).max(50_000),
+  content: z.string().trim().min(1).max(50_000),
   entityId: z.string().trim().min(1).max(200),
   entityType: z.string().trim().min(1).max(50),
   metadata: z.record(z.string(), z.unknown()).optional(),

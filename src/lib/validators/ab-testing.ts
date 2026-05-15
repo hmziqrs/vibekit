@@ -27,7 +27,7 @@ export const updateExperimentSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   startDate: z.string().datetime().optional(),
   status: z.enum(EXPERIMENT_STATUSES).optional(),
-  winningVariantId: z.string().nullable().optional(),
+  winningVariantId: z.string().trim().max(200).nullable().optional(),
 })
 
 export const assignVariantSchema = z.object({
@@ -40,8 +40,8 @@ export const recordEventSchema = z.object({
   eventType: z.enum(['exposure', 'conversion', 'custom']),
   eventValue: z.number().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  sessionId: z.string().max(100).optional(),
-  userId: z.string().max(100).optional(),
+  sessionId: z.string().trim().max(100).optional(),
+  userId: z.string().trim().max(100).optional(),
 })
 
 export const listExperimentsSchema = z.object({

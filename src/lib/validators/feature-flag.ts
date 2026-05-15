@@ -34,8 +34,8 @@ export const toggleFeatureFlagSchema = z.object({
 export const evaluateFlagSchema = z.object({
   context: z
     .object({
-      environment: z.string().optional(),
-      userId: z.string().optional(),
+      environment: z.string().trim().max(50).optional(),
+      userId: z.string().trim().max(200).optional(),
     })
     .optional(),
 })
@@ -43,8 +43,8 @@ export const evaluateFlagSchema = z.object({
 export const evaluateMultipleFlagsSchema = z.object({
   context: z
     .object({
-      environment: z.string().optional(),
-      userId: z.string().optional(),
+      environment: z.string().trim().max(50).optional(),
+      userId: z.string().trim().max(200).optional(),
     })
     .optional(),
   keys: z.array(z.string().min(1)).min(1).max(50),
@@ -55,5 +55,5 @@ export const listFeatureFlagsSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')
     .optional(),
-  environment: z.string().optional(),
+  environment: z.string().trim().max(50).optional(),
 })

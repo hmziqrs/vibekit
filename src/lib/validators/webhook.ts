@@ -108,7 +108,7 @@ export const updateWebhookEndpointSchema = z.object({
 })
 
 export const listDeliveriesSchema = z.object({
-  eventType: z.string().optional(),
+  eventType: z.enum(WEBHOOK_EVENT_TYPES).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   status: z.enum(['failed', 'pending', 'retrying', 'success']).optional(),
 })

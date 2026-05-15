@@ -152,12 +152,12 @@ describe('createCommentSchema', () => {
     expect(data.content).toBe('Hello world')
   })
 
-  it('preserves whitespace in parentId (no trim on optional string)', () => {
+  it('trims whitespace from parentId', () => {
     const data = createCommentSchema.parse({
       content: 'Nice post',
       parentId: '  comment-id-123  ',
     })
-    expect(data.parentId).toBe('  comment-id-123  ')
+    expect(data.parentId).toBe('comment-id-123')
   })
 
   // -- Extra fields ----------------------------------------------------------

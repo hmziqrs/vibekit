@@ -10,7 +10,7 @@ export const impersonateUserSchema = z.object({
 })
 
 export const stopImpersonateSchema = z.object({
-  sessionToken: z.string().min(1, 'Session token is required'),
+  sessionToken: z.string().trim().min(1, 'Session token is required').max(500),
 })
 
 export const broadcastNotificationSchema = z.object({
