@@ -267,7 +267,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
             console.error('New device detection failed:', error)
           }
 
-          // Suspicious login detection — country change from known sessions
+          // Suspicious login detection — new device from unseen IP
           if (userId) {
             try {
               const currentCountry = event.request.headers.get('cf-ipcountry')
