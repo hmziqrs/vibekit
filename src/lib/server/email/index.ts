@@ -16,6 +16,7 @@ import { renderEmailVerification } from './templates/email-verification'
 import { renderNewsletterConfirm } from './templates/newsletter-confirm'
 import { renderPasswordReset } from './templates/password-reset'
 import { renderSecurityAlert, type SecurityAlertData } from './templates/security-alert'
+import { renderTeamInvite, type TeamInviteData } from './templates/team-invite'
 import { renderWelcome } from './templates/welcome'
 
 export class EmailService {
@@ -198,6 +199,18 @@ export class EmailService {
     const subject = data.expiresAt
       ? 'Your account has been temporarily suspended'
       : 'Your account has been suspended'
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject,
+      text,
+      to: email,
+    })
+  }
+
+  async sendTeamInvite(email: string, data: TeamInviteData): Promise<EmailResult> {
+    const { html, text } = renderTeamInvite(data)
+    const subject = `${data.inviterName} invited you to join ${data.organizationName}`
     return this.queue.sendImmediate({
       from: 'Vibekit <noreply@vibekit.com>',
       html,

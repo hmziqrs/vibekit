@@ -5341,6 +5341,22 @@ orgApp.post(
       userId: currentUser.id,
     })
 
+    // Send invitation email (fire-and-forget)
+    c.executionCtx?.waitUntil?.(
+      import('$lib/server/auth').then(({ getEmailService }) => {
+        const emailService = getEmailService()
+        if (emailService) {
+          return emailService.sendTeamInvite(parsed.email, {
+            expiresAt: expiresAt.toLocaleDateString(),
+            inviteUrl: `{{APP_URL}}/app/invitations/${token}`,
+            inviterName: currentUser.name,
+            organizationName: org.name,
+            role: parsed.role,
+          })
+        }
+      })
+    )
+
     return c.json({ expiresAt, token }, 201)
   }
 )
