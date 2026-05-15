@@ -612,13 +612,18 @@ app.get('/api/health', async (c) => {
 
 // ── Search (public) ───────────────────────────────────────────────────
 
-app.get('/api/search', async (c) => {
+const PUBLIC_SEARCH_TYPES = ['blog_post', 'blog_series', 'item', 'comment', 'page']
+
+app.get('/api/search', withRateLimit('search', 30, 60_000), async (c) => {
   const services = c.get('services')
   if (!services) return c.json({ hits: [], query: '', total: 0 })
   const q = c.req.query('q')?.trim() ?? ''
   const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
   const offset = parseClampInt(c.req.query('offset'), 0, 0, 10_000)
-  const types = c.req.query('types')?.split(',').filter(Boolean)
+  const rawTypes = c.req.query('types')?.split(',').filter(Boolean)
+  const types = rawTypes?.length
+    ? rawTypes.filter((t) => PUBLIC_SEARCH_TYPES.includes(t))
+    : undefined
 
   if (!q || q.length < 2) return c.json({ hits: [], query: q, total: 0 })
 
@@ -627,7 +632,15 @@ app.get('/api/search', async (c) => {
   )
   const searchService = createSearchService(adapter)
   const results = await searchService.search(q, { entityTypes: types, limit, offset })
-  return c.json({ ...results, query: q }, 200, {
+  // Strip PII from search results before returning to public
+  const hits = results.hits.map((hit) => ({
+    entityId: hit.entityId,
+    entityType: hit.entityType,
+    highlights: hit.highlights,
+    score: hit.score,
+    title: hit.title,
+  }))
+  return c.json({ hits, query: q, total: results.total }, 200, {
     'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=30',
   })
 })
@@ -2162,7 +2175,7 @@ protectedApp.get('/account/export', withRateLimit('data-export', 1, 3_600_000), 
 
 // ── Account Deletion ──────────────────────────────────────────────────
 
-protectedApp.delete('/account', async (c) => {
+protectedApp.delete('/account', withRateLimit('account-delete', 3, 3_600_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const currentUser = c.get('user')
@@ -5396,8 +5409,10 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async (c) => {
   const cronSecret = c.req.header('x-cron-secret')
+  const configuredSecret = c.get('services').env.cronSecret
   const currentUser = c.get('user')
-  const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
+  const isCron =
+    cronSecret && configuredSecret && cronSecret.length > 0 && cronSecret === configuredSecret
 
   if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
     throw new ForbiddenError()
@@ -5529,8 +5544,10 @@ app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async 
 
 app.post('/api/admin/publish-scheduled', withRateLimit('admin-publish', 5, 60_000), async (c) => {
   const cronSecret = c.req.header('x-cron-secret')
+  const configuredSecret = c.get('services').env.cronSecret
   const currentUser = c.get('user')
-  const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
+  const isCron =
+    cronSecret && configuredSecret && cronSecret.length > 0 && cronSecret === configuredSecret
 
   if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
     throw new ForbiddenError()
@@ -5583,7 +5600,9 @@ app.post(
   withRateLimit('admin-webhooks-retry', 5, 60_000),
   async (c) => {
     const cronSecret = c.req.header('x-cron-secret')
-    const isCron = cronSecret && cronSecret === c.get('services').env.cronSecret
+    const configuredSecret = c.get('services').env.cronSecret
+    const isCron =
+      cronSecret && configuredSecret && cronSecret.length > 0 && cronSecret === configuredSecret
     const currentUser = c.get('user')
 
     if (!isCron && (!currentUser || currentUser.role !== 'admin')) {

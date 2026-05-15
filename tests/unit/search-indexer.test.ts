@@ -319,9 +319,9 @@ describe('indexUser', () => {
     expect(doc.entityType).toBe('user')
     expect(doc.title).toBe('Jane Doe')
     expect(doc.content).toContain('Jane Doe')
-    expect(doc.content).toContain('jane@example.com')
+    expect(doc.content).not.toContain('jane@example.com')
     expect(doc.content).toContain('Full-stack developer')
-    expect(doc.metadata).toEqual({ email: 'jane@example.com' })
+    expect(doc.metadata).toEqual({})
   })
 
   it('uses name as title fallback when displayName is null', async () => {
@@ -342,7 +342,7 @@ describe('indexUser', () => {
     expect(doc.title).toBe('Bob Smith')
   })
 
-  it('uses email as title fallback when name and displayName are null', async () => {
+  it('uses User as title fallback when name and displayName are null', async () => {
     const { indexUser } = await import('$lib/server/search/indexer')
     const db = createMockDb([
       {
@@ -357,7 +357,7 @@ describe('indexUser', () => {
     await indexUser(db, 'user-3')
 
     const doc = mockIndex.mock.calls[0][0]
-    expect(doc.title).toBe('noname@example.com')
+    expect(doc.title).toBe('User')
   })
 
   it('skips indexing when user not found', async () => {

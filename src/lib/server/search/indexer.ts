@@ -174,11 +174,11 @@ export async function indexUser(db: DrizzleDb, userId: string): Promise<void> {
   if (!row) return
 
   const document: SearchDocument = {
-    content: [row.displayName ?? '', row.name ?? '', row.email, row.bio ?? ''].join('\n'),
+    content: [row.displayName ?? '', row.name ?? '', row.bio ?? ''].join('\n'),
     entityId: row.id,
     entityType: 'user',
-    metadata: { email: row.email },
-    title: row.displayName ?? row.name ?? row.email,
+    metadata: {},
+    title: row.displayName ?? row.name ?? 'User',
   }
 
   await getAdapter(db).index(document)
