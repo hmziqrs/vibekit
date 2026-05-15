@@ -105,7 +105,7 @@
 - `createBroadcast()` must be called explicitly. There is no code that automatically broadcasts when, for example, a new feature is announced, maintenance is scheduled, or a critical security issue is discovered.
 - The `announcement` table exists for scheduled announcements (`startsAt`, `endsAt`, `isActive`), but there is no bridge between announcements and the notification system.
 
-**LOW -- `createBroadcast` does not create audit log entries.**
+~~**LOW -- `createBroadcast` does not create audit log entries.**~~ **DONE** — Audit log entry added to createBroadcast in notifications.ts
 
 - Unlike `createNotification`, `createBroadcast` does not write to the audit log. Admin broadcasts are not tracked.
 

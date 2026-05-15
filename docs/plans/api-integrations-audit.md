@@ -104,7 +104,7 @@
 
 - `createWebhookEndpointSchema` in `src/lib/validators/webhook.ts` uses `z.string().url()` but does not restrict to HTTPS or block internal/private IP ranges (e.g., `http://localhost`, `http://169.254.169.254` for SSRF).
 
-**LOW -- Webhook secret is returned on creation but never shown again.**
+~~**LOW -- Webhook secret is returned on creation but never shown again.**~~ **DONE** — POST /webhooks/:id/regenerate-secret added with rate limiting
 
 - This is correct behavior (secrets should only be shown once), but the list endpoint (`GET /api/webhooks`) does not return the secret at all. Users who lose their secret must delete and recreate the endpoint. No "regenerate secret" endpoint exists.
 
