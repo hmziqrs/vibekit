@@ -26,6 +26,7 @@ import { writeAuditLog } from '$lib/server/audit'
 import {
   createStripeCoupon,
   getStripeClient,
+  StripeApiError,
   verifyWebhookSignature,
 } from '$lib/server/billing/stripe'
 import {
@@ -944,16 +945,31 @@ app.post('/billing/webhooks/stripe', async (c) => {
       return c.json({ error: 'Invalid signature' }, 400)
     }
 
-    // Idempotency: check if this Stripe event was already processed
-    existingEvent = await db
-      .select({
+    // Idempotency: atomically claim this event for processing
+    // Use INSERT ... ON CONFLICT to prevent the TOCTOU race where two concurrent
+    // requests both SELECT, see no row, and both process the same event.
+    const claimResult = await db
+      .insert(stripeWebhookEvent)
+      .values({
+        eventId: event.id,
+        eventType: event.type,
+        id: uuid(),
+        status: 'pending',
+      })
+      .onConflictDoUpdate({
+        set: {
+          status: sql`CASE WHEN ${stripeWebhookEvent.status} = 'processed' THEN 'processed' ELSE 'pending' END`,
+        },
+        target: stripeWebhookEvent.eventId,
+      })
+      .returning({
         id: stripeWebhookEvent.id,
         retryCount: stripeWebhookEvent.retryCount,
         status: stripeWebhookEvent.status,
       })
-      .from(stripeWebhookEvent)
-      .where(eq(stripeWebhookEvent.eventId, event.id))
       .get()
+
+    existingEvent = claimResult ?? undefined
     if (existingEvent?.status === 'processed') {
       return c.json({ duplicate: true, received: true })
     }
@@ -1482,22 +1498,12 @@ app.post('/billing/webhooks/stripe', async (c) => {
       }
     }
 
-    // Record the processed event for idempotency
+    // Record the processed event (row already exists from atomic claim above)
     const now = new Date()
-    if (existingEvent) {
-      await db
-        .update(stripeWebhookEvent)
-        .set({ errorMessage: null, processedAt: now, status: 'processed' })
-        .where(eq(stripeWebhookEvent.id, existingEvent.id))
-    } else {
-      await db.insert(stripeWebhookEvent).values({
-        eventId: event.id,
-        eventType: event.type,
-        id: uuid(),
-        processedAt: now,
-        status: 'processed',
-      })
-    }
+    await db
+      .update(stripeWebhookEvent)
+      .set({ errorMessage: null, processedAt: now, status: 'processed' })
+      .where(eq(stripeWebhookEvent.id, existingEvent!.id))
 
     return c.json({ received: true })
   } catch (error) {
@@ -2525,6 +2531,22 @@ protectedApp.post('/billing/checkout', async (c) => {
     throw new BadRequestError('Invalid checkout parameters')
   }
 
+  const servicesEnv = c.get('services').env
+  const origin = servicesEnv.origin ?? ''
+  const { isSameOrigin, isSafeRedirectUrl } = await import('$lib/server/billing/stripe')
+  if (
+    !isSafeRedirectUrl(parsed.data.successUrl) &&
+    !(origin && isSameOrigin(parsed.data.successUrl, origin))
+  ) {
+    throw new BadRequestError('successUrl must be a relative path')
+  }
+  if (
+    !isSafeRedirectUrl(parsed.data.cancelUrl) &&
+    !(origin && isSameOrigin(parsed.data.cancelUrl, origin))
+  ) {
+    throw new BadRequestError('cancelUrl must be a relative path')
+  }
+
   const { db } = c.get('services')
   const currentUser = c.get('user')
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
@@ -2534,18 +2556,27 @@ protectedApp.post('/billing/checkout', async (c) => {
   if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
   if (stripe && plan.stripePriceId) {
-    const { createCheckoutSession } = await import('$lib/server/billing/stripe')
-    const session = await createCheckoutSession(stripe, {
-      automaticTax: plan.taxRate > 0,
-      cancelUrl: parsed.data.cancelUrl,
-      customerEmail: currentUser.email,
-      planId: plan.id,
-      priceId: plan.stripePriceId,
-      successUrl: parsed.data.successUrl,
-      trialDays: plan.trialDays,
-      userId: currentUser.id,
-    })
-    return c.json({ url: session.url })
+    const { createCheckoutSession, StripeApiError } = await import('$lib/server/billing/stripe')
+    try {
+      const session = await createCheckoutSession(stripe, {
+        automaticTax: plan.taxRate > 0,
+        cancelUrl: parsed.data.cancelUrl,
+        customerEmail: currentUser.email,
+        idempotencyKey: `checkout-${currentUser.id}-${plan.id}`,
+        planId: plan.id,
+        priceId: plan.stripePriceId,
+        successUrl: parsed.data.successUrl,
+        trialDays: plan.trialDays,
+        userId: currentUser.id,
+      })
+      return c.json({ url: session.url })
+    } catch (error) {
+      if (error instanceof StripeApiError) {
+        console.error('Stripe checkout error:', error.cause)
+        throw new BadRequestError('Failed to create checkout session')
+      }
+      throw error
+    }
   }
 
   // Without Stripe, create subscription directly
@@ -6118,6 +6149,25 @@ orgApp.post(
       .json<{ cancelUrl: string; planId: string; successUrl: string }>()
       .catch(() => ({ cancelUrl: '', planId: '', successUrl: '' }))
     if (!body.planId) throw new BadRequestError('planId is required')
+
+    const servicesEnv = c.get('services').env
+    const origin = servicesEnv.origin ?? ''
+    const { isSameOrigin, isSafeRedirectUrl } = await import('$lib/server/billing/stripe')
+    if (
+      body.successUrl &&
+      !isSafeRedirectUrl(body.successUrl) &&
+      !(origin && isSameOrigin(body.successUrl, origin))
+    ) {
+      throw new BadRequestError('successUrl must be a relative path')
+    }
+    if (
+      body.cancelUrl &&
+      !isSafeRedirectUrl(body.cancelUrl) &&
+      !(origin && isSameOrigin(body.cancelUrl, origin))
+    ) {
+      throw new BadRequestError('cancelUrl must be a relative path')
+    }
+
     const { db } = c.get('services')
 
     const plan = await getPlanById(db, body.planId)

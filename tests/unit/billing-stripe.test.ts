@@ -59,7 +59,8 @@ describe('billing stripe module', () => {
           client_reference_id: 'user-1',
           line_items: [{ price: 'price_abc', quantity: 1 }],
           mode: 'subscription',
-        })
+        }),
+        undefined
       )
     })
 
@@ -79,7 +80,8 @@ describe('billing stripe module', () => {
         expect.objectContaining({
           customer_email: 'user@test.com',
           mode: 'payment',
-        })
+        }),
+        undefined
       )
     })
 
@@ -98,7 +100,8 @@ describe('billing stripe module', () => {
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           subscription_data: { trial_period_days: 14 },
-        })
+        }),
+        undefined
       )
     })
 
@@ -117,7 +120,8 @@ describe('billing stripe module', () => {
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           metadata: { planId: 'plan_pro' },
-        })
+        }),
+        undefined
       )
     })
 
@@ -149,7 +153,8 @@ describe('billing stripe module', () => {
       })
 
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: 'subscription' })
+        expect.objectContaining({ mode: 'subscription' }),
+        undefined
       )
     })
   })
@@ -184,11 +189,14 @@ describe('billing stripe module', () => {
       })
 
       expect(result.customerId).toBe('cus_test_123')
-      expect(mockStripe.customers.create).toHaveBeenCalledWith({
-        email: 'user@test.com',
-        metadata: { userId: 'user-1' },
-        name: 'Test User',
-      })
+      expect(mockStripe.customers.create).toHaveBeenCalledWith(
+        {
+          email: 'user@test.com',
+          metadata: { userId: 'user-1' },
+          name: 'Test User',
+        },
+        undefined
+      )
     })
 
     it('creates customer without name', async () => {
@@ -200,11 +208,14 @@ describe('billing stripe module', () => {
         userId: 'user-1',
       })
 
-      expect(mockStripe.customers.create).toHaveBeenCalledWith({
-        email: 'user@test.com',
-        metadata: { userId: 'user-1' },
-        name: undefined,
-      })
+      expect(mockStripe.customers.create).toHaveBeenCalledWith(
+        {
+          email: 'user@test.com',
+          metadata: { userId: 'user-1' },
+          name: undefined,
+        },
+        undefined
+      )
     })
   })
 

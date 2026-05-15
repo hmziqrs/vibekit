@@ -205,12 +205,14 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
             if (sessions.length >= MAX_SESSIONS) {
               const evictCount = sessions.length - MAX_SESSIONS + 1
               const evictIds = sessions.slice(0, evictCount).map((s) => s.id)
-              for (const sid of evictIds) {
-                await services.db
-                  .delete(sessionTable)
-                  .where(eq(sessionTable.id, sid))
-                  .catch(() => {})
-              }
+              await Promise.all(
+                evictIds.map((sid) =>
+                  services.db
+                    .delete(sessionTable)
+                    .where(eq(sessionTable.id, sid))
+                    .catch(() => {})
+                )
+              )
             }
 
             // Populate IP and user agent on the newest session

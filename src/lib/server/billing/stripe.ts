@@ -1,6 +1,16 @@
 // oxlint-disable-next-line import/no-named-as-default
 import type Stripe from 'stripe'
 
+export class StripeApiError extends Error {
+  constructor(
+    message: string,
+    public readonly cause: unknown
+  ) {
+    super(message)
+    this.name = 'StripeApiError'
+  }
+}
+
 let _stripe: Stripe | null = null
 let _cachedKey: string | null = null
 
@@ -19,6 +29,20 @@ export function resetStripeClient(): void {
   _cachedKey = null
 }
 
+export function isSameOrigin(url: string, origin: string): boolean {
+  try {
+    const parsed = new URL(url, origin)
+    return parsed.origin === origin
+  } catch {
+    return false
+  }
+}
+
+export function isSafeRedirectUrl(url: string): boolean {
+  const isRelative = url.startsWith('/') && !url.startsWith('//')
+  return isRelative
+}
+
 export async function createCheckoutSession(
   stripe: Stripe,
   input: {
@@ -27,6 +51,7 @@ export async function createCheckoutSession(
     couponId?: string
     customerEmail?: string
     customerId?: string
+    idempotencyKey?: string
     mode?: 'payment' | 'subscription'
     planId?: string
     priceId?: string
@@ -35,22 +60,31 @@ export async function createCheckoutSession(
     userId: string
   }
 ) {
-  const session = await stripe.checkout.sessions.create({
-    automatic_tax: input.automaticTax ? { enabled: true } : undefined,
-    cancel_url: input.cancelUrl,
-    client_reference_id: input.userId,
-    coupons: input.couponId ? { coupon: input.couponId } : undefined,
-    customer: input.customerId ?? undefined,
-    customer_email: input.customerEmail,
-    line_items: input.priceId ? [{ price: input.priceId, quantity: 1 }] : undefined,
-    metadata: input.planId ? { planId: input.planId } : undefined,
-    mode: input.mode ?? 'subscription',
-    subscription_data:
-      input.trialDays && input.trialDays > 0 ? { trial_period_days: input.trialDays } : undefined,
-    success_url: input.successUrl,
-  })
+  try {
+    const session = await stripe.checkout.sessions.create(
+      {
+        automatic_tax: input.automaticTax ? { enabled: true } : undefined,
+        cancel_url: input.cancelUrl,
+        client_reference_id: input.userId,
+        customer: input.customerId ?? undefined,
+        customer_email: input.customerEmail,
+        discounts: input.couponId ? [{ coupon: input.couponId }] : undefined,
+        line_items: input.priceId ? [{ price: input.priceId, quantity: 1 }] : undefined,
+        metadata: input.planId ? { planId: input.planId } : undefined,
+        mode: input.mode ?? 'subscription',
+        subscription_data:
+          input.trialDays && input.trialDays > 0
+            ? { trial_period_days: input.trialDays }
+            : undefined,
+        success_url: input.successUrl,
+      },
+      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
+    )
 
-  return { sessionId: session.id, url: session.url }
+    return { sessionId: session.id, url: session.url }
+  } catch (error) {
+    throw new StripeApiError('Failed to create checkout session', error)
+  }
 }
 
 export async function createBillingPortalSession(
@@ -60,49 +94,68 @@ export async function createBillingPortalSession(
     returnUrl: string
   }
 ) {
-  const session = await stripe.billingPortal.sessions.create({
-    customer: input.customerId,
-    return_url: input.returnUrl,
-  })
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: input.customerId,
+      return_url: input.returnUrl,
+    })
 
-  return { url: session.url }
+    return { url: session.url }
+  } catch (error) {
+    throw new StripeApiError('Failed to create billing portal session', error)
+  }
 }
 
 export async function createCustomer(
   stripe: Stripe,
-  input: { email: string; name?: string; userId: string }
+  input: { email: string; idempotencyKey?: string; name?: string; userId: string }
 ) {
-  const customer = await stripe.customers.create({
-    email: input.email,
-    metadata: { userId: input.userId },
-    name: input.name,
-  })
+  try {
+    const customer = await stripe.customers.create(
+      {
+        email: input.email,
+        metadata: { userId: input.userId },
+        name: input.name,
+      },
+      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
+    )
 
-  return { customerId: customer.id }
+    return { customerId: customer.id }
+  } catch (error) {
+    throw new StripeApiError('Failed to create Stripe customer', error)
+  }
 }
 
 export async function listPaymentMethods(stripe: Stripe, customerId: string) {
-  const methods = await stripe.paymentMethods.list({
-    customer: customerId,
-    type: 'card',
-  })
+  try {
+    const methods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    })
 
-  return methods.data.map((pm) => ({
-    brand: pm.card?.brand ?? null,
-    expiryMonth: pm.card?.exp_month ?? null,
-    expiryYear: pm.card?.exp_year ?? null,
-    id: pm.id,
-    last4: pm.card?.last4 ?? null,
-    type: pm.type === 'card' ? ('card' as const) : ('bank_transfer' as const),
-  }))
+    return methods.data.map((pm) => ({
+      brand: pm.card?.brand ?? null,
+      expiryMonth: pm.card?.exp_month ?? null,
+      expiryYear: pm.card?.exp_year ?? null,
+      id: pm.id,
+      last4: pm.card?.last4 ?? null,
+      type: pm.type === 'card' ? ('card' as const) : ('bank_transfer' as const),
+    }))
+  } catch (error) {
+    throw new StripeApiError('Failed to list payment methods', error)
+  }
 }
 
 export async function verifyWebhookSignature(
   stripe: Stripe,
   input: { body: string | Buffer; signature: string; webhookSecret: string }
 ) {
-  const event = stripe.webhooks.constructEvent(input.body, input.signature, input.webhookSecret)
-  return event
+  try {
+    const event = stripe.webhooks.constructEvent(input.body, input.signature, input.webhookSecret)
+    return event
+  } catch (error) {
+    throw new StripeApiError('Webhook signature verification failed', error)
+  }
 }
 
 export async function createStripeCoupon(
@@ -110,19 +163,27 @@ export async function createStripeCoupon(
   input: {
     duration?: 'forever' | 'once' | 'repeating'
     durationInMonths?: number
+    idempotencyKey?: string
     maxRedemptions?: number
     name: string
     percentOff: number
     redeemBy?: number
   }
 ) {
-  const coupon = await stripe.coupons.create({
-    duration: input.duration ?? 'once',
-    duration_in_months: input.durationInMonths,
-    max_redemptions: input.maxRedemptions,
-    name: input.name,
-    percent_off: input.percentOff,
-    redeem_by: input.redeemBy,
-  })
-  return { stripeCouponId: coupon.id }
+  try {
+    const coupon = await stripe.coupons.create(
+      {
+        duration: input.duration ?? 'once',
+        duration_in_months: input.durationInMonths,
+        max_redemptions: input.maxRedemptions,
+        name: input.name,
+        percent_off: input.percentOff,
+        redeem_by: input.redeemBy,
+      },
+      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
+    )
+    return { stripeCouponId: coupon.id }
+  } catch (error) {
+    throw new StripeApiError('Failed to create Stripe coupon', error)
+  }
 }

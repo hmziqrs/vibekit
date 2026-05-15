@@ -209,11 +209,14 @@ describe('createCustomer', () => {
     })
 
     expect(result.customerId).toBe('cus_new')
-    expect(mockCreateCustomer).toHaveBeenCalledWith({
-      email: 'new@example.com',
-      metadata: { userId: 'user-10' },
-      name: undefined,
-    })
+    expect(mockCreateCustomer).toHaveBeenCalledWith(
+      {
+        email: 'new@example.com',
+        metadata: { userId: 'user-10' },
+        name: undefined,
+      },
+      undefined
+    )
   })
 
   it('includes name when provided', async () => {
@@ -226,7 +229,10 @@ describe('createCustomer', () => {
       userId: 'user-11',
     })
 
-    expect(mockCreateCustomer).toHaveBeenCalledWith(expect.objectContaining({ name: 'John Doe' }))
+    expect(mockCreateCustomer).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'John Doe' }),
+      undefined
+    )
   })
 })
 
@@ -309,7 +315,7 @@ describe('verifyWebhookSignature', () => {
         signature: 'bad_sig',
         webhookSecret: 'whsec_123',
       })
-    ).rejects.toThrow('Invalid signature')
+    ).rejects.toThrow('Webhook signature verification failed')
   })
 
   it('throws when webhook secret is wrong', async () => {
@@ -324,7 +330,7 @@ describe('verifyWebhookSignature', () => {
         signature: 'sig',
         webhookSecret: 'wrong_secret',
       })
-    ).rejects.toThrow('No signatures found')
+    ).rejects.toThrow('Webhook signature verification failed')
   })
 
   it('returns event data for valid signature', async () => {
