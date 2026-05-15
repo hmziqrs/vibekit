@@ -939,7 +939,7 @@ app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000
 
 // ── Stripe Webhook (public) ───────────────────────────────────────────
 
-app.post('/billing/webhooks/stripe', async (c) => {
+app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 }), async (c) => {
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
   if (!stripe) {
     return c.json({ error: 'Billing not configured' }, 503)

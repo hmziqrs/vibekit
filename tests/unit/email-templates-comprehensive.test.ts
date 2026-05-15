@@ -42,8 +42,8 @@ describe('escapeHtml', () => {
     expect(escapeHtml('&<>"')).toBe('&amp;&lt;&gt;&quot;')
   })
 
-  it('does not escape single quotes', () => {
-    expect(escapeHtml("it's")).toBe("it's")
+  it('escapes single quotes', () => {
+    expect(escapeHtml("it's")).toBe('it&#39;s')
   })
 })
 

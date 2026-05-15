@@ -83,7 +83,7 @@
 			}
 			default: {
 				return {
-					description: page.error?.message ?? 'An unexpected error occurred. Please try again.',
+					description: 'An unexpected error occurred. Please try again.',
 					icon: TriangleAlert,
 					primary: { href: '/', label: 'Go back home' },
 					secondary: { action: 'back' as const, label: 'Go back' },

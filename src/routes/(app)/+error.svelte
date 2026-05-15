@@ -27,7 +27,7 @@
 			}
 			default: {
 				return {
-					description: page.error?.message ?? 'An unexpected error occurred.',
+					description: 'An unexpected error occurred. Please try again.',
 					title: 'Something Went Wrong',
 				}
 			}
