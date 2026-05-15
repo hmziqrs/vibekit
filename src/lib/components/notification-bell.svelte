@@ -163,7 +163,8 @@
               onclick={() => handleNotificationClick(n)}
               class="flex w-full gap-3 px-4 py-3 text-start transition-colors hover:bg-surface {n.readAt ? 'opacity-60' : ''}"
             >
-              <div class="mt-0.5 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current"></div>
+              <div class="mt-0.5 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current" aria-hidden="true"></div>
+              <span class="sr-only">{n.type}</span>
               <div class="min-w-0 flex-1">
                 <p class="text-[13px] font-medium text-text-primary">{n.title}</p>
                 {#if n.body}

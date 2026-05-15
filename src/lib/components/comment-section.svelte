@@ -119,6 +119,7 @@
         <textarea
           bind:value={newComment}
           placeholder="Write a comment..."
+          aria-label="Write a comment"
           rows="3"
           class="w-full rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           maxlength="5000"
@@ -211,6 +212,7 @@
                 <textarea
                   bind:value={replyContent}
                   placeholder="Write a reply..."
+                  aria-label="Write a reply"
                   rows="2"
                   class="w-full rounded-lg border border-border bg-input px-3 py-2 text-[12px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                   maxlength="5000"

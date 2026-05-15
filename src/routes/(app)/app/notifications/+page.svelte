@@ -282,7 +282,7 @@
             onclick={() => handleNotificationClick(n)}
             class="flex min-w-0 flex-1 items-start gap-3 text-start"
           >
-            <div class="mt-1 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current"></div>
+            <div class="mt-1 size-2 shrink-0 rounded-full {notificationTypeColor(n.type)} bg-current" aria-hidden="true"></div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <p class="text-[14px] font-medium text-text-primary">{n.title}</p>

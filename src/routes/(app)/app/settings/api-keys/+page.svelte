@@ -185,7 +185,7 @@
 
   <!-- Create form -->
   <div class="border-border rounded-lg border bg-surface p-4">
-    <h3 class="text-text-primary text-sm font-medium">Create New API Key</h3>
+    <h2 class="text-text-primary text-sm font-medium">Create New API Key</h2>
     <div class="mt-3 space-y-3">
       <div>
         <label for="api-key-name" class="text-text-muted mb-1 block text-xs">Name</label>
