@@ -118,3 +118,31 @@ describe('Invoice pagination parameters', () => {
     expect(offset).toBe(100)
   })
 })
+
+describe('OAuth callback redirect validation', () => {
+  function validateRedirect(rawRedirect: string): string {
+    return rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+      ? rawRedirect
+      : '/app/settings/integrations'
+  }
+
+  it('allows relative paths', () => {
+    expect(validateRedirect('/app/settings/integrations')).toBe('/app/settings/integrations')
+    expect(validateRedirect('/dashboard')).toBe('/dashboard')
+  })
+
+  it('blocks protocol-relative URLs', () => {
+    expect(validateRedirect('//evil.com')).toBe('/app/settings/integrations')
+    expect(validateRedirect('//attacker.com/steal')).toBe('/app/settings/integrations')
+  })
+
+  it('blocks absolute URLs', () => {
+    expect(validateRedirect('https://evil.com')).toBe('/app/settings/integrations')
+    expect(validateRedirect('http://localhost:3000')).toBe('/app/settings/integrations')
+  })
+
+  it('defaults to integrations page for invalid redirects', () => {
+    expect(validateRedirect('')).toBe('/app/settings/integrations')
+    expect(validateRedirect('javascript:alert(1)')).toBe('/app/settings/integrations')
+  })
+})

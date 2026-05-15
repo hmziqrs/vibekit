@@ -3459,7 +3459,11 @@ app.get('/api/integrations/callback/:provider', async (c) => {
       userId: stateData.userId,
     })
 
-    const redirectUrl = stateData.redirectUrl ?? '/app/settings/integrations'
+    const rawRedirect = stateData.redirectUrl ?? '/app/settings/integrations'
+    const redirectUrl =
+      rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+        ? rawRedirect
+        : '/app/settings/integrations'
     return c.redirect(redirectUrl)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Token exchange failed'
