@@ -1478,6 +1478,7 @@ protectedApp.get('/items', async (c) => {
   const page = Math.max(1, Number(c.req.query('page') || '1'))
   const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || '20')))
   const offset = (page - 1) * limit
+  const sortParam = c.req.query('sort') ?? ''
 
   const conditions = [eq(item.userId, currentUser.id), isNull(item.deletedAt)]
 
@@ -1490,6 +1491,19 @@ protectedApp.get('/items', async (c) => {
   }
 
   const whereClause = and(...conditions)
+
+  const ALLOWED_SORT = {
+    createdAt: item.createdAt,
+    name: item.name,
+    status: item.status,
+    updatedAt: item.updatedAt,
+  } as const
+
+  const sortCol = sortParam.replace(/^-/, '')
+  const sortDesc = sortParam.startsWith('-')
+  const sortColumn =
+    sortCol in ALLOWED_SORT ? ALLOWED_SORT[sortCol as keyof typeof ALLOWED_SORT] : item.createdAt
+  const orderBy = sortDesc ? desc(sortColumn) : asc(sortColumn)
 
   const [countResult, items] = await Promise.all([
     db
@@ -1507,7 +1521,7 @@ protectedApp.get('/items', async (c) => {
       })
       .from(item)
       .where(whereClause)
-      .orderBy(desc(item.createdAt))
+      .orderBy(orderBy)
       .limit(limit)
       .offset(offset),
   ])

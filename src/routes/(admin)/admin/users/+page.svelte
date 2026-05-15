@@ -22,6 +22,10 @@
   let openMenuId = $state<string | null>(null)
   let confirmDelete = $state<UserRow | null>(null)
   let showDeleteDialog = $state(false)
+  let impersonateTarget = $state<UserRow | null>(null)
+  let showImpersonateDialog = $state(false)
+  let impersonateReason = $state('')
+  let impersonating = $state(false)
   let mutationError = $state('')
 
   const usersQuery = createQuery(() => ({
@@ -96,6 +100,39 @@
     }
   }
 
+  async function startImpersonation() {
+    if (!impersonateTarget || !impersonateReason.trim()) return
+    impersonating = true
+    mutationError = ''
+    try {
+      const res = await fetch(`/api/admin/users/${impersonateTarget.id}/impersonate`, {
+        body: JSON.stringify({ reason: impersonateReason.trim() }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        sessionStorage.setItem(
+          'impersonation',
+          JSON.stringify({
+            adminEmail: '',
+            sessionToken: data.sessionToken,
+            targetEmail: data.targetUser.email,
+            targetName: data.targetUser.name,
+          }),
+        )
+        window.location.href = '/app/dashboard'
+      } else {
+        const data = await res.json().catch(() => ({}))
+        mutationError = data.error?.message ?? 'Failed to start impersonation.'
+        impersonating = false
+      }
+    } catch (error) {
+      mutationError = error instanceof Error ? error.message : 'Failed to start impersonation.'
+      impersonating = false
+    }
+  }
+
   function toggleMenu(id: string, e: Event) {
     e.stopPropagation()
     openMenuId = openMenuId === id ? null : id
@@ -136,6 +173,58 @@
   variant="danger"
   onConfirm={deleteUser}
 />
+
+<!-- Impersonate Dialog -->
+{#if showImpersonateDialog && impersonateTarget}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Impersonate user"
+  >
+    <div class="w-full max-w-md rounded-xl border border-white/[0.06] bg-surface p-6 shadow-xl">
+      <h2 class="text-lg font-semibold text-text-primary">Impersonate User</h2>
+      <p class="mt-1 text-[13px] text-text-muted">
+        You will act as <span class="font-medium text-text-secondary">{impersonateTarget.email}</span>. All actions will be logged.
+      </p>
+
+      {#if mutationError}
+        <p class="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{mutationError}</p>
+      {/if}
+
+      <div class="mt-4">
+        <label for="impersonate-reason" class="mb-1.5 block text-[12px] font-medium text-text-secondary">
+          Reason <span class="text-destructive">*</span>
+        </label>
+        <textarea
+          id="impersonate-reason"
+          bind:value={impersonateReason}
+          rows={3}
+          class="w-full rounded-lg border border-white/[0.08] bg-surface-elevated px-3 py-2 text-[13px] text-text-primary placeholder:text-text-faint focus:border-brand focus:outline-none"
+          placeholder="Why are you impersonating this user?"
+          disabled={impersonating}
+        ></textarea>
+      </div>
+
+      <div class="mt-5 flex justify-end gap-3">
+        <button
+          class="rounded-lg border border-white/[0.06] px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-white/[0.04]"
+          onclick={() => { showImpersonateDialog = false; impersonateTarget = null; impersonateReason = ''; mutationError = '' }}
+          disabled={impersonating}
+        >
+          Cancel
+        </button>
+        <button
+          class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-50"
+          onclick={startImpersonation}
+          disabled={impersonating || !impersonateReason.trim()}
+        >
+          {impersonating ? 'Starting...' : 'Start Impersonation'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if mutationError}
   <p class="mb-4 rounded-lg bg-destructive/10 px-4 py-2 text-[13px] text-destructive">{mutationError}</p>
@@ -221,6 +310,7 @@
                     {:else}
                       <button class="w-full px-4 py-2 text-start text-[12px] text-success hover:bg-white/[0.04]" onclick={() => toggleStatus(user)}>Activate</button>
                     {/if}
+                    <button class="w-full px-4 py-2 text-start text-[12px] text-brand hover:bg-white/[0.04]" onclick={() => { openMenuId = null; impersonateTarget = user; showImpersonateDialog = true }}>Impersonate</button>
                     <button class="w-full px-4 py-2 text-start text-[12px] text-destructive hover:bg-white/[0.04]" onclick={() => { openMenuId = null; confirmDelete = user; showDeleteDialog = true }}>Delete</button>
                   </div>
                 {/if}

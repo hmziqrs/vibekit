@@ -4,6 +4,7 @@ import { uuid } from '$lib/server/uuid'
 import { and, eq, inArray } from 'drizzle-orm'
 
 import { dispatchToIntegrations } from './integrations/dispatch'
+import { sendPushNotification } from './push'
 
 type NotificationType = 'error' | 'info' | 'success' | 'warning'
 
@@ -44,6 +45,16 @@ export async function createNotification(
     title: input.title,
     type: input.type,
   }).catch((error) => console.error('Integration dispatch failed:', error))
+
+  // Send push notification if user has push enabled
+  const pushEnabled = await isPushEnabled(db, input.userId, input.entityType ?? 'general')
+  if (pushEnabled) {
+    sendPushNotification(db, input.userId, {
+      body: input.body,
+      data: input.link ? { link: input.link } : undefined,
+      title: input.title,
+    }).catch((error) => console.error('Push notification failed:', error))
+  }
 }
 
 export async function createBroadcast(
@@ -146,6 +157,21 @@ export async function isEmailEnabled(
   return pref?.enabled ?? true
 }
 
+async function isPushEnabled(db: DrizzleDb, userId: string, type: string): Promise<boolean> {
+  const pref = await db
+    .select({ enabled: notificationPreference.enabled })
+    .from(notificationPreference)
+    .where(
+      and(
+        eq(notificationPreference.userId, userId),
+        eq(notificationPreference.type, type),
+        eq(notificationPreference.channel, 'push')
+      )
+    )
+    .get()
+  return pref?.enabled ?? true
+}
+
 export async function getNotificationPreferences(
   db: DrizzleDb,
   userId: string
@@ -164,7 +190,12 @@ export async function getNotificationPreferences(
 
 export async function setNotificationPreference(
   db: DrizzleDb,
-  input: { channel: 'email' | 'in_app'; enabled: boolean; type: string; userId: string }
+  input: {
+    channel: 'email' | 'in_app' | 'push'
+    enabled: boolean
+    type: string
+    userId: string
+  }
 ): Promise<void> {
   await db
     .insert(notificationPreference)

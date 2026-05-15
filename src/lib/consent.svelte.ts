@@ -9,6 +9,16 @@ function read(): 'accepted' | 'declined' | null {
   return null
 }
 
+export function isDoNotTrack(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return navigator.doNotTrack === '1'
+}
+
+export function shouldTrack(): boolean {
+  if (isDoNotTrack()) return false
+  return status === 'accepted'
+}
+
 export function getConsentStatus(): 'accepted' | 'declined' | null {
   return status
 }

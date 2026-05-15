@@ -9,6 +9,8 @@
 
   let statusFilter = $state<string>('active')
   let search = $state('')
+  let sortBy = $state('createdAt')
+  let pageNum = $state(1)
   let deleteTarget = $state<ItemData | null>(null)
   let deleteDialogOpen = $state(false)
   let mutationError = $state('')
@@ -16,17 +18,32 @@
   const queryClient = useQueryClient()
 
   const itemsQuery = createQuery(() => ({
-    queryFn: async (): Promise<ItemData[]> => {
+    queryFn: async (): Promise<{ items: ItemData[]; total: number }> => {
       const params = new URLSearchParams()
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
       if (search) params.set('search', search)
+      if (sortBy !== 'createdAt') params.set('sort', sortBy)
+      params.set('page', String(pageNum))
+      params.set('limit', '20')
       const res = await fetch(`/api/items?${params}`)
       if (!res.ok) throw new Error('Failed to fetch items')
-      const data = (await res.json()) as { items: ItemData[] }
-      return data.items
+      return res.json() as Promise<{ items: ItemData[]; total: number }>
     },
-    queryKey: ['items', { search, status: statusFilter }],
+    queryKey: ['items', { page: pageNum, search, sort: sortBy, status: statusFilter }],
   }))
+
+  const totalPages = $derived(
+    itemsQuery.data ? Math.ceil(itemsQuery.data.total / 20) : 1,
+  )
+
+  const SORT_OPTIONS = [
+    { label: 'Newest first', value: 'createdAt' },
+    { label: 'Oldest first', value: '-createdAt' },
+    { label: 'Name A-Z', value: 'name' },
+    { label: 'Name Z-A', value: '-name' },
+    { label: 'Status', value: 'status' },
+    { label: 'Last updated', value: '-updatedAt' },
+  ]
 
   async function toggleArchive(id: string, currentStatus: string) {
     mutationError = ''
@@ -102,8 +119,19 @@
   <!-- Filters -->
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <FilterTabs tabs={filterTabs} bind:active={statusFilter} />
-    <div class="sm:w-64">
-      <SearchInput bind:value={search} placeholder="Search items..." />
+    <div class="flex gap-2">
+      <div class="sm:w-64">
+        <SearchInput bind:value={search} placeholder="Search items..." />
+      </div>
+      <select
+        bind:value={sortBy}
+        class="rounded-lg border border-white/[0.08] bg-surface-elevated px-3 py-2 text-[13px] text-text-primary focus:border-brand focus:outline-none"
+        aria-label="Sort items"
+      >
+        {#each SORT_OPTIONS as opt (opt.value)}
+          <option value={opt.value}>{opt.label}</option>
+        {/each}
+      </select>
     </div>
   </div>
 
@@ -136,7 +164,7 @@
         Try again
       </button>
     </div>
-  {:else if !itemsQuery.data?.length}
+  {:else if !itemsQuery.data?.items.length}
     <div class="rounded-xl border border-white/6 bg-surface p-8 text-center">
       <p class="text-[14px] text-text-muted">
         {search ? 'No items match your search.' : 'No items yet.'}
@@ -153,7 +181,7 @@
   {:else}
     <div class="rounded-xl border border-white/6 bg-surface">
       <div class="divide-y divide-white/6">
-        {#each itemsQuery.data as item (item.id)}
+        {#each itemsQuery.data.items as item (item.id)}
           <div class="flex items-center justify-between px-5 py-3">
             <a
               href="/app/items/{item.id}/edit"
@@ -245,6 +273,31 @@
           </div>
         {/each}
       </div>
+
+      <!-- Pagination -->
+      {#if totalPages > 1}
+        <div class="flex items-center justify-between border-t border-white/[0.06] px-5 py-3">
+          <p class="text-[12px] text-text-subtle">
+            Page {pageNum} of {totalPages}
+          </p>
+          <div class="flex gap-2">
+            <button
+              class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-white/[0.04] disabled:opacity-40"
+              disabled={pageNum <= 1}
+              onclick={() => (pageNum -= 1)}
+            >
+              Previous
+            </button>
+            <button
+              class="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[12px] text-text-muted transition-colors hover:bg-white/[0.04] disabled:opacity-40"
+              disabled={pageNum >= totalPages}
+              onclick={() => (pageNum += 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

@@ -18,6 +18,34 @@
   let signingOut = $state(false)
   let searchOpen = $state(false)
   let shortcutsOpen = $state(false)
+  let stoppingImpersonation = $state(false)
+
+  const impersonationInfo = $derived.by(() => {
+    if (typeof sessionStorage === 'undefined') return null
+    const raw = sessionStorage.getItem('impersonation')
+    if (!raw) return null
+    try {
+      return JSON.parse(raw) as { sessionToken: string; targetEmail: string; targetName: string }
+    } catch {
+      return null
+    }
+  })
+
+  async function stopImpersonation() {
+    if (!impersonationInfo) return
+    stoppingImpersonation = true
+    try {
+      await fetch(`/api/admin/users/${impersonationInfo.sessionToken}/stop-impersonate`, {
+        body: JSON.stringify({ sessionToken: impersonationInfo.sessionToken }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }).catch(() => {})
+      sessionStorage.removeItem('impersonation')
+      window.location.href = '/admin/users'
+    } finally {
+      stoppingImpersonation = false
+    }
+  }
 
   function handleSearchKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -209,6 +237,25 @@
 
     <!-- Main content -->
     <div class="flex min-w-0 flex-1 flex-col">
+      {#if impersonationInfo}
+        <div class="flex items-center justify-between gap-3 border-b border-warning/30 bg-warning/10 px-6 py-2">
+          <div class="flex items-center gap-2 text-[12px] text-warning">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>
+              Impersonating <strong>{impersonationInfo.targetName || impersonationInfo.targetEmail}</strong>
+            </span>
+          </div>
+          <button
+            class="rounded-md bg-warning/20 px-3 py-1 text-[11px] font-medium text-warning transition-colors hover:bg-warning/30 disabled:opacity-50"
+            onclick={stopImpersonation}
+            disabled={stoppingImpersonation}
+          >
+            {stoppingImpersonation ? 'Stopping...' : 'Stop Impersonating'}
+          </button>
+        </div>
+      {/if}
       <AnnouncementBanner />
       <header class="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
         <button

@@ -1,4 +1,4 @@
-import { getConsentStatus } from './consent.svelte'
+import { shouldTrack } from './consent.svelte'
 import { initFirebase } from './firebase'
 
 let initialized = $state(false)
@@ -8,7 +8,7 @@ export async function initAnalyticsIfConsented(configJson?: string) {
     return
   }
 
-  if (getConsentStatus() === 'accepted' && configJson) {
+  if (shouldTrack() && configJson) {
     initialized = await initFirebase(configJson)
   }
 }

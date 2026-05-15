@@ -79,4 +79,29 @@ describe('consent store', () => {
     acceptConsent()
     expect(getConsentStatus()).toBe('accepted')
   })
+
+  it('isDoNotTrack returns false when navigator.doNotTrack is not "1"', async () => {
+    const { isDoNotTrack } = await import('$lib/consent.svelte')
+    expect(isDoNotTrack()).toBe(false)
+  })
+
+  it('shouldTrack returns false when no consent is given', async () => {
+    const { shouldTrack, initConsent } = await import('$lib/consent.svelte')
+    initConsent()
+    expect(shouldTrack()).toBe(false)
+  })
+
+  it('shouldTrack returns true when consent is accepted', async () => {
+    const { shouldTrack, initConsent, acceptConsent } = await import('$lib/consent.svelte')
+    initConsent()
+    acceptConsent()
+    expect(shouldTrack()).toBe(true)
+  })
+
+  it('shouldTrack returns false when consent is declined', async () => {
+    const { shouldTrack, initConsent, declineConsent } = await import('$lib/consent.svelte')
+    initConsent()
+    declineConsent()
+    expect(shouldTrack()).toBe(false)
+  })
 })

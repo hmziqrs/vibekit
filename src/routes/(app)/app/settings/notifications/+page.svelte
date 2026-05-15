@@ -17,6 +17,7 @@
   const CHANNELS = [
     { channel: 'in_app', label: 'In-App' },
     { channel: 'email', label: 'Email' },
+    { channel: 'push', label: 'Push' },
   ]
 
   let preferences = $state<NotificationPref[]>([])

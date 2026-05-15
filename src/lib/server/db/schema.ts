@@ -677,7 +677,7 @@ export const notificationRelations = relations(notification, ({ one }) => ({
 export const notificationPreference = sqliteTable(
   'notification_preference',
   {
-    channel: text('channel', { enum: ['email', 'in_app'] }).notNull(),
+    channel: text('channel', { enum: ['email', 'in_app', 'push'] }).notNull(),
     enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
     id: text('id')
       .primaryKey()

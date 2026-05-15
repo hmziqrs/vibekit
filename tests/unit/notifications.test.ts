@@ -1,6 +1,13 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('$lib/server/push', () => ({
+  sendPushNotification: vi.fn().mockResolvedValue({ sent: 0, total: 0 }),
+}))
+vi.mock('$lib/server/integrations/dispatch', () => ({
+  dispatchToIntegrations: vi.fn().mockResolvedValue(undefined),
+}))
+
 type MockDb = DrizzleDb & {
   _getFn: ReturnType<typeof vi.fn>
   _insertFn: ReturnType<typeof vi.fn>
@@ -41,6 +48,7 @@ function createMockDb(preferenceEnabled = true): MockDb {
 
 beforeEach(() => {
   vi.resetModules()
+  vi.clearAllMocks()
 })
 
 describe('notifications module', () => {
@@ -265,5 +273,94 @@ describe('getNotificationPreferences', () => {
     const prefs = await getNotificationPreferences(db, 'user-1')
 
     expect(prefs).toEqual([])
+  })
+})
+
+describe('push notification integration', () => {
+  it('calls sendPushNotification when push is enabled', async () => {
+    const { createNotification } = await import('$lib/server/notifications')
+    // In-app enabled (first select), push enabled (second select)
+    const getFn = vi
+      .fn()
+      .mockResolvedValueOnce({ enabled: true }) // in_app check
+      .mockResolvedValueOnce({ enabled: true }) // push check
+    const db = createMockDb(true)
+    // Override the get function for the push check
+    const selectWhereResult = { get: getFn }
+    selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
+    db.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue(selectWhereResult),
+      }),
+    }) as ReturnType<typeof db.select>
+
+    const { sendPushNotification } = await import('$lib/server/push')
+
+    await createNotification(db, {
+      body: 'Test push',
+      link: '/test',
+      title: 'Push Test',
+      userId: 'user-1',
+    })
+
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      db,
+      'user-1',
+      expect.objectContaining({
+        body: 'Test push',
+        title: 'Push Test',
+        data: { link: '/test' },
+      })
+    )
+  })
+
+  it('skips push notification when push is disabled', async () => {
+    const { createNotification } = await import('$lib/server/notifications')
+    const getFn = vi
+      .fn()
+      .mockResolvedValueOnce({ enabled: true }) // in_app check
+      .mockResolvedValueOnce({ enabled: false }) // push check
+    const db = createMockDb(true)
+    const selectWhereResult = { get: getFn }
+    selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
+    db.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue(selectWhereResult),
+      }),
+    }) as ReturnType<typeof db.select>
+
+    const { sendPushNotification } = await import('$lib/server/push')
+
+    await createNotification(db, {
+      title: 'No Push',
+      userId: 'user-1',
+    })
+
+    expect(sendPushNotification).not.toHaveBeenCalled()
+  })
+
+  it('defaults push to enabled when no preference is set', async () => {
+    const { createNotification } = await import('$lib/server/notifications')
+    const getFn = vi
+      .fn()
+      .mockResolvedValueOnce({ enabled: true }) // in_app check
+      .mockResolvedValueOnce(undefined) // no push pref -> default enabled
+    const db = createMockDb(true)
+    const selectWhereResult = { get: getFn }
+    selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
+    db.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue(selectWhereResult),
+      }),
+    }) as ReturnType<typeof db.select>
+
+    const { sendPushNotification } = await import('$lib/server/push')
+
+    await createNotification(db, {
+      title: 'Default Push',
+      userId: 'user-1',
+    })
+
+    expect(sendPushNotification).toHaveBeenCalled()
   })
 })
