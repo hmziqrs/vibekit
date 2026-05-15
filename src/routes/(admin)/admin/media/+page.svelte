@@ -10,6 +10,8 @@
   let selectedKeys = $state<Set<string>>(new Set())
   let viewMode = $state<'grid' | 'list'>('grid')
   let uploading = $state(false)
+  let uploadProgress = $state(0)
+  let uploadFileName = $state('')
 
   const mediaQuery = createQuery(() => ({
     queryFn: async () => {
@@ -33,26 +35,57 @@
     queryKey: ['admin', 'media', typeFilter, prefixFilter],
   }))
 
+  function uploadFile(file: File): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      const formData = new FormData()
+      formData.append('file', file)
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          uploadProgress = Math.round((e.loaded / e.total) * 100)
+        }
+      })
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText))
+        } else {
+          reject(new Error(`Failed to upload ${file.name}`))
+        }
+      })
+
+      xhr.addEventListener('error', () => reject(new Error(`Failed to upload ${file.name}`)))
+      xhr.open('POST', '/api/admin/media/upload')
+      xhr.send(formData)
+    })
+  }
+
   const uploadMutation = createMutation(() => ({
     mutationFn: async (files: FileList) => {
       const results = []
-      for (const file of files) {
-        const formData = new FormData()
-        formData.append('file', file)
+      const totalFiles = files.length
+      for (let i = 0; i < totalFiles; i++) {
+        const file = files[i]
+        uploadFileName = file.name
+        uploadProgress = 0
         // oxlint-disable-next-line no-await-in-loop
-        const res = await fetch('/api/admin/media/upload', {
-          body: formData,
-          method: 'POST',
-        })
-        if (!res.ok) throw new Error(`Failed to upload ${file.name}`)
+        const result = await uploadFile(file)
         // oxlint-disable-next-line no-await-in-loop
-        results.push(await res.json())
+        results.push(result)
       }
       return results
     },
     onSuccess: () => {
       uploading = false
+      uploadProgress = 0
+      uploadFileName = ''
       void queryClient.invalidateQueries({ queryKey: ['admin', 'media'] })
+    },
+    onError: () => {
+      uploading = false
+      uploadProgress = 0
+      uploadFileName = ''
     },
   }))
 
@@ -152,7 +185,7 @@
       <label
         class="cursor-pointer rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
       >
-        {uploading ? 'Uploading...' : 'Upload'}
+        {uploading ? `${uploadProgress}%` : 'Upload'}
         <input
           type="file"
           class="hidden"
@@ -163,6 +196,21 @@
         />
       </label>
     </div>
+
+    {#if uploading}
+      <div class="mt-2">
+        <div class="mb-1 flex items-center justify-between text-[12px] text-text-muted">
+          <span class="truncate">Uploading: {uploadFileName}</span>
+          <span>{uploadProgress}%</span>
+        </div>
+        <div class="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+          <div
+            class="h-full rounded-full bg-brand transition-all duration-200"
+            style="width: {uploadProgress}%"
+          ></div>
+        </div>
+      </div>
+    {/if}
   </div>
 
   {#if uploadMutation.isError}
@@ -269,8 +317,8 @@
           <thead>
             <tr class="border-b border-white/[0.06] bg-surface-deep">
               <th class="w-10 px-3 py-2"></th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-text-muted">File</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-text-muted">Type</th>
+              <th class="px-3 py-2 text-start text-xs font-medium text-text-muted">File</th>
+              <th class="px-3 py-2 text-start text-xs font-medium text-text-muted">Type</th>
               <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Size</th>
               <th class="px-3 py-2 text-right text-xs font-medium text-text-muted">Modified</th>
               <th class="px-3 py-2"></th>
