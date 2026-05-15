@@ -113,6 +113,25 @@ async function isInAppEnabled(db: DrizzleDb, userId: string, type: string): Prom
   return pref?.enabled ?? true
 }
 
+export async function isEmailEnabled(
+  db: DrizzleDb,
+  userId: string,
+  type: string
+): Promise<boolean> {
+  const pref = await db
+    .select({ enabled: notificationPreference.enabled })
+    .from(notificationPreference)
+    .where(
+      and(
+        eq(notificationPreference.userId, userId),
+        eq(notificationPreference.type, type),
+        eq(notificationPreference.channel, 'email')
+      )
+    )
+    .get()
+  return pref?.enabled ?? true
+}
+
 export async function getNotificationPreferences(
   db: DrizzleDb,
   userId: string

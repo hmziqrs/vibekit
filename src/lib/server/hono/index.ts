@@ -132,6 +132,7 @@ import {
   createBroadcast,
   createNotification,
   getNotificationPreferences,
+  isEmailEnabled,
   setNotificationPreference,
 } from '$lib/server/notifications'
 import {
@@ -3082,13 +3083,14 @@ protectedApp.post(
         userId: postAuthor.authorId,
       }).catch((error) => console.error('Failed to send comment notification:', error))
 
-      // Send email notification to post author
+      // Send email notification to post author (if email preference enabled)
       const [authorUser] = await db
         .select({ email: user.email })
         .from(user)
         .where(eq(user.id, postAuthor.authorId))
         .limit(1)
-      if (authorUser?.email) {
+      const emailPrefEnabled = await isEmailEnabled(db, postAuthor.authorId, 'comment')
+      if (authorUser?.email && emailPrefEnabled) {
         const postUrl = `${c.req.header('origin') ?? 'http://localhost:5173'}/blog/${postId}`
         const excerpt =
           parsed.content.length > 150 ? parsed.content.slice(0, 150) + '...' : parsed.content
