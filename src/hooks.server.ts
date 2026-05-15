@@ -212,6 +212,16 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
                   .catch(() => {})
               }
             }
+
+            // Populate IP and user agent on the newest session
+            const latestSession = sessions[sessions.length - 1]
+            if (latestSession && (!latestSession.ipAddress || !latestSession.userAgent)) {
+              await services.db
+                .update(sessionTable)
+                .set({ ipAddress: requestIP, userAgent: requestUA })
+                .where(eq(sessionTable.id, latestSession.id))
+                .catch(() => {})
+            }
           } catch (error) {
             console.error('Session limit enforcement failed:', error)
           }

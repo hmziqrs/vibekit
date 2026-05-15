@@ -21,6 +21,10 @@ export function setEmailService(service: EmailService): void {
   _emailService = service
 }
 
+export function getEmailService(): EmailService | null {
+  return _emailService
+}
+
 export const authConfig = {
   account: {
     accountLinking: {
@@ -178,6 +182,37 @@ export const createAuth = (db: AppDb) =>
             await indexUser(db, u.id).catch((error) =>
               logger.error('Failed to index new user', { error, userId: u.id })
             )
+
+            // Ban evasion detection — flag suspicious registrations
+            if (u.email) {
+              try {
+                const { detectBanEvasion } = await import('./security/ban-evasion')
+                let requestIp = ''
+                try {
+                  const event = getRequestEvent()
+                  requestIp = event.request.headers.get('cf-connecting-ip') ?? ''
+                } catch {
+                  // Not in request context (e.g. build)
+                }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const result = await detectBanEvasion(db as any, u.email, requestIp)
+                if (result.flagged) {
+                  const { writeAuditLog } = await import('./audit')
+                  await writeAuditLog(db, {
+                    action: 'user.ban_evasion_detected',
+                    entityId: u.id,
+                    entityType: 'user',
+                    metadata: {
+                      email: u.email,
+                      matches: result.matches,
+                    },
+                    userId: u.id,
+                  }).catch(() => {})
+                }
+              } catch (error) {
+                logger.error('Ban evasion detection failed', { error, userId: u.id })
+              }
+            }
           },
         },
       },
