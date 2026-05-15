@@ -43,7 +43,7 @@
 - Location: `src/lib/server/db/schema.ts` line 1105
 - `api_key_hash_idx` is a non-unique index on `keyHash`. Since SHA-256 collisions are astronomically unlikely, this is acceptable. However, the `keyHash` column also has `.unique()` on line 1092, making the index redundant but not harmful.
 
-**LOW -- No API key expiration cleanup job.**
+~~**LOW -- No API key expiration cleanup job.**~~ **DONE** — Expired keys purged and usage logs older than 90 days cleaned in admin cleanup cron endpoint.
 
 - Expired keys (`expiresAt < now`) are filtered out during `validateApiKey()`, but there is no cron job or cleanup task to purge old expired keys from the database.
 
@@ -100,7 +100,7 @@
 
 - `emitEvent()` now calls `dispatchWebhooksForEvent()` without `await`, using `.catch()` for error handling. Webhook delivery no longer blocks the response.
 
-**LOW -- No webhook endpoint URL validation beyond `url()`.**
+~~**LOW -- No webhook endpoint URL validation beyond `url()`.**~~ **DONE** — HTTPS enforcement + SSRF protection added (blocks private IPs, localhost, cloud metadata, .internal TLD).
 
 - `createWebhookEndpointSchema` in `src/lib/validators/webhook.ts` uses `z.string().url()` but does not restrict to HTTPS or block internal/private IP ranges (e.g., `http://localhost`, `http://169.254.169.254` for SSRF).
 

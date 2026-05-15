@@ -65,7 +65,7 @@
 
 - `GET /api/notifications` supports `type` and `read` query params for server-side filtering. UI has client-side filter dropdowns that apply to the current page. Server-side filtering enables efficient paginated queries for large notification sets.
 
-**LOW -- No notification archiving.**
+~~**LOW -- No notification archiving.**~~ **DONE** — Archive/unarchive endpoints implemented (`PATCH /notifications/:id/archive`, `PATCH /notifications/:id/unarchive`). Archived notifications are excluded from default list queries and have a dedicated filter option.
 
 - Deleting a notification permanently removes it. There is no archive/snooze mechanism.
 

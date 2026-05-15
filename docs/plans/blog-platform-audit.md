@@ -55,7 +55,7 @@ type: project
 - **Spam detector is basic** — Keyword blacklist + pattern matching only. No Akismet, no ML-based detection, no CAPTCHA integration.
 - **No comment email notifications** — The `POST /api/comments/:postId` handler has a `// Notify post author` comment and fetches the post author, but the actual notification send code was not found in the implementation.
 - **Reading completion threshold is hardcoded** — `progress >= 80 && readTime >= 30` is hardcoded in the analytics endpoint rather than being configurable.
-- **Blog index tag filtering loads all posts then filters in JS** — When filtering by tag, the code fetches all posts matching the base query, then filters in-memory by tag ID. This will not scale with large post counts.
+- ~~**Blog index tag filtering loads all posts then filters in JS**~~ — **DONE**. Replaced JS-side filter with SQL inArray query in +page.server.ts.
 
 ## Files
 
