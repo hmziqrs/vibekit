@@ -84,11 +84,7 @@ describe('Blog tag filtering uses DB-level queries', () => {
   })
 
   it('should query tag ID first then filter posts', () => {
-    const taggedIds = [
-      { postId: 'post_1' },
-      { postId: 'post_2' },
-      { postId: 'post_3' },
-    ]
+    const taggedIds = [{ postId: 'post_1' }, { postId: 'post_2' }, { postId: 'post_3' }]
     const postIdArray = taggedIds.map((t) => t.postId)
     expect(postIdArray).toEqual(['post_1', 'post_2', 'post_3'])
     expect(postIdArray.length).toBe(3)
