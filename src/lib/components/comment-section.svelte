@@ -157,7 +157,7 @@
       </div>
     {:else if commentsQuery.data?.comments.length}
       <div class="space-y-4">
-        {#each commentsQuery.data.comments as commentItem}
+        {#each commentsQuery.data.comments as commentItem (commentItem.id)}
           <article class="rounded-lg border border-border bg-surface p-4">
             <div class="flex items-center gap-3">
               {#if commentItem.authorImage}
@@ -239,7 +239,7 @@
             <!-- Replies -->
             {#if commentItem.replies?.length}
               <div class="mt-3 ms-4 space-y-3 border-s-2 border-border ps-4">
-                {#each commentItem.replies as reply}
+                {#each commentItem.replies as reply (reply.id)}
                   <div>
                     <div class="flex items-center gap-2">
                       {#if reply.authorImage}

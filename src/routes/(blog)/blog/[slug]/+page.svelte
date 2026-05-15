@@ -54,7 +54,7 @@
 			</div>
 			{#if data.post.tags.length > 0}
 				<div class="mt-3 flex flex-wrap gap-2">
-					{#each data.post.tags as tag}
+					{#each data.post.tags as tag (tag)}
 						<a
 							href="/blog?tag={tag.slug}"
 							class="rounded-full bg-surface px-3 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary"
@@ -85,7 +85,7 @@
 		<CommentSection postId={data.post.id} />
 
 		{#if data.series.length > 0}
-			{#each data.series as s}
+			{#each data.series as s (s.slug)}
 				<section class="mt-12 rounded-lg border border-border bg-surface p-6">
 					<h2 class="mb-1 text-lg font-semibold text-text-primary">
 						<a href="/blog/series/{s.slug}" class="transition-colors hover:text-brand">{s.name}</a>
@@ -116,7 +116,7 @@
 			<section class="mt-16 border-t border-border pt-10">
 				<h2 class="mb-6 text-xl font-semibold text-text-primary">Related Posts</h2>
 				<div class="grid gap-6 sm:grid-cols-3">
-					{#each data.relatedPosts as related}
+					{#each data.relatedPosts as related (related.id)}
 						<a
 							href="/blog/{related.slug}"
 							class="group rounded-lg border border-border bg-surface transition-colors hover:border-brand/40"

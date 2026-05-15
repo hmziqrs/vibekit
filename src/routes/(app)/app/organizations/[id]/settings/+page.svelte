@@ -238,6 +238,7 @@
               </p>
               <select
                 bind:value={transferTargetId}
+                aria-label="New owner"
                 class="w-full rounded-lg border border-white/[0.06] bg-surface-base px-3 py-2 text-sm text-text-primary focus:border-brand focus:outline-none"
               >
                 <option value="" disabled selected>Choose a member...</option>

@@ -67,6 +67,7 @@
     <input
       type="text"
       bind:value={attributionInput}
+      aria-label="Attribution"
       class="mt-2 w-full border-b border-border bg-transparent text-sm text-text-muted outline-none focus:border-brand"
       placeholder="Attribution..."
       onkeydown={(e) => { if (e.key === 'Enter') saveAttribution() }}

@@ -84,7 +84,7 @@
     <!-- Tag chips -->
     {#if data.tags.length > 0}
       <div class="mb-8 flex flex-wrap gap-2">
-        {#each data.tags as tag}
+        {#each data.tags as tag (tag)}
           <a
             href="/blog/tag/{tag.slug}"
             class="rounded-full px-3 py-1 text-[12px] font-medium transition-colors {data.tag === tag.slug

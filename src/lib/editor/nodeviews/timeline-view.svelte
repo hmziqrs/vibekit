@@ -47,6 +47,7 @@
         <input
           type="text"
           value={entry.time}
+          aria-label="Event time"
           placeholder="10:30 AM"
           class="w-24 shrink-0 rounded border border-border bg-surface-base px-2 py-1 text-sm text-text-primary"
           oninput={(e) => updateEntry(i, 'time', (e.target as HTMLInputElement).value)}
@@ -55,6 +56,7 @@
         <input
           type="text"
           value={entry.text}
+          aria-label="Event description"
           placeholder="Event description..."
           class="flex-1 rounded border border-border bg-surface-base px-2 py-1 text-sm text-text-primary"
           oninput={(e) => updateEntry(i, 'text', (e.target as HTMLInputElement).value)}

@@ -89,7 +89,7 @@
       <p class="text-sm text-text-faint text-center py-4">No articles found.</p>
     {:else}
       <div class="space-y-2 max-h-64 overflow-y-auto">
-        {#each results as result}
+        {#each results as result (result.id)}
           <div class="rounded border border-border p-3 hover:border-brand/50 transition-colors">
             <p class="text-sm font-medium text-text-primary">{result.title}</p>
             {#if result.excerpt}

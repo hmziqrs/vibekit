@@ -46,7 +46,7 @@
     <p class="text-xs text-text-faint">Add headings to generate a table of contents.</p>
   {:else}
     <nav class="space-y-0.5">
-      {#each items as item}
+      {#each items as item (item.id)}
         <button
           onclick={() => scrollTo(item)}
           class="block w-full text-start text-xs text-text-muted hover:text-brand transition-colors py-0.5 truncate {indentClass(item.level)}"

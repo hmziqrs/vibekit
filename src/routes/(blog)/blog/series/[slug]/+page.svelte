@@ -42,7 +42,7 @@
 		{/if}
 
 		<ol class="space-y-6">
-			{#each data.posts as post, i}
+			{#each data.posts as post, i (post.id)}
 				<li>
 					<a
 						href="/blog/{post.slug}"

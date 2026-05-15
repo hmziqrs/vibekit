@@ -69,6 +69,7 @@
       <input
         type="text"
         bind:value={captionInput}
+        aria-label="Embed caption"
         class="w-full rounded border border-border bg-transparent px-2 py-1 text-center text-text-secondary outline-none focus:border-brand"
         placeholder="Embed caption..."
         onkeydown={(e) => { if (e.key === 'Enter') saveCaption() }}
