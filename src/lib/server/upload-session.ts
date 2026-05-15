@@ -66,6 +66,10 @@ export async function recordChunk(
   chunkIndex: number,
   chunkData?: Uint8Array
 ) {
+  // Validate sessionId format to prevent path traversal in temp directory
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+    throw new Error('Invalid session ID format')
+  }
   const session = await getUploadSession(db, sessionId)
   if (!session) throw new Error('Upload session not found')
   if (session.status === 'expired') throw new Error('Upload session has expired')

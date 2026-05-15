@@ -36,7 +36,7 @@ function makeSession(overrides: Record<string, unknown> = {}): Record<string, un
     fileName: 'test.mp4',
     fileSize: 50 * 1024 * 1024,
     fileType: 'video/mp4',
-    id: 'sess-1',
+    id: '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b',
     receivedChunks: [],
     status: 'pending',
     totalChunks: 10,
@@ -169,9 +169,9 @@ describe('upload-session service', () => {
       const { getUploadSession } = await import('$lib/server/upload-session')
       const session = makeSession()
       const db = createMockDb(session)
-      const result = await getUploadSession(db, 'sess-1')
+      const result = await getUploadSession(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b')
       expect(result).not.toBeNull()
-      expect(result?.id).toBe('sess-1')
+      expect(result?.id).toBe('019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b')
     })
 
     it('returns null when not found', async () => {
@@ -186,7 +186,7 @@ describe('upload-session service', () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const session = makeSession({ receivedChunks: [], totalChunks: 3 })
       const db = createMockDb(session)
-      const result = await recordChunk(db, 'sess-1', 0)
+      const result = await recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 0)
       expect(result.complete).toBe(false)
       expect(result.receivedChunks).toStrictEqual([0])
       expect(result.totalChunks).toBe(3)
@@ -196,7 +196,7 @@ describe('upload-session service', () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const session = makeSession({ receivedChunks: [0, 1], totalChunks: 3 })
       const db = createMockDb(session)
-      const result = await recordChunk(db, 'sess-1', 2)
+      const result = await recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 2)
       expect(result.complete).toBe(true)
       expect(result.receivedChunks).toStrictEqual([0, 1, 2])
     })
@@ -205,7 +205,7 @@ describe('upload-session service', () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const session = makeSession({ receivedChunks: [0, 1], totalChunks: 3 })
       const db = createMockDb(session)
-      const result = await recordChunk(db, 'sess-1', 0)
+      const result = await recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 0)
       expect(result.complete).toBe(false)
       expect(result.receivedChunks).toStrictEqual([0, 1])
     })
@@ -213,28 +213,42 @@ describe('upload-session service', () => {
     it('throws for missing session', async () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const db = createMockDb(null)
-      await expect(recordChunk(db, 'missing', 0)).rejects.toThrow('Upload session not found')
+      await expect(recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5c', 0)).rejects.toThrow(
+        'Upload session not found'
+      )
+    })
+
+    it('rejects invalid session ID format', async () => {
+      const { recordChunk } = await import('$lib/server/upload-session')
+      const db = createMockDb(null)
+      await expect(recordChunk(db, '../../../etc/passwd', 0)).rejects.toThrow(
+        'Invalid session ID format'
+      )
     })
 
     it('throws for expired session', async () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const session = makeSession({ status: 'expired' })
       const db = createMockDb(session)
-      await expect(recordChunk(db, 'sess-1', 0)).rejects.toThrow('has expired')
+      await expect(recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 0)).rejects.toThrow(
+        'has expired'
+      )
     })
 
     it('throws for completed session', async () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const session = makeSession({ status: 'complete' })
       const db = createMockDb(session)
-      await expect(recordChunk(db, 'sess-1', 0)).rejects.toThrow('already completed')
+      await expect(recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 0)).rejects.toThrow(
+        'already completed'
+      )
     })
 
     it('sorts chunk indices', async () => {
       const { recordChunk } = await import('$lib/server/upload-session')
       const session = makeSession({ receivedChunks: [2], totalChunks: 3 })
       const db = createMockDb(session)
-      const result = await recordChunk(db, 'sess-1', 0)
+      const result = await recordChunk(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 0)
       expect(result.receivedChunks).toStrictEqual([0, 2])
     })
   })
@@ -243,7 +257,7 @@ describe('upload-session service', () => {
     it('updates session with storage key', async () => {
       const { completeUploadSession } = await import('$lib/server/upload-session')
       const db = createMockDb()
-      await completeUploadSession(db, 'sess-1', 'uploads/video.mp4')
+      await completeUploadSession(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b', 'uploads/video.mp4')
       expect(db._setFn).toHaveBeenCalled()
     })
   })
@@ -252,7 +266,7 @@ describe('upload-session service', () => {
     it('marks session as failed', async () => {
       const { failUploadSession } = await import('$lib/server/upload-session')
       const db = createMockDb()
-      await failUploadSession(db, 'sess-1')
+      await failUploadSession(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b')
       expect(db._setFn).toHaveBeenCalled()
     })
   })
@@ -270,7 +284,7 @@ describe('upload-session service', () => {
     it('deletes session', async () => {
       const { deleteUploadSession } = await import('$lib/server/upload-session')
       const db = createMockDb()
-      await deleteUploadSession(db, 'sess-1')
+      await deleteUploadSession(db, '019f1a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b')
       expect(db.delete).toHaveBeenCalled()
     })
   })

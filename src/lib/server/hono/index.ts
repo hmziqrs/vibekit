@@ -3525,8 +3525,8 @@ app.get('/api/integrations/callback/:provider', async (c) => {
         : '/app/settings/integrations'
     return c.redirect(redirectUrl)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Token exchange failed'
-    return c.json({ error: message }, 500)
+    logger.error('OAuth token exchange failed', { error })
+    return c.json({ error: 'Token exchange failed' }, 500)
   }
 })
 
@@ -4891,6 +4891,11 @@ adminApp.patch('/users/:id', withRateLimit('users-mutate'), validate(updateSchem
 
   if (!existing) {
     throw new NotFoundError('User not found')
+  }
+
+  // Prevent admins from modifying their own role or status (self-lockout risk)
+  if (targetId === currentUser.id && (parsed.role !== undefined || parsed.status !== undefined)) {
+    throw new BadRequestError('Cannot modify your own role or status')
   }
 
   type UserUpdate = Partial<Pick<typeof user.$inferInsert, 'role' | 'status' | 'displayName'>> & {
@@ -7859,8 +7864,8 @@ adminApp.post('/billing/refund', validate(refundSchema), async (c) => {
       },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Refund failed'
-    return c.json({ error: message }, 500)
+    logger.error('Refund failed', { error })
+    return c.json({ error: 'Refund failed' }, 500)
   }
 })
 
@@ -7893,8 +7898,8 @@ adminApp.post('/billing/coupons', validate(createCouponSchema), async (c) => {
       })
       stripeCouponId = result.stripeCouponId
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create Stripe coupon'
-      return c.json({ error: message }, 500)
+      logger.error('Stripe coupon creation failed', { error })
+      return c.json({ error: 'Failed to create Stripe coupon' }, 500)
     }
   }
 
