@@ -8,8 +8,6 @@ import type { RequestHandler } from './$types'
 // Narrow AppDb union to a single type so .select() overload resolution works.
 type Db = ReturnType<typeof getDb>
 
-const ORIGIN = 'https://vibekit.dev'
-
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -29,7 +27,8 @@ interface FeedPost {
   title: string
 }
 
-export const GET: RequestHandler = async ({ locals, setHeaders }) => {
+export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
+  const origin = url.origin
   setHeaders({
     'Cache-Control': 'public, max-age=300, s-maxage=3600',
     'Content-Type': 'application/xml; charset=utf-8',
@@ -67,7 +66,7 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
       const pubDate = post.publishedAt
         ? new Date(post.publishedAt).toUTCString()
         : new Date().toUTCString()
-      const link = `${ORIGIN}/blog/${post.slug}`
+      const link = `${origin}/blog/${post.slug}`
       const description = post.excerpt ?? ''
       const categories = tags.map((t) => `    <category>${escapeXml(t.name)}</category>`).join('\n')
 
@@ -86,10 +85,10 @@ ${categories}
 <rss version="2.0" xmlns:atom="http://www.w3.org/Atom">
   <channel>
     <title>Vibekit Blog</title>
-    <link>${ORIGIN}/blog</link>
+    <link>${origin}/blog</link>
     <description>Articles about SvelteKit, Cloudflare, and building SaaS products.</description>
     <language>en</language>
-    <atom:link href="${ORIGIN}/blog/feed.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="${origin}/blog/feed.xml" rel="self" type="application/rss+xml" />
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
 ${items.join('\n')}
   </channel>
