@@ -5769,7 +5769,7 @@ orgApp.post(
     const { db } = c.get('services')
     const currentUser = c.get('user')
 
-    const slug = generateSlug(parsed.name)
+    let slug = generateSlug(parsed.name)
 
     const existing = await db
       .select({ id: organization.id })
@@ -5778,7 +5778,7 @@ orgApp.post(
       .get()
 
     if (existing) {
-      throw new ConflictError('Organization slug already exists')
+      slug = `${slug}-${Date.now().toString(36)}`
     }
 
     const id = uuid()
@@ -6160,7 +6160,7 @@ orgApp.post(
       })
     )
 
-    return c.json({ expiresAt, token }, 201)
+    return c.json({ expiresAt, invitationUrl: `/app/invitations/${token}` }, 201)
   }
 )
 
@@ -6423,6 +6423,57 @@ orgApp.get(
       .orderBy(desc(invoice.createdAt))
 
     return c.json({ invoices })
+  }
+)
+
+orgApp.post(
+  '/:orgId/billing/cancel',
+  withOrgMembership,
+  requirePermission('org.update'),
+  async (c) => {
+    const org = c.get('organization') as typeof organization.$inferSelect
+    const { db } = c.get('services')
+
+    const sub = await getOrgSubscription(db, org.id)
+    if (!sub) throw new BadRequestError('No active subscription for this organization')
+
+    if (sub.stripeSubscriptionId) {
+      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+      if (stripe) await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
+    }
+
+    await cancelSubscription(db, sub.id)
+
+    return c.json({ success: true })
+  }
+)
+
+orgApp.post(
+  '/:orgId/billing/reactivate',
+  withOrgMembership,
+  requirePermission('org.update'),
+  async (c) => {
+    const org = c.get('organization') as typeof organization.$inferSelect
+    const { db } = c.get('services')
+
+    const sub = await db
+      .select()
+      .from(subscription)
+      .where(and(eq(subscription.organizationId, org.id), eq(subscription.status, 'canceled')))
+      .orderBy(desc(subscription.createdAt))
+      .limit(1)
+      .get()
+
+    if (!sub) throw new BadRequestError('No canceled subscription found for this organization')
+
+    if (sub.stripeSubscriptionId) {
+      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+      if (stripe) await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
+    }
+
+    await reactivateSubscription(db, sub.id)
+
+    return c.json({ success: true })
   }
 )
 

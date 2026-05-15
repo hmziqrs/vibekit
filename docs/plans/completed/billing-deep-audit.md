@@ -66,7 +66,7 @@ type: project
 - Pricing page plans are hardcoded, not fetched from API (will go stale)
 - Pricing page has no awareness of logged-in users (cannot adapt CTAs)
 - No subscription status transition state machine (any status can transition to any other)
-- Org-level cancel/reactivate endpoints don't exist
+- ~~Org-level cancel/reactivate endpoints don't exist~~ **FIXED** — Added `POST /:orgId/billing/cancel` and `POST /:orgId/billing/reactivate` with Stripe sync
 - Org checkout creates subscription without Stripe checkout session
 - No confirmation dialogs on destructive actions (cancel, delete plan, detach payment method)
 - Missing billing email templates for `customer.subscription.deleted` and `invoice.upcoming` webhook tests

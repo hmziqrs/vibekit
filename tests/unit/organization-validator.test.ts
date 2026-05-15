@@ -365,11 +365,9 @@ describe('transferOwnershipSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('accepts whitespace-only newOwnerId (no trim on this field)', () => {
-    // transferOwnershipSchema uses min(1) but does not have .trim()
+  it('rejects whitespace-only newOwnerId (trim strips to empty)', () => {
     const result = transferOwnershipSchema.safeParse({ newOwnerId: '   ' })
-    expect(result.success).toBe(true)
-    expect(result.success && result.data.newOwnerId).toBe('   ')
+    expect(result.success).toBe(false)
   })
 
   it('rejects missing newOwnerId', () => {

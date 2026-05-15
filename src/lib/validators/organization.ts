@@ -34,7 +34,7 @@ export const inviteMemberSchema = z.object({
 })
 
 export const transferOwnershipSchema = z.object({
-  newOwnerId: z.string().min(1, 'New owner ID is required'),
+  newOwnerId: z.string().trim().min(1, 'New owner ID is required'),
 })
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>
