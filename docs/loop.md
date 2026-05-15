@@ -84,6 +84,7 @@ ROADMAP.md has two parts:
 Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### Foundation & DX
+<!-- Audit: foundation-dx-audit.md — 2026-05-15 -->
 - [x] Dev environment & DX (hot reload reliability, wrangler dev stability, env setup script, seed data, type generation pipeline)
 - [x] Database schema review & normalization (index coverage, constraint gaps, migration safety, foreign key integrity, cascade rules)
 - [x] Dead code cleanup (unused exports, orphan routes, unreachable branches, stale types, dead CSS)
