@@ -8,36 +8,34 @@ type: project
 
 ## Claimed vs Actual
 
-| Claimed Feature                  | Status              | Details                                                                            |
-| -------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
-| Chunked uploads for large files  | **NON-FUNCTIONAL**  | Session tracker exists but no chunk data transfer or assembly. No client consumer. |
-| Progress tracking                | **PARTIAL**         | Server calculation exists but no client-side display                               |
-| Upload resumption                | **PARTIAL**         | Duplicate chunk detection exists but meaningless without chunk storage             |
-| File type validation             | **COMPLETE**        | MIME type + magic byte verification                                                |
-| Virus scanning                   | **NOT IMPLEMENTED** | Zero references to any scanning service                                            |
-| File browser                     | **COMPLETE**        | Grid/list with pagination in media library                                         |
-| Thumbnail generation             | **NOT IMPLEMENTED** | Returns original image as "thumbnail"                                              |
-| Metadata extraction              | **MINIMAL**         | Filename + size only. No EXIF/dimensions.                                          |
-| Search/filter                    | **PARTIAL**         | Client filename filter + server type filter                                        |
-| Folder organization              | **NOT IMPLEMENTED** | Prefix filter only, no folder CRUD                                                 |
-| Bulk operations                  | **PARTIAL**         | Delete only. No move/download/tag.                                                 |
-| Resize/crop on upload            | **NOT IMPLEMENTED** | No image processing library in deps                                                |
-| Format conversion WebP/AVIF      | **DELEGATED**       | URL params to Cloudflare Image Resizing (paid feature). No in-app conversion.      |
-| Responsive srcset generation     | **COMPLETE**        | URL builder delegates to Cloudflare                                                |
-| CDN URL generation               | **COMPLETE**        | `/cdn/blog/` pattern with cache headers                                            |
-| R2 primary adapter               | **COMPLETE**        | Full adapter with presigned URLs                                                   |
-| S3-compatible fallback           | **COMPLETE**        | Two implementations (one redundant)                                                |
-| Local dev storage                | **COMPLETE**        | Filesystem adapter with metadata sidecars                                          |
-| Presigned URLs for direct upload | **INCOMPLETE**      | GET-only. No PUT presigned URL endpoint.                                           |
+| Claimed Feature                  | Status               | Details                                                                                                                                           |
+| -------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chunked uploads for large files  | **COMPLETE**         | Full pipeline: session creation, chunk upload, `assembleChunks()` concatenation, completion with magic byte validation, virus scan, cleanup.      |
+| Progress tracking                | **PARTIAL**          | Server calculation exists but no client-side display                                                                                              |
+| Upload resumption                | **PARTIAL**          | Duplicate chunk detection exists but meaningless without chunk storage                                                                            |
+| File type validation             | **COMPLETE**         | MIME type + magic byte verification                                                                                                               |
+| Virus scanning                   | **PARTIAL (MEDIUM)** | Heuristic byte-pattern matcher (EICAR, PE, ELF, Mach-O). Integrated into upload pipeline but not a real AV engine — cannot detect actual malware. |
+| File browser                     | **COMPLETE**         | Grid/list with pagination in media library                                                                                                        |
+| Thumbnail generation             | **NOT IMPLEMENTED**  | Returns original image as "thumbnail"                                                                                                             |
+| Metadata extraction              | **MINIMAL**          | Filename + size only. No EXIF/dimensions.                                                                                                         |
+| Search/filter                    | **PARTIAL**          | Client filename filter + server type filter                                                                                                       |
+| Folder organization              | **NOT IMPLEMENTED**  | Prefix filter only, no folder CRUD                                                                                                                |
+| Bulk operations                  | **PARTIAL**          | Delete only. No move/download/tag.                                                                                                                |
+| Resize/crop on upload            | **NOT IMPLEMENTED**  | No image processing library in deps                                                                                                               |
+| Format conversion WebP/AVIF      | **DELEGATED**        | URL params to Cloudflare Image Resizing (paid feature). No in-app conversion.                                                                     |
+| Responsive srcset generation     | **COMPLETE**         | URL builder delegates to Cloudflare                                                                                                               |
+| CDN URL generation               | **COMPLETE**         | `/cdn/blog/` pattern with cache headers                                                                                                           |
+| R2 primary adapter               | **COMPLETE**         | Full adapter with presigned URLs                                                                                                                  |
+| S3-compatible fallback           | **COMPLETE**         | Two implementations (one redundant)                                                                                                               |
+| Local dev storage                | **COMPLETE**         | Filesystem adapter with metadata sidecars                                                                                                         |
+| Presigned URLs for direct upload | **INCOMPLETE**       | GET-only. No PUT presigned URL endpoint.                                                                                                          |
 
 ## Critical Gaps
 
-1. **Chunked upload is non-functional** — Session/chunk tracking exists but the chunk endpoint only records the index, not the data. No assembly logic.
-   - **Fix**: Add request body reading in chunk endpoint, stream to storage, and add completion assembly.
-   - **Why**: Large file uploads (>5MB) currently fail silently or timeout.
+1. **Chunked upload is complete** — Full pipeline verified: session creation in `upload-session.ts`, chunk upload endpoint, `assembleChunks()` function that concatenates `.chunk` files, complete endpoint with magic byte validation, virus scan integration, and cleanup.
 
-2. **Virus scanning entirely absent** — No ClamAV, VirusTotal, or any scanning integration.
-   - **Fix**: Add async scanning hook after upload, or use Cloudflare's built-in malware detection.
+2. **Virus scanning is partial (MEDIUM severity)** — Heuristic byte-pattern matcher checks for EICAR, PE, ELF, and Mach-O executable headers. Integrated into the upload pipeline but is not a real AV engine and cannot detect actual malware. Provides basic protection against obvious executable uploads.
+   - **Future improvement**: Integrate a real scanning service (ClamAV, Cloudflare malware detection) for production use.
 
 3. **No image processing at upload** — Files stored byte-for-byte as uploaded. No resize, no crop, no format conversion.
    - **Fix**: Add `sharp` or use Cloudflare Image Resizing transformations on upload.

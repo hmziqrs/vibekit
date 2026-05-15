@@ -123,24 +123,21 @@
 
 ### Implementation Evidence
 
-| Feature                  | Status  | Evidence                                                                                                                                                                                                                                                                                                     |
-| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Template system          | DONE    | `src/lib/server/email/templates/base.ts` -- `renderEmail()` function generates HTML email with dark theme, brand colors, responsive table layout. `escapeHtml()` for XSS prevention. `textStyles` for consistent typography. Each template returns `{ html, text }` (multipart).                             |
-| Template preview         | MISSING | No endpoint or UI to preview email templates with sample data. No admin page for template management. Templates are code-only with no visual editor.                                                                                                                                                         |
-| Transactional emails     | DONE    | `EmailService` class in `src/lib/server/email/index.ts` wraps `EmailQueue`. Methods: `sendWelcome()`, `sendEmailVerification()`, `sendPasswordReset()`, `sendContactNotification()`, `sendNewsletterConfirmation()`. All use `sendImmediate()` which bypasses the queue.                                     |
-| Email queue with retries | DONE    | `EmailQueue` in `src/lib/server/email/queue.ts` -- In-memory queue with exponential backoff (`min(1000 * 2^(attempts-1), 15000)`, max 15s). Configurable `maxRetries` (default 3). `onFinalFailure` callback for bounce handling.                                                                            |
-| Bounce handling          | PARTIAL | `handleBounce()` in `src/lib/server/email/bounce-handler.ts` -- Updates `newsletterSubscriber.status` to `bounced`. Only handles newsletter subscriber bounces, not general email bounces (e.g., verification emails, password resets). No webhook receiver for ESP bounce events (SendGrid, Mailgun, etc.). |
-| Unsubscribe flow         | PARTIAL | `POST /api/newsletter/unsubscribe` endpoint exists. Updates `newsletterSubscriber.status` to `unsubscribed` with timestamp. No `List-Unsubscribe` header in outgoing emails. No one-click unsubscribe (RFC 8058) support. No email preference center.                                                        |
+| Feature                  | Status  | Evidence                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Template system          | DONE    | `src/lib/server/email/templates/base.ts` -- `renderEmail()` function generates HTML email with dark theme, brand colors, responsive table layout. `escapeHtml()` for XSS prevention. `textStyles` for consistent typography. Each template returns `{ html, text }` (multipart).                                                                                                                  |
+| Template preview         | MISSING | No endpoint or UI to preview email templates with sample data. No admin page for template management. Templates are code-only with no visual editor.                                                                                                                                                                                                                                              |
+| Transactional emails     | DONE    | `EmailService` class in `src/lib/server/email/index.ts` wraps `EmailQueue`. Methods: `sendWelcome()`, `sendEmailVerification()`, `sendPasswordReset()`, `sendContactNotification()`, `sendNewsletterConfirmation()`. All use `sendImmediate()` which bypasses the queue.                                                                                                                          |
+| Email queue with retries | DONE    | `EmailQueue` in `src/lib/server/email/queue.ts` -- D1-persisted queue (`emailQueue` table). `enqueue()` inserts with status `pending` and attempts immediate send. `processPending()` queries pending/due-for-retry emails with atomic claim to prevent duplicate processing. Exponential backoff (`min(1000 * 2^(attempts-1), 900000)`, max 15 min). `cleanup()` removes old sent/failed emails. |
+| Bounce handling          | PARTIAL | `handleBounce()` in `src/lib/server/email/bounce-handler.ts` -- Updates `newsletterSubscriber.status` to `bounced`. Only handles newsletter subscriber bounces, not general email bounces (e.g., verification emails, password resets). No webhook receiver for ESP bounce events (SendGrid, Mailgun, etc.).                                                                                      |
+| Unsubscribe flow         | PARTIAL | `POST /api/newsletter/unsubscribe` endpoint exists. Updates `newsletterSubscriber.status` to `unsubscribed` with timestamp. No `List-Unsubscribe` header in outgoing emails. No one-click unsubscribe (RFC 8058) support. No email preference center.                                                                                                                                             |
 
 ### Issues Found
 
-**CRITICAL -- Email queue is in-memory and lost on Worker recycle.**
+~~**CRITICAL -- Email queue is in-memory and lost on Worker recycle.**~~ **FIXED**
 
 - Location: `src/lib/server/email/queue.ts`
-- The `EmailQueue` stores queued emails in a JavaScript array (`this.queue`). On Cloudflare Workers, isolate recycles happen frequently and unpredictably. Any queued emails are lost when the isolate dies.
-- `sendImmediate()` bypasses the queue entirely, which is why most transactional emails use it. But `sendNewsletterConfirmation()` uses `enqueue()`, meaning newsletter confirmation emails can be silently lost.
-- Impact: Newsletter confirmations may never arrive if the Worker recycles before the queue is processed.
-- Fix: Use Cloudflare Queues or D1-backed persistence for the email queue. Alternatively, always use `sendImmediate()` for critical transactional emails.
+- The email queue is now fully D1-persisted using the `emailQueue` table. `enqueue()` inserts into D1 with status `pending` and attempts immediate send. `processPending()` queries pending/due-for-retry emails from D1, using atomic claim (`UPDATE ... SET status = 'processing' WHERE status = 'pending'`) to prevent duplicate processing across Workers. Exponential backoff with max 15 min. `cleanup()` removes old sent/failed emails. Emails survive Worker recycles since state is in D1, not in-memory.
 
 ~~**MEDIUM -- No `List-Unsubscribe` header.**~~ **FIXED** — `sendNewsletterConfirmation()` already includes `List-Unsubscribe: <https://vibekit.com/api/newsletter/unsubscribe>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers (email/index.ts lines 43-45).
 
@@ -331,18 +328,18 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ## Summary Scorecard
 
-| Feature Area              | Score | Verdict                                                                                                                                                              |
-| ------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| In-App Notifications      | 7/10  | Solid bell component with polling. Missing real-time, preferences UI, and filtering.                                                                                 |
-| System-to-User Alerts     | 8/10  | Broadcast, payment receipts, admin warnings, and account status changes all implemented and wired to email service. Broadcast not auto-triggered.                    |
-| Email Infrastructure      | 7/10  | Template system and queue exist. List-Unsubscribe header on newsletter emails. Queue is in-memory (Worker recycle concern). Bounce handling is newsletter-only.      |
-| Email Templates           | 8/10  | 12 of 13 templates exist including all critical SaaS emails (billing, security, team invite). Only custom template editor missing. No preview mechanism.             |
-| Push Notifications        | 7/10  | VAPID subscription flow works. Service worker integrated. Push dispatched from createNotification. Push preference channel added. VAPID keys configured per-request. |
-| Slack/Discord Integration | 1/10  | OAuth connection exists. Zero actual functionality -- no messages sent, no slash commands, no channel routing.                                                       |
+| Feature Area              | Score | Verdict                                                                                                                                                                     |
+| ------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| In-App Notifications      | 7/10  | Solid bell component with polling. Missing real-time, preferences UI, and filtering.                                                                                        |
+| System-to-User Alerts     | 8/10  | Broadcast, payment receipts, admin warnings, and account status changes all implemented and wired to email service. Broadcast not auto-triggered.                           |
+| Email Infrastructure      | 8/10  | Template system and D1-persisted queue exist. List-Unsubscribe header on newsletter emails. Atomic claim prevents duplicate processing. Bounce handling is newsletter-only. |
+| Email Templates           | 8/10  | 12 of 13 templates exist including all critical SaaS emails (billing, security, team invite). Only custom template editor missing. No preview mechanism.                    |
+| Push Notifications        | 7/10  | VAPID subscription flow works. Service worker integrated. Push dispatched from createNotification. Push preference channel added. VAPID keys configured per-request.        |
+| Slack/Discord Integration | 1/10  | OAuth connection exists. Zero actual functionality -- no messages sent, no slash commands, no channel routing.                                                              |
 
 ### Priority Fixes (Ordered)
 
-1. **Fix email queue persistence** -- Replace in-memory queue with Cloudflare Queues or D1-backed queue to prevent email loss on Worker recycle. Critical for newsletter confirmations.
+1. ~~**Fix email queue persistence**~~ -- ~~Replace in-memory queue with Cloudflare Queues or D1-backed queue to prevent email loss on Worker recycle. Critical for newsletter confirmations.~~ **FIXED** -- Queue is now D1-persisted with atomic claim and exponential backoff.
 2. **Add missing email templates** -- Invoice receipt, subscription change notifications, team invitations, and security alerts are essential SaaS emails.
 3. **Implement Slack/Discord message dispatch** -- Add notification routing to connected Slack/Discord workspaces with proper message formatting (Block Kit, embeds).
 4. **Integrate push notifications with notification creation** -- When `createNotification()` is called, also trigger push if the user has subscriptions and preferences allow it.

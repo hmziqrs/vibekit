@@ -13,6 +13,24 @@ const DANGEROUS_PATTERNS: { name: string; pattern: number[] }[] = [
   { name: 'MachO-Executable', pattern: [0xcf, 0xfa, 0xed, 0xfe] },
   // Mach-O 64-bit
   { name: 'MachO64-Executable', pattern: [0xce, 0xfa, 0xed, 0xfe] },
+  // Mach-O universal binary
+  { name: 'MachO-Universal', pattern: [0xca, 0xfe, 0xba, 0xbe] },
+  // COM executable (DOS)
+  { name: 'COM-Executable', pattern: [0xe9] },
+  // Java class file
+  { name: 'Java-Class', pattern: [0xca, 0xfe, 0xba, 0xbe] },
+]
+
+// Content signatures that indicate dangerous embedded content
+const DANGEROUS_CONTENT_PATTERNS: { name: string; pattern: string }[] = [
+  // ActiveX objects in documents
+  { name: 'ActiveX-Object', pattern: '<object' },
+  // VBA macro markers in Office files
+  { name: 'VBA-Macro', pattern: 'Attribute VB_Name' },
+  // PowerShell encoded command
+  { name: 'PS-Encoded', pattern: '-EncodedCommand' },
+  // WScript shell usage
+  { name: 'WScript-Shell', pattern: 'WScript.Shell' },
 ]
 
 export interface ScanResult {
@@ -47,6 +65,14 @@ export async function scanBuffer(data: Uint8Array): Promise<ScanResult> {
       data[offset + 3] === 0x00
     ) {
       if (!threats.includes('PE-Executable')) threats.push('Embedded-PE')
+    }
+  }
+
+  // Check for dangerous content patterns (ActiveX, VBA macros, etc.)
+  const textContent = new TextDecoder('utf-8', { fatal: false }).decode(data.slice(0, 4096))
+  for (const { name, pattern } of DANGEROUS_CONTENT_PATTERNS) {
+    if (textContent.toLowerCase().includes(pattern.toLowerCase())) {
+      threats.push(name)
     }
   }
 
