@@ -16,7 +16,7 @@ import {
 import { error as httpError, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 
 const handleParaglide: Handle = ({ event, resolve }) =>
   paraglideMiddleware(event.request as Request, ({ request, locale }) => {
@@ -193,6 +193,28 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
             userAgent: requestUA ?? undefined,
             userId,
           })
+
+          // Enforce concurrent session limit (max 5 per user)
+          const MAX_SESSIONS = 5
+          try {
+            const sessions = await services.db
+              .select()
+              .from(sessionTable)
+              .where(eq(sessionTable.userId, userId))
+              .orderBy(asc(sessionTable.createdAt))
+            if (sessions.length >= MAX_SESSIONS) {
+              const evictCount = sessions.length - MAX_SESSIONS + 1
+              const evictIds = sessions.slice(0, evictCount).map((s) => s.id)
+              for (const sid of evictIds) {
+                await services.db
+                  .delete(sessionTable)
+                  .where(eq(sessionTable.id, sid))
+                  .catch(() => {})
+              }
+            }
+          } catch (error) {
+            console.error('Session limit enforcement failed:', error)
+          }
         }
 
         // New device detection — compare IP against known sessions

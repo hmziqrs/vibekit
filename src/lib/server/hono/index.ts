@@ -1918,12 +1918,31 @@ protectedApp.get('/account/export', withRateLimit('data-export', 1, 3_600_000), 
 protectedApp.delete('/account', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
+  const currentUser = c.get('user')
 
   await db.update(user).set({ deletedAt: new Date() }).where(eq(user.id, userId))
   await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
   deindexEntity(db, userId, 'user').catch((error) =>
     console.error('Search deindex failed (account delete):', error)
   )
+
+  // Send deletion confirmation email with reactivation link
+  if (currentUser.email) {
+    const reactivationUrl = `${c.req.header('origin') ?? 'http://localhost:5173'}/reactivate`
+    c.executionCtx?.waitUntil?.(
+      import('$lib/server/auth')
+        .then(({ getEmailService }) => {
+          const emailService = getEmailService()
+          if (emailService) {
+            return emailService.sendAccountDeleted(currentUser.email!, {
+              reactivationUrl,
+              userName: currentUser.name ?? undefined,
+            })
+          }
+        })
+        .catch((error) => console.error('Account deletion email failed:', error))
+    )
+  }
 
   return c.json({ success: true })
 })
@@ -3062,6 +3081,33 @@ protectedApp.post(
         type: 'info',
         userId: postAuthor.authorId,
       }).catch((error) => console.error('Failed to send comment notification:', error))
+
+      // Send email notification to post author
+      const [authorUser] = await db
+        .select({ email: user.email })
+        .from(user)
+        .where(eq(user.id, postAuthor.authorId))
+        .limit(1)
+      if (authorUser?.email) {
+        const postUrl = `${c.req.header('origin') ?? 'http://localhost:5173'}/blog/${postId}`
+        const excerpt =
+          parsed.content.length > 150 ? parsed.content.slice(0, 150) + '...' : parsed.content
+        c.executionCtx?.waitUntil?.(
+          import('$lib/server/auth')
+            .then(({ getEmailService }) => {
+              const emailService = getEmailService()
+              if (emailService) {
+                return emailService.sendCommentNotification(authorUser.email!, {
+                  commentAuthorName: currentUser.name ?? 'A reader',
+                  commentExcerpt: excerpt,
+                  postTitle: postAuthor.title,
+                  postUrl,
+                })
+              }
+            })
+            .catch((error) => console.error('Comment email notification failed:', error))
+        )
+      }
     }
 
     // Index approved comments for search

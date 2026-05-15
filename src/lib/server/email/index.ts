@@ -1,5 +1,6 @@
 import type { EmailClient, EmailResult } from '../services/types'
 import { EmailQueue } from './queue'
+import { renderAccountDeleted, type AccountDeletedData } from './templates/account-deleted'
 import { renderAccountSuspended, type AccountSuspendedData } from './templates/account-suspended'
 import {
   renderPaymentFailed,
@@ -8,6 +9,10 @@ import {
   renderSubscriptionCanceled,
   renderTrialEndingSoon,
 } from './templates/billing'
+import {
+  renderCommentNotification,
+  type CommentNotificationData,
+} from './templates/comment-notification'
 import {
   renderContactNotification,
   type ContactNotificationData,
@@ -215,6 +220,31 @@ export class EmailService {
       from: 'Vibekit <noreply@vibekit.com>',
       html,
       subject,
+      text,
+      to: email,
+    })
+  }
+
+  async sendAccountDeleted(email: string, data: AccountDeletedData): Promise<EmailResult> {
+    const { html, text } = renderAccountDeleted(data)
+    return this.queue.sendImmediate({
+      from: 'Vibekit <noreply@vibekit.com>',
+      html,
+      subject: 'Your account has been deleted',
+      text,
+      to: email,
+    })
+  }
+
+  async sendCommentNotification(
+    email: string,
+    data: CommentNotificationData
+  ): Promise<EmailResult> {
+    const { html, text } = renderCommentNotification(data)
+    return this.queue.sendImmediate({
+      from: 'Vibekit Blog <noreply@vibekit.com>',
+      html,
+      subject: `New comment on "${data.postTitle}"`,
       text,
       to: email,
     })

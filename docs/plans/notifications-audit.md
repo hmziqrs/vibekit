@@ -192,7 +192,7 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 | Password reset          | DONE    | `src/lib/server/email/templates/password-reset.ts` -- Reset button, 1-hour expiry warning.                                                                                        |
 | Invoice                 | DONE    | `src/lib/server/email/templates/billing.ts` — `renderPaymentSucceeded()` and `renderPaymentFailed()` templates with plan name, amount, retry date.                                |
 | Subscription changes    | DONE    | `src/lib/server/email/templates/billing.ts` — `renderSubscriptionCanceled()`, `renderPlanChanged()`, `renderTrialEndingSoon()` templates. All wired into Stripe webhook handlers. |
-| Team invites            | MISSING | No invitation email template. The `organizationInvitation` table stores invite tokens and emails, but no email is sent when an invitation is created.                             |
+| Team invites            | DONE    | `src/lib/server/email/templates/team-invite.ts` — Template with inviter, org, role, accept button. Wired into invite endpoint.                                                    |
 | Security alerts         | DONE    | `src/lib/server/email/templates/security-alert.ts` — Covers account_locked, new_device, password_change, two_factor_change. Also `account-suspended.ts` for ban notifications.    |
 | Contact notification    | DONE    | `src/lib/server/email/templates/contact-notification.ts` -- Admin notification for contact form submissions.                                                                      |
 | Newsletter confirmation | DONE    | `src/lib/server/email/templates/newsletter-confirm.ts` -- Confirmation button for newsletter subscription.                                                                        |
@@ -218,13 +218,9 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ### Issues Found
 
-**MEDIUM -- Only 5 of 9+ claimed templates exist.**
+~~**MEDIUM -- Only 5 of 9+ claimed templates exist.**~~ **DONE** -- All core SaaS templates now implemented (team invites, security alerts, account deletion confirmation). Custom template editor remains missing.
 
-- Missing: invoice, subscription changes, team invites, security alerts. These are critical transactional emails for a SaaS platform. Users will not receive confirmation of billing events, team invitations, or security changes.
-
-**LOW -- No email template for account deletion confirmation.**
-
-- Users can request account deletion, but no confirmation email is sent.
+~~**LOW -- No email template for account deletion confirmation.**~~ **DONE** -- Account deleted confirmation email template created at templates/account-deleted.ts, wired into DELETE /account endpoint.
 
 ---
 
