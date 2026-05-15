@@ -541,7 +541,7 @@ describe('deleteIndexSchema', () => {
 // reindexSchema
 // ---------------------------------------------------------------------------
 describe('reindexSchema', () => {
-  const validEntityTypes = ['blog_post', 'comment', 'item', 'page', 'user'] as const
+  const validEntityTypes = ['blog_post', 'comment', 'item', 'user'] as const
 
   // -- Valid inputs ---------------------------------------------------------
 

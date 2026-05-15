@@ -55,7 +55,7 @@ describe('comment indexer', () => {
 
   it('reindexSchema accepts all entity types', async () => {
     const { reindexSchema } = await import('$lib/validators/search')
-    const types = ['blog_post', 'comment', 'item', 'page', 'user']
+    const types = ['blog_post', 'comment', 'item', 'user']
     for (const entityType of types) {
       const result = reindexSchema.safeParse({ entityType })
       expect(result.success).toBe(true)
