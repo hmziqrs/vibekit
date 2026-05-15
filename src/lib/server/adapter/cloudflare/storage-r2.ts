@@ -78,17 +78,10 @@ export function createCloudflareStorage(bucket: R2Bucket): StorageClient {
       }
     },
 
-    async putPresignedUrl(
-      key: string,
-      options?: { contentType?: string; expiresIn?: number }
-    ): Promise<string> {
-      // R2 createSignedUrl defaults to GET; for PUT, we construct manually
-      // In production, use Workers R2 signed PUT via the bucket binding
-      // For now, return a signed URL that the client can use with PUT
-      const url = await signedBucket.createSignedUrl(key, {
-        expiresIn: options?.expiresIn ?? 3600,
-      })
-      return url
+    async putPresignedUrl(): Promise<string> {
+      throw new Error(
+        'R2 Workers binding does not support presigned PUT URLs. Use server-side bucket.put() or S3 API credentials.'
+      )
     },
   }
 }
