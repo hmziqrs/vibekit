@@ -127,6 +127,7 @@
   }
 
   async function handleCancel() {
+    if (!confirm('Cancel your subscription? You will lose access to paid features at the end of your billing period.')) return
     canceling = true
     try {
       const res = await fetch('/api/billing/cancel', { method: 'POST' })
@@ -149,6 +150,7 @@
   }
 
   async function handleDetachPaymentMethod(pmId: string) {
+    if (!confirm('Remove this payment method? You may need to add a new one to keep your subscription active.')) return
     detaching = pmId
     try {
       const res = await fetch('/api/billing/payment-methods/detach', {

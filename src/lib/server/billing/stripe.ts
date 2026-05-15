@@ -52,6 +52,7 @@ export async function createCheckoutSession(
     customerEmail?: string
     customerId?: string
     idempotencyKey?: string
+    metadata?: Record<string, string>
     mode?: 'payment' | 'subscription'
     planId?: string
     priceId?: string
@@ -61,6 +62,8 @@ export async function createCheckoutSession(
   }
 ) {
   try {
+    const metadata = { ...input.metadata }
+    if (input.planId) metadata.planId = input.planId
     const session = await stripe.checkout.sessions.create(
       {
         automatic_tax: input.automaticTax ? { enabled: true } : undefined,
@@ -70,7 +73,7 @@ export async function createCheckoutSession(
         customer_email: input.customerEmail,
         discounts: input.couponId ? [{ coupon: input.couponId }] : undefined,
         line_items: input.priceId ? [{ price: input.priceId, quantity: 1 }] : undefined,
-        metadata: input.planId ? { planId: input.planId } : undefined,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         mode: input.mode ?? 'subscription',
         subscription_data:
           input.trialDays && input.trialDays > 0

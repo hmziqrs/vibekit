@@ -67,8 +67,8 @@ type: project
 - Pricing page has no awareness of logged-in users (cannot adapt CTAs)
 - ~~No subscription status transition state machine~~ **FIXED** — `isValidTransition()` in subscription-service.ts enforces valid status transitions; cancel/reactivate validate before proceeding
 - ~~Org-level cancel/reactivate endpoints don't exist~~ **FIXED** — Added `POST /:orgId/billing/cancel` and `POST /:orgId/billing/reactivate` with Stripe sync
-- Org checkout creates subscription without Stripe checkout session
-- No confirmation dialogs on destructive actions (cancel, delete plan, detach payment method)
+- ~~Org checkout creates subscription without Stripe checkout session~~ **FIXED** — Org checkout now uses `createCheckoutSession()` when Stripe is configured, passing `organizationId` in metadata. Webhook handler reads org ID from metadata on checkout completion.
+- ~~No confirmation dialogs on destructive actions~~ **FIXED** — Cancel subscription and detach payment method now prompt with `confirm()` before executing.
 - Missing billing email templates for `customer.subscription.deleted` and `invoice.upcoming` webhook tests
 
 ## Files

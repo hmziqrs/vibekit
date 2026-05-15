@@ -1023,6 +1023,7 @@ app.post('/billing/webhooks/stripe', async (c) => {
             await createSubscription(db, {
               currentPeriodEnd: new Date(Date.now() + intervalMs),
               currentPeriodStart: new Date(),
+              organizationId: metadata?.organizationId ?? undefined,
               planId,
               stripeCustomerId: customerId ?? undefined,
               stripeSubscriptionId: subId,
@@ -6350,6 +6351,34 @@ orgApp.post(
     if (!plan) throw new NotFoundError()
     if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
+    // Try Stripe checkout session first (like user checkout)
+    const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+    if (stripe && plan.stripePriceId) {
+      const { createCheckoutSession, StripeApiError } = await import('$lib/server/billing/stripe')
+      try {
+        const session = await createCheckoutSession(stripe, {
+          automaticTax: plan.taxRate > 0,
+          cancelUrl: body.cancelUrl,
+          customerEmail: currentUser.email,
+          idempotencyKey: `org-checkout-${org.id}-${plan.id}`,
+          metadata: { organizationId: org.id },
+          planId: plan.id,
+          priceId: plan.stripePriceId,
+          successUrl: body.successUrl,
+          trialDays: plan.trialDays,
+          userId: currentUser.id,
+        })
+        return c.json({ url: session.url })
+      } catch (error) {
+        if (error instanceof StripeApiError) {
+          logger.error('Stripe org checkout error', { error: error.cause })
+          throw new BadRequestError('Failed to create checkout session')
+        }
+        throw error
+      }
+    }
+
+    // Without Stripe, create subscription directly
     const orgIntervalMs =
       plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
     const sub = await createSubscription(db, {

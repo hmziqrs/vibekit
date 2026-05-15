@@ -299,4 +299,71 @@ describe('billing stripe module', () => {
       )
     })
   })
+
+  describe('createCheckoutSession with metadata', () => {
+    it('passes custom metadata to Stripe session', async () => {
+      const mockStripe = createMockStripe()
+      const { createCheckoutSession } = await import('$lib/server/billing/stripe')
+
+      await createCheckoutSession(mockStripe as never, {
+        cancelUrl: '/cancel',
+        metadata: { organizationId: 'org-123' },
+        planId: 'plan-pro',
+        priceId: 'price_pro',
+        successUrl: '/success',
+        userId: 'user-1',
+      })
+
+      const call = mockStripe.checkout.sessions.create.mock.calls[0][0]
+      expect(call.metadata).toEqual({ organizationId: 'org-123', planId: 'plan-pro' })
+    })
+
+    it('sets planId in metadata when provided without custom metadata', async () => {
+      const mockStripe = createMockStripe()
+      const { createCheckoutSession } = await import('$lib/server/billing/stripe')
+
+      await createCheckoutSession(mockStripe as never, {
+        cancelUrl: '/cancel',
+        planId: 'plan-starter',
+        priceId: 'price_starter',
+        successUrl: '/success',
+        userId: 'user-1',
+      })
+
+      const call = mockStripe.checkout.sessions.create.mock.calls[0][0]
+      expect(call.metadata).toEqual({ planId: 'plan-starter' })
+    })
+
+    it('omits metadata when no planId or custom metadata', async () => {
+      const mockStripe = createMockStripe()
+      const { createCheckoutSession } = await import('$lib/server/billing/stripe')
+
+      await createCheckoutSession(mockStripe as never, {
+        cancelUrl: '/cancel',
+        priceId: 'price_test',
+        successUrl: '/success',
+        userId: 'user-1',
+      })
+
+      const call = mockStripe.checkout.sessions.create.mock.calls[0][0]
+      expect(call.metadata).toBeUndefined()
+    })
+
+    it('sets idempotency key when provided', async () => {
+      const mockStripe = createMockStripe()
+      const { createCheckoutSession } = await import('$lib/server/billing/stripe')
+
+      await createCheckoutSession(mockStripe as never, {
+        cancelUrl: '/cancel',
+        idempotencyKey: 'org-checkout-org-1-plan-pro',
+        planId: 'plan-pro',
+        priceId: 'price_pro',
+        successUrl: '/success',
+        userId: 'user-1',
+      })
+
+      const options = mockStripe.checkout.sessions.create.mock.calls[0][1]
+      expect(options).toEqual({ idempotencyKey: 'org-checkout-org-1-plan-pro' })
+    })
+  })
 })
