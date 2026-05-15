@@ -49,12 +49,12 @@ type: project
 ## Minor Issues
 
 - **SEO preview is text-only** — The `seo-panel.svelte` shows a simplified Google-style preview (title + domain + description) but no social card visual preview (Twitter/X card, Facebook share preview). Claim says "Google/social card preview."
-- **RSS feed origin is hardcoded** — `feed.xml/+server.ts` has `const ORIGIN = 'https://vibekit.dev'` hardcoded instead of reading from environment.
+- ~~**RSS feed origin is hardcoded**~~ **FIXED** — Now uses `url.origin` from the request URL instead of hardcoded value.
 - **Comment threading is limited to one level** — Server explicitly rejects replies to replies (`if (parent.parentId) throw new BadRequestError('Cannot reply to a reply')`). True threaded comments would support arbitrary depth.
 - **Spam detector is basic** — Keyword blacklist + pattern matching only. No Akismet, no ML-based detection, no CAPTCHA integration.
-- **No comment email notifications** — The `POST /api/comments/:postId` handler has a `// Notify post author` comment and fetches the post author, but the actual notification send code was not found in the implementation.
+- ~~**No comment email notifications**~~ **FIXED** — Comment handler creates in-app notification via `createNotification()` AND sends email via `emailService.sendCommentNotification()` with author preference check (`isEmailEnabled`). Uses `waitUntil` for fire-and-forget delivery.
 - **Reading completion threshold is hardcoded** — `progress >= 80 && readTime >= 30` is hardcoded in the analytics endpoint rather than being configurable.
-- **Blog index tag filtering loads all posts then filters in JS** — When filtering by tag, the code fetches all posts matching the base query, then filters in-memory by tag ID. This will not scale with large post counts.
+- ~~**Blog index tag filtering loads all posts then filters in JS**~~ **FIXED** — Tag filtering now uses DB-level queries with `inArray` and joins. First fetches post IDs for the tag via `blogPostTag`, then queries posts with `inArray(blogPost.id, postIdArray)` and pagination.
 
 ## Files
 

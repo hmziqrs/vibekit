@@ -173,7 +173,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 - [x] Gap: Revenue metrics — MRR/ARR/ARPU/net revenue/churn/trial counts added to getBillingOverview()
 - [x] Gap: Refund processing — admin refund endpoint (POST /api/admin/billing/refund) calls Stripe refunds API, marks invoice void; charge.refunded webhook handles automatic Stripe-initiated refunds
 - [x] Gap: Discount/coupon management — coupon table, admin CRUD, Stripe coupon sync, user redemption endpoint, validators
-- [x] Gap: Tax configuration — taxRate/taxInclusive on subscriptionPlan, calculateTax() utility, Stripe automatic_tax, taxAmountInCents on invoice
+- [x] Gap: Tax configuration — taxRate/taxInclusive on subscriptionPlan, calculateTax() utility, Stripe automatic_tax enabled at checkout when taxRate > 0, taxAmountInCents on invoice
 - [x] Payment webhooks (Stripe webhook handler, idempotent processing with eventId dedup)
 - [x] Gap: Missing webhook events — added 6 more: trial_will_end, subscription.created, payment_method.attached/detached, charge.refunded, checkout.session.expired
 - [x] Gap: Failure recovery — stripeWebhookEvent now tracks status/retryCount/nextRetryAt/errorMessage; catch block records failures; admin endpoints for viewing and retrying failed events
@@ -223,7 +223,7 @@ Each phase is one or two lines max. Subagents discover all detail at runtime.
 
 #### SEO & Performance
 <!-- Audit: remaining-categories-audit.md — 2026-05-14 -->
-- [x] SEO foundation (meta tags, Open Graph, Twitter cards, canonical URLs, sitemap.xml, robots.txt, structured data/JSON-LD)
+- [x] SEO foundation (meta tags, Open Graph, Twitter cards, canonical URLs, sitemap.xml, dynamic robots.txt, structured data/JSON-LD)
 - [x] Performance optimization (code splitting audit, bundle analysis, lazy loading images/components, font optimization, critical CSS)
 - [x] Caching strategy (Cache API usage review, stale-while-revalidate patterns, cache invalidation on mutation, edge caching rules)
 - [x] Core Web Vitals (LCP optimization, CLS prevention, INP measurement, performance budget enforcement, real-user monitoring)

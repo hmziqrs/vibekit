@@ -91,12 +91,12 @@
 
 ### Implementation Evidence
 
-| Feature                 | Status  | Evidence                                                                                                                                                                                                                                                                                                              |
-| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Broadcast announcements | DONE    | `createBroadcast()` in `src/lib/server/notifications.ts` -- Sends to all users or admins only. Bulk preference check (single query for disabled users). Batched inserts (100 per batch). Admin validator: `broadcastNotificationSchema` in `src/lib/validators/admin.ts`. Admin API endpoint exists for broadcasting. |
-| Payment receipts        | DONE | Billing emails wired to Stripe webhooks: sendPaymentSucceeded (invoice.payment_succeeded), sendPaymentFailed (invoice.payment_failed), sendSubscriptionCanceled (customer.subscription.deleted), sendTrialEndingSoon (customer.subscription.trial_will_end), sendPlanChanged (customer.subscription.updated). |
-| Admin warnings          | DONE | Ban endpoint sends emailService.sendAccountSuspended() with reason and appeal URL (line 4749). Suspend endpoint also sends notification (line 4670). |
-| Account status changes  | DONE | Ban (line 4749), suspend (line 4670), and unban endpoints all handle notifications via emailService.sendAccountSuspended(). |
+| Feature                 | Status | Evidence                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Broadcast announcements | DONE   | `createBroadcast()` in `src/lib/server/notifications.ts` -- Sends to all users or admins only. Bulk preference check (single query for disabled users). Batched inserts (100 per batch). Admin validator: `broadcastNotificationSchema` in `src/lib/validators/admin.ts`. Admin API endpoint exists for broadcasting. |
+| Payment receipts        | DONE   | Billing emails wired to Stripe webhooks: sendPaymentSucceeded (invoice.payment_succeeded), sendPaymentFailed (invoice.payment_failed), sendSubscriptionCanceled (customer.subscription.deleted), sendTrialEndingSoon (customer.subscription.trial_will_end), sendPlanChanged (customer.subscription.updated).         |
+| Admin warnings          | DONE   | Ban endpoint sends emailService.sendAccountSuspended() with reason and appeal URL (line 4749). Suspend endpoint also sends notification (line 4670).                                                                                                                                                                  |
+| Account status changes  | DONE   | Ban (line 4749), suspend (line 4670), and unban endpoints all handle notifications via emailService.sendAccountSuspended().                                                                                                                                                                                           |
 
 ### Issues Found
 
@@ -185,18 +185,21 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ### Implementation Evidence
 
-| Template                | Status  | Location                                                                                                                                                                                                     |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Welcome                 | DONE    | `src/lib/server/email/templates/welcome.ts` -- Greeting, getting-started checklist, CTA to dashboard.                                                                                                        |
-| Email verification      | DONE    | `src/lib/server/email/templates/email-verification.ts` -- Verify button, fallback link, ignore-if-not-you note.                                                                                              |
-| Password reset          | DONE    | `src/lib/server/email/templates/password-reset.ts` -- Reset button, 1-hour expiry warning.                                                                                                                   |
-| Invoice                 | MISSING | No invoice template. The `invoice` table and billing infrastructure exist, but no email is sent when an invoice is created or paid.                                                                          |
-| Subscription changes    | MISSING | No template for plan upgrades, downgrades, cancellations, renewals, or trial events. The `subscriptionEvent` table tracks these events but triggers no emails.                                               |
-| Team invites            | MISSING | No invitation email template. The `organizationInvitation` table stores invite tokens and emails, but no email is sent when an invitation is created.                                                        |
-| Security alerts         | MISSING | No templates for: new login from unknown device, password changed, 2FA enabled/disabled, account banned/unbanned, suspicious activity detected. The `securityEvent` table logs these but triggers no emails. |
-| Contact notification    | DONE    | `src/lib/server/email/templates/contact-notification.ts` -- Admin notification for contact form submissions.                                                                                                 |
-| Newsletter confirmation | DONE    | `src/lib/server/email/templates/newsletter-confirm.ts` -- Confirmation button for newsletter subscription.                                                                                                   |
-| Custom templates        | MISSING | No template editor, no admin UI for creating/editing templates. Templates are code-only.                                                                                                                     |
+| Template                | Status  | Location                                                                                                                                                                                         |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Welcome                 | DONE    | `src/lib/server/email/templates/welcome.ts` -- Greeting, getting-started checklist, CTA to dashboard.                                                                                            |
+| Email verification      | DONE    | `src/lib/server/email/templates/email-verification.ts` -- Verify button, fallback link, ignore-if-not-you note.                                                                                  |
+| Password reset          | DONE    | `src/lib/server/email/templates/password-reset.ts` -- Reset button, 1-hour expiry warning.                                                                                                       |
+| Invoice                 | DONE    | `src/lib/server/email/templates/billing.ts` -- `renderPaymentSucceeded()` sends invoice receipt with plan name, amount, and billing period. Wired to `invoice.payment_succeeded` Stripe webhook. |
+| Subscription changes    | DONE    | `src/lib/server/email/templates/billing.ts` -- `renderPlanChanged()`, `renderSubscriptionCanceled()`, `renderTrialEndingSoon()`, `renderPaymentFailed()`. All wired to Stripe webhooks.          |
+| Team invites            | DONE    | `src/lib/server/email/templates/team-invite.ts` -- Invitation email with team name, inviter name, accept button. Wired to `sendTeamInvite()` in EmailService.                                    |
+| Security alerts         | DONE    | `src/lib/server/email/templates/security-alert.ts` -- Template for new device, password change, 2FA change alerts. Wired to `sendSecurityAlert()` called from `hooks.server.ts` at 3 locations.  |
+| Account suspended       | DONE    | `src/lib/server/email/templates/account-suspended.ts` -- Suspended/banned account notification with reason and appeal URL. Wired to `sendAccountSuspended()`.                                    |
+| Account deleted         | DONE    | `src/lib/server/email/templates/account-deleted.ts` -- Account deletion confirmation. Wired to `sendAccountDeleted()`.                                                                           |
+| Comment notification    | DONE    | `src/lib/server/email/templates/comment-notification.ts` -- New comment on blog post notification with excerpt. Wired to `sendCommentNotification()`.                                            |
+| Contact notification    | DONE    | `src/lib/server/email/templates/contact-notification.ts` -- Admin notification for contact form submissions.                                                                                     |
+| Newsletter confirmation | DONE    | `src/lib/server/email/templates/newsletter-confirm.ts` -- Confirmation button for newsletter subscription.                                                                                       |
+| Custom templates        | MISSING | No template editor, no admin UI for creating/editing templates. Templates are code-only.                                                                                                         |
 
 ### Template Quality Assessment
 
@@ -218,9 +221,9 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ### Issues Found
 
-**MEDIUM -- Only 5 of 9+ claimed templates exist.**
+**MEDIUM -- Only 1 of 9+ claimed templates is missing.**
 
-- Missing: invoice, subscription changes, team invites, security alerts. These are critical transactional emails for a SaaS platform. Users will not receive confirmation of billing events, team invitations, or security changes.
+- All critical templates exist: welcome, verification, password reset, billing (5 variants), team invite, security alert, account suspended/deleted, comment notification, newsletter confirmation. Only "custom templates" (admin editor) is missing.
 
 **LOW -- No email template for account deletion confirmation.**
 
@@ -331,14 +334,14 @@ Both implement the `EmailClient` interface (`send(message: EmailMessage): Promis
 
 ## Summary Scorecard
 
-| Feature Area              | Score | Verdict                                                                                                                                               |
-| ------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| In-App Notifications      | 7/10  | Solid bell component with polling. Missing real-time, preferences UI, and filtering.                                                                  |
-| System-to-User Alerts     | 4/10  | Broadcast works. Payment receipts, admin warnings, and account status change notifications are missing.                                               |
-| Email Infrastructure      | 5/10  | Template system and queue exist, but queue is in-memory (lost on Worker recycle). Bounce handling is newsletter-only. No unsubscribe headers.         |
-| Email Templates           | 4/10  | 5 of 9+ claimed templates exist. Missing critical SaaS templates: invoice, subscription changes, team invites, security alerts. No preview mechanism. |
-| Push Notifications        | 5/10  | VAPID subscription flow works. Missing service worker, no integration with notification creation flow, no push preference channel.                    |
-| Slack/Discord Integration | 1/10  | OAuth connection exists. Zero actual functionality -- no messages sent, no slash commands, no channel routing.                                        |
+| Feature Area              | Score | Verdict                                                                                                                                                              |
+| ------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| In-App Notifications      | 7/10  | Solid bell component with polling. Missing real-time, preferences UI, and filtering.                                                                                 |
+| System-to-User Alerts     | 8/10  | Broadcast, payment receipts, admin warnings, and account status changes all implemented and wired to email service. Broadcast not auto-triggered.                    |
+| Email Infrastructure      | 5/10  | Template system and queue exist, but queue is in-memory (lost on Worker recycle). Bounce handling is newsletter-only. No unsubscribe headers.                        |
+| Email Templates           | 8/10  | 12 of 13 templates exist including all critical SaaS emails (billing, security, team invite). Only custom template editor missing. No preview mechanism.             |
+| Push Notifications        | 7/10  | VAPID subscription flow works. Service worker integrated. Push dispatched from createNotification. Push preference channel added. VAPID keys configured per-request. |
+| Slack/Discord Integration | 1/10  | OAuth connection exists. Zero actual functionality -- no messages sent, no slash commands, no channel routing.                                                       |
 
 ### Priority Fixes (Ordered)
 

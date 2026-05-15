@@ -1,3 +1,4 @@
+import { renderAndSanitize } from '$lib/markdown'
 import {
   assignVariant,
   createExperiment,
@@ -304,7 +305,6 @@ import { secureHeaders } from 'hono/secure-headers'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod/v4'
 
-import { renderAndSanitize } from '$lib/markdown'
 import {
   requirePermission,
   requireTeamPermission,
@@ -2487,6 +2487,7 @@ protectedApp.post('/billing/checkout', async (c) => {
   if (stripe && plan.stripePriceId) {
     const { createCheckoutSession } = await import('$lib/server/billing/stripe')
     const session = await createCheckoutSession(stripe, {
+      automaticTax: plan.taxRate > 0,
       cancelUrl: parsed.data.cancelUrl,
       customerEmail: currentUser.email,
       planId: plan.id,
@@ -2499,8 +2500,7 @@ protectedApp.post('/billing/checkout', async (c) => {
   }
 
   // Without Stripe, create subscription directly
-  const intervalMs =
-    plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
+  const intervalMs = plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
   const sub = await createSubscription(db, {
     currentPeriodEnd: new Date(Date.now() + intervalMs),
     currentPeriodStart: new Date(),
@@ -7536,7 +7536,12 @@ adminApp.get('/integrations', async (c) => {
     provider: query.provider,
     status: query.status,
   })
-  return c.json({ integrations })
+  const masked = integrations.map((i: Record<string, unknown>) => ({
+    ...i,
+    accessToken: i.accessToken ? '••••••••' : null,
+    refreshToken: i.refreshToken ? '••••••••' : null,
+  }))
+  return c.json({ integrations: masked })
 })
 
 adminApp.post('/integrations/:id/health', async (c) => {

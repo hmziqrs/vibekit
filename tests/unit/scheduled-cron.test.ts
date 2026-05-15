@@ -26,8 +26,7 @@ describe('scheduled cron handler', () => {
 
     for (const path of endpoints) {
       const found = routes.some(
-        (r) =>
-          r.path === path && (r.method === 'POST' || r.method === 'ALL')
+        (r) => r.path === path && (r.method === 'POST' || r.method === 'ALL')
       )
       expect(found, `Route ${path} should exist`).toBe(true)
     }
