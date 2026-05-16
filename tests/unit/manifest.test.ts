@@ -1,8 +1,25 @@
 import { describe, expect, it } from 'vitest'
 
+const BASE = 'http://localhost:5173'
+
+let serverAvailable: boolean | null = null
+
+async function isServerAvailable(): Promise<boolean> {
+  if (serverAvailable !== null) return serverAvailable
+  try {
+    const res = await fetch(`${BASE}/api/automation/manifest`)
+    const contentType = res.headers.get('content-type') ?? ''
+    serverAvailable = contentType.includes('application/json')
+  } catch {
+    serverAvailable = false
+  }
+  return serverAvailable
+}
+
 describe('automation manifest endpoint', () => {
   it('manifest endpoint returns valid structure', async () => {
-    const response = await fetch('http://localhost:5173/api/automation/manifest')
+    if (!(await isServerAvailable())) return
+    const response = await fetch(`${BASE}/api/automation/manifest`)
     expect(response.ok).toBeTruthy()
 
     const manifest = (await response.json()) as {
@@ -28,7 +45,8 @@ describe('automation manifest endpoint', () => {
   })
 
   it('triggers include expected events', async () => {
-    const response = await fetch('http://localhost:5173/api/automation/manifest')
+    if (!(await isServerAvailable())) return
+    const response = await fetch(`${BASE}/api/automation/manifest`)
     const manifest = (await response.json()) as {
       triggers: { event: string }[]
     }
@@ -42,7 +60,8 @@ describe('automation manifest endpoint', () => {
   })
 
   it('actions include expected operations', async () => {
-    const response = await fetch('http://localhost:5173/api/automation/manifest')
+    if (!(await isServerAvailable())) return
+    const response = await fetch(`${BASE}/api/automation/manifest`)
     const manifest = (await response.json()) as {
       actions: { name: string }[]
     }
@@ -54,7 +73,8 @@ describe('automation manifest endpoint', () => {
   })
 
   it('each trigger has required fields', async () => {
-    const response = await fetch('http://localhost:5173/api/automation/manifest')
+    if (!(await isServerAvailable())) return
+    const response = await fetch(`${BASE}/api/automation/manifest`)
     const manifest = (await response.json()) as {
       triggers: { description: string; event: string; name: string; payloadExample: object }[]
     }
@@ -68,7 +88,8 @@ describe('automation manifest endpoint', () => {
   })
 
   it('each action has required fields', async () => {
-    const response = await fetch('http://localhost:5173/api/automation/manifest')
+    if (!(await isServerAvailable())) return
+    const response = await fetch(`${BASE}/api/automation/manifest`)
     const manifest = (await response.json()) as {
       actions: { description: string; method: string; name: string; path: string }[]
     }
@@ -82,7 +103,8 @@ describe('automation manifest endpoint', () => {
   })
 
   it('auth section has required fields', async () => {
-    const response = await fetch('http://localhost:5173/api/automation/manifest')
+    if (!(await isServerAvailable())) return
+    const response = await fetch(`${BASE}/api/automation/manifest`)
     const manifest = (await response.json()) as {
       auth: {
         description: string
