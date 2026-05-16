@@ -1885,7 +1885,9 @@ protectedApp.get('/security-events', async (c) => {
       createdAt: securityEvent.createdAt,
       eventType: securityEvent.eventType,
       id: securityEvent.id,
+      ipAddress: securityEvent.ipAddress,
       metadata: securityEvent.metadata,
+      userAgent: securityEvent.userAgent,
     })
     .from(securityEvent)
     .where(eq(securityEvent.userId, userId))
