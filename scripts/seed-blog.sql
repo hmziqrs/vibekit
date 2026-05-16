@@ -1,10 +1,10 @@
-INSERT OR IGNORE INTO user (id, name, email, email_verified, created_at, updated_at, display_name, role, status) VALUES ('019de33d-ca59-7c3a-91c0-55cfa89a9a79', 'Seed Author', 'seed@vibekit.local', 1, cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer), 'Seed Author', 'admin', 'active');
-INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019de33d-ca59-7c3a-91c0-55d0e2e19ab1', 'SvelteKit', 'sveltekit', cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019de33d-ca59-7c3a-91c0-55d1e384a3ad', 'Cloudflare', 'cloudflare', cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019de33d-ca59-7c3a-91c0-55d2c9ee083d', 'Authentication', 'authentication', cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019de33d-ca59-7c3a-91c0-55d302acb373', 'Drizzle ORM', 'drizzle-orm', cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019de33d-ca59-7c3a-91c0-55d45efbe245', 'Edge Computing', 'edge-computing', cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019de33d-ca59-7c3a-91c0-55d50d4380cc', 'Getting Started with SvelteKit 2', 'getting-started-with-sveltekit-2', 'A comprehensive guide to building modern web applications with SvelteKit 2, from project setup to deployment on Cloudflare Workers.', '## Why SvelteKit 2?
+INSERT OR IGNORE INTO user (id, name, email, email_verified, created_at, updated_at, display_name, role, status) VALUES ('019e2f36-8e38-7c26-90e1-1c792075edee', 'Seed Author', 'seed@vibekit.local', 1, cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer), 'Seed Author', 'admin', 'active');
+INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019e2f36-8e38-7c26-90e1-1c7a90581c55', 'SvelteKit', 'sveltekit', cast(unixepoch('subsecond') * 1000 as integer));
+INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019e2f36-8e38-7c26-90e1-1c7b2a6083cb', 'Cloudflare', 'cloudflare', cast(unixepoch('subsecond') * 1000 as integer));
+INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019e2f36-8e38-7c26-90e1-1c7c63dfabb7', 'Authentication', 'authentication', cast(unixepoch('subsecond') * 1000 as integer));
+INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019e2f36-8e38-7c26-90e1-1c7d115d0938', 'Drizzle ORM', 'drizzle-orm', cast(unixepoch('subsecond') * 1000 as integer));
+INSERT OR IGNORE INTO blog_tag (id, name, slug, created_at) VALUES ('019e2f36-8e38-7c26-90e1-1c7e5d852461', 'Edge Computing', 'edge-computing', cast(unixepoch('subsecond') * 1000 as integer));
+INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019e2f36-8e38-7c26-90e1-1c7ffb9df090', 'Getting Started with SvelteKit 2', 'getting-started-with-sveltekit-2', 'A comprehensive guide to building modern web applications with SvelteKit 2, from project setup to deployment on Cloudflare Workers.', '## Why SvelteKit 2?
 
 SvelteKit 2 brings significant improvements over its predecessor, including better performance, enhanced developer experience, and first-class support for edge runtimes like Cloudflare Workers.
 
@@ -57,7 +57,7 @@ Your app runs on Cloudflare''s global network with sub-millisecond cold starts.
 - Set up authentication with Better Auth
 - Use Drizzle ORM for type-safe database queries
 - Add TanStack Query for client-side data management', 'Getting Started with SvelteKit 2 — Vibekit', 'Learn how to build modern web applications with SvelteKit 2 and deploy to Cloudflare Workers.', 'published', COALESCE((SELECT id FROM user WHERE email = 'seed@vibekit.local' LIMIT 1), (SELECT id FROM user LIMIT 1)), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019de33d-ca59-7c3a-91c0-55d66ef3b762', 'Building a SaaS Product on Cloudflare Workers', 'building-saas-on-cloudflare-workers', 'How to leverage Cloudflare''s edge platform to build fast, globally distributed SaaS applications with minimal infrastructure overhead.', '## The Edge Computing Advantage
+INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019e2f36-8e38-7c26-90e1-1c804d5dcb40', 'Building a SaaS Product on Cloudflare Workers', 'building-saas-on-cloudflare-workers', 'How to leverage Cloudflare''s edge platform to build fast, globally distributed SaaS applications with minimal infrastructure overhead.', '## The Edge Computing Advantage
 
 Cloudflare Workers run your code in 300+ cities worldwide. For SaaS products, this means your users get sub-50ms response times regardless of their location.
 
@@ -97,7 +97,7 @@ Cloudflare''s free tier handles surprising scale:
 - 10 million R2 Class A operations/month
 
 For most early-stage SaaS products, this means **$0 infrastructure costs** while you find product-market fit.', 'Building SaaS on Cloudflare Workers', 'Discover how to build globally distributed SaaS applications using Cloudflare Workers, D1, and R2.', 'published', COALESCE((SELECT id FROM user WHERE email = 'seed@vibekit.local' LIMIT 1), (SELECT id FROM user LIMIT 1)), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019de33d-ca59-7c3a-91c0-55d7e8de4a93', 'Authentication Best Practices for SvelteKit Apps', 'authentication-best-practices-sveltekit', 'A deep dive into implementing secure authentication in SvelteKit using Better Auth, with patterns for session management, route guards, and role-based access.', '## Why Better Auth?
+INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019e2f36-8e38-7c26-90e1-1c81c71324ad', 'Authentication Best Practices for SvelteKit Apps', 'authentication-best-practices-sveltekit', 'A deep dive into implementing secure authentication in SvelteKit using Better Auth, with patterns for session management, route guards, and role-based access.', '## Why Better Auth?
 
 Better Auth is a framework-agnostic authentication library that works natively with SvelteKit. It provides:
 
@@ -158,7 +158,7 @@ emailVerification: {
 ```
 
 This ensures users confirm their email before accessing sensitive features.', 'SvelteKit Authentication Best Practices', 'Learn how to implement secure authentication in SvelteKit with Better Auth, including session management and role-based access.', 'published', COALESCE((SELECT id FROM user WHERE email = 'seed@vibekit.local' LIMIT 1), (SELECT id FROM user LIMIT 1)), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019de33d-ca59-7c3a-91c0-55d8be21b49e', 'Type-Safe Database Queries with Drizzle ORM and D1', 'drizzle-orm-d1-type-safe-queries', 'How Drizzle ORM brings SQL-like type safety to Cloudflare D1, with practical examples of schema definition, migrations, and queries.', '## What is Drizzle ORM?
+INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019e2f36-8e38-7c26-90e1-1c827172c9c1', 'Type-Safe Database Queries with Drizzle ORM and D1', 'drizzle-orm-d1-type-safe-queries', 'How Drizzle ORM brings SQL-like type safety to Cloudflare D1, with practical examples of schema definition, migrations, and queries.', '## What is Drizzle ORM?
 
 Drizzle is a TypeScript ORM that gives you SQL-like syntax with full type safety. Unlike heavy ORMs, Drizzle generates minimal, readable queries.
 
@@ -226,7 +226,7 @@ export const blogPostRelations = relations(blogPost, ({ one }) => ({
 ```
 
 This enables eager loading: `db.query.blogPost.findMany({ with: { author: true } })`', 'Drizzle ORM with Cloudflare D1', 'Master type-safe database queries with Drizzle ORM and Cloudflare D1 SQLite.', 'published', COALESCE((SELECT id FROM user WHERE email = 'seed@vibekit.local' LIMIT 1), (SELECT id FROM user LIMIT 1)), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019de33d-ca59-7c3a-91c0-55d94fe102cc', 'The Future of Edge Computing for Web Developers', 'future-of-edge-computing-web-developers', 'Exploring how edge computing is reshaping web development and what it means for building the next generation of applications.', '## What is Edge Computing?
+INSERT OR IGNORE INTO blog_post (id, title, slug, excerpt, content_body, seo_title, seo_description, status, author_id, published_at, created_at, updated_at) VALUES ('019e2f36-8e38-7c26-90e1-1c83788f2958', 'The Future of Edge Computing for Web Developers', 'future-of-edge-computing-web-developers', 'Exploring how edge computing is reshaping web development and what it means for building the next generation of applications.', '## What is Edge Computing?
 
 Edge computing runs your code closer to your users. Instead of a single data center, your application runs in hundreds of locations worldwide.
 
@@ -278,13 +278,13 @@ As edge computing matures, expect:
 - Stronger consistency guarantees
 
 The future is edge-native. Start building today.', NULL, NULL, 'draft', COALESCE((SELECT id FROM user WHERE email = 'seed@vibekit.local' LIMIT 1), (SELECT id FROM user LIMIT 1)), NULL, cast(unixepoch('subsecond') * 1000 as integer), cast(unixepoch('subsecond') * 1000 as integer));
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d50d4380cc', '019de33d-ca59-7c3a-91c0-55d0e2e19ab1');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d50d4380cc', '019de33d-ca59-7c3a-91c0-55d1e384a3ad');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d66ef3b762', '019de33d-ca59-7c3a-91c0-55d1e384a3ad');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d66ef3b762', '019de33d-ca59-7c3a-91c0-55d45efbe245');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d7e8de4a93', '019de33d-ca59-7c3a-91c0-55d2c9ee083d');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d7e8de4a93', '019de33d-ca59-7c3a-91c0-55d0e2e19ab1');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d8be21b49e', '019de33d-ca59-7c3a-91c0-55d302acb373');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d8be21b49e', '019de33d-ca59-7c3a-91c0-55d1e384a3ad');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d94fe102cc', '019de33d-ca59-7c3a-91c0-55d45efbe245');
-INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019de33d-ca59-7c3a-91c0-55d94fe102cc', '019de33d-ca59-7c3a-91c0-55d1e384a3ad');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c81c71324ad', '019e2f36-8e38-7c26-90e1-1c7c63dfabb7');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c81c71324ad', '019e2f36-8e38-7c26-90e1-1c7a90581c55');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c804d5dcb40', '019e2f36-8e38-7c26-90e1-1c7b2a6083cb');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c804d5dcb40', '019e2f36-8e38-7c26-90e1-1c7e5d852461');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c827172c9c1', '019e2f36-8e38-7c26-90e1-1c7d115d0938');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c827172c9c1', '019e2f36-8e38-7c26-90e1-1c7b2a6083cb');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c83788f2958', '019e2f36-8e38-7c26-90e1-1c7e5d852461');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c83788f2958', '019e2f36-8e38-7c26-90e1-1c7b2a6083cb');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c7ffb9df090', '019e2f36-8e38-7c26-90e1-1c7a90581c55');
+INSERT OR IGNORE INTO blog_post_tag (post_id, tag_id) VALUES ('019e2f36-8e38-7c26-90e1-1c7ffb9df090', '019e2f36-8e38-7c26-90e1-1c7b2a6083cb');

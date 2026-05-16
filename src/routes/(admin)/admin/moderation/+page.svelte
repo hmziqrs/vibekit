@@ -34,7 +34,6 @@
 
   const statusTabs = [
     { label: 'Pending', value: 'pending' },
-    { label: 'Reviewing', value: 'reviewing' },
     { label: 'Resolved', value: 'resolved' },
     { label: 'Dismissed', value: 'dismissed' },
     { label: 'All', value: '' },
@@ -210,8 +209,8 @@
       <p class="mt-1 text-2xl font-bold text-warning">{statsQuery.data.pending}</p>
     </div>
     <div class="rounded-xl border border-white/[0.06] bg-surface p-4">
-      <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Reviewing</p>
-      <p class="mt-1 text-2xl font-bold text-info">{statsQuery.data.reviewing}</p>
+      <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Dismissed</p>
+      <p class="mt-1 text-2xl font-bold text-text-muted">{statsQuery.data.dismissed}</p>
     </div>
     <div class="rounded-xl border border-white/[0.06] bg-surface p-4">
       <p class="text-[12px] font-medium uppercase tracking-wider text-text-subtle">Resolved</p>
@@ -323,7 +322,7 @@
               {formatDate(report.createdAt)}
             </td>
             <td class="px-5 py-3.5 text-end">
-              {#if report.status === 'pending' || report.status === 'reviewing'}
+              {#if report.status === 'pending'}
                 <div class="relative inline-block">
                   <button
                     class="rounded-md p-1.5 text-text-muted transition-colors hover:bg-white/[0.04] hover:text-text-primary"

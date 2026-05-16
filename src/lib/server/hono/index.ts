@@ -101,7 +101,6 @@ import {
   user,
   webhookEndpoint,
 } from '$lib/server/db/schema'
-import { handleBounce } from '$lib/server/email/bounce-handler'
 import { createEmailService } from '$lib/server/email/index'
 import {
   AppError,
@@ -704,9 +703,7 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     const confirmUrl = `${env.origin}/api/newsletter/confirm?token=${newToken}`
     try {
       const emailService = createEmailService(c.get('services').email)
-      await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, async () => {
-        await handleBounce(db, emailAddress)
-      })
+      await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, undefined, newToken)
     } catch (error) {
       logger.error('Failed to send newsletter re-subscription email', { error })
     }
@@ -732,9 +729,7 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
   const confirmUrl2 = `${env2.origin}/api/newsletter/confirm?token=${token}`
   try {
     const emailService2 = createEmailService(c.get('services').email)
-    await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, async () => {
-      await handleBounce(db, emailAddress)
-    })
+    await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, undefined, token)
     emailSent = true
   } catch (error) {
     logger.error('Failed to send newsletter confirmation email', { error })
@@ -789,9 +784,12 @@ app.get('/api/newsletter/confirm', async (c) => {
   return c.redirect('/blog?newsletter=confirmed')
 })
 
-app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) => {
-  const parsed = unsubscribeSchema.safeParse(await c.req.json().catch(() => ({})))
-  const token = (parsed.success ? parsed.data.token : undefined) ?? c.req.query('token')
+async function handleNewsletterUnsubscribe(c: {
+  get: (key: string) => any
+  json: (body: any, status?: number) => any
+  req: { query: (key: string) => string | undefined }
+}) {
+  const token = c.req.query('token')
   if (!token) return c.json({ error: { message: 'Missing token' } }, 400)
 
   const { db } = c.get('services')
@@ -819,6 +817,14 @@ app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_
     .where(eq(newsletterSubscriber.id, subscriber.id))
 
   return c.json({ message: 'Successfully unsubscribed', success: true })
+}
+
+app.get('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) => {
+  return handleNewsletterUnsubscribe(c)
+})
+
+app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) => {
+  return handleNewsletterUnsubscribe(c)
 })
 
 // ── Analytics (public) ─────────────────────────────────────────────────
@@ -7940,8 +7946,14 @@ adminApp.get('/comments', async (c) => {
   const page = parsePositiveInt(c.req.query('page'), 1)
   const limit = parseClampInt(c.req.query('limit'), 25, 1, 100)
   const offset = (page - 1) * limit
+  const sortBy = c.req.query('sortBy') ?? 'createdAt'
+  const sortDir = c.req.query('sortDir') === 'asc' ? 'asc' : 'desc'
 
   const conditions = statusFilter ? eq(comment.status, statusFilter) : undefined
+
+  const sortColumn =
+    sortBy === 'authorName' ? user.name : sortBy === 'status' ? comment.status : comment.createdAt
+  const orderFn = sortDir === 'asc' ? asc : desc
 
   const [comments, totalResult] = await Promise.all([
     db
@@ -7962,7 +7974,7 @@ adminApp.get('/comments', async (c) => {
       .innerJoin(user, eq(comment.authorId, user.id))
       .leftJoin(blogPost, eq(comment.postId, blogPost.id))
       .where(conditions)
-      .orderBy(desc(comment.createdAt))
+      .orderBy(orderFn(sortColumn))
       .limit(limit)
       .offset(offset),
     db

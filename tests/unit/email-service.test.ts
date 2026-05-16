@@ -69,15 +69,19 @@ describe('sendNewsletterConfirmation', () => {
     expect(message.html).toContain('Confirm')
   })
 
-  it('passes onBounce callback as onFinalFailure', async () => {
+  it('includes unsubscribe token in List-Unsubscribe header', async () => {
     const { EmailService } = await import('$lib/server/email/index')
     const service = new EmailService({ send: vi.fn().mockResolvedValue({ ok: true }) })
-    const onBounce = vi.fn().mockResolvedValue(undefined)
 
-    await service.sendNewsletterConfirmation('user@test.com', 'https://confirm', onBounce)
+    await service.sendNewsletterConfirmation(
+      'user@test.com',
+      'https://confirm',
+      undefined,
+      'tok123'
+    )
 
-    const [, options] = mockEnqueue.mock.calls[0]
-    expect(options.onFinalFailure).toBe(onBounce)
+    const [message] = mockEnqueue.mock.calls[0]
+    expect(message.headers['List-Unsubscribe']).toContain('token=tok123')
   })
 })
 

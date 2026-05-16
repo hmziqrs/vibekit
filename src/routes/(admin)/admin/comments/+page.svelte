@@ -20,6 +20,8 @@
 
   let statusFilter = $state<string>('pending')
   let currentPage = $state(1)
+  let sortKey = $state('createdAt')
+  let sortDir = $state<'asc' | 'desc'>('desc')
   let selectedIds = $state<Set<string>>(new Set())
   let deleteTarget = $state<CommentRow | null>(null)
   let showConfirmDialog = $state(false)
@@ -33,11 +35,13 @@
       if (statusFilter) params.set('status', statusFilter)
       params.set('page', String(currentPage))
       params.set('limit', String(PAGE_SIZE))
+      params.set('sortBy', sortKey)
+      params.set('sortDir', sortDir)
       const res = await fetch(`/api/admin/comments?${params}`)
       if (!res.ok) throw new Error('Failed to fetch comments')
       return (await res.json()) as { comments: CommentRow[]; page: number; total: number }
     },
-    queryKey: ['admin', 'comments', { page: currentPage, status: statusFilter }],
+    queryKey: ['admin', 'comments', { page: currentPage, sortBy: sortKey, sortDir, status: statusFilter }],
     retry: 1,
   }))
 
@@ -148,8 +152,10 @@
     return text.length > max ? `${text.slice(0, max)}...` : text
   }
 
-  function handleSort(_key: string, _dir: 'asc' | 'desc') {
-    // Server-side sorting handled by query
+  function handleSort(key: string, dir: 'asc' | 'desc') {
+    sortKey = key
+    sortDir = dir
+    currentPage = 1
   }
 
   function handleFilterChange(filter: string) {

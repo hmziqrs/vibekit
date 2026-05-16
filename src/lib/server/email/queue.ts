@@ -13,10 +13,7 @@ export class EmailQueue {
     this.db = db ?? null
   }
 
-  async enqueue(
-    message: EmailMessage,
-    options?: { maxRetries?: number; onFinalFailure?: () => Promise<void> }
-  ): Promise<void> {
+  async enqueue(message: EmailMessage, options?: { maxRetries?: number }): Promise<void> {
     if (!this.db) {
       // Fallback: send immediately without persistence
       await this.client.send(message)
