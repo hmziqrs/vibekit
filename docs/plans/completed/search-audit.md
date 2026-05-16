@@ -12,7 +12,7 @@ type: project
 | ----------------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
 | Algolia/Meilisearch/Typesense integration | **NOT IMPLEMENTED** | Uses SQLite FTS5 on D1 exclusively. No third-party search engine code exists. |
 | Index management                          | **PARTIAL**         | Admin reindex endpoint exists but ignores entityType filter                   |
-| Relevance tuning                          | **NOT IMPLEMENTED** | Default FTS5 BM25 ranking. No custom boost weights.                           |
+| Relevance tuning                          | **IMPLEMENTED**     | bm25() with configurable weights (title 10x, content 1x, metadata 0.5x)       |
 | Autocomplete/suggestions                  | **NOT IMPLEMENTED** | Debounced prefix search exists but no dedicated autocomplete endpoint         |
 | Faceted filters                           | **MINIMAL**         | Entity type filter buttons only. No date/status/author facets.                |
 | Search result previews                    | **IMPLEMENTED**     | Content snippets with match highlighting                                      |
@@ -21,8 +21,8 @@ type: project
 | Blog posts indexed                        | **IMPLEMENTED**     | Full lifecycle: create, update, delete                                        |
 | User content indexed                      | **COMPLETE**        | Create (via better-auth databaseHooks), update, and delete hooks wired.       |
 | Admin content indexed                     | **N/A**             | No admin content entity type in schema                                        |
-| Comments indexed                          | **NOT IMPLEMENTED** | Listed in validators but no indexer function                                  |
-| Incremental updates                       | **PARTIAL**         | Works for blog/items/users. Absent for comments.                              |
+| Comments indexed                          | **IMPLEMENTED**     | Full lifecycle: create (approved), update, delete, admin approve/reject       |
+| Incremental updates                       | **COMPLETE**        | All entities: blog/items/users/comments have full create/update/delete hooks  |
 
 ## Critical Gaps
 
@@ -30,14 +30,12 @@ type: project
 
 2. ~~**Blog search uses LIKE, not FTS**~~ — **FIXED**. `GET /api/blog/search` now uses the FTS5 search service with `entityTypes: ['blog_post']`, returning ranked results with relevance scoring.
 
-3. **No relevance tuning** — Title matches should rank higher than body matches.
-   - **Fix**: Add column weights to FTS5 table definition or use custom rank function.
+3. ~~**No relevance tuning**~~ — **FIXED**. bm25() with configurable SearchWeights (title 10x, content 1x, metadata 0.5x, entityType 0x).
 
 4. **reindexSchema entityType filter ignored** — Schema accepts it but handler reindexes everything.
    - **Fix**: Use the entityType param in the reindex handler.
 
-5. **Comments not indexed** — Valid entity type but zero implementation.
-   - **Fix**: Create `indexComment` function and wire into comment mutation handlers.
+5. ~~**Comments not indexed**~~ — **FIXED**. `indexComment()` in indexer.ts:214-244, full lifecycle hooks in hono/index.ts (create:3721, update:3751, delete:3775, admin approve:7829, admin reject/spam:7832, admin delete:7851).
 
 ## Files
 

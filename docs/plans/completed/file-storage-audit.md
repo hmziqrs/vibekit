@@ -16,7 +16,7 @@ type: project
 | File type validation             | **COMPLETE**         | MIME type + magic byte verification                                                                                                               |
 | Virus scanning                   | **PARTIAL (MEDIUM)** | Heuristic byte-pattern matcher (EICAR, PE, ELF, Mach-O). Integrated into upload pipeline but not a real AV engine — cannot detect actual malware. |
 | File browser                     | **COMPLETE**         | Grid/list with pagination in media library                                                                                                        |
-| Thumbnail generation             | **NOT IMPLEMENTED**  | Returns original image as "thumbnail"                                                                                                             |
+| Thumbnail generation             | **IMPLEMENTED**      | generateThumbnail() service with configurable sizes, Cloudflare Image Resizing URL helper, POST /storage/thumbnail admin endpoint                 |
 | Metadata extraction              | **MINIMAL**          | Filename + size only. No EXIF/dimensions.                                                                                                         |
 | Search/filter                    | **PARTIAL**          | Client filename filter + server type filter                                                                                                       |
 | Folder organization              | **NOT IMPLEMENTED**  | Prefix filter only, no folder CRUD                                                                                                                |
@@ -28,7 +28,7 @@ type: project
 | R2 primary adapter               | **COMPLETE**         | Full adapter with presigned URLs                                                                                                                  |
 | S3-compatible fallback           | **COMPLETE**         | Two implementations (one redundant)                                                                                                               |
 | Local dev storage                | **COMPLETE**         | Filesystem adapter with metadata sidecars                                                                                                         |
-| Presigned URLs for direct upload | **INCOMPLETE**       | GET-only. No PUT presigned URL endpoint.                                                                                                          |
+| Presigned URLs for direct upload | **COMPLETE**         | Both GET and PUT presigned URL endpoints (POST /storage/presign-get, POST /storage/presign-put)                                                   |
 
 ## Critical Gaps
 
@@ -40,14 +40,12 @@ type: project
 3. **No image processing at upload** — Files stored byte-for-byte as uploaded. No resize, no crop, no format conversion.
    - **Fix**: Add `sharp` or use Cloudflare Image Resizing transformations on upload.
 
-4. **No thumbnail generation** — All image displays use the original file.
-   - **Fix**: Generate thumbnails on upload or use Cloudflare Image Resizing for on-demand thumbnails.
+4. ~~**No thumbnail generation**~~ — **FIXED**. `generateThumbnail()` in `src/lib/server/thumbnail.ts` stores thumbnails with configurable sizes. `getThumbnailKey()` and `getResizedUrl()` helpers for Cloudflare Image Resizing. Admin endpoint `POST /storage/thumbnail`.
 
 5. **Duplicate S3 adapter** — `node/storage-s3.ts` (production) and `s3/storage-s3.ts` (test-only) implement the same thing differently.
    - **Fix**: Consolidate to single implementation using AWS SDK.
 
-6. **Presigned URLs are GET-only** — No PUT presigned URL for direct browser-to-storage uploads.
-   - **Fix**: Add PUT presigned URL generation to StorageClient interface and adapters.
+6. ~~**Presigned URLs are GET-only**~~ — **FIXED**. `putPresignedUrl` added to StorageClient interface, implemented in S3/R2/filesystem adapters. `POST /storage/presign-put` endpoint added.
 
 ## Files
 
