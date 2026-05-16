@@ -1,4 +1,5 @@
 import { auditLog, user } from '$lib/server/db/schema'
+import { escapeLike } from '$lib/server/escape-like'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { desc, eq, like, sql } from 'drizzle-orm'
 
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const limit = 50
   const offset = (page - 1) * limit
 
-  const actionFilter = action ? like(auditLog.action, `%${action}%`) : undefined
+  const actionFilter = action ? like(auditLog.action, `%${escapeLike(action)}%`) : undefined
 
   const logs = await db
     .select({

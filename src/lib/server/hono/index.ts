@@ -1,9 +1,8 @@
 import { renderAndSanitize, sanitizeHtml } from '$lib/markdown'
+import { escapeLike } from '$lib/server/escape-like'
 import { createLogger } from '$lib/server/logger'
 
 const logger = createLogger('api')
-
-const escapeLike = (s: string) => s.replace(/%/g, String.raw`\%`).replace(/_/g, String.raw`\_`)
 
 import {
   assignVariant,
@@ -1642,7 +1641,6 @@ protectedApp.post(
     const currentUser = c.get('user')
 
     const id = uuid()
-    // @ts-expect-error Validator allows 'comment' entityType not yet in DB schema enum
     await db.insert(contentReport).values({
       description: parsed.description ?? null,
       entityId: parsed.entityId,

@@ -405,7 +405,7 @@ export const contentReport = sqliteTable(
     description: text('description'),
     entityId: text('entity_id').notNull(),
     entityType: text('entity_type', {
-      enum: ['blogPost', 'contactSubmission', 'item', 'organization', 'team', 'user'],
+      enum: ['blogPost', 'comment', 'contactSubmission', 'item', 'organization', 'team', 'user'],
     }).notNull(),
     id: text('id')
       .primaryKey()

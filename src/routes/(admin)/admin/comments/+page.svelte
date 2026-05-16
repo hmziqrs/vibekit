@@ -1,6 +1,7 @@
 <script lang="ts">
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import DataTable from '$lib/components/data-table.svelte'
+  import Pagination from '$lib/components/pagination.svelte'
   import { createQuery } from '@tanstack/svelte-query'
 
   interface CommentRow {
@@ -18,21 +19,25 @@
   }
 
   let statusFilter = $state<string>('pending')
+  let currentPage = $state(1)
   let selectedIds = $state<Set<string>>(new Set())
   let deleteTarget = $state<CommentRow | null>(null)
   let showConfirmDialog = $state(false)
   let stats = $state({ approved: 0, pending: 0, rejected: 0, spam: 0 })
   let mutationError = $state('')
+  const PAGE_SIZE = 25
 
   const commentsQuery = createQuery(() => ({
     queryFn: async () => {
       const params = new URLSearchParams()
       if (statusFilter) params.set('status', statusFilter)
+      params.set('page', String(currentPage))
+      params.set('limit', String(PAGE_SIZE))
       const res = await fetch(`/api/admin/comments?${params}`)
       if (!res.ok) throw new Error('Failed to fetch comments')
       return (await res.json()) as { comments: CommentRow[]; page: number; total: number }
     },
-    queryKey: ['admin', 'comments', { status: statusFilter }],
+    queryKey: ['admin', 'comments', { page: currentPage, status: statusFilter }],
     retry: 1,
   }))
 
@@ -146,6 +151,13 @@
   function handleSort(_key: string, _dir: 'asc' | 'desc') {
     // Server-side sorting handled by query
   }
+
+  function handleFilterChange(filter: string) {
+    statusFilter = filter
+    currentPage = 1
+  }
+
+  const totalPages = $derived(Math.ceil((commentsQuery.data?.total ?? 0) / PAGE_SIZE))
 </script>
 
 <ConfirmDialog
@@ -171,28 +183,28 @@
 <!-- Stats -->
 <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
   <button
-    onclick={() => (statusFilter = 'pending')}
+    onclick={() => handleFilterChange('pending')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Pending</div>
     <div class="text-xl font-semibold text-warning">{stats.pending}</div>
   </button>
   <button
-    onclick={() => (statusFilter = 'spam')}
+    onclick={() => handleFilterChange('spam')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'spam' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Spam</div>
     <div class="text-xl font-semibold text-destructive">{stats.spam}</div>
   </button>
   <button
-    onclick={() => (statusFilter = 'approved')}
+    onclick={() => handleFilterChange('approved')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'approved' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Approved</div>
     <div class="text-xl font-semibold text-success">{stats.approved}</div>
   </button>
   <button
-    onclick={() => (statusFilter = 'rejected')}
+    onclick={() => handleFilterChange('rejected')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'rejected' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Rejected</div>
@@ -296,4 +308,14 @@
       {/if}
     {/snippet}
   </DataTable>
+
+  {#if totalPages > 1}
+    <Pagination
+      {currentPage}
+      {totalPages}
+      pageSize={PAGE_SIZE}
+      totalItems={commentsQuery.data?.total ?? 0}
+      onPageChange={(p) => (currentPage = p)}
+    />
+  {/if}
 </div>
