@@ -377,9 +377,7 @@ export const teamMember = sqliteTable(
 export const impersonationSession = sqliteTable(
   'impersonation_session',
   {
-    adminUserId: text('admin_user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+    adminUserId: text('admin_user_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -389,9 +387,7 @@ export const impersonationSession = sqliteTable(
       .$defaultFn(() => uuid()),
     reason: text('reason'),
     sessionToken: text('session_token').notNull(),
-    targetUserId: text('target_user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+    targetUserId: text('target_user_id').references(() => user.id, { onDelete: 'set null' }),
   },
   (table) => [
     index('impersonation_admin_idx').on(table.adminUserId),
@@ -481,9 +477,7 @@ export const teamActivity = sqliteTable(
   'team_activity',
   {
     action: text('action').notNull(),
-    actorId: text('actor_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -1029,9 +1023,7 @@ export const paymentMethod = sqliteTable(
     last4: text('last4'),
     stripePaymentMethodId: text('stripe_payment_method_id').notNull(),
     type: text('type', { enum: ['bank_transfer', 'card'] }).notNull(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   },
   (table) => [
     index('payment_method_stripe_idx').on(table.stripePaymentMethodId),
@@ -1202,9 +1194,7 @@ export const apiKeyRelations = relations(apiKey, ({ one }) => ({
 export const apiKeyUsageLog = sqliteTable(
   'api_key_usage_log',
   {
-    apiKeyId: text('api_key_id')
-      .notNull()
-      .references(() => apiKey.id, { onDelete: 'cascade' }),
+    apiKeyId: text('api_key_id').references(() => apiKey.id, { onDelete: 'set null' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
