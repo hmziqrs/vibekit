@@ -4626,11 +4626,17 @@ blogApp.post(
           const oembed = (await oembedRes.json()) as Record<string, unknown>
           const ogTitle = extractMeta(html, 'og:title') || extractTitle(html)
           return c.json({
-            description: (oembed.title as string) || extractMeta(html, 'og:description'),
-            embedHtml: oembed.html as string | undefined,
-            image: (oembed.thumbnail_url as string) || extractMeta(html, 'og:image'),
-            siteName: extractMeta(html, 'og:site_name') || (oembed.provider_name as string),
-            title: ogTitle || (oembed.title as string),
+            description: escapeHtmlEntities(
+              (oembed.title as string) || extractMeta(html, 'og:description')
+            ),
+            embedHtml: oembed.html ? sanitizeEmbedHtml(oembed.html as string) : undefined,
+            image: escapeHtmlEntities(
+              (oembed.thumbnail_url as string) || extractMeta(html, 'og:image')
+            ),
+            siteName: escapeHtmlEntities(
+              extractMeta(html, 'og:site_name') || (oembed.provider_name as string)
+            ),
+            title: escapeHtmlEntities(ogTitle || (oembed.title as string)),
           })
         } catch (error) {
           logger.error('OEmbed fetch failed', { error })
@@ -4643,10 +4649,10 @@ blogApp.post(
       const ogSiteName = extractMeta(html, 'og:site_name')
 
       return c.json({
-        description: ogDescription,
-        image: ogImage,
-        siteName: ogSiteName,
-        title: ogTitle,
+        description: escapeHtmlEntities(ogDescription),
+        image: escapeHtmlEntities(ogImage),
+        siteName: escapeHtmlEntities(ogSiteName),
+        title: escapeHtmlEntities(ogTitle),
       })
     } catch {
       throw new BadRequestError('Failed to fetch URL')
@@ -4675,6 +4681,22 @@ function extractOembedLink(html: string): string | null {
   const altPattern = /<link[^>]+href=["']([^"']+)["'][^>]+type=["']application\/json\+oembed["']/i
   const altMatch = html.match(altPattern)
   return altMatch?.[1] ?? null
+}
+
+function sanitizeEmbedHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\s*on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/javascript\s*:/gi, '')
+}
+
+function escapeHtmlEntities(str: string | null | undefined): string | null {
+  if (!str) return null
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
@@ -8062,7 +8084,7 @@ protectedApp.post('/billing/coupons/redeem', validate(redeemCouponSchema), async
 
   const result = await redeemCoupon(db, parsed.code)
   if (!result.redeemed) {
-    return c.json({ error: result.error }, 400)
+    return c.json({ error: { message: result.error } }, 400)
   }
 
   return c.json({ coupon: result.coupon, redeemed: true })
@@ -8074,7 +8096,7 @@ protectedApp.get('/billing/coupons/:code', async (c) => {
 
   const validation = await validateCouponForRedemption(db, code)
   if (!validation.valid) {
-    return c.json({ error: validation.error, valid: false }, 404)
+    return c.json({ error: { message: validation.error }, valid: false }, 404)
   }
 
   return c.json({
@@ -8099,7 +8121,7 @@ adminApp.post('/billing/stripe-events/:id/retry', async (c) => {
   const id = c.req.param('id')
   const result = await retryStripeWebhook(db, id)
   if (!result.success) {
-    return c.json({ error: result.message }, 400)
+    return c.json({ error: { message: result.message } }, 400)
   }
   return c.json(result)
 })
@@ -8427,7 +8449,9 @@ adminApp.post('/search/reindex', validate(reindexSchema), async (c) => {
       user: () => reindexAllUsers(db),
     }
     const reindexer = reindexers[entityType]
-    if (!reindexer) return c.json({ error: `Unknown entity type: ${entityType}` }, 400)
+    if (!reindexer) {
+      throw new BadRequestError(`Unknown entity type: ${entityType}`)
+    }
     const count = await reindexer()
     return c.json({ [entityType]: count })
   }
