@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { updateOrganizationSchema } from '$lib/validators/organization'
@@ -94,7 +95,7 @@
     }
 
     await queryClient.invalidateQueries({ queryKey: ['organizations'] })
-    window.location.href = '/app/organizations'
+    goto('/app/organizations')
   }
 
   interface OrgMember {
@@ -137,7 +138,7 @@
       await queryClient.invalidateQueries({ queryKey: ['organization', orgId] })
       showTransferDialog = false
       transferTargetId = ''
-      window.location.href = `/app/organizations/${orgId}`
+      goto(`/app/organizations/${orgId}`)
     } catch (error) {
       transferError = error instanceof Error ? error.message : 'Failed to transfer ownership'
     } finally {

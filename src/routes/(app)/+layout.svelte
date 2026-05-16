@@ -7,6 +7,7 @@
   import ShortcutsHelp from '$lib/components/shortcuts-help.svelte'
   import LanguageSwitcher from '$lib/components/language-switcher.svelte'
   import { page } from '$app/state'
+  import { goto } from '$app/navigation'
   import { cn } from '$lib/utils'
   import { useAnalytics } from '$lib/use-analytics.svelte'
   import * as m from '$lib/paraglide/messages.js'
@@ -69,7 +70,7 @@
         method: 'POST',
       }).catch(() => {})
       sessionStorage.removeItem('impersonation')
-      window.location.href = '/admin/users'
+      goto('/admin/users')
     } finally {
       stoppingImpersonation = false
     }

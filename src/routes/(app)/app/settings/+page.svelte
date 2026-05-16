@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import QRCode from 'qrcode'
   import { authClient } from '$lib/auth-client'
   import { z } from 'zod/v4'
@@ -556,7 +557,7 @@
         return
       }
       await authClient.signOut()
-      window.location.href = '/'
+      goto('/')
     } catch {
       deleteError = 'Something went wrong.'
     } finally {
@@ -602,7 +603,7 @@
         return
       }
       await authClient.signOut()
-      window.location.href = '/'
+      goto('/')
     } catch {
       deactivateError = 'Something went wrong.'
     } finally {

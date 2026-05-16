@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
+  import { goto } from '$app/navigation'
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import { formatDate } from '$lib/i18n.svelte'
   import { cn } from '$lib/utils'
@@ -108,7 +109,7 @@
             targetName: data.targetUser.name ?? '',
           }),
         )
-        window.location.href = '/app/dashboard'
+        goto('/app/dashboard')
       } else {
         const data = await res.json().catch(() => ({})) as { error?: { message?: string } }
         mutationError = data.error?.message ?? 'Failed to start impersonation.'
@@ -125,7 +126,7 @@
     try {
       const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete user')
-      window.location.href = '/admin/users'
+      goto('/admin/users')
     } catch (error) {
       mutationError = error instanceof Error ? error.message : 'Failed to delete user'
     }

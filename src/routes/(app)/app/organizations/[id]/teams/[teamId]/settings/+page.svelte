@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { hasTeamPermission, type OrgRole, type TeamRole } from '$lib/permissions'
@@ -124,7 +125,7 @@
       return
     }
 
-    window.location.href = `/app/organizations/${orgId}/teams`
+    goto(`/app/organizations/${orgId}/teams`)
   }
 </script>
 

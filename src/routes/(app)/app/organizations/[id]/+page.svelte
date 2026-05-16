@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
@@ -174,7 +175,7 @@
         throw new Error(data.error?.message ?? 'Failed to leave organization')
       }
       await queryClient.invalidateQueries({ queryKey: ['organization', orgId] })
-      window.location.href = '/app/organizations'
+      goto('/app/organizations')
     } catch (error) {
       mutationError = error instanceof Error ? error.message : 'Failed to leave organization'
       showLeaveDialog = false

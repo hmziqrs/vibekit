@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation'
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import FilterTabs from '$lib/components/filter-tabs.svelte'
   import SearchInput from '$lib/components/search-input.svelte'
@@ -126,7 +127,7 @@
             targetName: data.targetUser.name ?? '',
           }),
         )
-        window.location.href = '/app/dashboard'
+        goto('/app/dashboard')
       } else {
         const data = await res.json().catch(() => ({})) as { error?: { message?: string } }
         mutationError = data.error?.message ?? 'Failed to start impersonation.'
