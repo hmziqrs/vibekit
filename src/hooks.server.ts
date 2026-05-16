@@ -16,7 +16,7 @@ import {
 import { error as httpError, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, inArray } from 'drizzle-orm'
 
 const handleParaglide: Handle = ({ event, resolve }) =>
   paraglideMiddleware(event.request as Request, ({ request, locale }) => {
@@ -151,8 +151,6 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
         const { user: userTable } = await import('$lib/server/db/auth.schema')
         const [foundUser] = await db
           .select({
-            banExpiresAt: userTable.banExpiresAt,
-            banReason: userTable.banReason,
             status: userTable.status,
           })
           .from(userTable)
@@ -162,7 +160,6 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
             {
               code: 'ACCOUNT_BANNED',
               message: 'This account has been suspended.',
-              reason: foundUser.banReason ?? null,
             },
             { status: 403 }
           )
@@ -198,21 +195,14 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           const MAX_SESSIONS = 5
           try {
             const sessions = await services.db
-              .select()
+              .select({ id: sessionTable.id })
               .from(sessionTable)
               .where(eq(sessionTable.userId, userId))
               .orderBy(asc(sessionTable.createdAt))
             if (sessions.length >= MAX_SESSIONS) {
               const evictCount = sessions.length - MAX_SESSIONS + 1
               const evictIds = sessions.slice(0, evictCount).map((s) => s.id)
-              await Promise.all(
-                evictIds.map((sid) =>
-                  services.db
-                    .delete(sessionTable)
-                    .where(eq(sessionTable.id, sid))
-                    .catch(() => {})
-                )
-              )
+              await services.db.delete(sessionTable).where(inArray(sessionTable.id, evictIds))
             }
 
             // Populate IP and user agent on the newest session

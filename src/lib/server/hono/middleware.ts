@@ -76,6 +76,9 @@ export const requireAdmin = createMiddleware<Env>(async (c, next) => {
   const user = c.get('user')
   if (!user) throw new UnauthorizedError()
   if (user.role !== 'admin') throw new ForbiddenError()
+  if (!user.twoFactorEnabled) {
+    throw new ForbiddenError('Two-factor authentication is required for admin access')
+  }
   await next()
 })
 

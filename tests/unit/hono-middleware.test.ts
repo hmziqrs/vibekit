@@ -126,8 +126,8 @@ describe('requireAdmin', () => {
     })
   })
 
-  it('allows through when user is admin', async () => {
-    const user = mockUser('admin-1', 'admin')
+  it('allows through when user is admin with 2FA enabled', async () => {
+    const user = { id: 'admin-1', role: 'admin', twoFactorEnabled: true } as unknown as TestUser
     const app = withErrorHandler(
       new Hono<Env>()
         .use('*', async (c, next) => {
@@ -142,6 +142,26 @@ describe('requireAdmin', () => {
 
     const res = await app.request('/test')
     expect(res.status).toBe(200)
+  })
+
+  it('rejects admin without 2FA enabled', async () => {
+    const user = { id: 'admin-1', role: 'admin', twoFactorEnabled: false } as unknown as TestUser
+    const app = withErrorHandler(
+      new Hono<Env>()
+        .use('*', async (c, next) => {
+          c.set('services', mockServices())
+          c.set('auth', mockAuth())
+          c.set('user', user)
+          c.set('session', mockSession('sess-1'))
+          await next()
+        })
+        .get('/test', requireAdmin, (c) => c.json({ ok: true }))
+    )
+
+    const res = await app.request('/test')
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error.message).toContain('Two-factor authentication')
   })
 })
 
