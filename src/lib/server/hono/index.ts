@@ -5920,11 +5920,12 @@ app.post(
 // ── Organizations (auth required) ─────────────────────────────────────
 
 function generateSlug(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+  return slug || `org-${uuid().slice(0, 8)}`
 }
 
 const orgApp = new Hono<OrgEnv>().use('*', requireUser)
@@ -6247,6 +6248,11 @@ orgApp.delete(
 
     if (targetMember.userId === currentUser.id) {
       throw new BadRequestError('Cannot remove yourself. Leave the organization instead.')
+    }
+
+    const membership = c.get('membership') as { role: string }
+    if (getRoleLevel(targetMember.role) >= getRoleLevel(membership.role as OrgRole)) {
+      throw new ForbiddenError('Cannot remove a member with equal or higher role')
     }
 
     await db.delete(organizationMember).where(eq(organizationMember.id, memberId))
@@ -7219,7 +7225,12 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
       db
         .update(organizationInvitation)
         .set({ acceptedAt: new Date() })
-        .where(eq(organizationInvitation.id, invitation.id)),
+        .where(
+          and(
+            eq(organizationInvitation.id, invitation.id),
+            isNull(organizationInvitation.acceptedAt)
+          )
+        ),
     ])
   } catch (err) {
     if (String(err).includes('UNIQUE constraint')) {

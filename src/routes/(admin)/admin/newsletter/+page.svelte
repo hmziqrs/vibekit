@@ -1,6 +1,7 @@
 <script lang="ts">
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import DataTable from '$lib/components/data-table.svelte'
+  import Pagination from '$lib/components/pagination.svelte'
   import { formatDate } from '$lib/i18n.svelte'
   import { createQuery } from '@tanstack/svelte-query'
 
@@ -15,21 +16,25 @@
   }
 
   let statusFilter = $state<string>('confirmed')
+  let currentPage = $state(1)
   let selectedIds = $state<Set<string>>(new Set())
   let deleteTarget = $state<SubscriberRow | null>(null)
   let showConfirmDialog = $state(false)
   let stats = $state({ bounced: 0, confirmed: 0, pending: 0, unsubscribed: 0 })
   let mutationError = $state('')
+  const PAGE_SIZE = 25
 
   const subscribersQuery = createQuery(() => ({
     queryFn: async () => {
       const params = new URLSearchParams()
       if (statusFilter) params.set('status', statusFilter)
+      params.set('page', String(currentPage))
+      params.set('limit', String(PAGE_SIZE))
       const res = await fetch(`/api/admin/newsletter/subscribers?${params}`)
       if (!res.ok) throw new Error('Failed to fetch subscribers')
       return (await res.json()) as { page: number; subscribers: SubscriberRow[]; total: number }
     },
-    queryKey: ['admin', 'newsletter', 'subscribers', { status: statusFilter }],
+    queryKey: ['admin', 'newsletter', 'subscribers', { page: currentPage, status: statusFilter }],
     retry: 1,
   }))
 
@@ -94,6 +99,13 @@
     }
   }
 
+  function handleFilterChange(filter: string) {
+    statusFilter = filter
+    currentPage = 1
+  }
+
+  const totalPages = $derived(Math.ceil((subscribersQuery.data?.total ?? 0) / PAGE_SIZE))
+
   function handleSort(_key: string, _dir: 'asc' | 'desc') {
     // Server-side sorting handled by query
   }
@@ -122,28 +134,28 @@
 <!-- Stats -->
 <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
   <button
-    onclick={() => (statusFilter = 'pending')}
+    onclick={() => handleFilterChange('pending')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'pending' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Pending</div>
     <div class="text-xl font-semibold text-warning">{stats.pending}</div>
   </button>
   <button
-    onclick={() => (statusFilter = 'confirmed')}
+    onclick={() => handleFilterChange('confirmed')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'confirmed' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Confirmed</div>
     <div class="text-xl font-semibold text-success">{stats.confirmed}</div>
   </button>
   <button
-    onclick={() => (statusFilter = 'unsubscribed')}
+    onclick={() => handleFilterChange('unsubscribed')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'unsubscribed' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Unsubscribed</div>
     <div class="text-xl font-semibold text-text-muted">{stats.unsubscribed}</div>
   </button>
   <button
-    onclick={() => (statusFilter = 'bounced')}
+    onclick={() => handleFilterChange('bounced')}
     class="rounded-lg border border-border bg-surface p-3 text-start transition-colors {statusFilter === 'bounced' ? 'border-brand' : ''}"
   >
     <div class="text-[12px] text-text-muted">Bounced</div>
@@ -192,4 +204,16 @@
       {/if}
     {/snippet}
   </DataTable>
+
+  {#if totalPages > 1}
+    <div class="mt-4">
+      <Pagination
+        {currentPage}
+        totalPages={totalPages}
+        totalItems={subscribersQuery.data?.total ?? 0}
+        pageSize={PAGE_SIZE}
+        onPageChange={(p) => (currentPage = p)}
+      />
+    </div>
+  {/if}
 </div>
