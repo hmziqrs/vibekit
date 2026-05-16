@@ -150,11 +150,9 @@ describe('updateOrganizationSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('trims whitespace-only name to empty string', () => {
+  it('rejects whitespace-only name after trim', () => {
     const result = updateOrganizationSchema.safeParse({ name: '   ' })
-    // Zod v4 trim() runs after min(1), so whitespace-only input is accepted and trimmed to ""
-    expect(result.success).toBe(true)
-    expect(result.success && result.data.name).toBe('')
+    expect(result.success).toBe(false)
   })
 
   it('rejects missing name', () => {

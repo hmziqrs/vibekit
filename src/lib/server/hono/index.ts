@@ -949,17 +949,17 @@ app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000
 app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 }), async (c) => {
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
   if (!stripe) {
-    return c.json({ error: 'Billing not configured' }, 503)
+    return c.json({ error: { message: 'Billing not configured' } }, 503)
   }
 
   const webhookSecret = c.env?.STRIPE_WEBHOOK_SECRET
   if (!webhookSecret) {
-    return c.json({ error: 'Webhook secret not configured' }, 500)
+    return c.json({ error: { message: 'Webhook secret not configured' } }, 500)
   }
 
   const signature = c.req.header('stripe-signature')
   if (!signature) {
-    return c.json({ error: 'Missing signature' }, 400)
+    return c.json({ error: { message: 'Missing signature' } }, 400)
   }
 
   let event: Awaited<ReturnType<typeof verifyWebhookSignature>> | undefined
@@ -970,7 +970,7 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
     try {
       event = await verifyWebhookSignature(stripe, { body, signature, webhookSecret })
     } catch {
-      return c.json({ error: 'Invalid signature' }, 400)
+      return c.json({ error: { message: 'Invalid signature' } }, 400)
     }
 
     // Idempotency: atomically claim this event for processing
@@ -1579,7 +1579,7 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
     } catch (dbError) {
       logger.error('Failed to record webhook failure', { error: dbError })
     }
-    return c.json({ error: 'Webhook processing failed' }, 500)
+    return c.json({ error: { message: 'Webhook processing failed' } }, 500)
   }
 })
 
@@ -3550,19 +3550,19 @@ protectedApp.get('/integrations/:id/status', async (c) => {
 app.get('/api/integrations/callback/:provider', async (c) => {
   const code = c.req.query('code')
   const state = c.req.query('state')
-  if (!code || !state) return c.json({ error: 'Missing code or state' }, 400)
+  if (!code || !state) return c.json({ error: { message: 'Missing code or state' } }, 400)
 
   const { db, env } = c.get('services')
 
   const stateData = await consumeOAuthState(db, state)
-  if (!stateData) return c.json({ error: 'Invalid or expired state' }, 400)
+  if (!stateData) return c.json({ error: { message: 'Invalid or expired state' } }, 400)
   if (stateData.provider !== c.req.param('provider')) {
-    return c.json({ error: 'Provider mismatch' }, 400)
+    return c.json({ error: { message: 'Provider mismatch' } }, 400)
   }
 
   const { codeVerifier } = stateData
 
-  if (!codeVerifier) return c.json({ error: 'Missing code verifier' }, 400)
+  if (!codeVerifier) return c.json({ error: { message: 'Missing code verifier' } }, 400)
 
   try {
     const baseUrl = env.origin ?? 'http://localhost:5173'
@@ -3595,7 +3595,7 @@ app.get('/api/integrations/callback/:provider', async (c) => {
     return c.redirect(redirectUrl)
   } catch (error) {
     logger.error('OAuth token exchange failed', { error })
-    return c.json({ error: 'Token exchange failed' }, 500)
+    return c.json({ error: { message: 'Token exchange failed' } }, 500)
   }
 })
 
@@ -3939,19 +3939,26 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
   const { title, slug, excerpt, contentBody, coverImageUrl, seoTitle, seoDescription, status } =
     parsed
   const sanitizedBody = contentBody ? sanitizeHtml(contentBody) : contentBody
-  await db.insert(blogPost).values({
-    authorId: currentUser.id,
-    contentBody: toNullable(sanitizedBody),
-    coverImageUrl: toNullable(coverImageUrl),
-    excerpt: toNullable(excerpt),
-    id,
-    publishedAt: status === 'published' ? new Date() : null,
-    seoDescription: toNullable(seoDescription),
-    seoTitle: toNullable(seoTitle),
-    slug,
-    status,
-    title,
-  })
+  try {
+    await db.insert(blogPost).values({
+      authorId: currentUser.id,
+      contentBody: toNullable(sanitizedBody),
+      coverImageUrl: toNullable(coverImageUrl),
+      excerpt: toNullable(excerpt),
+      id,
+      publishedAt: status === 'published' ? new Date() : null,
+      seoDescription: toNullable(seoDescription),
+      seoTitle: toNullable(seoTitle),
+      slug,
+      status,
+      title,
+    })
+  } catch (err) {
+    if (String(err).includes('UNIQUE constraint')) {
+      throw new ConflictError('Slug already exists')
+    }
+    throw err
+  }
 
   if (status === 'published') {
     await c.get('services').cache.purgeBlog(slug)
@@ -4127,13 +4134,20 @@ blogApp.post('/series', withRateLimit('blog-mutate'), validate(createSeriesSchem
   if (existing) throw new ConflictError('Series slug already exists')
 
   const id = uuid()
-  await db.insert(blogSeries).values({
-    coverImageUrl: toNullable(parsed.coverImageUrl),
-    description: toNullable(parsed.description),
-    id,
-    name: parsed.name,
-    slug: parsed.slug,
-  })
+  try {
+    await db.insert(blogSeries).values({
+      coverImageUrl: toNullable(parsed.coverImageUrl),
+      description: toNullable(parsed.description),
+      id,
+      name: parsed.name,
+      slug: parsed.slug,
+    })
+  } catch (err) {
+    if (String(err).includes('UNIQUE constraint')) {
+      throw new ConflictError('Series slug already exists')
+    }
+    throw err
+  }
 
   await writeAuditLog(db, {
     action: 'blog_series.create',
@@ -4608,7 +4622,7 @@ blogApp.post(
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
         signal: AbortSignal.timeout(5000),
       })
-      if (!res.ok) return c.json({ error: 'Failed to fetch URL' }, 502)
+      if (!res.ok) return c.json({ error: { message: 'Failed to fetch URL' } }, 502)
       const html = await res.text()
 
       // Check for oEmbed link tag in the HTML
@@ -6249,14 +6263,21 @@ orgApp.post(
     const token = uuid()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-    await db.insert(organizationInvitation).values({
-      email: parsed.email,
-      expiresAt,
-      invitedBy: currentUser.id,
-      organizationId: org.id,
-      role: parsed.role,
-      token,
-    })
+    try {
+      await db.insert(organizationInvitation).values({
+        email: parsed.email,
+        expiresAt,
+        invitedBy: currentUser.id,
+        organizationId: org.id,
+        role: parsed.role,
+        token,
+      })
+    } catch (err) {
+      if (String(err).includes('UNIQUE constraint')) {
+        throw new ConflictError('An active invitation already exists for this email')
+      }
+      throw err
+    }
 
     await writeAuditLog(db, {
       action: 'organization.invite',
@@ -7961,21 +7982,21 @@ adminApp.post('/billing/refund', validate(refundSchema), async (c) => {
   const inv = await db.select().from(invoice).where(eq(invoice.id, parsed.invoiceId)).get()
   if (!inv) throw new NotFoundError()
   if (!inv.stripeInvoiceId) {
-    return c.json({ error: 'Invoice has no Stripe ID — cannot refund' }, 400)
+    return c.json({ error: { message: 'Invoice has no Stripe ID — cannot refund' } }, 400)
   }
   if (inv.status === 'void') {
-    return c.json({ error: 'Invoice already refunded' }, 400)
+    return c.json({ error: { message: 'Invoice already refunded' } }, 400)
   }
   if (inv.status === 'draft') {
-    return c.json({ error: 'Invoice is a draft — cannot refund' }, 400)
+    return c.json({ error: { message: 'Invoice is a draft — cannot refund' } }, 400)
   }
   if (parsed.amountInCents && parsed.amountInCents > inv.amountInCents) {
-    return c.json({ error: 'Refund amount exceeds invoice total' }, 400)
+    return c.json({ error: { message: 'Refund amount exceeds invoice total' } }, 400)
   }
 
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
   if (!stripe) {
-    return c.json({ error: 'Billing not configured' }, 503)
+    return c.json({ error: { message: 'Billing not configured' } }, 503)
   }
 
   try {
@@ -7999,7 +8020,7 @@ adminApp.post('/billing/refund', validate(refundSchema), async (c) => {
     })
   } catch (error) {
     logger.error('Refund failed', { error })
-    return c.json({ error: 'Refund failed' }, 500)
+    return c.json({ error: { message: 'Refund failed' } }, 500)
   }
 })
 
@@ -8016,7 +8037,7 @@ adminApp.post('/billing/coupons', validate(createCouponSchema), async (c) => {
   const { db } = c.get('services')
 
   const existing = await getCouponByCode(db, parsed.code)
-  if (existing) return c.json({ error: 'Coupon code already exists' }, 409)
+  if (existing) return c.json({ error: { message: 'Coupon code already exists' } }, 409)
 
   let stripeCouponId: string | undefined
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
@@ -8033,7 +8054,7 @@ adminApp.post('/billing/coupons', validate(createCouponSchema), async (c) => {
       stripeCouponId = result.stripeCouponId
     } catch (error) {
       logger.error('Stripe coupon creation failed', { error })
-      return c.json({ error: 'Failed to create Stripe coupon' }, 500)
+      return c.json({ error: { message: 'Failed to create Stripe coupon' } }, 500)
     }
   }
 
