@@ -15,8 +15,9 @@ const DEFAULT_THUMBNAIL: ThumbnailOptions = {
 const THUMBNAIL_PREFIX = 'thumbs/'
 
 export function getThumbnailKey(originalKey: string, size: string): string {
-  const ext = originalKey.split('.').pop() ?? 'jpg'
-  const baseName = originalKey.replace(/\.[^.]+$/, '')
+  const dotIdx = originalKey.lastIndexOf('.')
+  const ext = dotIdx > 0 ? originalKey.slice(dotIdx + 1) : 'jpg'
+  const baseName = dotIdx > 0 ? originalKey.slice(0, dotIdx) : originalKey
   return `${THUMBNAIL_PREFIX}${baseName}_${size}.${ext}`
 }
 

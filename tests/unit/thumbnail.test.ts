@@ -23,10 +23,9 @@ describe('thumbnail utilities', () => {
       expect(result).toBe('thumbs/blog/my.photo.v2_400x400.webp')
     })
 
-    it('uses full key as extension when no dot present', () => {
+    it('defaults to jpg extension when no dot present', () => {
       const result = getThumbnailKey('blog/photo', '200x200')
-      // No dot means pop() returns the whole string, replace returns empty
-      expect(result).toBe('thumbs/blog/photo_200x200.blog/photo')
+      expect(result).toBe('thumbs/blog/photo_200x200.jpg')
     })
 
     it('handles nested paths', () => {
