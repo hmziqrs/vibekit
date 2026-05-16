@@ -436,9 +436,9 @@ describe('billing webhook logic', () => {
       let caught = false
       try {
         await mockInsert('invoice').values({ stripeInvoiceId: 'in_dup', status: 'paid' })
-      } catch (err) {
+      } catch (error) {
         caught = true
-        expect(String(err)).toContain('UNIQUE constraint')
+        expect(String(error)).toContain('UNIQUE constraint')
       }
 
       expect(caught).toBe(true)

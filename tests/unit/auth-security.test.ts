@@ -171,7 +171,7 @@ describe('progressive backoff', () => {
   it('uses exponential backoff instead of fixed duration', () => {
     const source = readFileSync(resolve(root, 'src/lib/server/auth-lockout.ts'), 'utf8')
     expect(source).toContain('BASE_LOCKOUT_MS')
-    expect(source).toContain('Math.pow(2,')
+    expect(source).toContain('2 **')
   })
 
   it('base lockout is 5 minutes', () => {

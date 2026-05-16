@@ -237,7 +237,6 @@ import {
   resolveReportSchema,
   subscribeSchema,
   transferOwnershipSchema,
-  unsubscribeSchema,
   updateAnnouncementSchema,
   updateConfigSchema,
   updateCommentSchema,
@@ -624,7 +623,7 @@ app.get('/api/health', async (c) => {
 
 // ── Search (public) ───────────────────────────────────────────────────
 
-const PUBLIC_SEARCH_TYPES = ['blog_post', 'blog_series', 'item', 'comment', 'page']
+const PUBLIC_SEARCH_TYPES = new Set(['blog_post', 'blog_series', 'item', 'comment', 'page'])
 
 app.get('/api/search', withRateLimit('search', 30, 60_000), async (c) => {
   const services = c.get('services')
@@ -633,9 +632,7 @@ app.get('/api/search', withRateLimit('search', 30, 60_000), async (c) => {
   const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
   const offset = parseClampInt(c.req.query('offset'), 0, 0, 10_000)
   const rawTypes = c.req.query('types')?.split(',').filter(Boolean)
-  const types = rawTypes?.length
-    ? rawTypes.filter((t) => PUBLIC_SEARCH_TYPES.includes(t))
-    : undefined
+  const types = rawTypes?.length ? rawTypes.filter((t) => PUBLIC_SEARCH_TYPES.has(t)) : undefined
 
   if (!q || q.length < 2) return c.json({ hits: [], query: q, total: 0 })
 
@@ -785,8 +782,8 @@ app.get('/api/newsletter/confirm', async (c) => {
 })
 
 async function handleNewsletterUnsubscribe(c: {
-  get: (key: string) => any
-  json: (body: any, status?: number) => any
+  get: (key: string) => unknown
+  json: (body: unknown, status?: number) => unknown
   req: { query: (key: string) => string | undefined }
 }) {
   const token = c.req.query('token')
@@ -819,13 +816,13 @@ async function handleNewsletterUnsubscribe(c: {
   return c.json({ message: 'Successfully unsubscribed', success: true })
 }
 
-app.get('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) => {
-  return handleNewsletterUnsubscribe(c)
-})
+app.get('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) =>
+  handleNewsletterUnsubscribe(c)
+)
 
-app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) => {
-  return handleNewsletterUnsubscribe(c)
-})
+app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_000), async (c) =>
+  handleNewsletterUnsubscribe(c)
+)
 
 // ── Analytics (public) ─────────────────────────────────────────────────
 
@@ -983,7 +980,7 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
 
     // Idempotency: atomically claim this event for processing
     // Use INSERT ... ON CONFLICT to prevent the TOCTOU race where two concurrent
-    // requests both SELECT, see no row, and both process the same event.
+    // Requests both SELECT, see no row, and both process the same event.
     const claimResult = await db
       .insert(stripeWebhookEvent)
       .values({
@@ -1211,8 +1208,8 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             subscriptionId: invoiceSubscriptionId,
             userId: invoiceUserId,
           })
-        } catch (err) {
-          if (!String(err).includes('UNIQUE constraint')) throw err
+        } catch (error) {
+          if (!String(error).includes('UNIQUE constraint')) throw error
           logger.warn('Duplicate invoice ignored in webhook', { stripeInvoiceId })
         }
         try {
@@ -1292,8 +1289,8 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             subscriptionId: failedSubscriptionId,
             userId: invoiceUserId,
           })
-        } catch (err) {
-          if (!String(err).includes('UNIQUE constraint')) throw err
+        } catch (error) {
+          if (!String(error).includes('UNIQUE constraint')) throw error
           logger.warn('Duplicate invoice ignored in webhook', { stripeInvoiceId })
         }
         try {
@@ -1521,15 +1518,14 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             if (userRow?.email) {
               const emailService = createEmailService(c.get('services').email)
               // Only send trial ending email if subscription is actually in trial
-              const isTrial =
-                inv.subscription &&
-                (
-                  await db
+              const trialSub = inv.subscription
+                ? await db
                     .select({ status: subscription.status })
                     .from(subscription)
                     .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
                     .get()
-                )?.status === 'trialing'
+                : undefined
+              const isTrial = trialSub?.status === 'trialing'
               if (isTrial) {
                 c.executionCtx?.waitUntil?.(
                   emailService
@@ -2322,7 +2318,7 @@ protectedApp.delete('/account', withRateLimit('account-delete', 3, 3_600_000), a
 
 protectedApp.patch(
   '/account/deactivate',
-  withRateLimit('account-deactivate', 3, 3600_000),
+  withRateLimit('account-deactivate', 3, 3_600_000),
   async (c) => {
     const { db } = c.get('services')
     const { id: userId } = c.get('user')
@@ -2737,7 +2733,7 @@ protectedApp.post('/billing/checkout', withRateLimit('billing-checkout', 5, 60_0
   if (!plan.isActive) throw new BadRequestError('This plan is no longer available')
 
   if (stripe && plan.stripePriceId) {
-    const { createCheckoutSession, StripeApiError } = await import('$lib/server/billing/stripe')
+    const { createCheckoutSession } = await import('$lib/server/billing/stripe')
     try {
       const session = await createCheckoutSession(stripe, {
         automaticTax: plan.taxRate > 0,
@@ -2794,7 +2790,7 @@ protectedApp.post('/billing/portal', withRateLimit('billing-portal', 5, 60_000),
   const body = await c.req.json().catch(() => ({}))
   const parsed = portalSessionSchema.safeParse(body)
   if (!parsed.success) throw new BadRequestError('returnUrl is required')
-  const returnUrl = parsed.data.returnUrl
+  const { returnUrl } = parsed.data
   const isRelative = returnUrl.startsWith('/') && !returnUrl.startsWith('//')
   const servicesEnv = c.get('services').env
   const isSameOrigin = Boolean(servicesEnv.origin) && returnUrl.startsWith(servicesEnv.origin)
@@ -3868,7 +3864,7 @@ protectedApp.post(
       if (authorUser?.email && emailPrefEnabled) {
         const postUrl = `${c.req.header('origin') ?? 'http://localhost:5173'}/blog/${postId}`
         const excerpt =
-          parsed.content.length > 150 ? parsed.content.slice(0, 150) + '...' : parsed.content
+          parsed.content.length > 150 ? `${parsed.content.slice(0, 150)}...` : parsed.content
         c.executionCtx?.waitUntil?.(
           import('$lib/server/auth')
             .then(({ getEmailService }) => {
@@ -4128,11 +4124,11 @@ blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), 
       status,
       title,
     })
-  } catch (err) {
-    if (String(err).includes('UNIQUE constraint')) {
+  } catch (error) {
+    if (String(error).includes('UNIQUE constraint')) {
       throw new ConflictError('Slug already exists')
     }
-    throw err
+    throw error
   }
 
   if (status === 'published') {
@@ -4317,11 +4313,11 @@ blogApp.post('/series', withRateLimit('blog-mutate'), validate(createSeriesSchem
       name: parsed.name,
       slug: parsed.slug,
     })
-  } catch (err) {
-    if (String(err).includes('UNIQUE constraint')) {
+  } catch (error) {
+    if (String(error).includes('UNIQUE constraint')) {
       throw new ConflictError('Series slug already exists')
     }
-    throw err
+    throw error
   }
 
   await writeAuditLog(db, {
@@ -6096,8 +6092,8 @@ orgApp.post(
         ownerId: currentUser.id,
         slug,
       })
-    } catch (err) {
-      if (!String(err).includes('UNIQUE constraint')) throw err
+    } catch (error) {
+      if (!String(error).includes('UNIQUE constraint')) throw error
       slug = `${slug}-${Math.random().toString(36).slice(2, 8)}`
       await db.insert(organization).values({
         description: parsed.description ?? null,
@@ -6185,11 +6181,11 @@ orgApp.patch(
           updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
         })
         .where(eq(organization.id, org.id))
-    } catch (err) {
-      if (String(err).includes('UNIQUE constraint')) {
+    } catch (error) {
+      if (String(error).includes('UNIQUE constraint')) {
         throw new ConflictError('Organization slug already exists')
       }
-      throw err
+      throw error
     }
 
     await writeAuditLog(db, {
@@ -6207,7 +6203,7 @@ orgApp.patch(
 // Soft-delete org
 orgApp.delete(
   '/:orgId',
-  withRateLimit('org-delete', 3, 3600_000),
+  withRateLimit('org-delete', 3, 3_600_000),
   withOrgMembership,
   requirePermission('org.delete'),
   async (c) => {
@@ -6481,11 +6477,11 @@ orgApp.post(
         role: parsed.role,
         token,
       })
-    } catch (err) {
-      if (String(err).includes('UNIQUE constraint')) {
+    } catch (error) {
+      if (String(error).includes('UNIQUE constraint')) {
         throw new ConflictError('An active invitation already exists for this email')
       }
-      throw err
+      throw error
     }
 
     await writeAuditLog(db, {
@@ -6707,7 +6703,7 @@ orgApp.post(
     // Try Stripe checkout session first (like user checkout)
     const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
     if (stripe && plan.stripePriceId) {
-      const { createCheckoutSession, StripeApiError } = await import('$lib/server/billing/stripe')
+      const { createCheckoutSession } = await import('$lib/server/billing/stripe')
       try {
         const session = await createCheckoutSession(stripe, {
           automaticTax: plan.taxRate > 0,
@@ -7352,11 +7348,11 @@ protectedApp.post(
             )
           ),
       ])
-    } catch (err) {
-      if (String(err).includes('UNIQUE constraint')) {
+    } catch (error) {
+      if (String(error).includes('UNIQUE constraint')) {
         throw new ConflictError('You are already a member of this organization')
       }
-      throw err
+      throw error
     }
 
     await writeAuditLog(db, {
@@ -7951,8 +7947,12 @@ adminApp.get('/comments', async (c) => {
 
   const conditions = statusFilter ? eq(comment.status, statusFilter) : undefined
 
-  const sortColumn =
-    sortBy === 'authorName' ? user.name : sortBy === 'status' ? comment.status : comment.createdAt
+  let sortColumn = comment.createdAt
+  if (sortBy === 'authorName') {
+    sortColumn = user.name
+  } else if (sortBy === 'status') {
+    sortColumn = comment.status
+  }
   const orderFn = sortDir === 'asc' ? asc : desc
 
   const [comments, totalResult] = await Promise.all([
@@ -8285,7 +8285,7 @@ adminApp.post('/billing/coupons', validate(createCouponSchema), async (c) => {
         percentOff: parsed.percentOff,
         redeemBy: parsed.redeemBy,
       })
-      stripeCouponId = result.stripeCouponId
+      ;({ stripeCouponId } = result)
     } catch (error) {
       logger.error('Stripe coupon creation failed', { error })
       return c.json({ error: { message: 'Failed to create Stripe coupon' } }, 500)

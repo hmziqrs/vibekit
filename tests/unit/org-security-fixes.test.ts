@@ -42,45 +42,45 @@ describe('getRoleLevel - prevents privilege escalation', () => {
     // The guard in the route is: targetLevel >= actorLevel => reject
     const actorLevel = getRoleLevel('admin')
     const targetLevel = getRoleLevel('admin')
-    expect(targetLevel >= actorLevel).toBe(true)
+    expect(targetLevel).toBeGreaterThanOrEqual(actorLevel)
   })
 
   it('admin can modify member (lower role)', () => {
     // targetLevel >= actorLevel => false => allowed
     const actorLevel = getRoleLevel('admin')
     const targetLevel = getRoleLevel('member')
-    expect(targetLevel >= actorLevel).toBe(false)
+    expect(targetLevel).toBeLessThan(actorLevel)
   })
 
   it('admin cannot modify owner (higher role)', () => {
     const actorLevel = getRoleLevel('admin')
     const targetLevel = getRoleLevel('owner')
-    expect(targetLevel >= actorLevel).toBe(true)
+    expect(targetLevel).toBeGreaterThanOrEqual(actorLevel)
   })
 
   it('member cannot modify admin', () => {
     const actorLevel = getRoleLevel('member')
     const targetLevel = getRoleLevel('admin')
-    expect(targetLevel >= actorLevel).toBe(true)
+    expect(targetLevel).toBeGreaterThanOrEqual(actorLevel)
   })
 
   it('member cannot modify another member (equal role)', () => {
     const actorLevel = getRoleLevel('member')
     const targetLevel = getRoleLevel('member')
-    expect(targetLevel >= actorLevel).toBe(true)
+    expect(targetLevel).toBeGreaterThanOrEqual(actorLevel)
   })
 
   it('member can modify viewer', () => {
     const actorLevel = getRoleLevel('member')
     const targetLevel = getRoleLevel('viewer')
-    expect(targetLevel >= actorLevel).toBe(false)
+    expect(targetLevel).toBeLessThan(actorLevel)
   })
 
   it('viewer cannot modify anyone', () => {
     for (const targetRole of ['owner', 'admin', 'member', 'viewer'] as const) {
       const actorLevel = getRoleLevel('viewer')
       const targetLevel = getRoleLevel(targetRole)
-      expect(targetLevel >= actorLevel).toBe(true)
+      expect(targetLevel).toBeGreaterThanOrEqual(actorLevel)
     }
   })
 
@@ -89,7 +89,7 @@ describe('getRoleLevel - prevents privilege escalation', () => {
       const actorLevel = getRoleLevel('owner')
       const targetLevel = getRoleLevel(targetRole)
       // owner level (4) is highest, so no target can have >= level
-      expect(targetLevel >= actorLevel).toBe(false)
+      expect(targetLevel).toBeLessThan(actorLevel)
     }
   })
 })

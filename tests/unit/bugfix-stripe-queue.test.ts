@@ -51,9 +51,9 @@ describe('Email queue atomic processing', () => {
 
   it('retry delay should be exponential', () => {
     const base = 60_000
-    const delay1 = Math.min(base * Math.pow(2, 0), 15 * 60_000)
-    const delay2 = Math.min(base * Math.pow(2, 1), 15 * 60_000)
-    const delay3 = Math.min(base * Math.pow(2, 2), 15 * 60_000)
+    const delay1 = Math.min(base * 2 ** 0, 15 * 60_000)
+    const delay2 = Math.min(base * 2 ** 1, 15 * 60_000)
+    const delay3 = Math.min(base * 2 ** 2, 15 * 60_000)
     expect(delay1).toBe(60_000)
     expect(delay2).toBe(120_000)
     expect(delay3).toBe(240_000)
@@ -61,7 +61,7 @@ describe('Email queue atomic processing', () => {
 
   it('retry delay should cap at 15 minutes', () => {
     const base = 60_000
-    const delay = Math.min(base * Math.pow(2, 10), 15 * 60_000)
+    const delay = Math.min(base * 2 ** 10, 15 * 60_000)
     expect(delay).toBe(15 * 60_000)
   })
 })

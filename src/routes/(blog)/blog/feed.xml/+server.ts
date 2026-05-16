@@ -28,7 +28,7 @@ interface FeedPost {
 }
 
 export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
-  const origin = url.origin
+  const { origin } = url
   setHeaders({
     'Cache-Control': 'public, max-age=300, s-maxage=3600',
     'Content-Type': 'application/xml; charset=utf-8',

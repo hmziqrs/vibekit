@@ -136,8 +136,7 @@ describe('thumbnail utilities', () => {
       expect(result).not.toBeNull()
       expect(result?.key).toBe('thumbs/blog/photo_200x200.jpg')
       expect(result?.url).toBe('/cdn/blog/thumbs/blog/photo_200x200.jpg')
-      expect(putMock).toHaveBeenCalledOnce()
-      expect(putMock).toHaveBeenCalledWith(
+      expect(putMock).toHaveBeenCalledExactlyOnceWith(
         'thumbs/blog/photo_200x200.jpg',
         expect.any(Uint8Array),
         expect.objectContaining({ contentType: 'image/jpeg' })
@@ -199,7 +198,7 @@ describe('thumbnail utilities', () => {
 
       const storedData = putMock.mock.calls[0][1] as Uint8Array
       expect(storedData.length).toBe(8)
-      expect(Array.from(storedData)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+      expect([...storedData]).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
     })
   })
 })

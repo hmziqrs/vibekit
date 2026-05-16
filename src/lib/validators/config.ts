@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
 
 export const updateConfigSchema = z.object({
-  value: z.string().trim().min(1, 'Value is required').max(10000),
+  value: z.string().trim().min(1, 'Value is required').max(10_000),
 })
 
 export const createAnnouncementSchema = z.object({

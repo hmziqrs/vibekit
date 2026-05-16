@@ -29,7 +29,7 @@
   const queryClient = useQueryClient()
 
   const orgId = page.params.id
-  const teamId = page.params.teamId
+  const {teamId} = page.params
 
   const orgQuery = createQuery(() => ({
     queryFn: async () => {

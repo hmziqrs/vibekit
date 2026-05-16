@@ -42,7 +42,7 @@ const scheduledHandler = `
 
 let content: string
 try {
-  content = readFileSync(workerPath, 'utf-8')
+  content = readFileSync(workerPath, 'utf8')
 } catch {
   console.error('worker.ts not found — run `bun run build` first')
   process.exit(1)
@@ -84,7 +84,7 @@ if (fetchEnd === -1) {
 }
 
 // Insert scheduled handler after fetch method's closing brace
-const result = content.slice(0, fetchEnd + 1) + ',' + scheduledHandler + content.slice(fetchEnd + 1)
+const result = `${content.slice(0, fetchEnd + 1)},${scheduledHandler}${content.slice(fetchEnd + 1)}`
 
-writeFileSync(workerPath, result, 'utf-8')
+writeFileSync(workerPath, result, 'utf8')
 console.log('Injected scheduled handler into worker.ts')

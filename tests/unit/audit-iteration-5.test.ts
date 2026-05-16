@@ -5,7 +5,7 @@ describe('Progressive lockout backoff', () => {
   const MAX_ATTEMPTS = 5
 
   function calculateLockout(attemptCount: number): number {
-    return BASE_LOCKOUT_MS * Math.pow(2, attemptCount - MAX_ATTEMPTS)
+    return BASE_LOCKOUT_MS * 2 ** (attemptCount - MAX_ATTEMPTS)
   }
 
   it('first lockout should be 5 minutes', () => {
@@ -87,17 +87,17 @@ describe('Admin token masking', () => {
 describe('Stripe automatic tax configuration', () => {
   it('should enable tax when plan has non-zero taxRate', () => {
     const plan = { taxRate: 850 }
-    expect(plan.taxRate > 0).toBe(true)
+    expect(plan.taxRate).toBeGreaterThan(0)
   })
 
   it('should disable tax when plan has zero taxRate', () => {
     const plan = { taxRate: 0 }
-    expect(plan.taxRate > 0).toBe(false)
+    expect(plan.taxRate).toBeLessThanOrEqual(0)
   })
 
   it('should handle undefined taxRate', () => {
     const plan = { taxRate: undefined as unknown as number }
-    expect((plan.taxRate ?? 0) > 0).toBe(false)
+    expect(plan.taxRate ?? 0).toBeLessThanOrEqual(0)
   })
 })
 

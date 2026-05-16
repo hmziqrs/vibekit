@@ -1,14 +1,14 @@
 import { user } from '$lib/server/db/schema'
 import type { DrizzleDb } from '$lib/server/services/types'
-import { and, eq, ne, or, sql } from 'drizzle-orm'
+import { and, eq, ne, sql } from 'drizzle-orm'
 
 interface BanEvasionResult {
   flagged: boolean
-  matches: Array<{
+  matches: {
     bannedEmail: string
     bannedReason: string | null
     matchType: 'email_domain' | 'email_local'
-  }>
+  }[]
 }
 
 /**
@@ -19,7 +19,7 @@ interface BanEvasionResult {
 export async function detectBanEvasion(
   db: DrizzleDb,
   newEmail: string,
-  newIp: string
+  _newIp: string
 ): Promise<BanEvasionResult> {
   const matches: BanEvasionResult['matches'] = []
 
@@ -50,7 +50,7 @@ export async function detectBanEvasion(
     if (bannedDomain === domain && bannedLocal) {
       // Stronger signal: same local part (e.g., john@gmail.com → john+1@gmail.com)
       const normalizedLocal = localPart?.split('+')[0]
-      const bannedNormalizedLocal = bannedLocal.split('+')[0]
+      const [bannedNormalizedLocal] = bannedLocal.split('+')
       if (normalizedLocal === bannedNormalizedLocal) {
         matches.push({
           bannedEmail: banned.email,

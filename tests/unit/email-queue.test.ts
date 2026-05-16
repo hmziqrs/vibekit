@@ -19,10 +19,7 @@ function createMockDb() {
     })),
     update: vi.fn((table: unknown) => ({
       set: vi.fn((data: Record<string, unknown>) => ({
-        where: vi.fn(() => {
-          // Find and update matching entries
-          return Promise.resolve([])
-        }),
+        where: vi.fn(() => Promise.resolve([])),
       })),
     })),
     select: vi.fn(() => ({

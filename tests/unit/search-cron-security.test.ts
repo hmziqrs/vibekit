@@ -36,8 +36,8 @@ describe('Cron secret validation', () => {
     configuredSecret: string | undefined
   ): boolean {
     return (
-      !!headerSecret &&
-      !!configuredSecret &&
+      Boolean(headerSecret) &&
+      Boolean(configuredSecret) &&
       headerSecret.length > 0 &&
       headerSecret === configuredSecret
     )

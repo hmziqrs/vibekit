@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const honoSource = readFileSync(
   resolve(import.meta.dirname, '../../src/lib/server/hono/index.ts'),
-  'utf-8'
+  'utf8'
 )
 
 // Mutation endpoints that MUST have rate limiting.

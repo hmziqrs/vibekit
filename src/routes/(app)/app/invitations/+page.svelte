@@ -37,8 +37,8 @@
       if (!res.ok) throw new Error('Failed to load invitations')
       const data = (await res.json()) as { invitations?: Invitation[] }
       invitations = data.invitations ?? []
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unknown error'
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      error = caught instanceof Error ? caught.message : 'Unknown error'
     } finally {
       loading = false
     }
@@ -54,8 +54,8 @@
         throw new Error(data.error?.message ?? 'Failed to accept invitation')
       }
       invitations = invitations.filter((inv) => inv.id !== id)
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unknown error'
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      error = caught instanceof Error ? caught.message : 'Unknown error'
     } finally {
       acceptingId = null
     }
@@ -71,8 +71,8 @@
         throw new Error(data.error?.message ?? 'Failed to decline invitation')
       }
       invitations = invitations.filter((inv) => inv.id !== id)
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unknown error'
+    } catch (caught) { // oxlint-disable-line unicorn/catch-error-name
+      error = caught instanceof Error ? caught.message : 'Unknown error'
     } finally {
       decliningId = null
     }

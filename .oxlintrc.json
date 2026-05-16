@@ -52,6 +52,7 @@
     "import/consistent-type-specifier-style": "off",
     "jest/require-hook": "off",
     "unicorn/prefer-global-this": "off",
+    "unicorn/number-literal-case": "off",
     "unicorn/no-unreadable-array-destructuring": "off",
     "func-names": "off",
     "import/no-unassigned-import": "off",

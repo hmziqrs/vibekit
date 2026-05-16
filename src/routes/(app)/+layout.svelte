@@ -43,7 +43,7 @@
       const res = await fetch('/api/terms/accept', { method: 'POST' })
       if (res.ok) needsTermsAcceptance = false
     } catch {
-      // ignore
+      // Ignore
     } finally {
       acceptingTerms = false
     }

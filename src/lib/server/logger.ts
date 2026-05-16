@@ -1,15 +1,14 @@
 function serializeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(metadata)) {
-    if (value instanceof Error) {
-      result[key] = {
-        cause: value.cause instanceof Error ? value.cause.message : value.cause,
-        message: value.message,
-        name: value.name,
-      }
-    } else {
-      result[key] = value
-    }
+    result[key] =
+      value instanceof Error
+        ? {
+            cause: value.cause instanceof Error ? value.cause.message : value.cause,
+            message: value.message,
+            name: value.name,
+          }
+        : value
   }
   return result
 }

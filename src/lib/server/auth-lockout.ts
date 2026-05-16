@@ -67,7 +67,7 @@ export async function recordFailedAttempt(
   // Progressive backoff: 5 min, 10 min, 20 min, 40 min, 80 min...
   const lockoutUntil =
     newCount >= MAX_ATTEMPTS
-      ? new Date(now.getTime() + BASE_LOCKOUT_MS * Math.pow(2, newCount - MAX_ATTEMPTS))
+      ? new Date(now.getTime() + BASE_LOCKOUT_MS * 2 ** (newCount - MAX_ATTEMPTS))
       : null
 
   await db

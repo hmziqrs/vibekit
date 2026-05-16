@@ -84,7 +84,7 @@ describe('Billing: refund validation', () => {
   it('should reject refund amount exceeding invoice total', () => {
     const refundAmount = 15000
     const invoiceAmount = 10000
-    expect(refundAmount > invoiceAmount).toBe(true)
+    expect(refundAmount).toBeGreaterThan(invoiceAmount)
     // The fix: if (parsed.amountInCents > inv.amountInCents) return 400
   })
 
@@ -98,7 +98,7 @@ describe('Billing: refund validation', () => {
     const refundAmount = 5000
     const invoiceAmount = 10000
     const invoiceStatus = 'paid'
-    expect(refundAmount <= invoiceAmount).toBe(true)
+    expect(refundAmount).toBeLessThanOrEqual(invoiceAmount)
     expect(invoiceStatus).not.toBe('void')
     expect(invoiceStatus).not.toBe('draft')
   })

@@ -1,8 +1,7 @@
 import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { emailQueue } from '../db/schema'
-import type { AppDb } from '../services/types'
-import type { EmailClient, EmailMessage, EmailResult } from '../services/types'
+import type { AppDb, EmailClient, EmailMessage, EmailResult } from '../services/types'
 
 export class EmailQueue {
   private client: EmailClient
@@ -122,7 +121,7 @@ export class EmailQueue {
           .where(eq(emailQueue.id, item.id))
         stats.failed++
       } else {
-        const delay = Math.min(60_000 * Math.pow(2, attempts - 1), 15 * 60_000)
+        const delay = Math.min(60_000 * 2 ** (attempts - 1), 15 * 60_000)
         await db
           .update(emailQueue)
           .set({

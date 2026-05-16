@@ -23,10 +23,10 @@ export interface SearchWeights {
 }
 
 export const DEFAULT_WEIGHTS: SearchWeights = {
-  content: 1.0,
-  entityType: 0.0,
+  content: 1,
+  entityType: 0,
   metadata: 0.5,
-  title: 10.0,
+  title: 10,
 }
 
 export function createD1SearchAdapter(

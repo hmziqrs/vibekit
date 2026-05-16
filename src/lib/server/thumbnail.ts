@@ -32,7 +32,7 @@ export async function generateThumbnail(
   if (!stored) return null
 
   // Check if the content type is an image
-  const contentType = stored.contentType
+  const { contentType } = stored
   if (!contentType.startsWith('image/')) return null
 
   // For Cloudflare Workers: use image resizing via fetch

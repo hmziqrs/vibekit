@@ -68,11 +68,11 @@ describe('race condition guards', () => {
       let result: { id: string } | null = null
       try {
         result = await tryInsert()
-      } catch (err) {
-        if (String(err).includes('UNIQUE constraint')) {
+      } catch (error) {
+        if (String(error).includes('UNIQUE constraint')) {
           result = await tryInsert()
         } else {
-          throw err
+          throw error
         }
       }
       expect(attempts).toBe(2)
@@ -99,11 +99,11 @@ describe('race condition guards', () => {
       let thrownError: string | null = null
       try {
         await batch()
-      } catch (err) {
-        if (String(err).includes('UNIQUE constraint')) {
+      } catch (error) {
+        if (String(error).includes('UNIQUE constraint')) {
           thrownError = 'You are already a member of this organization'
         } else {
-          throw err
+          throw error
         }
       }
 
@@ -117,8 +117,8 @@ describe('race condition guards', () => {
       let rethrown = false
       try {
         await batch()
-      } catch (err) {
-        if (!String(err).includes('UNIQUE constraint')) {
+      } catch (error) {
+        if (!String(error).includes('UNIQUE constraint')) {
           rethrown = true
         }
       }

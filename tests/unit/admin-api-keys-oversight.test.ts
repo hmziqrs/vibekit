@@ -150,14 +150,14 @@ describe('Email queue D1 persistence', () => {
 
   it('retry delay should be exponential with 1-minute base', () => {
     const base = 60_000
-    expect(base * Math.pow(2, 0)).toBe(60_000) // 1 min
-    expect(base * Math.pow(2, 1)).toBe(120_000) // 2 min
-    expect(base * Math.pow(2, 2)).toBe(240_000) // 4 min
-    expect(base * Math.pow(2, 3)).toBe(480_000) // 8 min
+    expect(base * 2 ** 0).toBe(60_000) // 1 min
+    expect(base * 2 ** 1).toBe(120_000) // 2 min
+    expect(base * 2 ** 2).toBe(240_000) // 4 min
+    expect(base * 2 ** 3).toBe(480_000) // 8 min
   })
 
   it('retry delay should be capped at 15 minutes', () => {
-    const delay = Math.min(60_000 * Math.pow(2, 5), 15 * 60_000)
+    const delay = Math.min(60_000 * 2 ** 5, 15 * 60_000)
     expect(delay).toBe(15 * 60_000)
   })
 

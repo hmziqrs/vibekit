@@ -6,7 +6,7 @@ describe('scheduled cron handler', () => {
     const { resolve } = await import('node:path')
     const script = readFileSync(
       resolve(import.meta.dirname, '../../scripts/postbuild-cron.ts'),
-      'utf-8'
+      'utf8'
     )
     expect(script).toContain('scheduled')
     expect(script).toContain('publish-scheduled')
@@ -35,7 +35,7 @@ describe('scheduled cron handler', () => {
   it('wrangler.jsonc has cron triggers configured', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
-    const raw = readFileSync(resolve(import.meta.dirname, '../../wrangler.jsonc'), 'utf-8')
+    const raw = readFileSync(resolve(import.meta.dirname, '../../wrangler.jsonc'), 'utf8')
     expect(raw).toContain('"crons"')
     expect(raw).toContain('0 3 * * *')
     expect(raw).toContain('*/5 * * * *')

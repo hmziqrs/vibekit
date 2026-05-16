@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types'
 
 export const GET: RequestHandler = async ({ url }) => {
-  const origin = url.origin
+  const { origin } = url
   const body = `User-agent: *
 Allow: /
 
