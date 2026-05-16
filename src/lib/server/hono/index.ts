@@ -680,10 +680,10 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
 
   if (existing) {
     if (existing.status === 'confirmed') {
-      return c.json({ message: 'Already subscribed' })
+      return c.json({ message: 'Already subscribed', success: true })
     }
     if (existing.status === 'pending') {
-      return c.json({ message: 'Check your inbox to confirm your subscription' })
+      return c.json({ message: 'Check your inbox to confirm your subscription', success: true })
     }
     // Re-subscribe unsubscribed/bounced users
     const newToken = uuid()
@@ -739,10 +739,13 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
   }
 
   if (emailSent) {
-    return c.json({ message: 'Check your inbox to confirm your subscription' }, 201)
+    return c.json({ message: 'Check your inbox to confirm your subscription', success: true }, 201)
   }
   return c.json(
-    { message: 'Subscribed but confirmation email failed to send. Please try again later.' },
+    {
+      message: 'Subscribed but confirmation email failed to send. Please try again later.',
+      success: true,
+    },
     201
   )
 })
@@ -801,7 +804,7 @@ app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_
   }
 
   if (subscriber.status === 'unsubscribed') {
-    return c.json({ message: 'Already unsubscribed' })
+    return c.json({ message: 'Already unsubscribed', success: true })
   }
 
   await db
@@ -813,7 +816,7 @@ app.post('/api/newsletter/unsubscribe', withRateLimit('newsletter-unsub', 5, 60_
     })
     .where(eq(newsletterSubscriber.id, subscriber.id))
 
-  return c.json({ message: 'Successfully unsubscribed' })
+  return c.json({ message: 'Successfully unsubscribed', success: true })
 })
 
 // ── Analytics (public) ─────────────────────────────────────────────────
@@ -1189,16 +1192,21 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
           if (!invoiceUserId) invoiceUserId = localSub?.userId ?? null
         }
 
-        await db.insert(invoice).values({
-          amountInCents: Number(inv.amount_paid),
-          currency: String(inv.currency),
-          id: uuid(),
-          paidAt: new Date(),
-          status: 'paid',
-          stripeInvoiceId,
-          subscriptionId: invoiceSubscriptionId,
-          userId: invoiceUserId,
-        })
+        try {
+          await db.insert(invoice).values({
+            amountInCents: Number(inv.amount_paid),
+            currency: String(inv.currency),
+            id: uuid(),
+            paidAt: new Date(),
+            status: 'paid',
+            stripeInvoiceId,
+            subscriptionId: invoiceSubscriptionId,
+            userId: invoiceUserId,
+          })
+        } catch (err) {
+          if (!String(err).includes('UNIQUE constraint')) throw err
+          logger.warn('Duplicate invoice ignored in webhook', { stripeInvoiceId })
+        }
         try {
           if (invoiceUserId) {
             const [userRow] = await db
@@ -1265,16 +1273,21 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
           if (!invoiceUserId) invoiceUserId = localSub?.userId ?? null
         }
 
-        await db.insert(invoice).values({
-          amountInCents: Number(inv.amount_due),
-          currency: String(inv.currency),
-          dueDate: inv.due_date ? new Date(Number(inv.due_date) * 1000) : new Date(),
-          id: uuid(),
-          status: 'open',
-          stripeInvoiceId,
-          subscriptionId: failedSubscriptionId,
-          userId: invoiceUserId,
-        })
+        try {
+          await db.insert(invoice).values({
+            amountInCents: Number(inv.amount_due),
+            currency: String(inv.currency),
+            dueDate: inv.due_date ? new Date(Number(inv.due_date) * 1000) : new Date(),
+            id: uuid(),
+            status: 'open',
+            stripeInvoiceId,
+            subscriptionId: failedSubscriptionId,
+            userId: invoiceUserId,
+          })
+        } catch (err) {
+          if (!String(err).includes('UNIQUE constraint')) throw err
+          logger.warn('Duplicate invoice ignored in webhook', { stripeInvoiceId })
+        }
         try {
           if (invoiceUserId) {
             const [userRow] = await db
@@ -2634,7 +2647,10 @@ protectedApp.post('/billing/checkout', async (c) => {
     }
   }
 
-  // Without Stripe, create subscription directly
+  // Without Stripe, create subscription directly (guard against duplicate)
+  const existingSub = await getUserSubscription(db, currentUser.id)
+  if (existingSub) throw new ConflictError('You already have an active subscription')
+
   const intervalMs = plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
   const sub = await createSubscription(db, {
     currentPeriodEnd: new Date(Date.now() + intervalMs),
@@ -2878,7 +2894,14 @@ protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
     subscriptionId: sub.id,
   })
 
-  const newCurrent = limitCheck.current + parsed.quantity
+  const postCheck = await checkUsageLimit(db, {
+    metricType: parsed.metricType,
+    periodEnd: sub.currentPeriodEnd,
+    periodStart: sub.currentPeriodStart,
+    userId,
+  })
+
+  const newCurrent = postCheck.current
   const newOverageUnits =
     limitCheck.limit !== null && newCurrent > limitCheck.limit ? newCurrent - limitCheck.limit : 0
 
@@ -5835,17 +5858,29 @@ orgApp.post(
       .get()
 
     if (existing) {
-      slug = `${slug}-${Date.now().toString(36)}`
+      slug = `${slug}-${Math.random().toString(36).slice(2, 8)}`
     }
 
     const id = uuid()
-    await db.insert(organization).values({
-      description: parsed.description ?? null,
-      id,
-      name: parsed.name,
-      ownerId: currentUser.id,
-      slug,
-    })
+    try {
+      await db.insert(organization).values({
+        description: parsed.description ?? null,
+        id,
+        name: parsed.name,
+        ownerId: currentUser.id,
+        slug,
+      })
+    } catch (err) {
+      if (!String(err).includes('UNIQUE constraint')) throw err
+      slug = `${slug}-${Math.random().toString(36).slice(2, 8)}`
+      await db.insert(organization).values({
+        description: parsed.description ?? null,
+        id,
+        name: parsed.name,
+        ownerId: currentUser.id,
+        slug,
+      })
+    }
 
     await db.insert(organizationMember).values({
       joinedAt: new Date(),
@@ -5913,15 +5948,22 @@ orgApp.patch(
       }
     }
 
-    await db
-      .update(organization)
-      .set({
-        description: parsed.description ?? null,
-        name: parsed.name,
-        slug: newSlug,
-        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
-      })
-      .where(eq(organization.id, org.id))
+    try {
+      await db
+        .update(organization)
+        .set({
+          description: parsed.description ?? null,
+          name: parsed.name,
+          slug: newSlug,
+          updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+        })
+        .where(eq(organization.id, org.id))
+    } catch (err) {
+      if (String(err).includes('UNIQUE constraint')) {
+        throw new ConflictError('Organization slug already exists')
+      }
+      throw err
+    }
 
     await writeAuditLog(db, {
       action: 'organization.update',
@@ -6434,7 +6476,10 @@ orgApp.post(
       }
     }
 
-    // Without Stripe, create subscription directly
+    // Without Stripe, create subscription directly (guard against duplicate)
+    const existingOrgSub = await getOrgSubscription(db, org.id)
+    if (existingOrgSub) throw new ConflictError('Organization already has an active subscription')
+
     const orgIntervalMs =
       plan.interval === 'year' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
     const sub = await createSubscription(db, {
@@ -7028,18 +7073,25 @@ protectedApp.post('/invitations/:token/accept', async (c) => {
     throw new ConflictError('You are already a member of this organization')
   }
 
-  await db.batch([
-    db.insert(organizationMember).values({
-      joinedAt: new Date(),
-      organizationId: invitation.organizationId,
-      role: invitation.role,
-      userId: currentUser.id,
-    }),
-    db
-      .update(organizationInvitation)
-      .set({ acceptedAt: new Date() })
-      .where(eq(organizationInvitation.id, invitation.id)),
-  ])
+  try {
+    await db.batch([
+      db.insert(organizationMember).values({
+        joinedAt: new Date(),
+        organizationId: invitation.organizationId,
+        role: invitation.role,
+        userId: currentUser.id,
+      }),
+      db
+        .update(organizationInvitation)
+        .set({ acceptedAt: new Date() })
+        .where(eq(organizationInvitation.id, invitation.id)),
+    ])
+  } catch (err) {
+    if (String(err).includes('UNIQUE constraint')) {
+      throw new ConflictError('You are already a member of this organization')
+    }
+    throw err
+  }
 
   await writeAuditLog(db, {
     action: 'organization.accept_invitation',

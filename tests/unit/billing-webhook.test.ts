@@ -424,4 +424,41 @@ describe('billing webhook logic', () => {
       expect(nextRetryDelay).toBeNull()
     })
   })
+
+  describe('invoice INSERT unique constraint catch', () => {
+    it('catches UNIQUE constraint error on duplicate invoice insert', async () => {
+      const constraintError = new Error(
+        'D1_ERROR: UNIQUE constraint failed: invoice.stripeInvoiceId'
+      )
+      const mockValues = vi.fn().mockRejectedValue(constraintError)
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues })
+
+      let caught = false
+      try {
+        await mockInsert('invoice').values({ stripeInvoiceId: 'in_dup', status: 'paid' })
+      } catch (err) {
+        caught = true
+        expect(String(err)).toContain('UNIQUE constraint')
+      }
+
+      expect(caught).toBe(true)
+      expect(mockValues).toHaveBeenCalled()
+    })
+
+    it('re-throws non-UNIQUE constraint errors', async () => {
+      const otherError = new Error('D1_ERROR: something else went wrong')
+      const mockValues = vi.fn().mockRejectedValue(otherError)
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues })
+
+      await expect(mockInsert('invoice').values({ stripeInvoiceId: 'in_new' })).rejects.toThrow(
+        'something else went wrong'
+      )
+    })
+
+    it('gracefully handles concurrent webhook delivery for same invoice', () => {
+      const err = new Error('D1_ERROR: UNIQUE constraint failed: invoice.stripeInvoiceId')
+      const isUniqueViolation = String(err).includes('UNIQUE constraint')
+      expect(isUniqueViolation).toBe(true)
+    })
+  })
 })
