@@ -1881,7 +1881,12 @@ protectedApp.get('/security-events', async (c) => {
   const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
 
   const events = await db
-    .select()
+    .select({
+      createdAt: securityEvent.createdAt,
+      eventType: securityEvent.eventType,
+      id: securityEvent.id,
+      metadata: securityEvent.metadata,
+    })
     .from(securityEvent)
     .where(eq(securityEvent.userId, userId))
     .orderBy(desc(securityEvent.createdAt))
@@ -2465,7 +2470,18 @@ protectedApp.get('/notifications', withRateLimit('notifications-list', 60, 60_00
 
   const [rows, countResult] = await Promise.all([
     db
-      .select()
+      .select({
+        archivedAt: notification.archivedAt,
+        body: notification.body,
+        createdAt: notification.createdAt,
+        entityId: notification.entityId,
+        entityType: notification.entityType,
+        id: notification.id,
+        link: notification.link,
+        readAt: notification.readAt,
+        title: notification.title,
+        type: notification.type,
+      })
       .from(notification)
       .where(where)
       .orderBy(desc(notification.createdAt))
@@ -2908,7 +2924,17 @@ protectedApp.get('/billing/invoices', async (c) => {
 
   const [invoices, [{ count }]] = await Promise.all([
     db
-      .select()
+      .select({
+        amountInCents: invoice.amountInCents,
+        createdAt: invoice.createdAt,
+        currency: invoice.currency,
+        dueDate: invoice.dueDate,
+        id: invoice.id,
+        paidAt: invoice.paidAt,
+        pdfUrl: invoice.pdfUrl,
+        status: invoice.status,
+        taxAmountInCents: invoice.taxAmountInCents,
+      })
       .from(invoice)
       .where(eq(invoice.userId, userId))
       .orderBy(desc(invoice.createdAt))
