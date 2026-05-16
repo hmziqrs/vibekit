@@ -4,7 +4,7 @@
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte'
   import TanstackField from '$lib/components/tanstack-field.svelte'
   import StatusBadge from '$lib/components/status-badge.svelte'
-  import { updateItemSchema, type UpdateItemInput } from '$lib/validators/item'
+  import { updateItemSchema } from '$lib/validators/item'
   import { createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { createForm } from '@tanstack/svelte-form'
   import type { ItemData } from '$lib/types'

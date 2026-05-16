@@ -1,6 +1,5 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { onMount } from 'svelte'
   import Pagination from '$lib/components/pagination.svelte'
 
   let results = $state<{ content: string; entityId: string; entityType: string; score: number; title: string }[]>([])

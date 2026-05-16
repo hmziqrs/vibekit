@@ -38,6 +38,7 @@
   }
 
   let changing = $state(false)
+  let billingError = $state('')
   let canceling = $state(false)
   let detaching = $state<string | null>(null)
   let settingDefault = $state<string | null>(null)
@@ -93,7 +94,7 @@
     queryKey: ['billing', 'payment-methods'],
   }))
 
-  const currentPlan = $derived(() => {
+  const currentPlan = $derived.by(() => {
     const sub = subQuery.data
     if (!sub) return null
     return plansQuery.data?.find((p) => p.id === sub.planId) ?? null
@@ -101,6 +102,7 @@
 
   async function handleSubscribe(planId: string) {
     changing = true
+    billingError = ''
     try {
       const payload = {
         cancelUrl: window.location.href,
@@ -108,19 +110,27 @@
         successUrl: window.location.href,
       }
       const parsed = checkoutSessionSchema.safeParse(payload)
-      if (!parsed.success) return
+      if (!parsed.success) {
+        billingError = 'Invalid checkout parameters'
+        return
+      }
       const res = await fetch('/api/billing/checkout', {
         body: JSON.stringify(parsed.data),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        billingError = 'Failed to start checkout session'
+        return
+      }
       const data = (await res.json()) as { subscription?: unknown; url?: string }
       if (data.url) {
         window.location.href = data.url
         return
       }
       queryClient.invalidateQueries({ queryKey: ['billing'] })
+    } catch {
+      billingError = 'An unexpected error occurred'
     } finally {
       changing = false
     }
@@ -204,6 +214,12 @@
 <div class="mx-auto max-w-3xl space-y-6 p-6">
   <h1 class="text-2xl font-bold text-text-primary">Billing & Subscription</h1>
 
+  {#if billingError}
+    <div class="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+      {billingError}
+    </div>
+  {/if}
+
   <!-- Current Subscription -->
   {#if subQuery.isPending}
     <div class="h-24 animate-pulse rounded-xl bg-white/[0.04]"></div>
@@ -214,16 +230,16 @@
         <div>
           <p class="text-[13px] text-text-muted">Current plan</p>
           <p class="mt-1 text-lg font-semibold text-text-primary">
-            {currentPlan()?.name ?? 'Unknown'}
+            {currentPlan?.name ?? 'Unknown'}
           </p>
         </div>
         <span class="rounded-full px-2.5 py-1 text-[12px] font-medium {statusColor(sub.status)}">
           {sub.status}
         </span>
       </div>
-      {#if currentPlan()}
+      {#if currentPlan}
         <p class="mt-2 text-[14px] text-text-muted">
-          {formatPrice(currentPlan()!.priceInCents)}/{currentPlan()!.interval}
+          {formatPrice(currentPlan!.priceInCents)}/{currentPlan!.interval}
           {#if sub.trialEnd}
             &middot; Trial ends {formatDate(sub.trialEnd)}
           {/if}

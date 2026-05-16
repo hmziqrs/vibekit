@@ -63,7 +63,7 @@
         preferences = [...preferences, { channel, enabled, type }]
       }
     } catch (error) {
-      errorMsg = error instanceof Error ? error.message : 'Failed to update update preference'
+      errorMsg = error instanceof Error ? error.message : 'Failed to update notification preference'
     } finally {
       saving = null
     }

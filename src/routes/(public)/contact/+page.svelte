@@ -9,6 +9,7 @@
   const serverErrors = $derived<Record<string, string>>(
     Object.fromEntries((form?.errors ?? []).map((e: { field: string; message: string }) => [e.field, e.message])),
   )
+  const generalError = $derived(errors[''] ?? '')
   const errors = $derived<Record<string, string>>({ ...serverErrors, ...clientErrors })
   const values = $derived(form?.values ?? {})
   const success = $derived(form?.success ?? false)
@@ -57,6 +58,11 @@
       <p class="text-text-muted">Thank you for reaching out. We'll respond within 24 hours.</p>
     </div>
   {:else}
+    {#if generalError}
+      <div class="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center text-sm text-destructive">
+        {generalError}
+      </div>
+    {/if}
     <form method="POST" use:enhance={handleEnhance} class="space-y-6" novalidate>
       <div>
         <label for="name" class="mb-2 block text-sm font-medium text-text-secondary">Name</label>

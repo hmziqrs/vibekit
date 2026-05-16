@@ -34,7 +34,7 @@
 				<h4 class="mb-4 text-[13px] font-semibold uppercase tracking-wider text-text-muted">Resources</h4>
 				<ul class="space-y-3">
 					<li><a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-[14px] text-text-subtle transition-colors hover:text-text-secondary">GitHub</a></li>
-					<li><a href="/support" class="text-[14px] text-text-subtle transition-colors hover:text-text-secondary">Support</a></li>
+					<li><a href="/contact" class="text-[14px] text-text-subtle transition-colors hover:text-text-secondary">Support</a></li>
 				</ul>
 			</div>
 

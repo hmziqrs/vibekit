@@ -47,7 +47,7 @@
     queryKey: ['notifications', 'page', currentPage],
   }))
 
-  const filteredNotifications = $derived(() => {
+  const filteredNotifications = $derived.by(() => {
     const notifications = notificationsQuery.data?.notifications ?? []
     return notifications.filter((n) => {
       if (filterType !== 'all' && n.type !== filterType) return false
@@ -146,7 +146,7 @@
   }
 
   function toggleSelectAll() {
-    const visible = filteredNotifications()
+    const visible = filteredNotifications
     selectedIds =
       selectedIds.size === visible.length ? new Set() : new Set(visible.map((n) => n.id))
   }
@@ -257,13 +257,13 @@
         Try again
       </button>
     </div>
-  {:else if filteredNotifications().length === 0}
+  {:else if filteredNotifications.length === 0}
     <div class="rounded-xl border border-white/[0.06] bg-surface p-8 text-center">
       <p class="text-text-muted">No notifications found</p>
     </div>
   {:else}
     <div class="space-y-2">
-      {#each filteredNotifications() as n (n.id)}
+      {#each filteredNotifications as n (n.id)}
         <div
           class={cn(
             'group relative flex items-start gap-4 rounded-xl border border-white/[0.06] bg-surface p-4 transition-colors hover:border-white/[0.1]',

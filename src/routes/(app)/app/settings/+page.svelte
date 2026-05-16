@@ -35,6 +35,14 @@
   let twoFactorState = $state<'idle' | 'enabling' | 'enabled'>('idle')
   let twoFactorError = $state('')
   let twoFactorLoading = $state(false)
+
+  $effect(() => {
+    authClient.getSession().then((res) => {
+      if (res.data?.user?.twoFactorEnabled) {
+        twoFactorState = 'enabled'
+      }
+    })
+  })
   let totpUri = $state('')
   let qrDataUrl = $state('')
   let backupCodes = $state<string[]>([])
@@ -42,6 +50,8 @@
   let disablePassword = $state('')
   let showDisableConfirm = $state(false)
   let showBackupCodes = $state(false)
+  let showRegenerateConfirm = $state(false)
+  let regeneratePassword = $state('')
   let enablePassword = $state('')
   let showEnableConfirm = $state(false)
 
@@ -314,10 +324,14 @@
   }
 
   async function regenerateBackupCodes() {
+    if (!regeneratePassword) {
+      twoFactorError = 'Enter your password to regenerate backup codes'
+      return
+    }
     twoFactorLoading = true
     twoFactorError = ''
     try {
-      const res = await authClient.twoFactor.generateBackupCodes({ password: disablePassword || '' })
+      const res = await authClient.twoFactor.generateBackupCodes({ password: regeneratePassword })
       if (res?.error) {
         twoFactorError = res.error.message ?? 'Failed to regenerate codes'
         return
@@ -325,6 +339,8 @@
       if (res.data) {
         backupCodes = res.data.backupCodes ?? []
         showBackupCodes = true
+        showRegenerateConfirm = false
+        regeneratePassword = ''
       }
     } catch (error) {
       twoFactorError = error instanceof Error ? error.message : 'Failed to regenerate codes'
@@ -838,7 +854,10 @@
 
         <div class="flex gap-2">
           <button
-            onclick={regenerateBackupCodes}
+            onclick={() => {
+              showRegenerateConfirm = true
+              twoFactorError = ''
+            }}
             disabled={twoFactorLoading}
             class="rounded-lg border border-white/6 px-4 py-2 text-[13px] font-medium text-text-primary transition-colors hover:bg-white/4 disabled:opacity-50"
           >
@@ -854,6 +873,37 @@
             Disable 2FA
           </button>
         </div>
+
+        {#if showRegenerateConfirm}
+          <div class="mt-4 rounded-lg border border-brand/20 bg-brand/5 p-4">
+            <p class="mb-3 text-[13px] text-text-secondary">Enter your password to regenerate backup codes. This will invalidate your current codes.</p>
+            <input
+              type="password"
+              bind:value={regeneratePassword}
+              placeholder="Your password"
+              class="mb-3 w-full rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-text-primary"
+            />
+            <div class="flex gap-2">
+              <button
+                onclick={regenerateBackupCodes}
+                disabled={twoFactorLoading}
+                class="rounded-lg bg-brand px-4 py-2 text-[13px] font-medium text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
+              >
+                {twoFactorLoading ? 'Regenerating...' : 'Confirm'}
+              </button>
+              <button
+                onclick={() => {
+                  showRegenerateConfirm = false
+                  regeneratePassword = ''
+                  twoFactorError = ''
+                }}
+                class="rounded-lg border border-white/6 px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-white/4"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        {/if}
       </div>
 
     {/if}
