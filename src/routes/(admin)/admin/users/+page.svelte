@@ -29,6 +29,12 @@
   let impersonating = $state(false)
   let mutationError = $state('')
 
+  $effect(() => {
+    void statusFilter
+    void search
+    pageNum = 1
+  })
+
   const usersQuery = createQuery(() => ({
     queryFn: async () => {
       const params = new URLSearchParams()

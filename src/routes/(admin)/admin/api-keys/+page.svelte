@@ -31,6 +31,12 @@
   let revoking = $state(false)
   let deleting = $state(false)
 
+  $effect(() => {
+    void statusFilter
+    void search
+    pageNum = 1
+  })
+
   const statusTabs = [
     { label: 'All', value: '' },
     { label: 'Active', value: 'active' },

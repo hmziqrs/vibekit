@@ -1610,7 +1610,7 @@ const protectedApp = new Hono<ProtectedEnv>().use('*', withApiKey()).use('*', re
 
 // ── Terms Acceptance ──────────────────────────────────────────────────
 
-protectedApp.post('/terms/accept', async (c) => {
+protectedApp.post('/terms/accept', withRateLimit('terms-accept', 5, 60_000), async (c) => {
   const { db } = c.get('services')
   const currentUser = c.get('user')
 
@@ -1727,42 +1727,47 @@ protectedApp.get('/items', async (c) => {
   return c.json({ items, page, total })
 })
 
-protectedApp.post('/items', validate(createItemSchema), async (c) => {
-  const parsed = c.req.valid('json')
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
+protectedApp.post(
+  '/items',
+  withRateLimit('items-create', 20, 60_000),
+  validate(createItemSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
 
-  const created = await db
-    .insert(item)
-    .values({
-      description: parsed.description ?? null,
-      name: parsed.name,
+    const created = await db
+      .insert(item)
+      .values({
+        description: parsed.description ?? null,
+        name: parsed.name,
+        userId: currentUser.id,
+      })
+      .returning({
+        createdAt: item.createdAt,
+        description: item.description,
+        id: item.id,
+        name: item.name,
+        status: item.status,
+        updatedAt: item.updatedAt,
+      })
+      .get()
+
+    await writeAuditLog(db, {
+      action: 'item.create',
+      entityId: created.id,
+      entityType: 'item',
+      metadata: { name: created.name },
       userId: currentUser.id,
     })
-    .returning({
-      createdAt: item.createdAt,
-      description: item.description,
-      id: item.id,
-      name: item.name,
-      status: item.status,
-      updatedAt: item.updatedAt,
-    })
-    .get()
 
-  await writeAuditLog(db, {
-    action: 'item.create',
-    entityId: created.id,
-    entityType: 'item',
-    metadata: { name: created.name },
-    userId: currentUser.id,
-  })
+    indexItem(db, created.id).catch((error) =>
+      logger.error('Search index failed (item create)', { error })
+    )
 
-  indexItem(db, created.id).catch((error) =>
-    logger.error('Search index failed (item create)', { error })
-  )
-
-  return c.json({ item: created }, 201)
-})
+    return c.json({ item: created }, 201)
+  }
+)
 
 protectedApp.get('/items/:id', withOwnedItem, async (c) => {
   const found = c.get('resource') as unknown as typeof item.$inferSelect
@@ -1779,83 +1784,94 @@ protectedApp.get('/items/:id', withOwnedItem, async (c) => {
   })
 })
 
-protectedApp.patch('/items/:id', withOwnedItem, validate(updateItemSchema), async (c) => {
-  const parsed = c.req.valid('json')
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const existing = c.get('resource') as typeof item.$inferSelect
-  const { id } = existing
+protectedApp.patch(
+  '/items/:id',
+  withRateLimit('items-update', 30, 60_000),
+  withOwnedItem,
+  validate(updateItemSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const existing = c.get('resource') as typeof item.$inferSelect
+    const { id } = existing
 
-  type ItemUpdate = Partial<Pick<typeof item.$inferInsert, 'name' | 'description' | 'status'>> & {
-    updatedAt: SQL
-  }
-  const updates: ItemUpdate = {
-    updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
-  }
-
-  if (parsed.name !== undefined) updates.name = parsed.name
-  if (parsed.description !== undefined) updates.description = parsed.description ?? null
-  if (parsed.status !== undefined) updates.status = parsed.status
-
-  await db.update(item).set(updates).where(eq(item.id, id))
-
-  const updated = await db
-    .select()
-    .from(item)
-    .where(and(eq(item.id, id), eq(item.userId, currentUser.id), isNull(item.deletedAt)))
-    .get()
-
-  if (!updated) throw new NotFoundError()
-
-  await writeAuditLog(db, {
-    action: 'item.update',
-    entityId: id,
-    entityType: 'item',
-    metadata: { name: updated.name, status: updated.status },
-    userId: currentUser.id,
-  })
-
-  indexItem(db, id).catch((error) => logger.error('Search index failed (item update)', { error }))
-
-  return c.json({
-    item: {
-      createdAt: updated.createdAt,
-      description: updated.description,
-      id: updated.id,
-      name: updated.name,
-      status: updated.status,
-      updatedAt: updated.updatedAt,
-    },
-  })
-})
-
-protectedApp.delete('/items/:id', withOwnedItem, async (c) => {
-  const { db } = c.get('services')
-  const existing = c.get('resource') as typeof item.$inferSelect
-  const { id } = existing
-
-  await db
-    .update(item)
-    .set({
-      deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+    type ItemUpdate = Partial<Pick<typeof item.$inferInsert, 'name' | 'description' | 'status'>> & {
+      updatedAt: SQL
+    }
+    const updates: ItemUpdate = {
       updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+    }
+
+    if (parsed.name !== undefined) updates.name = parsed.name
+    if (parsed.description !== undefined) updates.description = parsed.description ?? null
+    if (parsed.status !== undefined) updates.status = parsed.status
+
+    await db.update(item).set(updates).where(eq(item.id, id))
+
+    const updated = await db
+      .select()
+      .from(item)
+      .where(and(eq(item.id, id), eq(item.userId, currentUser.id), isNull(item.deletedAt)))
+      .get()
+
+    if (!updated) throw new NotFoundError()
+
+    await writeAuditLog(db, {
+      action: 'item.update',
+      entityId: id,
+      entityType: 'item',
+      metadata: { name: updated.name, status: updated.status },
+      userId: currentUser.id,
     })
-    .where(eq(item.id, id))
 
-  await writeAuditLog(db, {
-    action: 'item.delete',
-    entityId: id,
-    entityType: 'item',
-    metadata: { name: existing.name },
-    userId: c.get('user').id,
-  })
+    indexItem(db, id).catch((error) => logger.error('Search index failed (item update)', { error }))
 
-  deindexEntity(db, id, 'item').catch((error) =>
-    logger.error('Search deindex failed (item delete)', { error })
-  )
+    return c.json({
+      item: {
+        createdAt: updated.createdAt,
+        description: updated.description,
+        id: updated.id,
+        name: updated.name,
+        status: updated.status,
+        updatedAt: updated.updatedAt,
+      },
+    })
+  }
+)
 
-  return new Response(null, { status: 204 })
-})
+protectedApp.delete(
+  '/items/:id',
+  withRateLimit('items-delete', 20, 60_000),
+  withOwnedItem,
+  async (c) => {
+    const { db } = c.get('services')
+    const existing = c.get('resource') as typeof item.$inferSelect
+    const { id } = existing
+
+    await db
+      .update(item)
+      .set({
+        deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      })
+      .where(eq(item.id, id))
+
+    await writeAuditLog(db, {
+      action: 'item.delete',
+      entityId: id,
+      entityType: 'item',
+      metadata: { name: existing.name },
+      userId: c.get('user').id,
+    })
+
+    deindexEntity(db, id, 'item').catch((error) =>
+      logger.error('Search deindex failed (item delete)', { error })
+    )
+
+    return new Response(null, { status: 204 })
+  }
+)
 
 // ── Security Events ──────────────────────────────────────────────────
 
@@ -1992,13 +2008,18 @@ protectedApp.post('/upload-avatar', withRateLimit('avatar-upload', 10, 60_000), 
 
 // ── Chunked Uploads (auth required) ────────────────────────────────────
 
-protectedApp.post('/uploads/session', validate(createUploadSessionSchema), async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const input = c.req.valid('json')
-  const session = await createUploadSession(db, { ...input, userId })
-  return c.json(session, 201)
-})
+protectedApp.post(
+  '/uploads/session',
+  withRateLimit('upload-session', 10, 60_000),
+  validate(createUploadSessionSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const input = c.req.valid('json')
+    const session = await createUploadSession(db, { ...input, userId })
+    return c.json(session, 201)
+  }
+)
 
 protectedApp.get('/uploads/session/:id', async (c) => {
   const { db } = c.get('services')
@@ -2309,15 +2330,19 @@ protectedApp.get('/trusted-devices', async (c) => {
   return c.json({ devices })
 })
 
-protectedApp.delete('/trusted-devices/:id', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const deviceId = c.req.param('id')
-  await revokeTrustedDevice(db as DrizzleDb, { deviceId, userId })
-  return c.json({ success: true })
-})
+protectedApp.delete(
+  '/trusted-devices/:id',
+  withRateLimit('trusted-devices', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const deviceId = c.req.param('id')
+    await revokeTrustedDevice(db as DrizzleDb, { deviceId, userId })
+    return c.json({ success: true })
+  }
+)
 
-protectedApp.delete('/trusted-devices', async (c) => {
+protectedApp.delete('/trusted-devices', withRateLimit('trusted-devices', 10, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const count = await revokeAllTrustedDevices(db as DrizzleDb, userId)
@@ -2344,7 +2369,7 @@ protectedApp.get('/user/onboarding', async (c) => {
   })
 })
 
-protectedApp.post('/user/onboarding', async (c) => {
+protectedApp.post('/user/onboarding', withRateLimit('onboarding', 5, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const parsed = onboardingSchema.safeParse(await c.req.json().catch(() => ({})))
@@ -2488,85 +2513,101 @@ protectedApp.patch(
   }
 )
 
-protectedApp.patch('/notifications/:id/read', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const id = c.req.param('id')
+protectedApp.patch(
+  '/notifications/:id/read',
+  withRateLimit('notifications-mutate', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const id = c.req.param('id')
 
-  const existing = await db
-    .select({ id: notification.id })
-    .from(notification)
-    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-    .get()
+    const existing = await db
+      .select({ id: notification.id })
+      .from(notification)
+      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+      .get()
 
-  if (!existing) {
-    throw new NotFoundError()
+    if (!existing) {
+      throw new NotFoundError()
+    }
+
+    await db.update(notification).set({ readAt: new Date() }).where(eq(notification.id, id))
+
+    return c.json({ success: true })
   }
+)
 
-  await db.update(notification).set({ readAt: new Date() }).where(eq(notification.id, id))
+protectedApp.delete(
+  '/notifications/:id',
+  withRateLimit('notifications-mutate', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const id = c.req.param('id')
 
-  return c.json({ success: true })
-})
+    const existing = await db
+      .select({ id: notification.id })
+      .from(notification)
+      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+      .get()
 
-protectedApp.delete('/notifications/:id', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const id = c.req.param('id')
+    if (!existing) {
+      throw new NotFoundError()
+    }
 
-  const existing = await db
-    .select({ id: notification.id })
-    .from(notification)
-    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-    .get()
+    await db.delete(notification).where(eq(notification.id, id))
 
-  if (!existing) {
-    throw new NotFoundError()
+    return c.json({ success: true })
   }
+)
 
-  await db.delete(notification).where(eq(notification.id, id))
+protectedApp.patch(
+  '/notifications/:id/archive',
+  withRateLimit('notifications-mutate', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const id = c.req.param('id')
 
-  return c.json({ success: true })
-})
+    const existing = await db
+      .select({ id: notification.id })
+      .from(notification)
+      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+      .get()
 
-protectedApp.patch('/notifications/:id/archive', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const id = c.req.param('id')
+    if (!existing) {
+      throw new NotFoundError()
+    }
 
-  const existing = await db
-    .select({ id: notification.id })
-    .from(notification)
-    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-    .get()
+    await db.update(notification).set({ archivedAt: new Date() }).where(eq(notification.id, id))
 
-  if (!existing) {
-    throw new NotFoundError()
+    return c.json({ success: true })
   }
+)
 
-  await db.update(notification).set({ archivedAt: new Date() }).where(eq(notification.id, id))
+protectedApp.patch(
+  '/notifications/:id/unarchive',
+  withRateLimit('notifications-mutate', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const id = c.req.param('id')
 
-  return c.json({ success: true })
-})
+    const existing = await db
+      .select({ id: notification.id })
+      .from(notification)
+      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
+      .get()
 
-protectedApp.patch('/notifications/:id/unarchive', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const id = c.req.param('id')
+    if (!existing) {
+      throw new NotFoundError()
+    }
 
-  const existing = await db
-    .select({ id: notification.id })
-    .from(notification)
-    .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-    .get()
+    await db.update(notification).set({ archivedAt: null }).where(eq(notification.id, id))
 
-  if (!existing) {
-    throw new NotFoundError()
+    return c.json({ success: true })
   }
-
-  await db.update(notification).set({ archivedAt: null }).where(eq(notification.id, id))
-
-  return c.json({ success: true })
-})
+)
 
 protectedApp.post(
   '/notifications/bulk-delete',
@@ -2605,21 +2646,25 @@ protectedApp.get('/notifications/preferences', async (c) => {
   return c.json({ preferences: prefs })
 })
 
-protectedApp.patch('/notifications/preferences', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const parsed = notificationPreferenceSchema.safeParse(await c.req.json().catch(() => ({})))
-  if (!parsed.success) {
-    throw new BadRequestError('channel, type, and enabled are required')
+protectedApp.patch(
+  '/notifications/preferences',
+  withRateLimit('notification-prefs', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const parsed = notificationPreferenceSchema.safeParse(await c.req.json().catch(() => ({})))
+    if (!parsed.success) {
+      throw new BadRequestError('channel, type, and enabled are required')
+    }
+
+    await setNotificationPreference(db, {
+      ...parsed.data,
+      userId,
+    })
+
+    return c.json({ success: true })
   }
-
-  await setNotificationPreference(db, {
-    ...parsed.data,
-    userId,
-  })
-
-  return c.json({ success: true })
-})
+)
 
 // ── Billing (auth required) ─────────────────────────────────────────────
 
@@ -2910,59 +2955,64 @@ protectedApp.get('/billing/usage', async (c) => {
   return c.json({ usage })
 })
 
-protectedApp.post('/billing/usage', validate(recordUsageSchema), async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const parsed = c.req.valid('json')
+protectedApp.post(
+  '/billing/usage',
+  withRateLimit('usage-record', 30, 60_000),
+  validate(recordUsageSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const parsed = c.req.valid('json')
 
-  const sub = await getUserSubscription(db, userId)
-  if (!sub) throw new BadRequestError('No active subscription')
+    const sub = await getUserSubscription(db, userId)
+    if (!sub) throw new BadRequestError('No active subscription')
 
-  const limitCheck = await checkUsageLimit(db, {
-    metricType: parsed.metricType,
-    periodEnd: sub.currentPeriodEnd,
-    periodStart: sub.currentPeriodStart,
-    userId,
-  })
+    const limitCheck = await checkUsageLimit(db, {
+      metricType: parsed.metricType,
+      periodEnd: sub.currentPeriodEnd,
+      periodStart: sub.currentPeriodStart,
+      userId,
+    })
 
-  const wouldExceed =
-    limitCheck.limit !== null && limitCheck.current + parsed.quantity > limitCheck.limit
+    const wouldExceed =
+      limitCheck.limit !== null && limitCheck.current + parsed.quantity > limitCheck.limit
 
-  if (wouldExceed && limitCheck.overageRateInCents === 0) {
-    throw new BadRequestError(
-      `Usage limit exceeded for ${parsed.metricType}: ${limitCheck.current}/${limitCheck.limit}`
-    )
+    if (wouldExceed && limitCheck.overageRateInCents === 0) {
+      throw new BadRequestError(
+        `Usage limit exceeded for ${parsed.metricType}: ${limitCheck.current}/${limitCheck.limit}`
+      )
+    }
+
+    await recordUsage(db, {
+      metricType: parsed.metricType,
+      periodEnd: sub.currentPeriodEnd,
+      periodStart: sub.currentPeriodStart,
+      quantity: parsed.quantity,
+      subscriptionId: sub.id,
+    })
+
+    const postCheck = await checkUsageLimit(db, {
+      metricType: parsed.metricType,
+      periodEnd: sub.currentPeriodEnd,
+      periodStart: sub.currentPeriodStart,
+      userId,
+    })
+
+    const newCurrent = postCheck.current
+    const newOverageUnits =
+      limitCheck.limit !== null && newCurrent > limitCheck.limit ? newCurrent - limitCheck.limit : 0
+
+    return c.json({
+      overage: {
+        costInCents: newOverageUnits * limitCheck.overageRateInCents,
+        rateInCents: limitCheck.overageRateInCents,
+        units: newOverageUnits,
+      },
+      remaining: limitCheck.limit !== null ? Math.max(0, limitCheck.limit - newCurrent) : null,
+      success: true,
+    })
   }
-
-  await recordUsage(db, {
-    metricType: parsed.metricType,
-    periodEnd: sub.currentPeriodEnd,
-    periodStart: sub.currentPeriodStart,
-    quantity: parsed.quantity,
-    subscriptionId: sub.id,
-  })
-
-  const postCheck = await checkUsageLimit(db, {
-    metricType: parsed.metricType,
-    periodEnd: sub.currentPeriodEnd,
-    periodStart: sub.currentPeriodStart,
-    userId,
-  })
-
-  const newCurrent = postCheck.current
-  const newOverageUnits =
-    limitCheck.limit !== null && newCurrent > limitCheck.limit ? newCurrent - limitCheck.limit : 0
-
-  return c.json({
-    overage: {
-      costInCents: newOverageUnits * limitCheck.overageRateInCents,
-      rateInCents: limitCheck.overageRateInCents,
-      units: newOverageUnits,
-    },
-    remaining: limitCheck.limit !== null ? Math.max(0, limitCheck.limit - newCurrent) : null,
-    success: true,
-  })
-})
+)
 
 // ── Payment Methods ──────────────────────────────────────────────────
 
@@ -3176,20 +3226,25 @@ protectedApp.post(
   }
 )
 
-protectedApp.patch('/api-keys/:id', validate(updateApiKeySchema), async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const keyId = c.req.param('id')
-  const input = c.req.valid('json')
-  await updateApiKey(db, keyId, userId, input)
-  await writeAuditLog(db, {
-    action: 'api_key.updated',
-    entityId: keyId,
-    entityType: 'api_key',
-    userId,
-  })
-  return c.json({ success: true })
-})
+protectedApp.patch(
+  '/api-keys/:id',
+  withRateLimit('api-key-mutate', 10, 60_000),
+  validate(updateApiKeySchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const keyId = c.req.param('id')
+    const input = c.req.valid('json')
+    await updateApiKey(db, keyId, userId, input)
+    await writeAuditLog(db, {
+      action: 'api_key.updated',
+      entityId: keyId,
+      entityType: 'api_key',
+      userId,
+    })
+    return c.json({ success: true })
+  }
+)
 
 protectedApp.post('/api-keys/:id/rotate', withRateLimit('api-key-rotate', 5, 60_000), async (c) => {
   const { db } = c.get('services')
@@ -3206,22 +3261,26 @@ protectedApp.post('/api-keys/:id/rotate', withRateLimit('api-key-rotate', 5, 60_
   return c.json(result)
 })
 
-protectedApp.post('/api-keys/:id/revoke', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const keyId = c.req.param('id')
-  const revoked = await revokeApiKey(db, keyId, userId)
-  if (!revoked) throw new NotFoundError('API key not found')
-  await writeAuditLog(db, {
-    action: 'api_key.revoked',
-    entityId: keyId,
-    entityType: 'api_key',
-    userId,
-  })
-  return c.json({ success: true })
-})
+protectedApp.post(
+  '/api-keys/:id/revoke',
+  withRateLimit('api-key-mutate', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const keyId = c.req.param('id')
+    const revoked = await revokeApiKey(db, keyId, userId)
+    if (!revoked) throw new NotFoundError('API key not found')
+    await writeAuditLog(db, {
+      action: 'api_key.revoked',
+      entityId: keyId,
+      entityType: 'api_key',
+      userId,
+    })
+    return c.json({ success: true })
+  }
+)
 
-protectedApp.delete('/api-keys/:id', async (c) => {
+protectedApp.delete('/api-keys/:id', withRateLimit('api-key-mutate', 10, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const keyId = c.req.param('id')
@@ -3340,23 +3399,28 @@ protectedApp.post(
   }
 )
 
-protectedApp.patch('/webhooks/:id', validate(updateWebhookEndpointSchema), async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const endpointId = c.req.param('id')
-  const input = c.req.valid('json')
-  const result = await updateWebhookEndpoint(db, endpointId, userId, input)
-  if (!result) throw new NotFoundError()
-  await emitEvent(db, {
-    action: 'webhook.update',
-    entityId: endpointId,
-    entityType: 'webhook_endpoint',
-    userId,
-  })
-  return c.json({ success: true })
-})
+protectedApp.patch(
+  '/webhooks/:id',
+  withRateLimit('webhook-mutate', 10, 60_000),
+  validate(updateWebhookEndpointSchema),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const endpointId = c.req.param('id')
+    const input = c.req.valid('json')
+    const result = await updateWebhookEndpoint(db, endpointId, userId, input)
+    if (!result) throw new NotFoundError()
+    await emitEvent(db, {
+      action: 'webhook.update',
+      entityId: endpointId,
+      entityType: 'webhook_endpoint',
+      userId,
+    })
+    return c.json({ success: true })
+  }
+)
 
-protectedApp.delete('/webhooks/:id', async (c) => {
+protectedApp.delete('/webhooks/:id', withRateLimit('webhook-mutate', 10, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const endpointId = c.req.param('id')
@@ -3547,54 +3611,66 @@ protectedApp.get('/integrations', async (c) => {
   return c.json({ integrations: masked })
 })
 
-protectedApp.post('/integrations/connect/:provider', async (c) => {
-  const { env } = c.get('services')
-  const { id: userId } = c.get('user')
-  const provider = c.req.param('provider')
+protectedApp.post(
+  '/integrations/connect/:provider',
+  withRateLimit('integration-mutate', 10, 60_000),
+  async (c) => {
+    const { env } = c.get('services')
+    const { id: userId } = c.get('user')
+    const provider = c.req.param('provider')
 
-  if (!getProvider(provider)) {
-    throw new NotFoundError()
+    if (!getProvider(provider)) {
+      throw new NotFoundError()
+    }
+
+    const { codeVerifier } = generateOAuthParams()
+    const stateData: OAuthState & { codeVerifier: string } = {
+      codeVerifier,
+      provider,
+      userId,
+    }
+    const { db: oauthDb } = c.get('services')
+    const state = await generateOAuthState(oauthDb, stateData)
+
+    const baseUrl = env.origin ?? 'http://localhost:5173'
+    const authorizeUrl = getAuthorizationUrl(
+      provider,
+      state,
+      codeVerifier,
+      env as unknown as Record<string, string | undefined>,
+      baseUrl
+    )
+
+    return c.json({ url: authorizeUrl.toString() })
   }
+)
 
-  const { codeVerifier } = generateOAuthParams()
-  const stateData: OAuthState & { codeVerifier: string } = {
-    codeVerifier,
-    provider,
-    userId,
+protectedApp.delete(
+  '/integrations/:id',
+  withRateLimit('integration-mutate', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const integrationId = c.req.param('id')
+    const result = await disconnectIntegration(db, integrationId, userId)
+    if (!result) throw new NotFoundError()
+    return c.json({ success: true })
   }
-  const { db: oauthDb } = c.get('services')
-  const state = await generateOAuthState(oauthDb, stateData)
+)
 
-  const baseUrl = env.origin ?? 'http://localhost:5173'
-  const authorizeUrl = getAuthorizationUrl(
-    provider,
-    state,
-    codeVerifier,
-    env as unknown as Record<string, string | undefined>,
-    baseUrl
-  )
-
-  return c.json({ url: authorizeUrl.toString() })
-})
-
-protectedApp.delete('/integrations/:id', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const integrationId = c.req.param('id')
-  const result = await disconnectIntegration(db, integrationId, userId)
-  if (!result) throw new NotFoundError()
-  return c.json({ success: true })
-})
-
-protectedApp.post('/integrations/:id/refresh', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const integrationId = c.req.param('id')
-  const record = await getIntegration(db, integrationId, userId)
-  if (!record) throw new NotFoundError()
-  const result = await checkIntegrationHealth(db, integrationId)
-  return c.json(result)
-})
+protectedApp.post(
+  '/integrations/:id/refresh',
+  withRateLimit('integration-mutate', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const integrationId = c.req.param('id')
+    const record = await getIntegration(db, integrationId, userId)
+    if (!record) throw new NotFoundError()
+    const result = await checkIntegrationHealth(db, integrationId)
+    return c.json(result)
+  }
+)
 
 protectedApp.get('/integrations/:id/status', async (c) => {
   const { db } = c.get('services')
@@ -3788,37 +3864,42 @@ protectedApp.post(
   }
 )
 
-protectedApp.patch('/comments/:id', validate(updateCommentSchema), async (c) => {
-  const parsed = c.req.valid('json')
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const id = c.req.param('id')
+protectedApp.patch(
+  '/comments/:id',
+  withRateLimit('comment-mutate', 20, 60_000),
+  validate(updateCommentSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const id = c.req.param('id')
 
-  const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
-  if (!existing) throw new NotFoundError()
-  if (existing.authorId !== currentUser.id) throw new ForbiddenError('Not your comment')
+    const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
+    if (!existing) throw new NotFoundError()
+    if (existing.authorId !== currentUser.id) throw new ForbiddenError('Not your comment')
 
-  await db
-    .update(comment)
-    .set({
-      content: parsed.content,
-      editedAt: new Date(),
-      htmlContent: renderAndSanitize(parsed.content),
-      updatedAt: new Date(),
-    })
-    .where(eq(comment.id, id))
+    await db
+      .update(comment)
+      .set({
+        content: parsed.content,
+        editedAt: new Date(),
+        htmlContent: renderAndSanitize(parsed.content),
+        updatedAt: new Date(),
+      })
+      .where(eq(comment.id, id))
 
-  // Re-index comment if it was approved
-  if (existing.status === 'approved') {
-    indexComment(db, id).catch((error) =>
-      logger.error('Search index failed (comment update)', { error })
-    )
+    // Re-index comment if it was approved
+    if (existing.status === 'approved') {
+      indexComment(db, id).catch((error) =>
+        logger.error('Search index failed (comment update)', { error })
+      )
+    }
+
+    return c.json({ success: true })
   }
+)
 
-  return c.json({ success: true })
-})
-
-protectedApp.delete('/comments/:id', async (c) => {
+protectedApp.delete('/comments/:id', withRateLimit('comment-mutate', 20, 60_000), async (c) => {
   const { db } = c.get('services')
   const currentUser = c.get('user')
   const id = c.req.param('id')
@@ -6038,6 +6119,7 @@ orgApp.get('/:orgId', withOrgMembership, requirePermission('org.read'), async (c
 // Update org
 orgApp.patch(
   '/:orgId',
+  withRateLimit('org-update', 10, 60_000),
   withOrgMembership,
   requirePermission('org.update'),
   validate(updateOrganizationSchema),
@@ -6221,6 +6303,7 @@ orgApp.patch(
 // Remove member
 orgApp.delete(
   '/:orgId/members/:memberId',
+  withRateLimit('org-member-remove', 10, 60_000),
   withOrgMembership,
   requirePermission('org.members.remove'),
   async (c) => {
@@ -6433,6 +6516,7 @@ orgApp.get(
 // Revoke invitation
 orgApp.delete(
   '/:orgId/invitations/:invitationId',
+  withRateLimit('org-invitation-revoke', 10, 60_000),
   withOrgMembership,
   requirePermission('org.members.invite'),
   async (c) => {
@@ -6463,6 +6547,7 @@ orgApp.delete(
 // Transfer ownership
 orgApp.post(
   '/:orgId/transfer-ownership',
+  withRateLimit('org-transfer', 3, 60_000),
   withOrgMembership,
   requirePermission('org.transfer'),
   validate(transferOwnershipSchema),
@@ -7162,139 +7247,147 @@ protectedApp.get('/invitations', async (c) => {
   return c.json({ invitations })
 })
 
-protectedApp.post('/invitations/:token/accept', async (c) => {
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const token = c.req.param('token')
+protectedApp.post(
+  '/invitations/:token/accept',
+  withRateLimit('invitation-respond', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const token = c.req.param('token')
 
-  const [invitation] = await db
-    .select()
-    .from(organizationInvitation)
-    .where(eq(organizationInvitation.token, token))
+    const [invitation] = await db
+      .select()
+      .from(organizationInvitation)
+      .where(eq(organizationInvitation.token, token))
 
-  if (!invitation) {
-    throw new NotFoundError('Invitation not found')
-  }
+    if (!invitation) {
+      throw new NotFoundError('Invitation not found')
+    }
 
-  const [invOrg] = await db
-    .select({ deletedAt: organization.deletedAt })
-    .from(organization)
-    .where(eq(organization.id, invitation.organizationId))
+    const [invOrg] = await db
+      .select({ deletedAt: organization.deletedAt })
+      .from(organization)
+      .where(eq(organization.id, invitation.organizationId))
 
-  if (!invOrg || invOrg.deletedAt) {
-    throw new BadRequestError('This organization no longer exists')
-  }
+    if (!invOrg || invOrg.deletedAt) {
+      throw new BadRequestError('This organization no longer exists')
+    }
 
-  if (invitation.acceptedAt) {
-    throw new ConflictError('Invitation already accepted')
-  }
+    if (invitation.acceptedAt) {
+      throw new ConflictError('Invitation already accepted')
+    }
 
-  if (invitation.expiresAt < new Date()) {
-    throw new BadRequestError('Invitation has expired')
-  }
+    if (invitation.expiresAt < new Date()) {
+      throw new BadRequestError('Invitation has expired')
+    }
 
-  if (invitation.email !== currentUser.email) {
-    throw new ForbiddenError('This invitation is not for your email address')
-  }
+    if (invitation.email !== currentUser.email) {
+      throw new ForbiddenError('This invitation is not for your email address')
+    }
 
-  const existingMember = await db
-    .select({ id: organizationMember.id })
-    .from(organizationMember)
-    .where(
-      and(
-        eq(organizationMember.organizationId, invitation.organizationId),
-        eq(organizationMember.userId, currentUser.id)
+    const existingMember = await db
+      .select({ id: organizationMember.id })
+      .from(organizationMember)
+      .where(
+        and(
+          eq(organizationMember.organizationId, invitation.organizationId),
+          eq(organizationMember.userId, currentUser.id)
+        )
       )
-    )
-    .get()
+      .get()
 
-  if (existingMember) {
-    throw new ConflictError('You are already a member of this organization')
-  }
-
-  try {
-    await db.batch([
-      db.insert(organizationMember).values({
-        joinedAt: new Date(),
-        organizationId: invitation.organizationId,
-        role: invitation.role,
-        userId: currentUser.id,
-      }),
-      db
-        .update(organizationInvitation)
-        .set({ acceptedAt: new Date() })
-        .where(
-          and(
-            eq(organizationInvitation.id, invitation.id),
-            isNull(organizationInvitation.acceptedAt)
-          )
-        ),
-    ])
-  } catch (err) {
-    if (String(err).includes('UNIQUE constraint')) {
+    if (existingMember) {
       throw new ConflictError('You are already a member of this organization')
     }
-    throw err
+
+    try {
+      await db.batch([
+        db.insert(organizationMember).values({
+          joinedAt: new Date(),
+          organizationId: invitation.organizationId,
+          role: invitation.role,
+          userId: currentUser.id,
+        }),
+        db
+          .update(organizationInvitation)
+          .set({ acceptedAt: new Date() })
+          .where(
+            and(
+              eq(organizationInvitation.id, invitation.id),
+              isNull(organizationInvitation.acceptedAt)
+            )
+          ),
+      ])
+    } catch (err) {
+      if (String(err).includes('UNIQUE constraint')) {
+        throw new ConflictError('You are already a member of this organization')
+      }
+      throw err
+    }
+
+    await writeAuditLog(db, {
+      action: 'organization.accept_invitation',
+      entityId: invitation.id,
+      entityType: 'organization_invitation',
+      metadata: { organizationId: invitation.organizationId, role: invitation.role },
+      userId: currentUser.id,
+    })
+
+    // Notify the inviter
+    const [org] = await db
+      .select({ name: organization.name })
+      .from(organization)
+      .where(eq(organization.id, invitation.organizationId))
+      .limit(1)
+
+    if (org) {
+      createNotification(db, {
+        body: `${currentUser.name ?? currentUser.email} accepted your invitation to join "${org.name}"`,
+        entityId: invitation.organizationId,
+        entityType: 'organization',
+        title: 'Invitation accepted',
+        type: 'success',
+        userId: invitation.invitedBy,
+      }).catch((error) => logger.error('Failed to send invitation notification', { error }))
+    }
+
+    return c.json({ organizationId: invitation.organizationId, success: true })
   }
+)
 
-  await writeAuditLog(db, {
-    action: 'organization.accept_invitation',
-    entityId: invitation.id,
-    entityType: 'organization_invitation',
-    metadata: { organizationId: invitation.organizationId, role: invitation.role },
-    userId: currentUser.id,
-  })
+protectedApp.post(
+  '/invitations/:token/decline',
+  withRateLimit('invitation-respond', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const token = c.req.param('token')
 
-  // Notify the inviter
-  const [org] = await db
-    .select({ name: organization.name })
-    .from(organization)
-    .where(eq(organization.id, invitation.organizationId))
-    .limit(1)
+    const [invitation] = await db
+      .select()
+      .from(organizationInvitation)
+      .where(eq(organizationInvitation.token, token))
 
-  if (org) {
-    createNotification(db, {
-      body: `${currentUser.name ?? currentUser.email} accepted your invitation to join "${org.name}"`,
-      entityId: invitation.organizationId,
-      entityType: 'organization',
-      title: 'Invitation accepted',
-      type: 'success',
-      userId: invitation.invitedBy,
-    }).catch((error) => logger.error('Failed to send invitation notification', { error }))
+    if (!invitation) {
+      throw new NotFoundError('Invitation not found')
+    }
+
+    if (invitation.acceptedAt) {
+      throw new ConflictError('Invitation already accepted')
+    }
+
+    if (invitation.email !== currentUser.email) {
+      throw new ForbiddenError('This invitation is not for your email address')
+    }
+
+    await db
+      .update(organizationInvitation)
+      .set({ acceptedAt: new Date() })
+      .where(eq(organizationInvitation.id, invitation.id))
+
+    return c.json({ success: true })
   }
-
-  return c.json({ organizationId: invitation.organizationId, success: true })
-})
-
-protectedApp.post('/invitations/:token/decline', async (c) => {
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const token = c.req.param('token')
-
-  const [invitation] = await db
-    .select()
-    .from(organizationInvitation)
-    .where(eq(organizationInvitation.token, token))
-
-  if (!invitation) {
-    throw new NotFoundError('Invitation not found')
-  }
-
-  if (invitation.acceptedAt) {
-    throw new ConflictError('Invitation already accepted')
-  }
-
-  if (invitation.email !== currentUser.email) {
-    throw new ForbiddenError('This invitation is not for your email address')
-  }
-
-  await db
-    .update(organizationInvitation)
-    .set({ acceptedAt: new Date() })
-    .where(eq(organizationInvitation.id, invitation.id))
-
-  return c.json({ success: true })
-})
+)
 
 // ── System Configuration ────────────────────────────────────────────
 
@@ -8200,17 +8293,22 @@ adminApp.delete('/billing/coupons/:id', async (c) => {
 
 // ── User Coupon Redemption ─────────────────────────────────────────────
 
-protectedApp.post('/billing/coupons/redeem', validate(redeemCouponSchema), async (c) => {
-  const parsed = c.req.valid('json')
-  const { db } = c.get('services')
+protectedApp.post(
+  '/billing/coupons/redeem',
+  withRateLimit('coupon-redeem', 5, 60_000),
+  validate(redeemCouponSchema),
+  async (c) => {
+    const parsed = c.req.valid('json')
+    const { db } = c.get('services')
 
-  const result = await redeemCoupon(db, parsed.code)
-  if (!result.redeemed) {
-    return c.json({ error: { message: result.error } }, 400)
+    const result = await redeemCoupon(db, parsed.code)
+    if (!result.redeemed) {
+      return c.json({ error: { message: result.error } }, 400)
+    }
+
+    return c.json({ coupon: result.coupon, redeemed: true })
   }
-
-  return c.json({ coupon: result.coupon, redeemed: true })
-})
+)
 
 protectedApp.get('/billing/coupons/:code', async (c) => {
   const code = c.req.param('code')
@@ -8495,7 +8593,7 @@ function validateStorageKey(key: string): void {
   }
 }
 
-protectedApp.post('/storage/presign-get', async (c) => {
+protectedApp.post('/storage/presign-get', withRateLimit('presign', 20, 60_000), async (c) => {
   const parsed = storagePresignGetSchema.safeParse({ key: c.req.query('key') ?? '' })
   if (!parsed.success) throw new BadRequestError('Invalid key parameter')
   validateStorageKey(parsed.data.key)
@@ -8504,7 +8602,7 @@ protectedApp.post('/storage/presign-get', async (c) => {
   return c.json({ url })
 })
 
-protectedApp.post('/storage/presign-put', async (c) => {
+protectedApp.post('/storage/presign-put', withRateLimit('presign', 20, 60_000), async (c) => {
   const parsed = storagePresignPutSchema.safeParse({
     contentType: c.req.query('contentType'),
     key: c.req.query('key') ?? '',

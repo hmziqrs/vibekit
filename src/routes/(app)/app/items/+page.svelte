@@ -17,6 +17,13 @@
 
   const queryClient = useQueryClient()
 
+  $effect(() => {
+    void statusFilter
+    void search
+    void sortBy
+    pageNum = 1
+  })
+
   const itemsQuery = createQuery(() => ({
     queryFn: async (): Promise<{ items: ItemData[]; total: number }> => {
       const params = new URLSearchParams()
