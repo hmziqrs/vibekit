@@ -3105,7 +3105,7 @@ protectedApp.patch('/api-keys/:id', validate(updateApiKeySchema), async (c) => {
     entityType: 'api_key',
     userId,
   })
-  return c.json({ ok: true })
+  return c.json({ success: true })
 })
 
 protectedApp.post('/api-keys/:id/rotate', withRateLimit('api-key-rotate', 5, 60_000), async (c) => {
@@ -3135,7 +3135,7 @@ protectedApp.post('/api-keys/:id/revoke', async (c) => {
     entityType: 'api_key',
     userId,
   })
-  return c.json({ ok: true })
+  return c.json({ success: true })
 })
 
 protectedApp.delete('/api-keys/:id', async (c) => {
@@ -3149,7 +3149,7 @@ protectedApp.delete('/api-keys/:id', async (c) => {
     entityType: 'api_key',
     userId,
   })
-  return c.json({ ok: true })
+  return c.json({ success: true })
 })
 
 protectedApp.get('/api-keys/:id/usage', async (c) => {
@@ -3270,7 +3270,7 @@ protectedApp.patch('/webhooks/:id', validate(updateWebhookEndpointSchema), async
     entityType: 'webhook_endpoint',
     userId,
   })
-  return c.json({ ok: true })
+  return c.json({ success: true })
 })
 
 protectedApp.delete('/webhooks/:id', async (c) => {
@@ -3284,7 +3284,7 @@ protectedApp.delete('/webhooks/:id', async (c) => {
     entityType: 'webhook_endpoint',
     userId,
   })
-  return c.json({ ok: true })
+  return c.json({ success: true })
 })
 
 protectedApp.post('/webhooks/:id/test', withRateLimit('webhook-test', 5, 60_000), async (c) => {
@@ -3500,7 +3500,7 @@ protectedApp.delete('/integrations/:id', async (c) => {
   const integrationId = c.req.param('id')
   const result = await disconnectIntegration(db, integrationId, userId)
   if (!result) throw new NotFoundError()
-  return c.json({ ok: true })
+  return c.json({ success: true })
 })
 
 protectedApp.post('/integrations/:id/refresh', async (c) => {
