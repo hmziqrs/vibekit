@@ -105,6 +105,7 @@ import {
 import { handleBounce } from '$lib/server/email/bounce-handler'
 import { createEmailService } from '$lib/server/email/index'
 import {
+  AppError,
   BadRequestError,
   ConflictError,
   ForbiddenError,
@@ -170,6 +171,7 @@ import {
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
 import { isSafeUrl } from '$lib/server/security/ssrf'
+import { timingSafeEqual } from '$lib/server/security/timing-safe-equal'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { detectSpam } from '$lib/server/spam-detector'
 import { CURRENT_TERMS_VERSION, needsTermsAcceptance } from '$lib/server/terms'
@@ -1935,7 +1937,7 @@ protectedApp.get('/stats', async (c) => {
 const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024
 
-protectedApp.post('/upload-avatar', async (c) => {
+protectedApp.post('/upload-avatar', withRateLimit('avatar-upload', 10, 60_000), async (c) => {
   const { storage } = c.get('services')
   const { id: userId } = c.get('user')
 
@@ -1950,6 +1952,16 @@ protectedApp.post('/upload-avatar', async (c) => {
   }
   if (file.size > MAX_AVATAR_SIZE) {
     throw new BadRequestError('File too large. Max: 2MB.')
+  }
+
+  const sigError = await validateFileSignature(file)
+  if (sigError) {
+    throw new BadRequestError(sigError)
+  }
+
+  const scanResult = await scanUploadedFile(file)
+  if (!scanResult.clean) {
+    throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
   }
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
@@ -1973,7 +1985,7 @@ protectedApp.post('/upload-avatar', async (c) => {
     await storage
       .delete(key)
       .catch((deleteErr) => logger.error('Failed to clean up avatar', { error: deleteErr })) // eslint-disable-line unicorn/catch-error-name
-    throw new Error('Failed to update avatar', { cause: error })
+    throw new AppError(500, 'AVATAR_UPDATE_FAILED', 'Failed to update avatar')
   }
 
   return c.json({ image: imageUrl })
@@ -1999,80 +2011,92 @@ protectedApp.get('/uploads/session/:id', async (c) => {
   return c.json({ ...session, progress })
 })
 
-protectedApp.post('/uploads/session/:id/chunk', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const sessionId = c.req.param('id')
-  const session = await getUploadSession(db, sessionId)
-  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+protectedApp.post(
+  '/uploads/session/:id/chunk',
+  withRateLimit('upload-chunk', 30, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const sessionId = c.req.param('id')
+    const session = await getUploadSession(db, sessionId)
+    if (!session || (session.userId as string) !== userId) throw new NotFoundError()
 
-  const chunkIndex = parseClampInt(c.req.query('index'), 0, 0)
-  if (chunkIndex < 0 || chunkIndex >= (session.totalChunks as number)) {
-    throw new BadRequestError('Invalid chunk index')
+    const chunkIndex = parseClampInt(c.req.query('index'), 0, 0)
+    if (chunkIndex < 0 || chunkIndex >= (session.totalChunks as number)) {
+      throw new BadRequestError('Invalid chunk index')
+    }
+
+    // Read actual chunk data from request body
+    const body = await c.req.arrayBuffer()
+    const chunkData = new Uint8Array(body)
+
+    const chunkSizeLimit = (session.chunkSize as number) + 1024 // Allow slight overhead
+    if (chunkData.length > chunkSizeLimit) {
+      throw new BadRequestError(`Chunk size exceeds limit of ${session.chunkSize as number} bytes`)
+    }
+
+    const result = await recordChunk(db, sessionId, chunkIndex, chunkData)
+    return c.json(result)
   }
+)
 
-  // Read actual chunk data from request body
-  const body = await c.req.arrayBuffer()
-  const chunkData = new Uint8Array(body)
+protectedApp.post(
+  '/uploads/session/:id/complete',
+  withRateLimit('upload-complete', 10, 60_000),
+  async (c) => {
+    const { db, storage } = c.get('services')
+    const { id: userId } = c.get('user')
+    const sessionId = c.req.param('id')
+    const session = await getUploadSession(db, sessionId)
+    if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+    if (session.status !== 'complete') {
+      throw new BadRequestError('Not all chunks received yet')
+    }
 
-  const chunkSizeLimit = (session.chunkSize as number) + 1024 // Allow slight overhead
-  if (chunkData.length > chunkSizeLimit) {
-    throw new BadRequestError(`Chunk size exceeds limit of ${session.chunkSize as number} bytes`)
-  }
+    const assembled = await assembleChunks(db, sessionId)
+    if (!assembled) {
+      throw new BadRequestError('Failed to assemble chunks')
+    }
 
-  const result = await recordChunk(db, sessionId, chunkIndex, chunkData)
-  return c.json(result)
-})
+    // Validate magic bytes match the declared file type
+    const { matchesMagicBytes } = await import('$lib/server/upload')
+    if (!matchesMagicBytes(new Uint8Array(assembled), session.fileType as string)) {
+      await cleanupChunks(sessionId)
+      throw new BadRequestError('File content does not match declared type')
+    }
 
-protectedApp.post('/uploads/session/:id/complete', async (c) => {
-  const { db, storage } = c.get('services')
-  const { id: userId } = c.get('user')
-  const sessionId = c.req.param('id')
-  const session = await getUploadSession(db, sessionId)
-  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
-  if (session.status !== 'complete') {
-    throw new BadRequestError('Not all chunks received yet')
-  }
+    // Scan for malicious content
+    const scanResult = await scanBuffer(new Uint8Array(assembled))
+    if (!scanResult.clean) {
+      await cleanupChunks(sessionId)
+      throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
+    }
 
-  const assembled = await assembleChunks(db, sessionId)
-  if (!assembled) {
-    throw new BadRequestError('Failed to assemble chunks')
-  }
+    const key = generateStorageKey(session.fileName as string)
+    await storage.put(key, assembled, {
+      contentType: session.fileType as string,
+    })
 
-  // Validate magic bytes match the declared file type
-  const { matchesMagicBytes } = await import('$lib/server/upload')
-  if (!matchesMagicBytes(new Uint8Array(assembled), session.fileType as string)) {
+    await completeUploadSession(db, sessionId, key)
     await cleanupChunks(sessionId)
-    throw new BadRequestError('File content does not match declared type')
+
+    return c.json({ key, size: assembled.length, success: true })
   }
+)
 
-  // Scan for malicious content
-  const scanResult = await scanBuffer(new Uint8Array(assembled))
-  if (!scanResult.clean) {
-    await cleanupChunks(sessionId)
-    throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
+protectedApp.delete(
+  '/uploads/session/:id',
+  withRateLimit('upload-delete', 10, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const sessionId = c.req.param('id')
+    const session = await getUploadSession(db, sessionId)
+    if (!session || (session.userId as string) !== userId) throw new NotFoundError()
+    await deleteUploadSession(db, sessionId)
+    return c.json({ deleted: true })
   }
-
-  const key = generateStorageKey(session.fileName as string)
-  await storage.put(key, assembled, {
-    contentType: session.fileType as string,
-  })
-
-  await completeUploadSession(db, sessionId, key)
-  await cleanupChunks(sessionId)
-
-  return c.json({ key, size: assembled.length, success: true })
-})
-
-protectedApp.delete('/uploads/session/:id', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const sessionId = c.req.param('id')
-  const session = await getUploadSession(db, sessionId)
-  if (!session || (session.userId as string) !== userId) throw new NotFoundError()
-  await deleteUploadSession(db, sessionId)
-  return c.json({ deleted: true })
-})
+)
 
 protectedApp.get('/uploads/sessions', async (c) => {
   const { db } = c.get('services')
@@ -2263,15 +2287,19 @@ protectedApp.delete('/account', withRateLimit('account-delete', 3, 3_600_000), a
 
 // ── Account Deactivation ──────────────────────────────────────────────
 
-protectedApp.patch('/account/deactivate', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
+protectedApp.patch(
+  '/account/deactivate',
+  withRateLimit('account-deactivate', 3, 3600_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
 
-  await db.update(user).set({ status: 'deactivated' }).where(eq(user.id, userId))
-  await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
+    await db.update(user).set({ status: 'deactivated' }).where(eq(user.id, userId))
+    await db.delete(sessionTable).where(eq(sessionTable.userId, userId))
 
-  return c.json({ success: true })
-})
+    return c.json({ success: true })
+  }
+)
 
 // ── Trusted Devices (2FA) ────────────────────────────────────────────
 
@@ -2609,7 +2637,7 @@ protectedApp.get('/billing/subscription', async (c) => {
   return c.json({ subscription: sub ?? null })
 })
 
-protectedApp.post('/billing/checkout', async (c) => {
+protectedApp.post('/billing/checkout', withRateLimit('billing-checkout', 5, 60_000), async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const parsed = checkoutSessionSchema.safeParse(body)
   if (!parsed.success) {
@@ -2682,7 +2710,7 @@ protectedApp.post('/billing/checkout', async (c) => {
   return c.json({ subscription: sub ?? null })
 })
 
-protectedApp.post('/billing/portal', async (c) => {
+protectedApp.post('/billing/portal', withRateLimit('billing-portal', 5, 60_000), async (c) => {
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
   if (!stripe) {
     throw new BadRequestError('Billing portal not configured')
@@ -2714,7 +2742,7 @@ protectedApp.post('/billing/portal', async (c) => {
   return c.json({ url: session.url })
 })
 
-protectedApp.post('/billing/change-plan', async (c) => {
+protectedApp.post('/billing/change-plan', withRateLimit('billing-change', 3, 60_000), async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const parsed = changePlanSchema.safeParse(body)
   if (!parsed.success) {
@@ -2762,7 +2790,7 @@ protectedApp.post('/billing/change-plan', async (c) => {
   return c.json({ prorationAmountInCents: result.prorationAmountInCents, success: true })
 })
 
-protectedApp.post('/billing/cancel', async (c) => {
+protectedApp.post('/billing/cancel', withRateLimit('billing-cancel', 3, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
   const sub = await getUserSubscription(db, userId)
@@ -2788,39 +2816,43 @@ protectedApp.post('/billing/cancel', async (c) => {
   return c.json({ success: true })
 })
 
-protectedApp.post('/billing/reactivate', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
+protectedApp.post(
+  '/billing/reactivate',
+  withRateLimit('billing-reactivate', 3, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
 
-  const sub = await db
-    .select()
-    .from(subscription)
-    .where(and(eq(subscription.userId, userId), eq(subscription.status, 'canceled')))
-    .orderBy(desc(subscription.createdAt))
-    .limit(1)
-    .get()
+    const sub = await db
+      .select()
+      .from(subscription)
+      .where(and(eq(subscription.userId, userId), eq(subscription.status, 'canceled')))
+      .orderBy(desc(subscription.createdAt))
+      .limit(1)
+      .get()
 
-  if (!sub) throw new BadRequestError('No canceled subscription found')
+    if (!sub) throw new BadRequestError('No canceled subscription found')
 
-  if (sub.stripeSubscriptionId) {
-    const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-    if (stripe) {
-      try {
-        await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
-      } catch (error) {
-        if (error instanceof StripeApiError) {
-          logger.error('Stripe reactivate error', { error: error.cause })
-          throw new BadRequestError('Failed to reactivate subscription')
+    if (sub.stripeSubscriptionId) {
+      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+      if (stripe) {
+        try {
+          await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
+        } catch (error) {
+          if (error instanceof StripeApiError) {
+            logger.error('Stripe reactivate error', { error: error.cause })
+            throw new BadRequestError('Failed to reactivate subscription')
+          }
+          throw error
         }
-        throw error
       }
     }
+
+    await reactivateSubscription(db, sub.id)
+
+    return c.json({ success: true })
   }
-
-  await reactivateSubscription(db, sub.id)
-
-  return c.json({ success: true })
-})
+)
 
 protectedApp.get('/billing/invoices', async (c) => {
   const { db } = c.get('services')
@@ -2957,74 +2989,86 @@ protectedApp.get('/billing/payment-methods', async (c) => {
   return c.json({ paymentMethods: methods })
 })
 
-protectedApp.post('/billing/payment-methods/detach', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const raw = await c.req.json().catch(() => ({}))
-  const parsed = paymentMethodIdSchema.safeParse(raw)
-  if (!parsed.success) throw new BadRequestError('paymentMethodId required')
+protectedApp.post(
+  '/billing/payment-methods/detach',
+  withRateLimit('billing-pm', 5, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const raw = await c.req.json().catch(() => ({}))
+    const parsed = paymentMethodIdSchema.safeParse(raw)
+    if (!parsed.success) throw new BadRequestError('paymentMethodId required')
 
-  const pm = await db
-    .select()
-    .from(paymentMethod)
-    .where(and(eq(paymentMethod.id, parsed.data.paymentMethodId), eq(paymentMethod.userId, userId)))
-    .get()
+    const pm = await db
+      .select()
+      .from(paymentMethod)
+      .where(
+        and(eq(paymentMethod.id, parsed.data.paymentMethodId), eq(paymentMethod.userId, userId))
+      )
+      .get()
 
-  if (!pm) throw new NotFoundError('Payment method not found')
+    if (!pm) throw new NotFoundError('Payment method not found')
 
-  const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-  await stripe?.paymentMethods.detach(pm.stripePaymentMethodId)
-
-  await db.delete(paymentMethod).where(eq(paymentMethod.id, pm.id))
-
-  return c.json({ success: true })
-})
-
-protectedApp.post('/billing/payment-methods/set-default', async (c) => {
-  const { db } = c.get('services')
-  const { id: userId } = c.get('user')
-  const raw = await c.req.json().catch(() => ({}))
-  const parsed = paymentMethodIdSchema.safeParse(raw)
-  if (!parsed.success) throw new BadRequestError('paymentMethodId required')
-
-  const pm = await db
-    .select()
-    .from(paymentMethod)
-    .where(and(eq(paymentMethod.id, parsed.data.paymentMethodId), eq(paymentMethod.userId, userId)))
-    .get()
-
-  if (!pm) throw new NotFoundError('Payment method not found')
-
-  // Unset current default
-  await db
-    .update(paymentMethod)
-    .set({ isDefault: false })
-    .where(and(eq(paymentMethod.userId, userId), eq(paymentMethod.isDefault, true)))
-
-  // Set new default
-  await db.update(paymentMethod).set({ isDefault: true }).where(eq(paymentMethod.id, pm.id))
-
-  // Sync with Stripe if customer exists
-  const sub = await getUserSubscription(db, userId)
-  if (sub?.stripeCustomerId) {
     const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-    if (stripe) {
-      try {
-        await stripe.customers.update(sub.stripeCustomerId, {
-          invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
-        })
-      } catch (error) {
-        if (error instanceof StripeApiError) {
-          logger.error('Stripe set default payment method error', { error: error.cause })
-          throw new BadRequestError('Failed to update payment method')
+    await stripe?.paymentMethods.detach(pm.stripePaymentMethodId)
+
+    await db.delete(paymentMethod).where(eq(paymentMethod.id, pm.id))
+
+    return c.json({ success: true })
+  }
+)
+
+protectedApp.post(
+  '/billing/payment-methods/set-default',
+  withRateLimit('billing-pm', 5, 60_000),
+  async (c) => {
+    const { db } = c.get('services')
+    const { id: userId } = c.get('user')
+    const raw = await c.req.json().catch(() => ({}))
+    const parsed = paymentMethodIdSchema.safeParse(raw)
+    if (!parsed.success) throw new BadRequestError('paymentMethodId required')
+
+    const pm = await db
+      .select()
+      .from(paymentMethod)
+      .where(
+        and(eq(paymentMethod.id, parsed.data.paymentMethodId), eq(paymentMethod.userId, userId))
+      )
+      .get()
+
+    if (!pm) throw new NotFoundError('Payment method not found')
+
+    // Unset current default
+    await db
+      .update(paymentMethod)
+      .set({ isDefault: false })
+      .where(and(eq(paymentMethod.userId, userId), eq(paymentMethod.isDefault, true)))
+
+    // Set new default
+    await db.update(paymentMethod).set({ isDefault: true }).where(eq(paymentMethod.id, pm.id))
+
+    // Sync with Stripe if customer exists
+    const sub = await getUserSubscription(db, userId)
+    if (sub?.stripeCustomerId) {
+      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
+      if (stripe) {
+        try {
+          await stripe.customers.update(sub.stripeCustomerId, {
+            invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
+          })
+        } catch (error) {
+          if (error instanceof StripeApiError) {
+            logger.error('Stripe set default payment method error', { error: error.cause })
+            throw new BadRequestError('Failed to update payment method')
+          }
+          throw error
         }
-        throw error
       }
     }
-  }
 
-  return c.json({ success: true })
-})
+    return c.json({ success: true })
+  }
+)
 
 // ── Push Notifications (auth required) ──────────────────────────────────
 
@@ -5286,6 +5330,11 @@ adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
     throw new BadRequestError(sigError)
   }
 
+  const scanResult = await scanUploadedFile(file)
+  if (!scanResult.clean) {
+    throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
+  }
+
   const key = generateStorageKey(file.name)
   const result = await c.get('services').storage.put(key, file.stream(), {
     contentType: file.type,
@@ -5618,7 +5667,10 @@ app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async 
   const configuredSecret = c.get('services').env.cronSecret
   const currentUser = c.get('user')
   const isCron =
-    cronSecret && configuredSecret && cronSecret.length > 0 && cronSecret === configuredSecret
+    cronSecret &&
+    configuredSecret &&
+    cronSecret.length > 0 &&
+    timingSafeEqual(cronSecret, configuredSecret)
 
   if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
     throw new ForbiddenError()
@@ -5785,7 +5837,10 @@ app.post('/api/admin/publish-scheduled', withRateLimit('admin-publish', 5, 60_00
   const configuredSecret = c.get('services').env.cronSecret
   const currentUser = c.get('user')
   const isCron =
-    cronSecret && configuredSecret && cronSecret.length > 0 && cronSecret === configuredSecret
+    cronSecret &&
+    configuredSecret &&
+    cronSecret.length > 0 &&
+    timingSafeEqual(cronSecret, configuredSecret)
 
   if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
     throw new ForbiddenError()
@@ -5845,7 +5900,10 @@ app.post(
     const cronSecret = c.req.header('x-cron-secret')
     const configuredSecret = c.get('services').env.cronSecret
     const isCron =
-      cronSecret && configuredSecret && cronSecret.length > 0 && cronSecret === configuredSecret
+      cronSecret &&
+      configuredSecret &&
+      cronSecret.length > 0 &&
+      timingSafeEqual(cronSecret, configuredSecret)
     const currentUser = c.get('user')
 
     if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
@@ -6031,36 +6089,42 @@ orgApp.patch(
 )
 
 // Soft-delete org
-orgApp.delete('/:orgId', withOrgMembership, requirePermission('org.delete'), async (c) => {
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const org = c.get('organization') as typeof organization.$inferSelect
+orgApp.delete(
+  '/:orgId',
+  withRateLimit('org-delete', 3, 3600_000),
+  withOrgMembership,
+  requirePermission('org.delete'),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization') as typeof organization.$inferSelect
 
-  const sub = await getOrgSubscription(db, org.id)
-  if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
-    throw new BadRequestError(
-      'Cannot delete organization with an active subscription. Cancel the subscription first.'
-    )
-  }
+    const sub = await getOrgSubscription(db, org.id)
+    if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+      throw new BadRequestError(
+        'Cannot delete organization with an active subscription. Cancel the subscription first.'
+      )
+    }
 
-  await db
-    .update(organization)
-    .set({
-      deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
-      updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+    await db
+      .update(organization)
+      .set({
+        deletedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+        updatedAt: sql`(cast(unixepoch('subsecond') * 1000 as integer))`,
+      })
+      .where(eq(organization.id, org.id))
+
+    await writeAuditLog(db, {
+      action: 'organization.delete',
+      entityId: org.id,
+      entityType: 'organization',
+      metadata: { name: org.name },
+      userId: currentUser.id,
     })
-    .where(eq(organization.id, org.id))
 
-  await writeAuditLog(db, {
-    action: 'organization.delete',
-    entityId: org.id,
-    entityType: 'organization',
-    metadata: { name: org.name },
-    userId: currentUser.id,
-  })
-
-  return new Response(null, { status: 204 })
-})
+    return new Response(null, { status: 204 })
+  }
+)
 
 // List members
 orgApp.get(
@@ -6208,28 +6272,34 @@ orgApp.delete(
 )
 
 // Leave organization
-orgApp.post('/:orgId/leave', withOrgMembership, requirePermission('org.leave'), async (c) => {
-  const { db } = c.get('services')
-  const currentUser = c.get('user')
-  const org = c.get('organization') as typeof organization.$inferSelect
-  const membership = c.get('membership') as typeof organizationMember.$inferSelect
+orgApp.post(
+  '/:orgId/leave',
+  withRateLimit('org-leave', 5, 60_000),
+  withOrgMembership,
+  requirePermission('org.leave'),
+  async (c) => {
+    const { db } = c.get('services')
+    const currentUser = c.get('user')
+    const org = c.get('organization') as typeof organization.$inferSelect
+    const membership = c.get('membership') as typeof organizationMember.$inferSelect
 
-  if (membership.role === 'owner') {
-    throw new ForbiddenError('Organization owner cannot leave. Transfer ownership first.')
+    if (membership.role === 'owner') {
+      throw new ForbiddenError('Organization owner cannot leave. Transfer ownership first.')
+    }
+
+    await db.delete(organizationMember).where(eq(organizationMember.id, membership.id))
+
+    await writeAuditLog(db, {
+      action: 'organization.member.leave',
+      entityId: membership.id,
+      entityType: 'organization_member',
+      metadata: { organizationId: org.id },
+      userId: currentUser.id,
+    })
+
+    return c.json({ success: true })
   }
-
-  await db.delete(organizationMember).where(eq(organizationMember.id, membership.id))
-
-  await writeAuditLog(db, {
-    action: 'organization.member.leave',
-    entityId: membership.id,
-    entityType: 'organization_member',
-    metadata: { organizationId: org.id },
-    userId: currentUser.id,
-  })
-
-  return c.json({ success: true })
-})
+)
 
 // Invite member
 orgApp.post(
@@ -6475,6 +6545,7 @@ orgApp.get(
 
 orgApp.post(
   '/:orgId/billing/checkout',
+  withRateLimit('org-billing', 5, 60_000),
   withOrgMembership,
   requirePermission('org.update'),
   async (c) => {
@@ -6560,6 +6631,7 @@ orgApp.post(
 
 orgApp.post(
   '/:orgId/billing/change-plan',
+  withRateLimit('org-billing', 3, 60_000),
   withOrgMembership,
   requirePermission('org.update'),
   async (c) => {
@@ -6628,6 +6700,7 @@ orgApp.get(
 
 orgApp.post(
   '/:orgId/billing/cancel',
+  withRateLimit('org-billing', 3, 60_000),
   withOrgMembership,
   requirePermission('org.update'),
   async (c) => {
@@ -6650,6 +6723,7 @@ orgApp.post(
 
 orgApp.post(
   '/:orgId/billing/reactivate',
+  withRateLimit('org-billing', 3, 60_000),
   withOrgMembership,
   requirePermission('org.update'),
   async (c) => {

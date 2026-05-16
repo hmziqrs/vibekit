@@ -1,11 +1,22 @@
 import { contactSubmission } from '$lib/server/db/schema'
+import { dbRateLimitCheck } from '$lib/server/rate-limit'
 import { contactSchema } from '$lib/validators/contact'
 import { fail } from '@sveltejs/kit'
 
 import type { Actions } from './$types'
 
 export const actions: Actions = {
-  default: async ({ request, locals }) => {
+  default: async ({ request, locals, getClientAddress }) => {
+    const { db } = locals.services
+    const ip = getClientAddress()
+    const rateResult = await dbRateLimitCheck(db, `contact:${ip}`, 5, 60_000)
+    if (!rateResult.allowed) {
+      return fail(429, {
+        errors: [{ field: '', message: 'Too many requests. Please try again later.' }],
+        values: {},
+      })
+    }
+
     const formData = await request.formData()
     const data = Object.fromEntries(formData)
 
@@ -20,7 +31,7 @@ export const actions: Actions = {
       })
     }
 
-    const { db, email, env } = locals.services
+    const { email, env } = locals.services
 
     await db.insert(contactSubmission).values({
       email: parsed.data.email,
