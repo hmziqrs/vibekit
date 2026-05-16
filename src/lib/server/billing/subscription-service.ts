@@ -10,6 +10,7 @@ import {
 } from '../db/schema'
 import type { AppDb } from '../services/types'
 import { uuid } from '../uuid'
+import { getStripeClient, reportMeteredUsage } from './stripe'
 
 type SubStatus = 'active' | 'canceled' | 'past_due' | 'incomplete' | 'trialing' | 'paused'
 
@@ -302,6 +303,7 @@ export async function recordUsage(
     periodEnd: Date
     periodStart: Date
     quantity: number
+    stripeSubscriptionItemId?: string
     subscriptionId: string
   }
 ) {
@@ -313,6 +315,27 @@ export async function recordUsage(
     quantity: input.quantity,
     subscriptionId: input.subscriptionId,
   })
+
+  // Report to Stripe for metered billing
+  if (input.stripeSubscriptionItemId) {
+    const [sub] = await db
+      .select({ stripePriceId: subscription.stripePriceId })
+      .from(subscription)
+      .where(eq(subscription.id, input.subscriptionId))
+    if (sub?.stripePriceId) {
+      const stripe = getStripeClient(process.env.STRIPE_SECRET_KEY)
+      if (stripe) {
+        await reportMeteredUsage(
+          stripe,
+          input.stripeSubscriptionItemId,
+          input.quantity,
+          Math.floor(input.periodStart.getTime() / 1000)
+        ).catch((error) => {
+          console.error('Failed to report metered usage to Stripe:', error.message)
+        })
+      }
+    }
+  }
 }
 
 // eslint-disable-next-line max-params

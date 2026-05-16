@@ -212,3 +212,20 @@ export async function reactivateStripeSubscription(stripe: Stripe, stripeSubscri
     throw new StripeApiError('Failed to reactivate Stripe subscription', error)
   }
 }
+
+export async function reportMeteredUsage(
+  stripe: Stripe,
+  stripeSubscriptionItemId: string,
+  quantity: number,
+  timestamp: number
+) {
+  try {
+    return await stripe.subscriptionItems.createUsageRecord(stripeSubscriptionItemId, {
+      action: 'set',
+      quantity,
+      timestamp,
+    })
+  } catch (error) {
+    throw new StripeApiError('Failed to report metered usage to Stripe', error)
+  }
+}

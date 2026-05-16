@@ -1539,6 +1539,23 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
         }
         break
       }
+
+      default: {
+        logger.info('Unhandled Stripe webhook event type', {
+          eventId: existingEvent!.stripeEventId,
+          eventType: event.type,
+        })
+        const now = new Date()
+        await db
+          .update(stripeWebhookEvent)
+          .set({
+            errorMessage: `Unhandled event type: ${event.type}`,
+            processedAt: now,
+            status: 'unhandled',
+          })
+          .where(eq(stripeWebhookEvent.id, existingEvent!.id))
+        return c.json({ received: true })
+      }
     }
 
     // Record the processed event (row already exists from atomic claim above)

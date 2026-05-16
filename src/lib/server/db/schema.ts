@@ -1121,7 +1121,7 @@ export const stripeWebhookEvent = sqliteTable(
     nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
     processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
     retryCount: integer('retry_count').notNull().default(0),
-    status: text('status', { enum: ['failed', 'pending', 'processed', 'retrying'] })
+    status: text('status', { enum: ['failed', 'pending', 'processed', 'retrying', 'unhandled'] })
       .notNull()
       .default('pending'),
   },
