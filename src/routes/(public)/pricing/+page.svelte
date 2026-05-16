@@ -1,7 +1,6 @@
 <script lang="ts">
   import Nav from '$lib/components/nav.svelte'
   import Footer from '$lib/components/footer.svelte'
-  import SmartLink from '$lib/components/smart-link.svelte'
   import SeoHead from '$lib/components/seo-head.svelte'
 
   const starterFeatures = [
@@ -25,8 +24,6 @@
     { included: true, text: 'Email and password auth' },
     { included: true, text: 'Cloudflare D1 edge database' },
     { included: true, text: 'Blog engine with Markdown' },
-    { included: true, text: 'Priority updates' },
-    { included: true, text: 'Commercial license' },
     { included: false, text: 'Dedicated support' },
   ]
 
@@ -52,12 +49,6 @@
       question: 'Do you offer refunds?',
     },
   ]
-
-  let openFaq = $state<number | null>(null)
-
-  function toggleFaq(index: number) {
-    openFaq = openFaq === index ? null : index
-  }
 </script>
 
 <SeoHead
@@ -156,28 +147,26 @@
       Frequently asked questions
     </h2>
     <div class="space-y-3">
-      {#each faqs as faq, i}
-        <button
-          type="button"
-          onclick={() => toggleFaq(i)}
-          class="flex w-full items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-surface px-6 py-5 text-start transition-all hover:border-white/[0.12]"
-        >
-          <span class="text-[15px] font-medium text-text-primary">{faq.question}</span>
-          <svg
-            class="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 {openFaq === i ? 'rotate-180' : ''}"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
+      {#each faqs as faq}
+        <details class="group rounded-xl border border-white/[0.06] bg-surface">
+          <summary
+            class="flex cursor-pointer items-center justify-between gap-4 px-6 py-5 text-start transition-all hover:border-white/[0.12] [&::-webkit-details-marker]:hidden list-none"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-          </svg>
-        </button>
-        {#if openFaq === i}
+            <span class="text-[15px] font-medium text-text-primary">{faq.question}</span>
+            <svg
+              class="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 group-open:rotate-180"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </summary>
           <div class="px-6 pb-5 pt-2">
             <p class="text-[14px] leading-relaxed text-text-muted">{faq.answer}</p>
           </div>
-        {/if}
+        </details>
       {/each}
     </div>
   </div>
@@ -193,13 +182,12 @@
     <p class="mx-auto mb-9 max-w-lg text-lg leading-relaxed text-text-muted">
       Get the full stack up and running in minutes. Auth, database, admin — everything wired together.
     </p>
-    <SmartLink
+    <a
       href="/register"
-      fallback="/app"
       class="inline-block rounded-xl bg-brand px-8 py-3.5 text-[15px] font-semibold text-brand-foreground transition-all hover:bg-brand-hover"
     >
       Get started free
-    </SmartLink>
+    </a>
     <p class="mt-5 text-[13px] text-text-subtle">No credit card required. MIT licensed.</p>
   </div>
 </section>

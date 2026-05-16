@@ -54,7 +54,7 @@
 			</div>
 			{#if data.post.tags.length > 0}
 				<div class="mt-3 flex flex-wrap gap-2">
-					{#each data.post.tags as tag (tag)}
+					{#each data.post.tags as tag (tag.slug)}
 						<a
 							href="/blog?tag={tag.slug}"
 							class="rounded-full bg-surface px-3 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary"

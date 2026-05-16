@@ -84,6 +84,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
         .select({
           coverImageUrl: blogPost.coverImageUrl,
           excerpt: blogPost.excerpt,
+          id: blogPost.id,
           publishedAt: blogPost.publishedAt,
           slug: blogPost.slug,
           title: blogPost.title,
