@@ -49,7 +49,7 @@
             const { generateHTML } = await import('@tiptap/html')
             const { default: StarterKit } = await import('@tiptap/starter-kit')
             const { default: Image } = await import('@tiptap/extension-image')
-            const { FigureImage } = await import('$lib/editor/extensions/figure-image.svelte')
+            const { FigureImage } = await import('$lib/editor/extensions/figure-image.svelte.ts')
             const raw = generateHTML(JSON.parse(trimmed) as Record<string, unknown>, [
               StarterKit,
               Image,

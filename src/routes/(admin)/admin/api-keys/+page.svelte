@@ -115,7 +115,7 @@
     <div class="w-64">
       <SearchInput bind:value={search} placeholder="Search by key name or user..." />
     </div>
-    <FilterTabs bind:value={statusFilter} tabs={statusTabs} />
+    <FilterTabs bind:active={statusFilter} tabs={statusTabs} />
   </div>
 
   <!-- Table -->

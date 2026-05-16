@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createMutation, createQuery } from '@tanstack/svelte-query'
   import { formatDate } from '$lib/i18n.svelte'
-  import { page } from '$app/state'
 
   const { isSuccess, isPending, error, data, refetch } = createQuery(() => ({
     queryFn: async () => {

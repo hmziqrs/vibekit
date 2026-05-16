@@ -711,6 +711,7 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     } catch (error) {
       logger.error('Failed to send newsletter re-subscription email', { error })
     }
+    return c.json({ message: 'Check your inbox to confirm your subscription', success: true })
   }
 
   // New subscriber
@@ -771,9 +772,9 @@ app.get('/api/newsletter/confirm', async (c) => {
     return c.redirect('/blog?newsletter=already-confirmed')
   }
 
-  // Check token expiry (24 hours)
-  const createdAt = subscriber.createdAt.getTime()
-  if (Date.now() - createdAt > 24 * 60 * 60 * 1000) {
+  // Check token expiry (24 hours from last token generation)
+  const tokenTimestamp = subscriber.updatedAt?.getTime() ?? subscriber.createdAt.getTime()
+  if (Date.now() - tokenTimestamp > 24 * 60 * 60 * 1000) {
     return c.json({ error: { message: 'Confirmation link expired. Please subscribe again.' } }, 410)
   }
 

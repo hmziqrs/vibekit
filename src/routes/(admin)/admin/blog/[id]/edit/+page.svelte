@@ -266,30 +266,50 @@
   async function schedulePublish() {
     if (!scheduleDate) return
     saving = true
-    const res = await fetch(`/api/blog/${data.post.id}`, {
-      body: JSON.stringify({
-        scheduledAt: new Date(scheduleDate).toISOString(),
-        status: 'scheduled',
-      }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    saving = false
-    if (res.ok) {
-      showSchedulePicker = false
-      await invalidateAll()
+    serverError = ''
+    try {
+      const res = await fetch(`/api/blog/${data.post.id}`, {
+        body: JSON.stringify({
+          scheduledAt: new Date(scheduleDate).toISOString(),
+          status: 'scheduled',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (res.ok) {
+        showSchedulePicker = false
+        await invalidateAll()
+      } else {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        serverError = err.error ?? 'Failed to schedule'
+      }
+    } catch {
+      serverError = 'Network error'
+    } finally {
+      saving = false
     }
   }
 
   async function cancelSchedule() {
     saving = true
-    const res = await fetch(`/api/blog/${data.post.id}`, {
-      body: JSON.stringify({ scheduledAt: null, status: 'draft' }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PATCH',
-    })
-    saving = false
-    if (res.ok) await invalidateAll()
+    serverError = ''
+    try {
+      const res = await fetch(`/api/blog/${data.post.id}`, {
+        body: JSON.stringify({ scheduledAt: null, status: 'draft' }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (res.ok) {
+        await invalidateAll()
+      } else {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        serverError = err.error ?? 'Failed to cancel schedule'
+      }
+    } catch {
+      serverError = 'Network error'
+    } finally {
+      saving = false
+    }
   }
 
   async function unpublish() {

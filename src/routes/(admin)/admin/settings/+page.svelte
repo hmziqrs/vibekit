@@ -62,7 +62,7 @@
   }))
 
   const historyQuery = createQuery(() => ({
-    enabled: () => section === 'history',
+    enabled: section === 'history',
     queryFn: async () => {
       const res = await fetch('/api/admin/config/history?limit=20')
       if (!res.ok) throw new Error('Failed to fetch history')

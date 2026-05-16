@@ -116,8 +116,8 @@
     return `${currency.toUpperCase()} $${(cents / 100).toFixed(2)}`
   }
 
-  const totalActive = $derived(() => overviewQuery.data?.activeSubscriptions ?? 0)
-  const totalAll = $derived(() => overviewQuery.data?.totalSubscriptions ?? 0)
+  const totalActive = $derived(overviewQuery.data?.activeSubscriptions ?? 0)
+  const totalAll = $derived(overviewQuery.data?.totalSubscriptions ?? 0)
 </script>
 
 <div class="space-y-6 p-6">
@@ -150,11 +150,11 @@
     <div class="grid gap-4 sm:grid-cols-3">
       <div class="rounded-xl border border-border bg-surface p-5">
         <p class="text-[13px] text-text-muted">Active Subscriptions</p>
-        <p class="mt-1 text-2xl font-bold text-text-primary">{totalActive()}</p>
+        <p class="mt-1 text-2xl font-bold text-text-primary">{totalActive}</p>
       </div>
       <div class="rounded-xl border border-border bg-surface p-5">
         <p class="text-[13px] text-text-muted">Total Subscriptions</p>
-        <p class="mt-1 text-2xl font-bold text-text-primary">{totalAll()}</p>
+        <p class="mt-1 text-2xl font-bold text-text-primary">{totalAll}</p>
       </div>
       <div class="rounded-xl border border-border bg-surface p-5">
         <p class="text-[13px] text-text-muted">Plans</p>
