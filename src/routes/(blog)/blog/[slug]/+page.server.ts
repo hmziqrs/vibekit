@@ -73,6 +73,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
     let relatedPosts: {
       coverImageUrl: string | null
       excerpt: string | null
+      id: string
       publishedAt: number | null
       slug: string
       title: string

@@ -9,9 +9,9 @@
   const serverErrors = $derived<Record<string, string>>(
     Object.fromEntries((form?.errors ?? []).map((e: { field: string; message: string }) => [e.field, e.message])),
   )
-  const generalError = $derived(errors[''] ?? '')
   const errors = $derived<Record<string, string>>({ ...serverErrors, ...clientErrors })
-  const values = $derived(form?.values ?? {})
+  const generalError = $derived(errors[''] ?? '')
+  const values = $derived<Record<string, string>>(form?.values ?? {})
   const success = $derived(form?.success ?? false)
   let submitting = $state(false)
 

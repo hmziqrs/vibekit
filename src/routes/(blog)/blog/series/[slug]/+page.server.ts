@@ -27,6 +27,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
     .select({
       coverImageUrl: blogPost.coverImageUrl,
       excerpt: blogPost.excerpt,
+      id: blogPost.id,
       publishedAt: blogPost.publishedAt,
       slug: blogPost.slug,
       sortOrder: blogPostSeries.sortOrder,
@@ -46,6 +47,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
   const posts = rows as unknown as {
     coverImageUrl: string | null
     excerpt: string | null
+    id: string
     publishedAt: number | null
     slug: string
     sortOrder: number

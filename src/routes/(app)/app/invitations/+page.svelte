@@ -35,7 +35,7 @@
     try {
       const res = await fetch('/api/invitations')
       if (!res.ok) throw new Error('Failed to load invitations')
-      const data = await res.json() as { invitations?: Array<{ id: string }> }
+      const data = (await res.json()) as { invitations?: Invitation[] }
       invitations = data.invitations ?? []
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unknown error'

@@ -28,7 +28,7 @@
       fetch('/api/terms/status')
         .then((r) => {
           if (!r.ok) return null
-          return r.json()
+          return r.json() as Promise<{ needsAcceptance?: boolean }>
         })
         .then((data) => {
           if (data) needsTermsAcceptance = data.needsAcceptance ?? false

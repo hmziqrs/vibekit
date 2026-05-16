@@ -1,6 +1,6 @@
 import { rateLimitLog } from '$lib/server/db/schema'
-import type { DrizzleDb } from '$lib/server/services/types'
-import { eq, lte, sql } from 'drizzle-orm'
+import type { AppDb, DrizzleDb } from '$lib/server/services/types'
+import { lte, sql } from 'drizzle-orm'
 
 interface RateLimitEntry {
   count: number
@@ -90,11 +90,12 @@ export function rateLimit(
 /** D1-backed rate limit. Preferred for production — persists across Workers isolates. */
 // oxlint-disable-next-line max-params
 export async function dbRateLimitCheck(
-  db: DrizzleDb | null | undefined,
+  db: AppDb | null | undefined,
   key: string,
   limit = 20,
   windowMs = 60_000
 ): Promise<{ allowed: boolean; remaining: number }> {
   if (!db) return memoryRateLimit(key, limit, windowMs)
-  return dbRateLimit(db, { key, limit, windowMs })
+  // The D1 variant supports .returning().get(); the Bun/Node variant falls through to memory.
+  return dbRateLimit(db as DrizzleDb, { key, limit, windowMs })
 }
