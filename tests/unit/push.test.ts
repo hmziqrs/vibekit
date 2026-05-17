@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
 const mockDelete = vi.fn()
 const mockInsert = vi.fn()
@@ -28,25 +29,11 @@ vi.mock('$lib/server/uuid', () => ({
   uuid: () => 'test-uuid-123',
 }))
 
-function createMockDb(
-  subscriptions: Array<{ auth: string; endpoint: string; p256dh: string }> = []
+function createMockDbWithSubscriptions(
+  subscriptions: Array<{ auth: string; endpoint: string; p256dh: string }> = [],
 ) {
-  return {
-    delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
-      }),
-    }),
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        limit: vi.fn().mockResolvedValue(subscriptions),
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue(subscriptions),
-        }),
-      }),
-    }),
-  } as unknown as DrizzleDb
+  const { db } = createMockDb({ allResult: subscriptions })
+  return db as unknown as DrizzleDb
 }
 
 beforeEach(() => {
@@ -75,7 +62,7 @@ describe('subscribeToPush', () => {
 
   it('upserts subscription for endpoint', async () => {
     const { subscribeToPush } = await import('$lib/server/push')
-    const db = createMockDb()
+    const db = createMockDbWithSubscriptions()
 
     const result = await subscribeToPush(db, {
       auth: 'auth-key',
@@ -91,7 +78,7 @@ describe('subscribeToPush', () => {
 
   it('works without userAgent', async () => {
     const { subscribeToPush } = await import('$lib/server/push')
-    const db = createMockDb()
+    const db = createMockDbWithSubscriptions()
 
     const result = await subscribeToPush(db, {
       auth: 'auth-key',
@@ -111,7 +98,7 @@ describe('unsubscribeFromPush', () => {
 
   it('deletes subscription by endpoint', async () => {
     const { unsubscribeFromPush } = await import('$lib/server/push')
-    const db = createMockDb()
+    const db = createMockDbWithSubscriptions()
 
     await unsubscribeFromPush(db, 'https://fcm.googleapis.com/test')
     expect(db.delete).toHaveBeenCalled()
@@ -129,7 +116,7 @@ describe('getUserPushSubscriptions', () => {
       { auth: 'a1', endpoint: 'ep1', p256dh: 'p1' },
       { auth: 'a2', endpoint: 'ep2', p256dh: 'p2' },
     ]
-    const db = createMockDb(subs)
+    const db = createMockDbWithSubscriptions(subs)
 
     const result = await getUserPushSubscriptions(db, 'user-1')
     expect(result).toEqual(subs)
@@ -137,7 +124,7 @@ describe('getUserPushSubscriptions', () => {
 
   it('returns empty array when no subscriptions', async () => {
     const { getUserPushSubscriptions } = await import('$lib/server/push')
-    const db = createMockDb([])
+    const db = createMockDbWithSubscriptions([])
 
     const result = await getUserPushSubscriptions(db, 'user-1')
     expect(result).toEqual([])
@@ -155,7 +142,7 @@ describe('sendPushNotification', () => {
       { auth: 'a1', endpoint: 'ep1', p256dh: 'p1' },
       { auth: 'a2', endpoint: 'ep2', p256dh: 'p2' },
     ]
-    const db = createMockDb(subs)
+    const db = createMockDbWithSubscriptions(subs)
     mockSendNotification.mockResolvedValue({ statusCode: 201 })
 
     const result = await sendPushNotification(db, 'user-1', {
@@ -170,7 +157,7 @@ describe('sendPushNotification', () => {
 
   it('serializes payload as JSON', async () => {
     const { sendPushNotification } = await import('$lib/server/push')
-    const db = createMockDb([{ auth: 'a', endpoint: 'ep', p256dh: 'p' }])
+    const db = createMockDbWithSubscriptions([{ auth: 'a', endpoint: 'ep', p256dh: 'p' }])
     mockSendNotification.mockResolvedValue({ statusCode: 201 })
 
     await sendPushNotification(db, 'user-1', {
@@ -191,7 +178,7 @@ describe('sendPushNotification', () => {
       { auth: 'a1', endpoint: 'ep1', p256dh: 'p1' },
       { auth: 'a2', endpoint: 'ep2', p256dh: 'p2' },
     ]
-    const db = createMockDb(subs)
+    const db = createMockDbWithSubscriptions(subs)
 
     const error = new Error('Gone') as Error & { statusCode: number }
     error.statusCode = 410
@@ -208,7 +195,7 @@ describe('sendPushNotification', () => {
   it('removes subscriptions that return 404 Not Found', async () => {
     const { sendPushNotification } = await import('$lib/server/push')
     const subs = [{ auth: 'a1', endpoint: 'ep1', p256dh: 'p1' }]
-    const db = createMockDb(subs)
+    const db = createMockDbWithSubscriptions(subs)
 
     const error = new Error('Not Found') as Error & { statusCode: number }
     error.statusCode = 404
@@ -223,7 +210,7 @@ describe('sendPushNotification', () => {
   it('keeps subscriptions that fail with other errors', async () => {
     const { sendPushNotification } = await import('$lib/server/push')
     const subs = [{ auth: 'a1', endpoint: 'ep1', p256dh: 'p1' }]
-    const db = createMockDb(subs)
+    const db = createMockDbWithSubscriptions(subs)
 
     const error = new Error('Server error') as Error & { statusCode: number }
     error.statusCode = 500
@@ -243,7 +230,7 @@ describe('sendPushNotification', () => {
       { auth: 'a2', endpoint: 'ep2', p256dh: 'p2' },
       { auth: 'a3', endpoint: 'ep3', p256dh: 'p3' },
     ]
-    const db = createMockDb(subs)
+    const db = createMockDbWithSubscriptions(subs)
 
     const error = new Error('Gone') as Error & { statusCode: number }
     error.statusCode = 410
@@ -262,7 +249,7 @@ describe('sendPushNotification', () => {
 
   it('returns zero counts when no subscriptions exist', async () => {
     const { sendPushNotification } = await import('$lib/server/push')
-    const db = createMockDb([])
+    const db = createMockDbWithSubscriptions([])
 
     const result = await sendPushNotification(db, 'user-1', { title: 'Test' })
 

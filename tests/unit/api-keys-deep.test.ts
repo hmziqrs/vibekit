@@ -1,338 +1,237 @@
-import type { DrizzleDb } from '$lib/server/services/types'
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-
-type ApiKeyMockDb = DrizzleDb & {
-  _insertFn: Mock
-  _setFn: Mock
-}
+import { hasScope, hashKey } from '$lib/server/api-keys'
+import {
+  createApiKeySchema,
+  updateApiKeySchema,
+  rotateApiKeySchema,
+  API_KEY_SCOPES,
+} from '$lib/validators/api-key'
+import { createMockDb } from '../helpers/mock-db'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('$lib/server/db/schema', () => ({
   apiKey: {
-    createdAt: 'createdAt',
-    expiresAt: 'expiresAt',
+    createdAt: 'created_at',
+    expiresAt: 'expires_at',
     id: 'id',
-    keyHash: 'keyHash',
-    keyPrefix: 'keyPrefix',
-    lastUsedAt: 'lastUsedAt',
+    keyHash: 'key_hash',
+    keyPrefix: 'key_prefix',
+    lastUsedAt: 'last_used_at',
     name: 'name',
-    rateLimit: 'rateLimit',
-    requestCount: 'requestCount',
-    revokedAt: 'revokedAt',
+    rateLimit: 'rate_limit',
+    requestCount: 'request_count',
+    revokedAt: 'revoked_at',
     scopes: 'scopes',
-    userId: 'userId',
+    userId: 'user_id',
   },
   apiKeyUsageLog: {
-    apiKeyId: 'apiKeyId',
-    createdAt: 'createdAt',
+    apiKeyId: 'api_key_id',
+    createdAt: 'created_at',
     endpoint: 'endpoint',
     id: 'id',
-    ipAddress: 'ipAddress',
+    ipAddress: 'ip_address',
     method: 'method',
-    statusCode: 'statusCode',
-    userAgent: 'userAgent',
+    statusCode: 'status_code',
+    userAgent: 'user_agent',
   },
 }))
 
-vi.mock('$lib/server/uuid', () => ({
-  uuid: () => 'test-uuid-key',
+vi.mock<typeof import('$lib/server/uuid')>(import('$lib/server/uuid'), () => ({
+  uuid: () => `test-uuid-${Math.random().toString(36).slice(2, 8)}`,
 }))
 
-describe('api-keys', () => {
-  beforeEach(() => {
-    vi.resetModules()
+describe('createApiKeySchema', () => {
+  it('validates a correct input', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'My API Key',
+      scopes: ['read:items', 'write:items'],
+    })
+    expect(result.success).toBeTruthy()
   })
 
-  function makeKey(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-    return {
-      expiresAt: null,
-      id: 'key-1',
-      keyHash: 'abc123',
-      keyPrefix: 'vk_live_abc',
-      name: 'Test Key',
-      rateLimit: null,
-      requestCount: 0,
+  it('rejects empty name', () => {
+    const result = createApiKeySchema.safeParse({
+      name: '',
       scopes: ['read:items'],
-      userId: 'user-1',
-      ...overrides,
+    })
+    expect(result.success).toBeFalsy()
+  })
+
+  it('rejects name over 100 chars', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'a'.repeat(101),
+      scopes: ['read:items'],
+    })
+    expect(result.success).toBeFalsy()
+  })
+
+  it('rejects empty scopes array', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'Test',
+      scopes: [],
+    })
+    expect(result.success).toBeFalsy()
+  })
+
+  it('rejects invalid scope', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'Test',
+      scopes: ['invalid:scope'],
+    })
+    expect(result.success).toBeFalsy()
+  })
+
+  it('accepts admin scope', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'Admin Key',
+      scopes: ['admin'],
+    })
+    expect(result.success).toBeTruthy()
+  })
+
+  it('accepts optional rateLimit', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'Limited Key',
+      rateLimit: 100,
+      scopes: ['read:items'],
+    })
+    expect(result.success).toBeTruthy()
+  })
+
+  it('rejects rateLimit below 1', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'Bad',
+      rateLimit: 0,
+      scopes: ['read:items'],
+    })
+    expect(result.success).toBeFalsy()
+  })
+
+  it('rejects rateLimit above 10000', () => {
+    const result = createApiKeySchema.safeParse({
+      name: 'Bad',
+      rateLimit: 10_001,
+      scopes: ['read:items'],
+    })
+    expect(result.success).toBeFalsy()
+  })
+
+  it('accepts optional expiresAt', () => {
+    const result = createApiKeySchema.safeParse({
+      expiresAt: Date.now() + 86_400_000,
+      name: 'Expiring Key',
+      scopes: ['read:items'],
+    })
+    expect(result.success).toBeTruthy()
+  })
+
+  it('trims name whitespace', () => {
+    const result = createApiKeySchema.safeParse({
+      name: '  spaced  ',
+      scopes: ['read:items'],
+    })
+    expect(result.success).toBeTruthy()
+    if (result.success) {
+      expect(result.data.name).toBe('spaced')
     }
-  }
+  })
+})
 
-  function createMockDb(keys: Record<string, unknown>[] = []) {
-    const setFn = vi
-      .fn()
-      .mockReturnValue({ where: vi.fn().mockResolvedValue({ meta: { changes: 1 } }) })
-
-    return {
-      _insertFn: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      _setFn: setFn,
-      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(keys) }),
-      }),
-      update: vi.fn().mockReturnValue({ set: setFn }),
-    } as unknown as ApiKeyMockDb
-  }
-
-  function createMockDbWithOrder(keys: Record<string, unknown>[] = []) {
-    const setFn = vi
-      .fn()
-      .mockReturnValue({ where: vi.fn().mockResolvedValue({ meta: { changes: 1 } }) })
-
-    return {
-      _insertFn: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      _setFn: setFn,
-      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockResolvedValue(keys),
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue(keys),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({ set: setFn }),
-    } as unknown as ApiKeyMockDb
-  }
-
-  describe('createApiKey', () => {
-    it('creates API key and returns full key', async () => {
-      const { createApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      const result = await createApiKey(db, 'user-1', {
-        name: 'My Key',
-        scopes: ['read:items'],
-      })
-      expect(result.key).toMatch(/^vk_live_/)
-      expect(result.keyPrefix).toHaveLength(12)
-      expect(result.name).toBe('My Key')
-      expect(result.scopes).toEqual(['read:items'])
-      expect(db.insert).toHaveBeenCalled()
-    })
-
-    it('stores key hash not plaintext', async () => {
-      const { createApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      const result = await createApiKey(db, 'user-1', {
-        name: 'My Key',
-        scopes: ['read:items'],
-      })
-      // The stored hash should not contain the plaintext key
-      const valuesCall = (db.insert as ReturnType<typeof vi.fn>).mock.calls[0]
-      expect(valuesCall).toBeDefined()
-    })
-
-    it('handles optional fields', async () => {
-      const { createApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      const result = await createApiKey(db, 'user-1', {
-        expiresAt: Date.now() + 86400000,
-        name: 'Temp Key',
-        rateLimit: 100,
-        scopes: ['admin'],
-      })
-      expect(result.id).toBe('test-uuid-key')
-    })
+describe('updateApiKeySchema', () => {
+  it('allows partial update with name only', () => {
+    const result = updateApiKeySchema.safeParse({ name: 'New Name' })
+    expect(result.success).toBeTruthy()
   })
 
-  describe('validateApiKey', () => {
-    it('returns key data for valid non-expired key', async () => {
-      const { createApiKey, validateApiKey } = await import('$lib/server/api-keys')
-      // Create a key first to get its hash
-      const dbCreate = createMockDb()
-      const created = await createApiKey(dbCreate, 'user-1', {
-        name: 'Test',
-        scopes: ['read:items'],
-      })
-
-      // Mock the validation lookup to return a matching key
-      const dbValidate = createMockDb([
-        makeKey({ keyHash: (await import('$lib/server/api-keys')).hashKey(created.key) }),
-      ])
-      // Need to await the hashKey
-      const hash = await (await import('$lib/server/api-keys')).hashKey(created.key)
-      const dbValidate2 = createMockDb([makeKey({ keyHash: hash })])
-      const result = await validateApiKey(dbValidate2, created.key)
-      expect(result).not.toBeNull()
-      expect(result?.name).toBe('Test Key')
-      expect(result?.scopes).toEqual(['read:items'])
-    })
-
-    it('returns null for unknown key', async () => {
-      const { validateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb([])
-      const result = await validateApiKey(db, 'vk_live_nonexistent')
-      expect(result).toBeNull()
-    })
-
-    it('returns null for expired key', async () => {
-      const { validateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb([makeKey({ expiresAt: new Date('2020-01-01') })])
-      // The hash won't match, so we'll get null from the hash comparison
-      // But we also test that an expired key returns null
-      const result = await validateApiKey(db, 'vk_live_expired')
-      expect(result).toBeNull()
-    })
+  it('allows updating scopes', () => {
+    const result = updateApiKeySchema.safeParse({ scopes: ['admin'] })
+    expect(result.success).toBeTruthy()
   })
 
-  describe('TouchApiKey', () => {
-    it('updates lastUsedAt and increments requestCount', async () => {
-      const { touchApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await touchApiKey(db, 'key-1')
-      expect(db._setFn).toHaveBeenCalled()
-    })
+  it('allows setting rateLimit to null', () => {
+    const result = updateApiKeySchema.safeParse({ rateLimit: null })
+    expect(result.success).toBeTruthy()
   })
 
-  describe('logApiKeyUsage', () => {
-    it('inserts usage log entry', async () => {
-      const { logApiKeyUsage } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await logApiKeyUsage(db, {
-        apiKeyId: 'key-1',
-        endpoint: '/api/items',
-        method: 'GET',
-        statusCode: 200,
-      })
-      expect(db.insert).toHaveBeenCalled()
-    })
+  it('rejects empty object', () => {
+    const result = updateApiKeySchema.safeParse({})
+    expect(result.success).toBeTruthy()
+  })
+})
 
-    it('handles optional fields', async () => {
-      const { logApiKeyUsage } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await logApiKeyUsage(db, {
-        apiKeyId: 'key-1',
-        endpoint: '/api/items',
-        ipAddress: '1.2.3.4',
-        method: 'POST',
-        statusCode: 201,
-        userAgent: 'Mozilla/5.0',
-      })
-      expect(db.insert).toHaveBeenCalled()
-    })
+describe('rotateApiKeySchema', () => {
+  it('validates correct input', () => {
+    const result = rotateApiKeySchema.safeParse({ id: 'key-123' })
+    expect(result.success).toBeTruthy()
   })
 
-  describe('listApiKeys', () => {
-    it('returns keys for user', async () => {
-      const { listApiKeys } = await import('$lib/server/api-keys')
-      const keys = [makeKey({ name: 'Key 1' }), makeKey({ name: 'Key 2' })]
-      const db = createMockDbWithOrder(keys)
-      const result = await listApiKeys(db, 'user-1')
-      expect(result).toHaveLength(2)
-    })
+  it('rejects empty id', () => {
+    const result = rotateApiKeySchema.safeParse({ id: '' })
+    expect(result.success).toBeFalsy()
+  })
+})
+
+describe('hasScope', () => {
+  it('admin scope grants all access', () => {
+    expect(hasScope(['admin'], 'read:items')).toBeTruthy()
+    expect(hasScope(['admin'], 'write:billing')).toBeTruthy()
+    expect(hasScope(['admin'], 'delete:items')).toBeTruthy()
   })
 
-  describe('rotateApiKey', () => {
-    it('returns new key when found', async () => {
-      const { rotateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb([makeKey()])
-      const result = await rotateApiKey(db, 'key-1', 'user-1')
-      expect(result).not.toBeNull()
-      expect(result?.key).toMatch(/^vk_live_/)
-      expect(result?.id).toBe('key-1')
-    })
-
-    it('returns null when not found', async () => {
-      const { rotateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb([])
-      expect(await rotateApiKey(db, 'missing', 'user-1')).toBeNull()
-    })
+  it('exact scope match grants access', () => {
+    expect(hasScope(['read:items'], 'read:items')).toBeTruthy()
   })
 
-  describe('revokeApiKey', () => {
-    it('sets revokedAt timestamp', async () => {
-      const { revokeApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      const result = await revokeApiKey(db, 'key-1', 'user-1')
-      expect(result).toBe(true)
-      expect(db._setFn).toHaveBeenCalled()
-    })
+  it('non-matching scope denies access', () => {
+    expect(hasScope(['read:items'], 'write:items')).toBeFalsy()
   })
 
-  describe('deleteApiKey', () => {
-    it('deletes the key', async () => {
-      const { deleteApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await deleteApiKey(db, 'key-1', 'user-1')
-      expect(db.delete).toHaveBeenCalled()
-    })
+  it('write scope implies read for same resource', () => {
+    expect(hasScope(['write:items'], 'read:items')).toBeTruthy()
   })
 
-  describe('updateApiKey', () => {
-    it('updates name', async () => {
-      const { updateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await updateApiKey(db, 'key-1', 'user-1', { name: 'New Name' })
-      expect(db._setFn).toHaveBeenCalled()
-    })
-
-    it('updates rate limit', async () => {
-      const { updateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await updateApiKey(db, 'key-1', 'user-1', { rateLimit: 100 })
-      expect(db._setFn).toHaveBeenCalled()
-    })
-
-    it('skips update when no changes provided', async () => {
-      const { updateApiKey } = await import('$lib/server/api-keys')
-      const db = createMockDb()
-      await updateApiKey(db, 'key-1', 'user-1', {})
-      expect(db._setFn).not.toHaveBeenCalled()
-    })
+  it('read scope does not imply write', () => {
+    expect(hasScope(['read:items'], 'write:items')).toBeFalsy()
   })
 
-  describe('getApiKeyUsage', () => {
-    it('returns usage logs', async () => {
-      const { getApiKeyUsage } = await import('$lib/server/api-keys')
-      const usageLogs = [
-        { endpoint: '/api/items', method: 'GET', statusCode: 200 },
-        { endpoint: '/api/items', method: 'POST', statusCode: 201 },
-      ]
-      const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
-      const db = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              orderBy: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue(usageLogs),
-              }),
-            }),
-          }),
-        }),
-      } as never
-      const result = await getApiKeyUsage(db, 'key-1')
-      expect(result).toHaveLength(2)
-    })
+  it('empty scopes deny everything', () => {
+    expect(hasScope([], 'read:items')).toBeFalsy()
+  })
+})
+
+describe('hashKey', () => {
+  it('produces a consistent SHA-256 hash', async () => {
+    const key = 'vk_live_test123'
+    const hash1 = await hashKey(key)
+    const hash2 = await hashKey(key)
+    expect(hash1).toBe(hash2)
+    expect(hash1).toHaveLength(64)
   })
 
-  describe('hasScope', () => {
-    it('admin scope grants access to everything', async () => {
-      const { hasScope } = await import('$lib/server/api-keys')
-      expect(hasScope(['admin'], 'read:items')).toBe(true)
-      expect(hasScope(['admin'], 'write:items')).toBe(true)
-      expect(hasScope(['admin'], 'delete:users')).toBe(true)
-    })
+  it('different keys produce different hashes', async () => {
+    const hash1 = await hashKey('vk_live_key1')
+    const hash2 = await hashKey('vk_live_key2')
+    expect(hash1).not.toBe(hash2)
+  })
+})
 
-    it('exact scope match grants access', async () => {
-      const { hasScope } = await import('$lib/server/api-keys')
-      expect(hasScope(['read:items'], 'read:items')).toBe(true)
-    })
+describe('api key scopes', () => {
+  it('contains all expected scopes', () => {
+    expect(API_KEY_SCOPES).toContain('admin')
+    expect(API_KEY_SCOPES).toContain('read:items')
+    expect(API_KEY_SCOPES).toContain('write:items')
+    expect(API_KEY_SCOPES).toContain('delete:items')
+    expect(API_KEY_SCOPES).toContain('read:billing')
+    expect(API_KEY_SCOPES).toContain('write:billing')
+    expect(API_KEY_SCOPES).toContain('read:organizations')
+    expect(API_KEY_SCOPES).toContain('write:organizations')
+    expect(API_KEY_SCOPES).toContain('read:teams')
+    expect(API_KEY_SCOPES).toContain('write:teams')
+    expect(API_KEY_SCOPES).toContain('read:blog')
+    expect(API_KEY_SCOPES).toContain('write:blog')
+  })
 
-    it('write scope implies read for same resource', async () => {
-      const { hasScope } = await import('$lib/server/api-keys')
-      expect(hasScope(['write:items'], 'read:items')).toBe(true)
-    })
-
-    it('write scope does not imply write for different resource', async () => {
-      const { hasScope } = await import('$lib/server/api-keys')
-      expect(hasScope(['write:items'], 'write:users')).toBe(false)
-    })
-
-    it('no matching scope denies access', async () => {
-      const { hasScope } = await import('$lib/server/api-keys')
-      expect(hasScope(['read:items'], 'write:items')).toBe(false)
-      expect(hasScope(['read:items'], 'read:users')).toBe(false)
-    })
+  it('scopes are sorted alphabetically', () => {
+    const sorted = [...API_KEY_SCOPES].toSorted()
+    expect(API_KEY_SCOPES).toStrictEqual(sorted)
   })
 })

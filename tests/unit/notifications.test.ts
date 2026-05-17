@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
 vi.mock('$lib/server/push', () => ({
   sendPushNotification: vi.fn().mockResolvedValue({ sent: 0, total: 0 }),
@@ -15,34 +16,27 @@ type MockDb = DrizzleDb & {
   _valuesFn: ReturnType<typeof vi.fn>
 }
 
-function createMockDb(preferenceEnabled = true): MockDb {
-  const getFn = vi
-    .fn()
-    .mockResolvedValue(preferenceEnabled ? { enabled: true } : { enabled: false })
+function createMockDbWithPref(preferenceEnabled = true): MockDb {
+  const { db, mocks } = createMockDb({
+    getResult: preferenceEnabled ? { enabled: true } : { enabled: false },
+  })
 
-  const onConflictDoUpdateFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
-  const valuesFn = vi
-    .fn<() => { onConflictDoUpdate: typeof onConflictDoUpdateFn }>()
-    .mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateFn })
-  const insertFn = vi.fn<() => { values: typeof valuesFn }>().mockReturnValue({ values: valuesFn })
-
+  // Make select().from().where() thenable so bare await resolves to array
+  const originalWhereFn = mocks.whereFn
   const selectWhereResult = {
-    get: getFn,
+    get: mocks.getFn,
   } as Record<string, unknown>
-  // Make thenable so bare await resolves to array
-  selectWhereResult.then = (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve)
+  selectWhereResult.then = (resolve: (v: unknown) => void) =>
+    Promise.resolve([]).then(resolve)
+
+  mocks.whereFn.mockReturnValue(selectWhereResult)
 
   return {
-    _getFn: getFn,
-    _insertFn: insertFn,
-    _onConflictDoUpdateFn: onConflictDoUpdateFn,
-    _valuesFn: valuesFn,
-    insert: insertFn,
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue(selectWhereResult),
-      }),
-    }),
+    ...db,
+    _getFn: mocks.getFn,
+    _insertFn: mocks.insertFn,
+    _onConflictDoUpdateFn: mocks.returningFn,
+    _valuesFn: mocks.valuesFn,
   } as unknown as MockDb
 }
 
@@ -76,7 +70,7 @@ describe('notifications module', () => {
 describe('createNotification', () => {
   it('inserts notification when in-app is enabled', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
 
     await createNotification(db, {
       body: 'You have a new message',
@@ -91,7 +85,7 @@ describe('createNotification', () => {
 
   it('skips insert when in-app is disabled', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb(false)
+    const db = createMockDbWithPref(false)
 
     await createNotification(db, {
       title: 'Test',
@@ -103,7 +97,7 @@ describe('createNotification', () => {
 
   it('defaults type to info', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
 
     await createNotification(db, {
       title: 'Test',
@@ -116,7 +110,7 @@ describe('createNotification', () => {
 
   it('stringifies metadata when provided', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
 
     await createNotification(db, {
       metadata: { key: 'value' },
@@ -130,7 +124,7 @@ describe('createNotification', () => {
 
   it('sets metadata to null when not provided', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
 
     await createNotification(db, {
       title: 'Test',
@@ -145,7 +139,7 @@ describe('createNotification', () => {
 describe('createBroadcast', () => {
   it('inserts notifications for all target users', async () => {
     const { createBroadcast } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithPref()
     const getUserIds = vi.fn().mockResolvedValue(['user-1', 'user-2', 'user-3'])
 
     const count = await createBroadcast(
@@ -156,7 +150,7 @@ describe('createBroadcast', () => {
         title: 'Announcement',
         type: 'info',
       },
-      getUserIds
+      getUserIds,
     )
 
     expect(count).toBe(3)
@@ -167,7 +161,7 @@ describe('createBroadcast', () => {
 
   it('inserts in batches of 100', async () => {
     const { createBroadcast } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithPref()
     const userIds = Array.from({ length: 150 }, (_, i) => `user-${i}`)
     const getUserIds = vi.fn().mockResolvedValue(userIds)
 
@@ -177,7 +171,7 @@ describe('createBroadcast', () => {
         target: 'all',
         title: 'Bulk',
       },
-      getUserIds
+      getUserIds,
     )
 
     expect(count).toBe(150)
@@ -186,7 +180,7 @@ describe('createBroadcast', () => {
 
   it('broadcasts to admins target', async () => {
     const { createBroadcast } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithPref()
     const getUserIds = vi.fn().mockResolvedValue(['admin-1', 'admin-2'])
 
     const count = await createBroadcast(
@@ -195,7 +189,7 @@ describe('createBroadcast', () => {
         target: 'admins',
         title: 'Admin Notice',
       },
-      getUserIds
+      getUserIds,
     )
 
     expect(getUserIds).toHaveBeenCalledWith('admins')
@@ -205,7 +199,7 @@ describe('createBroadcast', () => {
 
   it('returns 0 when no target users', async () => {
     const { createBroadcast } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithPref()
     const getUserIds = vi.fn().mockResolvedValue([])
 
     const count = await createBroadcast(db, { target: 'all', title: 'Empty' }, getUserIds)
@@ -218,7 +212,7 @@ describe('createBroadcast', () => {
 describe('setNotificationPreference', () => {
   it('uses upsert with onConflictDoUpdate', async () => {
     const { setNotificationPreference } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithPref()
 
     await setNotificationPreference(db, {
       channel: 'in_app',
@@ -284,7 +278,7 @@ describe('push notification integration', () => {
       .fn()
       .mockResolvedValueOnce({ enabled: true }) // in_app check
       .mockResolvedValueOnce({ enabled: true }) // push check
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
     // Override the get function for the push check
     const selectWhereResult = { get: getFn }
     selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
@@ -310,7 +304,7 @@ describe('push notification integration', () => {
         body: 'Test push',
         title: 'Push Test',
         data: { link: '/test' },
-      })
+      }),
     )
   })
 
@@ -320,7 +314,7 @@ describe('push notification integration', () => {
       .fn()
       .mockResolvedValueOnce({ enabled: true }) // in_app check
       .mockResolvedValueOnce({ enabled: false }) // push check
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
     const selectWhereResult = { get: getFn }
     selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
     db.select = vi.fn().mockReturnValue({
@@ -345,7 +339,7 @@ describe('push notification integration', () => {
       .fn()
       .mockResolvedValueOnce({ enabled: true }) // in_app check
       .mockResolvedValueOnce(undefined) // no push pref -> default enabled
-    const db = createMockDb(true)
+    const db = createMockDbWithPref(true)
     const selectWhereResult = { get: getFn }
     selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
     db.select = vi.fn().mockReturnValue({

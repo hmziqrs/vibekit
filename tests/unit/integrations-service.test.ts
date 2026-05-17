@@ -1,5 +1,6 @@
 import type { AppDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
 // Mock the crypto module so encrypt/decrypt are identity functions in tests
 vi.mock('$lib/server/crypto', () => ({
@@ -15,39 +16,26 @@ type MockDb = AppDb & {
   _whereFn: ReturnType<typeof vi.fn>
 }
 
-function createMockDb(rows: Record<string, unknown>[] = []): MockDb {
-  const limitFn = vi.fn().mockResolvedValue(rows)
-  const orderByAfterWhere = vi.fn().mockReturnValue({ limit: limitFn })
+function createMockDbWithRows(rows: Record<string, unknown>[] = []): MockDb {
+  const { db, mocks } = createMockDb({ allResult: rows })
+
+  // Make where() thenable so bare await resolves to rows
+  const originalWhereFn = mocks.whereFn
   const whereResult: Record<string, unknown> = {
-    limit: limitFn,
-    orderBy: orderByAfterWhere,
+    limit: mocks.limitFn,
+    orderBy: mocks.orderByFn,
   }
-  // Make whereResult thenable so `await db.select().from().where()` resolves to rows
   whereResult.then = (resolve: (v: unknown) => void) => Promise.resolve(rows).then(resolve)
   whereResult.catch = () => rows
-
-  const whereFn = vi.fn().mockReturnValue(whereResult)
-  const orderByFn = vi.fn().mockReturnValue({ limit: limitFn, where: whereFn })
-
-  const whereUpdateFn = vi.fn().mockResolvedValue(undefined)
-  const setFn = vi.fn().mockReturnValue({ where: whereUpdateFn })
-  const valuesFn = vi.fn().mockResolvedValue(undefined)
-  const insertFn = vi.fn().mockReturnValue({ values: valuesFn })
-  const updateFn = vi.fn().mockReturnValue({ set: setFn })
-  const fromFn = vi.fn().mockReturnValue({
-    orderBy: orderByFn,
-    where: whereFn,
-  })
+  originalWhereFn.mockReturnValue(whereResult)
 
   return {
-    _insertFn: insertFn,
-    _setFn: setFn,
-    _updateFn: updateFn,
-    _valuesFn: valuesFn,
-    _whereFn: whereFn,
-    insert: insertFn,
-    select: vi.fn().mockReturnValue({ from: fromFn }),
-    update: updateFn,
+    ...db,
+    _insertFn: mocks.insertFn,
+    _setFn: mocks.setFn,
+    _updateFn: mocks.updateFn,
+    _valuesFn: mocks.valuesFn,
+    _whereFn: mocks.whereFn,
   } as unknown as MockDb
 }
 
@@ -71,7 +59,7 @@ describe('integrations service module', () => {
 describe('createIntegration', () => {
   it('inserts integration with correct values', async () => {
     const { createIntegration } = await import('$lib/server/integrations/service')
-    const db = createMockDb()
+    const db = createMockDbWithRows()
 
     const result = await createIntegration(db, {
       accessToken: 'ghp_test123',
@@ -93,7 +81,7 @@ describe('createIntegration', () => {
 
   it('accepts optional fields', async () => {
     const { createIntegration } = await import('$lib/server/integrations/service')
-    const db = createMockDb()
+    const db = createMockDbWithRows()
     const expiresAt = new Date('2026-12-01')
 
     await createIntegration(db, {
@@ -119,7 +107,7 @@ describe('createIntegration', () => {
 describe('disconnectIntegration', () => {
   it('sets status to disconnected', async () => {
     const { disconnectIntegration } = await import('$lib/server/integrations/service')
-    const db = createMockDb([{ id: 'int-1' }])
+    const db = createMockDbWithRows([{ id: 'int-1' }])
 
     const result = await disconnectIntegration(db, 'int-1', 'user-1')
 
@@ -132,7 +120,7 @@ describe('disconnectIntegration', () => {
 
   it('returns null when integration not found', async () => {
     const { disconnectIntegration } = await import('$lib/server/integrations/service')
-    const db = createMockDb([])
+    const db = createMockDbWithRows([])
 
     const result = await disconnectIntegration(db, 'int-missing', 'user-1')
 
@@ -143,7 +131,7 @@ describe('disconnectIntegration', () => {
 describe('updateIntegrationTokens', () => {
   it('updates token fields and sets status to active', async () => {
     const { updateIntegrationTokens } = await import('$lib/server/integrations/service')
-    const db = createMockDb()
+    const db = createMockDbWithRows()
     const expiresAt = new Date('2027-01-01')
 
     await updateIntegrationTokens(db, 'int-1', {
@@ -164,7 +152,7 @@ describe('updateIntegrationTokens', () => {
 describe('getIntegration', () => {
   it('returns integration row', async () => {
     const { getIntegration } = await import('$lib/server/integrations/service')
-    const db = createMockDb([{ id: 'int-1', provider: 'github' }])
+    const db = createMockDbWithRows([{ id: 'int-1', provider: 'github' }])
 
     const result = await getIntegration(db, 'int-1', 'user-1')
 
@@ -173,7 +161,7 @@ describe('getIntegration', () => {
 
   it('returns null when not found', async () => {
     const { getIntegration } = await import('$lib/server/integrations/service')
-    const db = createMockDb([])
+    const db = createMockDbWithRows([])
 
     const result = await getIntegration(db, 'int-missing', 'user-1')
 
@@ -189,7 +177,7 @@ describe('checkIntegrationHealth', () => {
     } as Response)
 
     const { checkIntegrationHealth } = await import('$lib/server/integrations/service')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         accessToken: 'valid-token',
         id: 'int-1',
@@ -207,7 +195,7 @@ describe('checkIntegrationHealth', () => {
 
   it('returns expired status when token is expired', async () => {
     const { checkIntegrationHealth } = await import('$lib/server/integrations/service')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         accessToken: 'expired-token',
         id: 'int-2',
@@ -227,7 +215,7 @@ describe('checkIntegrationHealth', () => {
 
     vi.resetModules()
     const { checkIntegrationHealth } = await import('$lib/server/integrations/service')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         accessToken: 'bad-token',
         id: 'int-3',
@@ -245,7 +233,7 @@ describe('checkIntegrationHealth', () => {
 
   it('returns null when integration not found', async () => {
     const { checkIntegrationHealth } = await import('$lib/server/integrations/service')
-    const db = createMockDb([])
+    const db = createMockDbWithRows([])
 
     const result = await checkIntegrationHealth(db, 'int-missing')
 
@@ -256,7 +244,7 @@ describe('checkIntegrationHealth', () => {
 describe('listAllIntegrations', () => {
   it('returns integrations with default limit', async () => {
     const { listAllIntegrations } = await import('$lib/server/integrations/service')
-    const db = createMockDb([{ id: 'int-1' }])
+    const db = createMockDbWithRows([{ id: 'int-1' }])
 
     const result = await listAllIntegrations(db)
 
@@ -265,7 +253,7 @@ describe('listAllIntegrations', () => {
 
   it('accepts filter options', async () => {
     const { listAllIntegrations } = await import('$lib/server/integrations/service')
-    const db = createMockDb([{ id: 'int-1' }])
+    const db = createMockDbWithRows([{ id: 'int-1' }])
 
     await listAllIntegrations(db, { limit: 10, provider: 'github', status: 'active' })
 

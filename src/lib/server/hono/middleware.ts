@@ -16,6 +16,7 @@ import {
 } from '$lib/server/errors'
 import { hasPermission, hasTeamPermission } from '$lib/server/permissions'
 import { dbRateLimitCheck } from '$lib/server/rate-limit'
+import { timingSafeEqual } from '$lib/server/security/timing-safe-equal'
 import { createServices } from '$lib/server/services'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createMiddleware } from 'hono/factory'
@@ -79,6 +80,23 @@ export const requireAdmin = createMiddleware<Env>(async (c, next) => {
   if (!user.twoFactorEnabled) {
     throw new ForbiddenError('Two-factor authentication is required for admin access')
   }
+  await next()
+})
+
+export const requireCronOrAdmin = createMiddleware<Env>(async (c, next) => {
+  const cronSecret = c.req.header('x-cron-secret')
+  const configuredSecret = c.get('services').env.cronSecret
+  const currentUser = c.get('user')
+  const isCron =
+    cronSecret &&
+    configuredSecret &&
+    cronSecret.length > 0 &&
+    timingSafeEqual(cronSecret, configuredSecret)
+
+  if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
+    throw new ForbiddenError()
+  }
+
   await next()
 })
 

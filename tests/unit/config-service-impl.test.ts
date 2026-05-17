@@ -1,7 +1,8 @@
-import type { DrizzleDb } from '$lib/server/services/types'
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import type { Mock } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
-type ConfigMockDb = DrizzleDb & {
+type ConfigMockDb = ReturnType<typeof createMockDb>['db'] & {
   _insertFn: Mock
   _setFn: Mock
 }
@@ -36,25 +37,12 @@ describe('config-service impl', () => {
     vi.resetModules()
   })
 
-  function createMockDb(configRows: Record<string, unknown>[] = []) {
-    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
-    const insertFn = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) })
-
+  function createMockDbWithRows(configRows: Record<string, unknown>[] = []) {
+    const { db, mocks } = createMockDb({ allResult: configRows })
     return {
-      _insertFn: insertFn,
-      _setFn: setFn,
-      insert: insertFn,
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(configRows),
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              offset: vi.fn().mockResolvedValue(configRows),
-            }),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({ set: setFn }),
+      ...db,
+      _insertFn: mocks.insertFn,
+      _setFn: mocks.setFn,
     } as unknown as ConfigMockDb
   }
 
@@ -62,7 +50,7 @@ describe('config-service impl', () => {
     it('returns config when found', async () => {
       const { getConfigValue } = await import('$lib/server/config-service')
       const rows = [{ key: 'app.name', value: 'Vibekit' }]
-      const db = createMockDb(rows)
+      const db = createMockDbWithRows(rows)
       const result = await getConfigValue(db, 'app.name')
       expect(result).not.toBeNull()
       expect(result?.key).toBe('app.name')
@@ -70,7 +58,7 @@ describe('config-service impl', () => {
 
     it('returns null when not found', async () => {
       const { getConfigValue } = await import('$lib/server/config-service')
-      const db = createMockDb([])
+      const db = createMockDbWithRows([])
       expect(await getConfigValue(db, 'missing.key')).toBeNull()
     })
 
@@ -115,7 +103,7 @@ describe('config-service impl', () => {
   describe('setConfigValue', () => {
     it('inserts new config when not existing', async () => {
       const { setConfigValue } = await import('$lib/server/config-service')
-      const db = createMockDb([])
+      const db = createMockDbWithRows([])
       const result = await setConfigValue(db, {
         changedBy: 'admin-1',
         key: 'app.theme',
@@ -128,7 +116,7 @@ describe('config-service impl', () => {
 
     it('updates existing config', async () => {
       const { setConfigValue } = await import('$lib/server/config-service')
-      const db = createMockDb([{ key: 'app.theme', value: 'light' }])
+      const db = createMockDbWithRows([{ key: 'app.theme', value: 'light' }])
       const result = await setConfigValue(db, {
         key: 'app.theme',
         value: 'dark',
@@ -140,7 +128,7 @@ describe('config-service impl', () => {
 
     it('uses environment-prefixed key', async () => {
       const { setConfigValue } = await import('$lib/server/config-service')
-      const db = createMockDb([])
+      const db = createMockDbWithRows([])
       const result = await setConfigValue(db, {
         environment: 'staging',
         key: 'app.debug',
@@ -234,7 +222,7 @@ describe('config-service impl', () => {
 
     it('returns empty object for empty keys', async () => {
       const { resolveConfig } = await import('$lib/server/config-service')
-      const db = createMockDb([])
+      const db = createMockDbWithRows([])
       const result = await resolveConfig(db, [])
       expect(result).toEqual({})
     })

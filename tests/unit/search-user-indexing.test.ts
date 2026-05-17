@@ -1,5 +1,6 @@
 import type { AppDb } from '$lib/server/services/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
 function setupMocks(mockIndexUser: ReturnType<typeof vi.fn>) {
   vi.doMock('$lib/server/search/indexer', () => ({
@@ -34,16 +35,9 @@ function setupMocks(mockIndexUser: ReturnType<typeof vi.fn>) {
   }))
 }
 
-function createMockDb(): AppDb {
-  return {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([]),
-        }),
-      }),
-    }),
-  } as unknown as AppDb
+function createMockDbSearch(): AppDb {
+  const { db } = createMockDb()
+  return db as unknown as AppDb
 }
 
 const mockUser = {
@@ -68,13 +62,13 @@ describe('auth databaseHooks - user indexing', () => {
     const { createAuth } = await import('$lib/server/auth')
     const { betterAuth } = await import('better-auth/minimal')
 
-    const mockDb = createMockDb()
+    const mockDb = createMockDbSearch()
     createAuth(mockDb)
 
     const mockBetterAuth = vi.mocked(betterAuth)
     // Use the LAST call (our test call with mockDb), not the first (module-level null)
     const authCallWithHooks = mockBetterAuth.mock.calls.findLast(
-      (call) => call[0].databaseHooks?.user?.create?.after
+      (call) => call[0].databaseHooks?.user?.create?.after,
     )
     expect(authCallWithHooks).toBeDefined()
 
@@ -91,11 +85,11 @@ describe('auth databaseHooks - user indexing', () => {
     const { createAuth } = await import('$lib/server/auth')
     const { betterAuth } = await import('better-auth/minimal')
 
-    createAuth(createMockDb())
+    createAuth(createMockDbSearch())
 
     const mockBetterAuth = vi.mocked(betterAuth)
     const authCallWithHooks = mockBetterAuth.mock.calls.findLast(
-      (call) => call[0].databaseHooks?.user?.create?.after
+      (call) => call[0].databaseHooks?.user?.create?.after,
     )
     expect(authCallWithHooks).toBeDefined()
 
@@ -109,11 +103,11 @@ describe('auth databaseHooks - user indexing', () => {
     const { createAuth } = await import('$lib/server/auth')
     const { betterAuth } = await import('better-auth/minimal')
 
-    createAuth(createMockDb())
+    createAuth(createMockDbSearch())
 
     const mockBetterAuth = vi.mocked(betterAuth)
     const ourCall = mockBetterAuth.mock.calls.findLast(
-      (call) => call[0].databaseHooks?.user?.create?.after
+      (call) => call[0].databaseHooks?.user?.create?.after,
     )
     expect(ourCall).toBeDefined()
     const hooks = ourCall![0].databaseHooks!

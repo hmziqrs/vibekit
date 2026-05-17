@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
 // Mock the D1 search adapter
 const mockIndex = vi.fn().mockResolvedValue(undefined)
@@ -18,16 +19,13 @@ type MockDb = DrizzleDb & {
   _whereFn: ReturnType<typeof vi.fn>
 }
 
-function createMockDb(rows: Record<string, unknown>[] = []): MockDb {
-  const limitFn = vi.fn().mockResolvedValue(rows)
-  const whereFn = vi.fn().mockReturnValue({ limit: limitFn })
-  const fromFn = vi.fn().mockReturnValue({ where: whereFn })
-
+function createMockDbWithRows(rows: Record<string, unknown>[] = []): MockDb {
+  const { db, mocks } = createMockDb({ allResult: rows })
   return {
-    _fromFn: fromFn,
-    _limitFn: limitFn,
-    _whereFn: whereFn,
-    select: vi.fn().mockReturnValue({ from: fromFn }),
+    ...db,
+    _fromFn: mocks.fromFn,
+    _limitFn: mocks.limitFn,
+    _whereFn: mocks.whereFn,
   } as unknown as MockDb
 }
 
@@ -66,7 +64,7 @@ describe('search indexer module', () => {
 describe('indexBlogPost', () => {
   it('indexes a published blog post', async () => {
     const { indexBlogPost } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         contentBody: 'Full article content here',
         excerpt: 'A short summary',
@@ -91,7 +89,7 @@ describe('indexBlogPost', () => {
 
   it('skips indexing when post not found', async () => {
     const { indexBlogPost } = await import('$lib/server/search/indexer')
-    const db = createMockDb([])
+    const db = createMockDbWithRows([])
 
     await indexBlogPost(db, 'nonexistent')
 
@@ -100,7 +98,7 @@ describe('indexBlogPost', () => {
 
   it('skips indexing archived posts', async () => {
     const { indexBlogPost } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         contentBody: 'Old content',
         excerpt: null,
@@ -118,7 +116,7 @@ describe('indexBlogPost', () => {
 
   it('uses slug as title fallback', async () => {
     const { indexBlogPost } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         contentBody: 'Content',
         excerpt: null,
@@ -138,7 +136,7 @@ describe('indexBlogPost', () => {
   it('truncates content to 5000 chars', async () => {
     const { indexBlogPost } = await import('$lib/server/search/indexer')
     const longContent = 'x'.repeat(10000)
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         contentBody: longContent,
         excerpt: null,
@@ -159,7 +157,7 @@ describe('indexBlogPost', () => {
 describe('indexItem', () => {
   it('indexes an active item', async () => {
     const { indexItem } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         createdAt: new Date(),
         description: 'A useful tool',
@@ -181,7 +179,7 @@ describe('indexItem', () => {
 
   it('skips archived items', async () => {
     const { indexItem } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         createdAt: new Date(),
         description: 'Old tool',
@@ -198,7 +196,7 @@ describe('indexItem', () => {
 
   it('handles null description', async () => {
     const { indexItem } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         createdAt: new Date(),
         description: null,
@@ -218,7 +216,7 @@ describe('indexItem', () => {
 describe('deindexEntity', () => {
   it('calls adapter delete with correct params', async () => {
     const { deindexEntity } = await import('$lib/server/search/indexer')
-    const db = createMockDb()
+    const db = createMockDbWithRows()
 
     await deindexEntity(db, 'post-1', 'blog_post')
 
@@ -229,7 +227,7 @@ describe('deindexEntity', () => {
 describe('reindexAllBlogPosts', () => {
   it('indexes all non-archived posts', async () => {
     const { reindexAllBlogPosts } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         contentBody: 'Post 1',
         excerpt: null,
@@ -301,7 +299,7 @@ describe('indexUser', () => {
 
   it('indexes a user with displayName', async () => {
     const { indexUser } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         bio: 'Full-stack developer',
         displayName: 'Jane Doe',
@@ -326,7 +324,7 @@ describe('indexUser', () => {
 
   it('uses name as title fallback when displayName is null', async () => {
     const { indexUser } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         bio: null,
         displayName: null,
@@ -344,7 +342,7 @@ describe('indexUser', () => {
 
   it('uses User as title fallback when name and displayName are null', async () => {
     const { indexUser } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         bio: null,
         displayName: null,
@@ -362,7 +360,7 @@ describe('indexUser', () => {
 
   it('skips indexing when user not found', async () => {
     const { indexUser } = await import('$lib/server/search/indexer')
-    const db = createMockDb([])
+    const db = createMockDbWithRows([])
 
     await indexUser(db, 'nonexistent')
 
@@ -378,7 +376,7 @@ describe('reindexAllUsers', () => {
 
   it('indexes all users', async () => {
     const { reindexAllUsers } = await import('$lib/server/search/indexer')
-    const db = createMockDb([
+    const db = createMockDbWithRows([
       {
         bio: 'Dev',
         displayName: 'Alice',

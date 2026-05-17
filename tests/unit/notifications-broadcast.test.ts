@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
 interface MockDb extends DrizzleDb {
   _insertFn: ReturnType<typeof vi.fn>
@@ -7,23 +8,14 @@ interface MockDb extends DrizzleDb {
   _onConflictDoUpdateFn: ReturnType<typeof vi.fn>
 }
 
-function createMockDb(overrides: Record<string, unknown> = {}): MockDb {
-  const onConflictDoUpdateFn = vi.fn().mockResolvedValue(undefined)
-  const _insertValues = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateFn })
-  const _insertFn = vi.fn().mockReturnValue({ values: _insertValues })
+function createMockDbWithOverrides(overrides: Record<string, unknown> = {}): MockDb {
+  const { db, mocks } = createMockDb()
 
   return {
-    _insertFn,
-    _insertValues,
-    _onConflictDoUpdateFn: onConflictDoUpdateFn,
-    insert: _insertFn,
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue(null),
-        }),
-      }),
-    }),
+    ...db,
+    _insertFn: mocks.insertFn,
+    _insertValues: mocks.valuesFn,
+    _onConflictDoUpdateFn: mocks.returningFn,
     ...overrides,
   } as unknown as MockDb
 }
@@ -35,7 +27,7 @@ beforeEach(() => {
 describe('createNotification', () => {
   it('inserts notification when preference is enabled (default)', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithOverrides()
     await createNotification(db, {
       title: 'Test notification',
       type: 'info',
@@ -54,7 +46,7 @@ describe('createNotification', () => {
         }),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     await createNotification(db, {
       title: 'Test notification',
@@ -67,7 +59,7 @@ describe('createNotification', () => {
 
   it('uses default values for optional fields', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithOverrides()
     await createNotification(db, {
       title: 'Simple notification',
       userId: 'user-1',
@@ -81,7 +73,7 @@ describe('createNotification', () => {
 
   it('passes all provided fields', async () => {
     const { createNotification } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithOverrides()
     await createNotification(db, {
       body: 'Notification body',
       entityId: 'entity-1',
@@ -116,7 +108,7 @@ describe('createBroadcast', () => {
         where: vi.fn().mockResolvedValue([{ enabled: false, userId: 'user-2' }]),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     const count = await createBroadcast(db, { title: 'Broadcast', target: 'all' }, getUserIds)
 
@@ -135,12 +127,12 @@ describe('createBroadcast', () => {
         where: vi.fn().mockResolvedValue([]),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     const count = await createBroadcast(
       db,
       { title: 'Admin broadcast', target: 'admins' },
-      getUserIds
+      getUserIds,
     )
 
     expect(count).toBe(2)
@@ -158,7 +150,7 @@ describe('createBroadcast', () => {
         where: vi.fn().mockResolvedValue([]),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     const count = await createBroadcast(db, { title: 'Broadcast', target: 'all' }, getUserIds)
 
@@ -178,7 +170,7 @@ describe('createBroadcast', () => {
         ]),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     const count = await createBroadcast(db, { title: 'Broadcast', target: 'all' }, getUserIds)
 
@@ -196,12 +188,12 @@ describe('createBroadcast', () => {
         where: vi.fn().mockResolvedValue([]),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     await createBroadcast(
       db,
       { body: 'Body text', target: 'all', title: 'Broadcast', type: 'warning' },
-      getUserIds
+      getUserIds,
     )
 
     expect(db._insertValues).toHaveBeenCalled()
@@ -216,7 +208,7 @@ describe('createBroadcast', () => {
 
   it('returns 0 for empty user list', async () => {
     const { createBroadcast } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithOverrides()
     const getUserIds = vi.fn().mockResolvedValue([])
 
     const count = await createBroadcast(db, { title: 'Empty', target: 'all' }, getUserIds)
@@ -238,7 +230,7 @@ describe('getNotificationPreferences', () => {
         where: vi.fn().mockResolvedValue(mockPrefs),
       }),
     })
-    const db = createMockDb({ select: mockSelect })
+    const db = createMockDbWithOverrides({ select: mockSelect })
 
     const prefs = await getNotificationPreferences(db, 'user-1')
     expect(prefs).toEqual(mockPrefs)
@@ -248,7 +240,7 @@ describe('getNotificationPreferences', () => {
 describe('setNotificationPreference', () => {
   it('uses upsert via onConflictDoUpdate', async () => {
     const { setNotificationPreference } = await import('$lib/server/notifications')
-    const db = createMockDb()
+    const db = createMockDbWithOverrides()
 
     await setNotificationPreference(db, {
       channel: 'in_app',

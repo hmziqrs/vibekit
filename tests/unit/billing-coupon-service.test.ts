@@ -2,35 +2,32 @@ import { coupon } from '$lib/server/db/schema'
 import type { AppDb } from '$lib/server/services/types'
 import { eq, and } from 'drizzle-orm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
-function createMockDb(returnValues: Record<string, unknown> = {}): AppDb {
-  const whereChain = {
-    get: vi.fn().mockResolvedValue(returnValues.selectWhereGet ?? undefined),
-  }
-  const updateWhereChain = {
-    returning: vi.fn().mockResolvedValue(returnValues.updateReturning ?? []),
-  }
+function createMockDbWithReturnValues(
+  returnValues: Record<string, unknown> = {},
+): AppDb {
+  const { db, mocks } = createMockDb({
+    allResult: (returnValues.selectList as unknown[]) ?? [],
+    getResult: (returnValues.selectGet as unknown) ?? null,
+    insertResult: (returnValues.updateReturning as unknown[]) ?? [],
+    updateResult: (returnValues.updateReturning as unknown[]) ?? [],
+  })
 
-  return {
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue(undefined),
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockResolvedValue(undefined),
-    }),
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        get: vi.fn().mockResolvedValue(returnValues.selectGet ?? undefined),
-        orderBy: vi.fn().mockResolvedValue(returnValues.selectList ?? []),
-        where: vi.fn().mockReturnValue(whereChain),
-      }),
-    }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue(updateWhereChain),
-      }),
-    }),
-  } as unknown as AppDb
+  // Override where().get() to return selectWhereGet
+  const originalWhereFn = mocks.whereFn
+  mocks.whereFn.mockImplementation(() => ({
+    all: vi.fn().mockResolvedValue(returnValues.selectList ?? []),
+    get: vi
+      .fn()
+      .mockResolvedValue(
+        returnValues.selectWhereGet ?? returnValues.selectGet ?? null,
+      ),
+    limit: mocks.limitFn,
+    orderBy: mocks.orderByFn,
+  }))
+
+  return db as unknown as AppDb
 }
 
 describe('getCouponByCode', () => {
@@ -45,7 +42,7 @@ describe('getCouponByCode', () => {
       timesRedeemed: 0,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await getCouponByCode(db, 'save20')
 
@@ -57,7 +54,7 @@ describe('getCouponById', () => {
   it('returns coupon when found', async () => {
     const { getCouponById } = await import('$lib/server/billing/subscription-service')
     const mockCoupon = { code: 'SAVE20', id: 'c-1', name: 'Save 20%' }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await getCouponById(db, 'c-1')
 
@@ -66,7 +63,7 @@ describe('getCouponById', () => {
 
   it('returns undefined when not found', async () => {
     const { getCouponById } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ selectWhereGet: undefined })
+    const db = createMockDbWithReturnValues({ selectWhereGet: undefined })
 
     const result = await getCouponById(db, 'nonexistent')
 
@@ -81,7 +78,7 @@ describe('listCoupons', () => {
       { code: 'NEW', id: 'c-2', name: 'New Coupon' },
       { code: 'OLD', id: 'c-1', name: 'Old Coupon' },
     ]
-    const db = createMockDb({ selectList: coupons })
+    const db = createMockDbWithReturnValues({ selectList: coupons })
 
     const result = await listCoupons(db)
 
@@ -101,7 +98,7 @@ describe('createCoupon', () => {
       name: 'Save 20%',
       percentOff: 20,
     }
-    const db = createMockDb({ selectWhereGet: createdCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: createdCoupon })
 
     const result = await createCoupon(db, {
       code: 'save20',
@@ -158,7 +155,7 @@ describe('updateCoupon', () => {
   it('updates active and name fields', async () => {
     const { updateCoupon } = await import('$lib/server/billing/subscription-service')
     const updatedCoupon = { code: 'SAVE20', id: 'c-1', name: 'Updated', active: false }
-    const db = createMockDb({ selectWhereGet: updatedCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: updatedCoupon })
 
     const result = await updateCoupon(db, 'c-1', { active: false, name: 'Updated' })
 
@@ -187,7 +184,9 @@ describe('updateCoupon', () => {
 
 describe('validateCouponForRedemption', () => {
   it('returns valid for active, non-expired coupon', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
     const mockCoupon = {
       active: true,
       code: 'SAVE20',
@@ -199,7 +198,7 @@ describe('validateCouponForRedemption', () => {
       timesRedeemed: 0,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await validateCouponForRedemption(db, 'SAVE20')
 
@@ -208,8 +207,10 @@ describe('validateCouponForRedemption', () => {
   })
 
   it('rejects non-existent coupon', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ selectWhereGet: undefined })
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
+    const db = createMockDbWithReturnValues({ selectWhereGet: undefined })
 
     const result = await validateCouponForRedemption(db, 'INVALID')
 
@@ -218,7 +219,9 @@ describe('validateCouponForRedemption', () => {
   })
 
   it('rejects inactive coupon', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
     const mockCoupon = {
       active: false,
       code: 'SAVE20',
@@ -229,7 +232,7 @@ describe('validateCouponForRedemption', () => {
       timesRedeemed: 0,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await validateCouponForRedemption(db, 'SAVE20')
 
@@ -238,7 +241,9 @@ describe('validateCouponForRedemption', () => {
   })
 
   it('rejects invalid coupon', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
     const mockCoupon = {
       active: true,
       code: 'SAVE20',
@@ -249,7 +254,7 @@ describe('validateCouponForRedemption', () => {
       timesRedeemed: 0,
       valid: false,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await validateCouponForRedemption(db, 'SAVE20')
 
@@ -258,7 +263,9 @@ describe('validateCouponForRedemption', () => {
   })
 
   it('rejects expired coupon', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
     const mockCoupon = {
       active: true,
       code: 'SAVE20',
@@ -269,7 +276,7 @@ describe('validateCouponForRedemption', () => {
       timesRedeemed: 0,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await validateCouponForRedemption(db, 'SAVE20')
 
@@ -278,7 +285,9 @@ describe('validateCouponForRedemption', () => {
   })
 
   it('rejects coupon at max redemptions', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
     const mockCoupon = {
       active: true,
       code: 'SAVE20',
@@ -290,7 +299,7 @@ describe('validateCouponForRedemption', () => {
       timesRedeemed: 10,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await validateCouponForRedemption(db, 'SAVE20')
 
@@ -299,7 +308,9 @@ describe('validateCouponForRedemption', () => {
   })
 
   it('allows coupon under max redemptions', async () => {
-    const { validateCouponForRedemption } = await import('$lib/server/billing/subscription-service')
+    const { validateCouponForRedemption } = await import(
+      '$lib/server/billing/subscription-service'
+    )
     const mockCoupon = {
       active: true,
       code: 'SAVE20',
@@ -311,7 +322,7 @@ describe('validateCouponForRedemption', () => {
       timesRedeemed: 5,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await validateCouponForRedemption(db, 'SAVE20')
 
@@ -322,7 +333,7 @@ describe('validateCouponForRedemption', () => {
 describe('redeemCoupon', () => {
   it('returns error when validation fails', async () => {
     const { redeemCoupon } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ selectWhereGet: undefined })
+    const db = createMockDbWithReturnValues({ selectWhereGet: undefined })
 
     const result = await redeemCoupon(db, 'INVALID')
 
@@ -343,7 +354,7 @@ describe('redeemCoupon', () => {
       timesRedeemed: 0,
       valid: true,
     }
-    const db = createMockDb({ selectWhereGet: mockCoupon })
+    const db = createMockDbWithReturnValues({ selectWhereGet: mockCoupon })
 
     const result = await redeemCoupon(db, 'SAVE20')
 
@@ -364,7 +375,7 @@ describe('redeemCoupon', () => {
       timesRedeemed: 5,
       valid: true,
     }
-    const db = createMockDb({
+    const db = createMockDbWithReturnValues({
       selectWhereGet: mockCoupon,
       updateReturning: [{ id: 'c-1' }],
     })
@@ -387,7 +398,7 @@ describe('redeemCoupon', () => {
       timesRedeemed: 10,
       valid: true,
     }
-    const db = createMockDb({
+    const db = createMockDbWithReturnValues({
       selectWhereGet: mockCoupon,
       updateReturning: [],
     })
@@ -417,7 +428,7 @@ describe('createStripeCoupon', () => {
         name: 'Summer Sale',
         percent_off: 25,
       }),
-      undefined
+      undefined,
     )
     expect(result.stripeCouponId).toBe('co_123')
   })
@@ -435,7 +446,7 @@ describe('createStripeCoupon', () => {
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.any(Object),
-      expect.objectContaining({ idempotencyKey: 'coupon-unique-key' })
+      expect.objectContaining({ idempotencyKey: 'coupon-unique-key' }),
     )
   })
 
@@ -445,7 +456,7 @@ describe('createStripeCoupon', () => {
     const mockStripe = { coupons: { create: mockCreate } }
 
     await expect(
-      createStripeCoupon(mockStripe as never, { name: 'Test', percentOff: 10 })
+      createStripeCoupon(mockStripe as never, { name: 'Test', percentOff: 10 }),
     ).rejects.toThrow(StripeApiError)
   })
 
@@ -458,7 +469,7 @@ describe('createStripeCoupon', () => {
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({ duration: 'once' }),
-      undefined
+      undefined,
     )
   })
 })

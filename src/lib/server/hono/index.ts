@@ -1,6 +1,8 @@
 import { renderAndSanitize, sanitizeHtml } from '$lib/markdown'
 import { escapeLike } from '$lib/server/escape-like'
 import { createLogger } from '$lib/server/logger'
+import { getVisitorHash } from '$lib/server/visitor-hash'
+import { escapeHtmlNullable } from '$lib/utils/escape-html'
 
 const logger = createLogger('api')
 
@@ -169,7 +171,6 @@ import {
 } from '$lib/server/search/indexer'
 import { createSearchService } from '$lib/server/search/service'
 import { isSafeUrl } from '$lib/server/security/ssrf'
-import { timingSafeEqual } from '$lib/server/security/timing-safe-equal'
 import type { DrizzleDb } from '$lib/server/services/types'
 import { detectSpam } from '$lib/server/spam-detector'
 import { CURRENT_TERMS_VERSION, needsTermsAcceptance } from '$lib/server/terms'
@@ -323,6 +324,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod/v4'
 
 import {
+  requireCronOrAdmin,
   requirePermission,
   requireTeamPermission,
   withApiKey,
@@ -336,12 +338,6 @@ import {
   withTeamMembership,
 } from './middleware'
 import type { Bindings, OrgEnv, ProtectedEnv, TeamEnv, Variables } from './types'
-
-async function sha256(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input)
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
-}
 
 function parsePositiveInt(value: string | null | undefined, fallback: number): number {
   if (!value) return fallback
@@ -360,6 +356,40 @@ function parseClampInt(
   const n = Number(value)
   if (!Number.isInteger(n)) return fallback
   return Math.min(max, Math.max(min, n))
+}
+
+interface FileUploadResult {
+  key: string
+  url: string
+}
+
+async function handleFileUpload(
+  formData: FormData,
+  validator: (file: File) => string | undefined,
+  storage: {
+    put: (
+      key: string,
+      body: ReadableStream,
+      opts: { contentType: string }
+    ) => Promise<FileUploadResult>
+  }
+): Promise<FileUploadResult> {
+  const file = formData.get('file')
+  if (!file || !(file instanceof File)) throw new BadRequestError('No file provided')
+
+  const validationError = validator(file)
+  if (validationError) throw new BadRequestError(validationError)
+
+  const sigError = await validateFileSignature(file)
+  if (sigError) throw new BadRequestError(sigError)
+
+  const scanResult = await scanUploadedFile(file)
+  if (!scanResult.clean) {
+    throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
+  }
+
+  const key = generateStorageKey(file.name)
+  return storage.put(key, file.stream(), { contentType: file.type })
 }
 
 const validate = <T extends z.ZodType>(schema: T) =>
@@ -847,9 +877,8 @@ app.post('/api/analytics/view', withRateLimit('analytics-view', 30, 60_000), asy
   }
 
   // Create visitor hash from IP + User-Agent (no raw PII stored long-term)
-  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown'
   const ua = c.req.header('user-agent') ?? 'unknown'
-  const visitorHash = await sha256(`${ip}:${ua}`)
+  const visitorHash = await getVisitorHash(c)
 
   // Dedup: skip if same visitor viewed same post within last hour
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
@@ -915,9 +944,7 @@ app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000
   const { postId, progress, readTime } = parsed.data
 
   // Find most recent view for this visitor + post
-  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown'
-  const ua = c.req.header('user-agent') ?? 'unknown'
-  const visitorHash = await sha256(`${ip}:${ua}`)
+  const visitorHash = await getVisitorHash(c)
 
   const view = await db
     .select({
@@ -951,6 +978,56 @@ app.post('/api/analytics/reading', withRateLimit('analytics-reading', 10, 60_000
 
 // ── Stripe Webhook (public) ───────────────────────────────────────────
 
+interface SubscriptionEmailContext {
+  planName: string
+  userEmail: string
+  userId: string | null
+  userName: string
+}
+
+async function resolveSubscriptionContext(
+  db: DrizzleDb,
+  opts: { stripeSubscriptionId?: string; stripeCustomerId?: string }
+): Promise<SubscriptionEmailContext | null> {
+  let subRow: { planId: string | null; userId: string | null } | undefined
+
+  if (opts.stripeSubscriptionId) {
+    ;[subRow] = await db
+      .select({ planId: subscription.planId, userId: subscription.userId })
+      .from(subscription)
+      .where(eq(subscription.stripeSubscriptionId, opts.stripeSubscriptionId))
+  } else if (opts.stripeCustomerId) {
+    ;[subRow] = await db
+      .select({ planId: subscription.planId, userId: subscription.userId })
+      .from(subscription)
+      .where(eq(subscription.stripeCustomerId, opts.stripeCustomerId))
+      .limit(1)
+  }
+
+  if (!subRow?.userId) return null
+
+  const [userRow] = await db
+    .select({ email: user.email, name: user.name })
+    .from(user)
+    .where(eq(user.id, subRow.userId))
+
+  if (!userRow?.email) return null
+
+  const [planRow] = subRow.planId
+    ? await db
+        .select({ name: subscriptionPlan.name })
+        .from(subscriptionPlan)
+        .where(eq(subscriptionPlan.id, subRow.planId))
+    : []
+
+  return {
+    planName: planRow?.name ?? 'Unknown',
+    userEmail: userRow.email,
+    userId: subRow.userId,
+    userName: userRow.name || 'there',
+  }
+}
+
 app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 }), async (c) => {
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
   if (!stripe) {
@@ -970,6 +1047,7 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
   let event: Awaited<ReturnType<typeof verifyWebhookSignature>> | undefined
   let existingEvent: { id: string; retryCount: number; status: string | null } | undefined
   const { db } = c.get('services')
+  const emailService = createEmailService(c.get('services').email)
   try {
     const body = await c.req.text()
     try {
@@ -1063,16 +1141,8 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
         const newPlanId = (sub.plan as Record<string, unknown>)?.id
 
         if (oldPlanId && newPlanId && oldPlanId !== newPlanId) {
-          const [subRow] = await db
-            .select({ planId: subscription.planId, userId: subscription.userId })
-            .from(subscription)
-            .where(eq(subscription.stripeSubscriptionId, stripeSubId))
-            .limit(1)
-          if (subRow?.userId) {
-            const [userRow] = await db
-              .select({ email: user.email, name: user.name })
-              .from(user)
-              .where(eq(user.id, subRow.userId))
+          const ctx = await resolveSubscriptionContext(db, { stripeSubscriptionId: stripeSubId })
+          if (ctx) {
             const [oldPlan] = await db
               .select({ name: subscriptionPlan.name })
               .from(subscriptionPlan)
@@ -1081,20 +1151,17 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
               .select({ name: subscriptionPlan.name })
               .from(subscriptionPlan)
               .where(eq(subscriptionPlan.stripePriceId, String(newPlanId)))
-            if (userRow?.email) {
-              const emailService = createEmailService(c.get('services').email)
-              c.executionCtx?.waitUntil?.(
-                emailService
-                  .sendPlanChanged(
-                    userRow.email,
-                    userRow.name || 'there',
-                    oldPlan?.name ?? 'Previous plan',
-                    newPlan?.name ?? 'New plan',
-                    new Date().toLocaleDateString()
-                  )
-                  .catch(() => {})
-              )
-            }
+            c.executionCtx?.waitUntil?.(
+              emailService
+                .sendPlanChanged(
+                  ctx.userEmail,
+                  ctx.userName,
+                  oldPlan?.name ?? 'Previous plan',
+                  newPlan?.name ?? 'New plan',
+                  new Date().toLocaleDateString()
+                )
+                .catch(() => {})
+            )
           }
         }
 
@@ -1129,31 +1196,17 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
           .set({ canceledAt: new Date(), status: 'canceled' })
           .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
         try {
-          const [subRow] = await db
-            .select({ planId: subscription.planId, userId: subscription.userId })
-            .from(subscription)
-            .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
-          if (subRow?.userId) {
-            const [userRow] = await db
-              .select({ email: user.email, name: user.name })
-              .from(user)
-              .where(eq(user.id, subRow.userId))
-            if (userRow?.email) {
-              const [planRow] = await db
-                .select({ name: subscriptionPlan.name })
-                .from(subscriptionPlan)
-                .where(eq(subscriptionPlan.id, subRow.planId))
-              const endDate = sub.current_period_end
-                ? new Date(Number(sub.current_period_end) * 1000).toLocaleDateString()
-                : 'now'
-              const emailService = createEmailService(c.get('services').email)
-              await emailService.sendSubscriptionCanceled(
-                userRow.email,
-                userRow.name || 'there',
-                planRow?.name ?? 'Unknown',
-                endDate
-              )
-            }
+          const ctx = await resolveSubscriptionContext(db, { stripeSubscriptionId: String(sub.id) })
+          if (ctx) {
+            const endDate = sub.current_period_end
+              ? new Date(Number(sub.current_period_end) * 1000).toLocaleDateString()
+              : 'now'
+            await emailService.sendSubscriptionCanceled(
+              ctx.userEmail,
+              ctx.userName,
+              ctx.planName,
+              endDate
+            )
           }
         } catch (emailError) {
           logger.error('Failed to send cancellation email', { error: emailError })
@@ -1213,31 +1266,19 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
           logger.warn('Duplicate invoice ignored in webhook', { stripeInvoiceId })
         }
         try {
-          if (invoiceUserId) {
-            const [userRow] = await db
-              .select({ email: user.email, name: user.name })
-              .from(user)
-              .where(eq(user.id, invoiceUserId))
-            if (userRow?.email && inv.subscription) {
-              const [subRow] = await db
-                .select({ planId: subscription.planId })
-                .from(subscription)
-                .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
-              const [planRow] = subRow
-                ? await db
-                    .select({ name: subscriptionPlan.name })
-                    .from(subscriptionPlan)
-                    .where(eq(subscriptionPlan.id, subRow.planId))
-                : []
+          if (inv.subscription) {
+            const ctx = await resolveSubscriptionContext(db, {
+              stripeSubscriptionId: String(inv.subscription),
+            })
+            if (ctx) {
               const amount = `$${(Number(inv.amount_paid) / 100).toFixed(2)}`
               const periodEnd = inv.period_end
                 ? new Date(Number(inv.period_end) * 1000).toLocaleDateString()
                 : 'next billing cycle'
-              const emailService = createEmailService(c.get('services').email)
               await emailService.sendPaymentSucceeded(
-                userRow.email,
-                userRow.name || 'there',
-                planRow?.name ?? 'Unknown',
+                ctx.userEmail,
+                ctx.userName,
+                ctx.planName,
                 amount,
                 periodEnd
               )
@@ -1294,30 +1335,18 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
           logger.warn('Duplicate invoice ignored in webhook', { stripeInvoiceId })
         }
         try {
-          if (invoiceUserId) {
-            const [userRow] = await db
-              .select({ email: user.email, name: user.name })
-              .from(user)
-              .where(eq(user.id, invoiceUserId))
-            if (userRow?.email && inv.subscription) {
-              const [subRow] = await db
-                .select({ planId: subscription.planId })
-                .from(subscription)
-                .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
-              const [planRow] = subRow
-                ? await db
-                    .select({ name: subscriptionPlan.name })
-                    .from(subscriptionPlan)
-                    .where(eq(subscriptionPlan.id, subRow.planId))
-                : []
+          if (inv.subscription) {
+            const ctx = await resolveSubscriptionContext(db, {
+              stripeSubscriptionId: String(inv.subscription),
+            })
+            if (ctx) {
               const retryDate = inv.next_payment_attempt
                 ? new Date(Number(inv.next_payment_attempt) * 1000).toLocaleDateString()
                 : undefined
-              const emailService = createEmailService(c.get('services').email)
               await emailService.sendPaymentFailed(
-                userRow.email,
-                userRow.name || 'there',
-                planRow?.name ?? 'Unknown',
+                ctx.userEmail,
+                ctx.userName,
+                ctx.planName,
                 retryDate
               )
             }
@@ -1335,31 +1364,17 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
           .set({ status: 'trialing' })
           .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
         try {
-          const [subRow] = await db
-            .select({ planId: subscription.planId, userId: subscription.userId })
-            .from(subscription)
-            .where(eq(subscription.stripeSubscriptionId, String(sub.id)))
-          if (subRow?.userId) {
-            const [userRow] = await db
-              .select({ email: user.email, name: user.name })
-              .from(user)
-              .where(eq(user.id, subRow.userId))
-            if (userRow?.email) {
-              const [planRow] = await db
-                .select({ name: subscriptionPlan.name })
-                .from(subscriptionPlan)
-                .where(eq(subscriptionPlan.id, subRow.planId))
-              const trialEndDate = sub.trial_end
-                ? new Date(Number(sub.trial_end) * 1000).toLocaleDateString()
-                : 'soon'
-              const emailService = createEmailService(c.get('services').email)
-              await emailService.sendTrialEndingSoon(
-                userRow.email,
-                userRow.name || 'there',
-                planRow?.name ?? 'Unknown',
-                trialEndDate
-              )
-            }
+          const ctx = await resolveSubscriptionContext(db, { stripeSubscriptionId: String(sub.id) })
+          if (ctx) {
+            const trialEndDate = sub.trial_end
+              ? new Date(Number(sub.trial_end) * 1000).toLocaleDateString()
+              : 'soon'
+            await emailService.sendTrialEndingSoon(
+              ctx.userEmail,
+              ctx.userName,
+              ctx.planName,
+              trialEndDate
+            )
           }
         } catch (emailError) {
           logger.error('Failed to send trial ending email', { error: emailError })
@@ -1496,48 +1511,26 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
         const inv = event.data.object as Record<string, unknown>
         const customerId = inv.customer as string
         if (customerId) {
-          const [subRow] = await db
-            .select({ planId: subscription.planId, userId: subscription.userId })
-            .from(subscription)
-            .where(eq(subscription.stripeCustomerId, String(customerId)))
-            .limit(1)
-          if (subRow?.userId) {
-            const [userRow] = await db
-              .select({ email: user.email, name: user.name })
-              .from(user)
-              .where(eq(user.id, subRow.userId))
-            const [planRow] = subRow.planId
-              ? await db
-                  .select({ name: subscriptionPlan.name })
-                  .from(subscriptionPlan)
-                  .where(eq(subscriptionPlan.id, subRow.planId))
-              : []
+          const ctx = await resolveSubscriptionContext(db, { stripeCustomerId: String(customerId) })
+          if (ctx) {
             const periodEnd = inv.period_end
               ? new Date(Number(inv.period_end) * 1000).toLocaleDateString()
               : 'next billing cycle'
-            if (userRow?.email) {
-              const emailService = createEmailService(c.get('services').email)
-              // Only send trial ending email if subscription is actually in trial
-              const trialSub = inv.subscription
-                ? await db
-                    .select({ status: subscription.status })
-                    .from(subscription)
-                    .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
-                    .get()
-                : undefined
-              const isTrial = trialSub?.status === 'trialing'
-              if (isTrial) {
-                c.executionCtx?.waitUntil?.(
-                  emailService
-                    .sendTrialEndingSoon(
-                      userRow.email,
-                      userRow.name || 'there',
-                      planRow?.name ?? 'your plan',
-                      periodEnd
-                    )
-                    .catch(() => {})
-                )
-              }
+            // Only send trial ending email if subscription is actually in trial
+            const trialSub = inv.subscription
+              ? await db
+                  .select({ status: subscription.status })
+                  .from(subscription)
+                  .where(eq(subscription.stripeSubscriptionId, String(inv.subscription)))
+                  .get()
+              : undefined
+            const isTrial = trialSub?.status === 'trialing'
+            if (isTrial) {
+              c.executionCtx?.waitUntil?.(
+                emailService
+                  .sendTrialEndingSoon(ctx.userEmail, ctx.userName, ctx.planName, periodEnd)
+                  .catch(() => {})
+              )
             }
           }
         }
@@ -2533,6 +2526,19 @@ protectedApp.patch(
   }
 )
 
+async function requireNotificationOwnership(
+  db: DrizzleDb,
+  notificationId: string,
+  userId: string
+): Promise<void> {
+  const existing = await db
+    .select({ id: notification.id })
+    .from(notification)
+    .where(and(eq(notification.id, notificationId), eq(notification.userId, userId)))
+    .get()
+  if (!existing) throw new NotFoundError()
+}
+
 protectedApp.patch(
   '/notifications/:id/read',
   withRateLimit('notifications-mutate', 30, 60_000),
@@ -2541,15 +2547,7 @@ protectedApp.patch(
     const { id: userId } = c.get('user')
     const id = c.req.param('id')
 
-    const existing = await db
-      .select({ id: notification.id })
-      .from(notification)
-      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-      .get()
-
-    if (!existing) {
-      throw new NotFoundError()
-    }
+    await requireNotificationOwnership(db, id, userId)
 
     await db.update(notification).set({ readAt: new Date() }).where(eq(notification.id, id))
 
@@ -2565,15 +2563,7 @@ protectedApp.delete(
     const { id: userId } = c.get('user')
     const id = c.req.param('id')
 
-    const existing = await db
-      .select({ id: notification.id })
-      .from(notification)
-      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-      .get()
-
-    if (!existing) {
-      throw new NotFoundError()
-    }
+    await requireNotificationOwnership(db, id, userId)
 
     await db.delete(notification).where(eq(notification.id, id))
 
@@ -2589,15 +2579,7 @@ protectedApp.patch(
     const { id: userId } = c.get('user')
     const id = c.req.param('id')
 
-    const existing = await db
-      .select({ id: notification.id })
-      .from(notification)
-      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-      .get()
-
-    if (!existing) {
-      throw new NotFoundError()
-    }
+    await requireNotificationOwnership(db, id, userId)
 
     await db.update(notification).set({ archivedAt: new Date() }).where(eq(notification.id, id))
 
@@ -2613,15 +2595,7 @@ protectedApp.patch(
     const { id: userId } = c.get('user')
     const id = c.req.param('id')
 
-    const existing = await db
-      .select({ id: notification.id })
-      .from(notification)
-      .where(and(eq(notification.id, id), eq(notification.userId, userId)))
-      .get()
-
-    if (!existing) {
-      throw new NotFoundError()
-    }
+    await requireNotificationOwnership(db, id, userId)
 
     await db.update(notification).set({ archivedAt: null }).where(eq(notification.id, id))
 
@@ -2701,6 +2675,87 @@ protectedApp.get('/billing/subscription', async (c) => {
   return c.json({ subscription: sub ?? null })
 })
 
+// ── Shared billing helpers ──────────────────────────────────────────
+
+function handleStripeError(error: unknown, operation: string): never {
+  if (error instanceof StripeApiError) {
+    logger.error(`Stripe ${operation} error`, { error: error.cause })
+    throw new BadRequestError(`Failed to ${operation}`)
+  }
+  throw error
+}
+
+async function validateCheckoutUrls(
+  successUrl: string | undefined,
+  cancelUrl: string | undefined,
+  origin: string
+): Promise<void> {
+  const { isSameOrigin, isSafeRedirectUrl } = await import('$lib/server/billing/stripe')
+  if (
+    successUrl &&
+    !isSafeRedirectUrl(successUrl) &&
+    !(origin && isSameOrigin(successUrl, origin))
+  ) {
+    throw new BadRequestError('successUrl must be a relative path')
+  }
+  if (cancelUrl && !isSafeRedirectUrl(cancelUrl) && !(origin && isSameOrigin(cancelUrl, origin))) {
+    throw new BadRequestError('cancelUrl must be a relative path')
+  }
+}
+
+async function performStripePlanChange(
+  stripe: Awaited<ReturnType<typeof getStripeClient>>,
+  stripeSubscriptionId: string,
+  newPriceId: string
+): Promise<void> {
+  const existingItems = await stripe.subscriptionItems.list({
+    subscription: stripeSubscriptionId,
+  })
+  const currentItemId = existingItems.data[0]?.id
+  if (currentItemId) {
+    await stripe.subscriptions.update(stripeSubscriptionId, {
+      items: [{ id: currentItemId, price: newPriceId }],
+      proration_behavior: 'create_prorations',
+    })
+  }
+}
+
+async function performCancel(
+  db: DrizzleDb,
+  sub: { id: string; stripeSubscriptionId: string | null },
+  stripeKey: string | undefined
+): Promise<void> {
+  if (sub.stripeSubscriptionId) {
+    const stripe = getStripeClient(stripeKey)
+    if (stripe) {
+      try {
+        await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
+      } catch (error) {
+        handleStripeError(error, 'cancel subscription')
+      }
+    }
+  }
+  await cancelSubscription(db, sub.id)
+}
+
+async function performReactivate(
+  db: DrizzleDb,
+  sub: { id: string; stripeSubscriptionId: string | null },
+  stripeKey: string | undefined
+): Promise<void> {
+  if (sub.stripeSubscriptionId) {
+    const stripe = getStripeClient(stripeKey)
+    if (stripe) {
+      try {
+        await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
+      } catch (error) {
+        handleStripeError(error, 'reactivate subscription')
+      }
+    }
+  }
+  await reactivateSubscription(db, sub.id)
+}
+
 protectedApp.post('/billing/checkout', withRateLimit('billing-checkout', 5, 60_000), async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const parsed = checkoutSessionSchema.safeParse(body)
@@ -2710,19 +2765,7 @@ protectedApp.post('/billing/checkout', withRateLimit('billing-checkout', 5, 60_0
 
   const servicesEnv = c.get('services').env
   const origin = servicesEnv.origin ?? ''
-  const { isSameOrigin, isSafeRedirectUrl } = await import('$lib/server/billing/stripe')
-  if (
-    !isSafeRedirectUrl(parsed.data.successUrl) &&
-    !(origin && isSameOrigin(parsed.data.successUrl, origin))
-  ) {
-    throw new BadRequestError('successUrl must be a relative path')
-  }
-  if (
-    !isSafeRedirectUrl(parsed.data.cancelUrl) &&
-    !(origin && isSameOrigin(parsed.data.cancelUrl, origin))
-  ) {
-    throw new BadRequestError('cancelUrl must be a relative path')
-  }
+  await validateCheckoutUrls(parsed.data.successUrl, parsed.data.cancelUrl, origin)
 
   const { db } = c.get('services')
   const currentUser = c.get('user')
@@ -2748,11 +2791,7 @@ protectedApp.post('/billing/checkout', withRateLimit('billing-checkout', 5, 60_0
       })
       return c.json({ url: session.url })
     } catch (error) {
-      if (error instanceof StripeApiError) {
-        logger.error('Stripe checkout error', { error: error.cause })
-        throw new BadRequestError('Failed to create checkout session')
-      }
-      throw error
+      handleStripeError(error, 'create checkout session')
     }
   }
 
@@ -2829,22 +2868,9 @@ protectedApp.post('/billing/change-plan', withRateLimit('billing-change', 3, 60_
     const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
     if (stripe) {
       try {
-        const existingItems = await stripe.subscriptionItems.list({
-          subscription: sub.stripeSubscriptionId,
-        })
-        const currentItemId = existingItems.data[0]?.id
-        if (currentItemId) {
-          await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-            items: [{ id: currentItemId, price: newPlan.stripePriceId }],
-            proration_behavior: 'create_prorations',
-          })
-        }
+        await performStripePlanChange(stripe, sub.stripeSubscriptionId, newPlan.stripePriceId)
       } catch (error) {
-        if (error instanceof StripeApiError) {
-          logger.error('Stripe plan change error', { error: error.cause })
-          throw new BadRequestError('Failed to update billing plan')
-        }
-        throw error
+        handleStripeError(error, 'update billing plan')
       }
     }
   }
@@ -2860,22 +2886,7 @@ protectedApp.post('/billing/cancel', withRateLimit('billing-cancel', 3, 60_000),
   const sub = await getUserSubscription(db, userId)
   if (!sub) throw new BadRequestError('No active subscription')
 
-  if (sub.stripeSubscriptionId) {
-    const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-    if (stripe) {
-      try {
-        await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
-      } catch (error) {
-        if (error instanceof StripeApiError) {
-          logger.error('Stripe cancel error', { error: error.cause })
-          throw new BadRequestError('Failed to cancel subscription')
-        }
-        throw error
-      }
-    }
-  }
-
-  await cancelSubscription(db, sub.id)
+  await performCancel(db, sub, c.env?.STRIPE_SECRET_KEY)
 
   return c.json({ success: true })
 })
@@ -2897,22 +2908,7 @@ protectedApp.post(
 
     if (!sub) throw new BadRequestError('No canceled subscription found')
 
-    if (sub.stripeSubscriptionId) {
-      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-      if (stripe) {
-        try {
-          await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
-        } catch (error) {
-          if (error instanceof StripeApiError) {
-            logger.error('Stripe reactivate error', { error: error.cause })
-            throw new BadRequestError('Failed to reactivate subscription')
-          }
-          throw error
-        }
-      }
-    }
-
-    await reactivateSubscription(db, sub.id)
+    await performReactivate(db, sub, c.env?.STRIPE_SECRET_KEY)
 
     return c.json({ success: true })
   }
@@ -3136,11 +3132,7 @@ protectedApp.post(
             invoice_settings: { default_payment_method: pm.stripePaymentMethodId },
           })
         } catch (error) {
-          if (error instanceof StripeApiError) {
-            logger.error('Stripe set default payment method error', { error: error.cause })
-            throw new BadRequestError('Failed to update payment method')
-          }
-          throw error
+          handleStripeError(error, 'update payment method')
         }
       }
     }
@@ -3960,6 +3952,15 @@ protectedApp.delete('/comments/:id', withRateLimit('comment-mutate', 20, 60_000)
 
 // ── Blog (admin only) ────────────────────────────────────────────────
 
+function generateSlug(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return slug || `org-${uuid().slice(0, 8)}`
+}
+
 const blogApp = new Hono<ProtectedEnv>().use('*', requireAdmin)
 
 const toNullable = (v: string | undefined | null) => v ?? null
@@ -4182,11 +4183,7 @@ blogApp.post('/tags', withRateLimit('blog-mutate'), validate(createTagSchema), a
   const { db } = c.get('services')
   const currentUser = c.get('user')
 
-  const slugValue = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+  const slugValue = generateSlug(name)
 
   const existing = await db
     .select({ id: blogTag.id })
@@ -4222,11 +4219,7 @@ blogApp.patch('/tags/:id', withRateLimit('blog-mutate'), validate(updateTagSchem
     .get()
   if (!existing) throw new NotFoundError()
 
-  const slugValue = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+  const slugValue = generateSlug(name)
 
   const slugConflict = await db
     .select({ id: blogTag.id })
@@ -4496,170 +4489,101 @@ blogApp.patch('/:id', withRateLimit('blog-mutate'), validate(updatePostSchema), 
   return c.json({ success: true })
 })
 
-blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
-  const { db } = c.get('services')
-  const id = c.req.param('id')
+type SearchAction = 'deindex' | 'index' | 'none'
 
-  const existing = await db.select().from(blogPost).where(eq(blogPost.id, id)).get()
-  if (!existing) {
-    throw new NotFoundError()
+async function changeBlogPostStatus(
+  db: DrizzleDb,
+  cache: { purgeBlog: (slug?: string) => Promise<void> },
+  postId: string,
+  userId: string,
+  opts: {
+    action: string
+    searchAction: SearchAction
+    updates: Record<string, unknown>
+    extraMetadata?: Record<string, unknown>
   }
+): Promise<void> {
+  const existing = await db
+    .select({ id: blogPost.id, slug: blogPost.slug })
+    .from(blogPost)
+    .where(eq(blogPost.id, postId))
+    .get()
+  if (!existing) throw new NotFoundError()
 
-  await db
-    .update(blogPost)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(eq(blogPost.id, id))
-
-  await c.get('services').cache.purgeBlog(existing.slug)
+  await db.update(blogPost).set(opts.updates).where(eq(blogPost.id, postId))
+  await cache.purgeBlog(existing.slug)
 
   await writeAuditLog(db, {
-    action: 'blog.delete',
-    entityId: id,
+    action: opts.action,
+    entityId: postId,
     entityType: 'blog_post',
-    metadata: { slug: existing.slug, title: existing.title },
-    userId: c.get('user').id,
+    metadata: { slug: existing.slug, ...opts.extraMetadata },
+    userId,
   })
 
-  deindexEntity(db, id, 'blog_post').catch((error) =>
-    logger.error('Search deindex failed (blog delete)', { error })
-  )
+  if (opts.searchAction === 'index') {
+    indexBlogPost(db, postId).catch((error) => logger.error('Search index failed', { error }))
+  } else if (opts.searchAction === 'deindex') {
+    deindexEntity(db, postId, 'blog_post').catch((error) =>
+      logger.error('Search deindex failed', { error })
+    )
+  }
+}
 
+blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
+  const { db } = c.get('services')
+  // Fetch title separately for audit metadata
+  const existing = await db
+    .select({ title: blogPost.title })
+    .from(blogPost)
+    .where(eq(blogPost.id, c.req.param('id')))
+    .get()
+  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
+    action: 'blog.delete',
+    extraMetadata: { title: existing?.title },
+    searchAction: 'deindex',
+    updates: { deletedAt: new Date(), updatedAt: new Date() },
+  })
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  const id = c.req.param('id')
-
-  const existing = await db
-    .select({ id: blogPost.id, slug: blogPost.slug })
-    .from(blogPost)
-    .where(eq(blogPost.id, id))
-    .get()
-  if (!existing) {
-    throw new NotFoundError()
-  }
-
-  await db
-    .update(blogPost)
-    .set({ publishedAt: new Date(), status: 'published', updatedAt: new Date() })
-    .where(eq(blogPost.id, id))
-
-  await c.get('services').cache.purgeBlog(existing.slug)
-
-  await writeAuditLog(db, {
+  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
     action: 'blog.publish',
-    entityId: id,
-    entityType: 'blog_post',
-    metadata: { slug: existing.slug },
-    userId: c.get('user').id,
+    searchAction: 'index',
+    updates: { publishedAt: new Date(), status: 'published', updatedAt: new Date() },
   })
-
-  indexBlogPost(db, id).catch((error) =>
-    logger.error('Search index failed (blog publish)', { error })
-  )
-
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/unpublish', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  const id = c.req.param('id')
-
-  const existing = await db
-    .select({ id: blogPost.id, slug: blogPost.slug })
-    .from(blogPost)
-    .where(eq(blogPost.id, id))
-    .get()
-  if (!existing) {
-    throw new NotFoundError()
-  }
-
-  await db
-    .update(blogPost)
-    .set({ status: 'draft', updatedAt: new Date() })
-    .where(eq(blogPost.id, id))
-
-  await c.get('services').cache.purgeBlog(existing.slug)
-
-  await writeAuditLog(db, {
+  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
     action: 'blog.unpublish',
-    entityId: id,
-    entityType: 'blog_post',
-    metadata: { slug: existing.slug },
-    userId: c.get('user').id,
+    searchAction: 'none',
+    updates: { status: 'draft', updatedAt: new Date() },
   })
-
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  const id = c.req.param('id')
-
-  const existing = await db
-    .select({ id: blogPost.id, slug: blogPost.slug })
-    .from(blogPost)
-    .where(eq(blogPost.id, id))
-    .get()
-  if (!existing) {
-    throw new NotFoundError()
-  }
-
-  await db
-    .update(blogPost)
-    .set({ status: 'archived', updatedAt: new Date() })
-    .where(eq(blogPost.id, id))
-
-  await c.get('services').cache.purgeBlog(existing.slug)
-
-  await writeAuditLog(db, {
+  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
     action: 'blog.archive',
-    entityId: id,
-    entityType: 'blog_post',
-    metadata: { slug: existing.slug },
-    userId: c.get('user').id,
+    searchAction: 'deindex',
+    updates: { status: 'archived', updatedAt: new Date() },
   })
-
-  deindexEntity(db, id, 'blog_post').catch((error) =>
-    logger.error('Search deindex failed (blog archive)', { error })
-  )
-
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  const id = c.req.param('id')
-
-  const existing = await db
-    .select({ id: blogPost.id, slug: blogPost.slug })
-    .from(blogPost)
-    .where(eq(blogPost.id, id))
-    .get()
-  if (!existing) {
-    throw new NotFoundError()
-  }
-
-  await db
-    .update(blogPost)
-    .set({ deletedAt: null, updatedAt: new Date() })
-    .where(eq(blogPost.id, id))
-
-  await c.get('services').cache.purgeBlog()
-
-  await writeAuditLog(db, {
+  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
     action: 'blog.restore',
-    entityId: id,
-    entityType: 'blog_post',
-    metadata: { slug: existing.slug },
-    userId: c.get('user').id,
+    searchAction: 'index',
+    updates: { deletedAt: null, updatedAt: new Date() },
   })
-
-  indexBlogPost(db, id).catch((error) =>
-    logger.error('Search index failed (blog restore)', { error })
-  )
-
   return c.json({ success: true })
 })
 
@@ -4876,45 +4800,12 @@ function sanitizeEmbedHtml(html: string): string {
 }
 
 function escapeHtmlEntities(str: string | null | undefined): string | null {
-  if (!str) return null
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+  return escapeHtmlNullable(str)
 }
 
 blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
   const formData = await c.req.formData()
-  const file = formData.get('file')
-
-  if (!file || !(file instanceof File)) {
-    throw new BadRequestError('No file provided')
-  }
-
-  const validationError = validateMediaUpload(file)
-  if (validationError) {
-    throw new BadRequestError(validationError)
-  }
-
-  const sigError = await validateFileSignature(file)
-  if (sigError) {
-    throw new BadRequestError(sigError)
-  }
-
-  const scanResult = await scanUploadedFile(file)
-  if (!scanResult.clean) {
-    return c.json(
-      { error: `File rejected: threat detected (${scanResult.threats.join(', ')})` },
-      422
-    )
-  }
-
-  const key = generateStorageKey(file.name)
-  const result = await c.get('services').storage.put(key, file.stream(), {
-    contentType: file.type,
-  })
-
+  const result = await handleFileUpload(formData, validateMediaUpload, c.get('services').storage)
   return c.json({ key: result.key, url: result.url }, 201)
 })
 
@@ -5424,32 +5315,7 @@ adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
 
 adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
   const formData = await c.req.formData()
-  const file = formData.get('file')
-
-  if (!file || !(file instanceof File)) {
-    throw new BadRequestError('No file provided')
-  }
-
-  const validationError = validateImageUpload(file)
-  if (validationError) {
-    throw new BadRequestError(validationError)
-  }
-
-  const sigError = await validateFileSignature(file)
-  if (sigError) {
-    throw new BadRequestError(sigError)
-  }
-
-  const scanResult = await scanUploadedFile(file)
-  if (!scanResult.clean) {
-    throw new BadRequestError(`File rejected: threat detected (${scanResult.threats.join(', ')})`)
-  }
-
-  const key = generateStorageKey(file.name)
-  const result = await c.get('services').storage.put(key, file.stream(), {
-    contentType: file.type,
-  })
-
+  const result = await handleFileUpload(formData, validateImageUpload, c.get('services').storage)
   return c.json({ key: result.key, url: result.url }, 201)
 })
 
@@ -5772,254 +5638,226 @@ adminApp.patch('/reports/:id', validate(resolveReportSchema), async (c) => {
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-app.post('/api/admin/cleanup', withRateLimit('admin-cleanup', 5, 60_000), async (c) => {
-  const cronSecret = c.req.header('x-cron-secret')
-  const configuredSecret = c.get('services').env.cronSecret
-  const currentUser = c.get('user')
-  const isCron =
-    cronSecret &&
-    configuredSecret &&
-    cronSecret.length > 0 &&
-    timingSafeEqual(cronSecret, configuredSecret)
+app.post(
+  '/api/admin/cleanup',
+  withRateLimit('admin-cleanup', 5, 60_000),
+  requireCronOrAdmin,
+  async (c) => {
+    const { db } = c.get('services')
+    const cutoff = new Date(Date.now() - THIRTY_DAYS_MS)
 
-  if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
-    throw new ForbiddenError()
-  }
+    const deletedPosts = await db
+      .delete(blogPost)
+      .where(and(isNotNull(blogPost.deletedAt), lt(blogPost.deletedAt, cutoff)))
+      .returning({ id: blogPost.id })
 
-  const { db } = c.get('services')
-  const cutoff = new Date(Date.now() - THIRTY_DAYS_MS)
+    const deletedItems = await db
+      .delete(item)
+      .where(and(isNotNull(item.deletedAt), lt(item.deletedAt, cutoff)))
+      .returning({ id: item.id })
 
-  const deletedPosts = await db
-    .delete(blogPost)
-    .where(and(isNotNull(blogPost.deletedAt), lt(blogPost.deletedAt, cutoff)))
-    .returning({ id: blogPost.id })
+    const deletedUsers = await db
+      .delete(user)
+      .where(and(isNotNull(user.deletedAt), lt(user.deletedAt, cutoff)))
+      .returning({ id: user.id })
 
-  const deletedItems = await db
-    .delete(item)
-    .where(and(isNotNull(item.deletedAt), lt(item.deletedAt, cutoff)))
-    .returning({ id: item.id })
-
-  const deletedUsers = await db
-    .delete(user)
-    .where(and(isNotNull(user.deletedAt), lt(user.deletedAt, cutoff)))
-    .returning({ id: user.id })
-
-  // Hard-delete soft-deleted orgs (excluding those with active/trialing subscriptions)
-  const orgsWithSubs = await db
-    .select({ organizationId: subscription.organizationId })
-    .from(subscription)
-    .where(
-      and(
-        isNotNull(subscription.organizationId),
-        or(eq(subscription.status, 'active'), eq(subscription.status, 'trialing'))
-      )
-    )
-
-  const protectedOrgIds = new Set(orgsWithSubs.map((s) => s.organizationId))
-
-  const softDeletedOrgs = await db
-    .select({ id: organization.id })
-    .from(organization)
-    .where(and(isNotNull(organization.deletedAt), lt(organization.deletedAt, cutoff)))
-
-  const orgsToDelete = softDeletedOrgs.filter((o) => !protectedOrgIds.has(o.id))
-
-  let deletedOrgs: { id: string }[] = []
-  if (orgsToDelete.length > 0) {
-    deletedOrgs = await db
-      .delete(organization)
+    // Hard-delete soft-deleted orgs (excluding those with active/trialing subscriptions)
+    const orgsWithSubs = await db
+      .select({ organizationId: subscription.organizationId })
+      .from(subscription)
       .where(
         and(
-          isNotNull(organization.deletedAt),
-          lt(organization.deletedAt, cutoff),
-          inArray(
-            organization.id,
-            orgsToDelete.map((o) => o.id)
-          )
+          isNotNull(subscription.organizationId),
+          or(eq(subscription.status, 'active'), eq(subscription.status, 'trialing'))
         )
       )
-      .returning({ id: organization.id })
+
+    const protectedOrgIds = new Set(orgsWithSubs.map((s) => s.organizationId))
+
+    const softDeletedOrgs = await db
+      .select({ id: organization.id })
+      .from(organization)
+      .where(and(isNotNull(organization.deletedAt), lt(organization.deletedAt, cutoff)))
+
+    const orgsToDelete = softDeletedOrgs.filter((o) => !protectedOrgIds.has(o.id))
+
+    let deletedOrgs: { id: string }[] = []
+    if (orgsToDelete.length > 0) {
+      deletedOrgs = await db
+        .delete(organization)
+        .where(
+          and(
+            isNotNull(organization.deletedAt),
+            lt(organization.deletedAt, cutoff),
+            inArray(
+              organization.id,
+              orgsToDelete.map((o) => o.id)
+            )
+          )
+        )
+        .returning({ id: organization.id })
+    }
+
+    // Auto-expire temporary bans
+    const expiredBans = await db
+      .update(user)
+      .set({ banExpiresAt: null, banReason: null, status: 'active' })
+      .where(
+        and(
+          eq(user.status, 'suspended'),
+          isNotNull(user.banExpiresAt),
+          lt(user.banExpiresAt, new Date())
+        )
+      )
+      .returning({ id: user.id, name: user.name })
+
+    await Promise.all(
+      expiredBans.map((unbanned) =>
+        writeAuditLog(db, {
+          action: 'user.unban',
+          entityId: unbanned.id,
+          entityType: 'user',
+          metadata: { reason: 'auto_expired' },
+          userId: 'system',
+        })
+      )
+    )
+
+    // Purge expired API keys
+    const deletedApiKeys = await db
+      .delete(apiKey)
+      .where(and(isNotNull(apiKey.expiresAt), lt(apiKey.expiresAt, new Date())))
+      .returning({ id: apiKey.id })
+
+    // Purge usage logs older than 90 days
+    const usageLogCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+    const deletedUsageLogs = await db
+      .delete(apiKeyUsageLog)
+      .where(lt(apiKeyUsageLog.createdAt, usageLogCutoff))
+      .returning({ id: apiKeyUsageLog.id })
+
+    // Auto-activate announcements whose startsAt has passed
+    const activatedAnnouncements = await db
+      .update(announcement)
+      .set({ isActive: true })
+      .where(
+        and(
+          eq(announcement.isActive, false),
+          isNotNull(announcement.startsAt),
+          lte(announcement.startsAt, new Date())
+        )
+      )
+      .returning({ id: announcement.id })
+
+    // Auto-deactivate announcements whose endsAt has passed
+    const deactivatedAnnouncements = await db
+      .update(announcement)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(announcement.isActive, true),
+          isNotNull(announcement.endsAt),
+          lte(announcement.endsAt, new Date())
+        )
+      )
+      .returning({ id: announcement.id })
+
+    // Cleanup expired OAuth states
+    const { cleanupExpiredOAuthStates } = await import('$lib/server/integrations/oauth')
+    const deletedOAuthStates = await cleanupExpiredOAuthStates(db)
+
+    // Process pending email queue (retry failed emails)
+    const { EmailQueue } = await import('$lib/server/email/queue')
+    const emailQueue = new EmailQueue(c.get('services').email, db)
+    const emailStats = await emailQueue.processPending(db)
+
+    // Cleanup old sent/failed emails
+    const deletedEmails = await emailQueue.cleanup(db)
+
+    return c.json({
+      announcements: {
+        activated: activatedAnnouncements.length,
+        deactivated: deactivatedAnnouncements.length,
+      },
+      cutoff: cutoff.toISOString(),
+      emailQueue: {
+        ...emailStats,
+        cleaned: deletedEmails,
+      },
+      expiredBans: expiredBans.length,
+      purged: {
+        apiKeys: deletedApiKeys.length,
+        items: deletedItems.length,
+        oAuthStates: deletedOAuthStates,
+        organizations: deletedOrgs.length,
+        posts: deletedPosts.length,
+        usageLogs: deletedUsageLogs.length,
+        users: deletedUsers.length,
+      },
+    })
   }
-
-  // Auto-expire temporary bans
-  const expiredBans = await db
-    .update(user)
-    .set({ banExpiresAt: null, banReason: null, status: 'active' })
-    .where(
-      and(
-        eq(user.status, 'suspended'),
-        isNotNull(user.banExpiresAt),
-        lt(user.banExpiresAt, new Date())
-      )
-    )
-    .returning({ id: user.id, name: user.name })
-
-  await Promise.all(
-    expiredBans.map((unbanned) =>
-      writeAuditLog(db, {
-        action: 'user.unban',
-        entityId: unbanned.id,
-        entityType: 'user',
-        metadata: { reason: 'auto_expired' },
-        userId: 'system',
-      })
-    )
-  )
-
-  // Purge expired API keys
-  const deletedApiKeys = await db
-    .delete(apiKey)
-    .where(and(isNotNull(apiKey.expiresAt), lt(apiKey.expiresAt, new Date())))
-    .returning({ id: apiKey.id })
-
-  // Purge usage logs older than 90 days
-  const usageLogCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-  const deletedUsageLogs = await db
-    .delete(apiKeyUsageLog)
-    .where(lt(apiKeyUsageLog.createdAt, usageLogCutoff))
-    .returning({ id: apiKeyUsageLog.id })
-
-  // Auto-activate announcements whose startsAt has passed
-  const activatedAnnouncements = await db
-    .update(announcement)
-    .set({ isActive: true })
-    .where(
-      and(
-        eq(announcement.isActive, false),
-        isNotNull(announcement.startsAt),
-        lte(announcement.startsAt, new Date())
-      )
-    )
-    .returning({ id: announcement.id })
-
-  // Auto-deactivate announcements whose endsAt has passed
-  const deactivatedAnnouncements = await db
-    .update(announcement)
-    .set({ isActive: false })
-    .where(
-      and(
-        eq(announcement.isActive, true),
-        isNotNull(announcement.endsAt),
-        lte(announcement.endsAt, new Date())
-      )
-    )
-    .returning({ id: announcement.id })
-
-  // Cleanup expired OAuth states
-  const { cleanupExpiredOAuthStates } = await import('$lib/server/integrations/oauth')
-  const deletedOAuthStates = await cleanupExpiredOAuthStates(db)
-
-  // Process pending email queue (retry failed emails)
-  const { EmailQueue } = await import('$lib/server/email/queue')
-  const emailQueue = new EmailQueue(c.get('services').email, db)
-  const emailStats = await emailQueue.processPending(db)
-
-  // Cleanup old sent/failed emails
-  const deletedEmails = await emailQueue.cleanup(db)
-
-  return c.json({
-    announcements: {
-      activated: activatedAnnouncements.length,
-      deactivated: deactivatedAnnouncements.length,
-    },
-    cutoff: cutoff.toISOString(),
-    emailQueue: {
-      ...emailStats,
-      cleaned: deletedEmails,
-    },
-    expiredBans: expiredBans.length,
-    purged: {
-      apiKeys: deletedApiKeys.length,
-      items: deletedItems.length,
-      oAuthStates: deletedOAuthStates,
-      organizations: deletedOrgs.length,
-      posts: deletedPosts.length,
-      usageLogs: deletedUsageLogs.length,
-      users: deletedUsers.length,
-    },
-  })
-})
+)
 
 // ── Scheduled Publishing ──────────────────────────────────────────────
 
-app.post('/api/admin/publish-scheduled', withRateLimit('admin-publish', 5, 60_000), async (c) => {
-  const cronSecret = c.req.header('x-cron-secret')
-  const configuredSecret = c.get('services').env.cronSecret
-  const currentUser = c.get('user')
-  const isCron =
-    cronSecret &&
-    configuredSecret &&
-    cronSecret.length > 0 &&
-    timingSafeEqual(cronSecret, configuredSecret)
+app.post(
+  '/api/admin/publish-scheduled',
+  withRateLimit('admin-publish', 5, 60_000),
+  requireCronOrAdmin,
+  async (c) => {
+    const { db } = c.get('services')
+    const now = new Date()
 
-  if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
-    throw new ForbiddenError()
-  }
-
-  const { db } = c.get('services')
-  const now = new Date()
-
-  const due = await db
-    .select({ id: blogPost.id, slug: blogPost.slug, title: blogPost.title })
-    .from(blogPost)
-    .where(
-      and(
-        eq(blogPost.status, 'scheduled'),
-        isNull(blogPost.deletedAt),
-        isNotNull(blogPost.scheduledAt),
-        lte(blogPost.scheduledAt, now)
+    const due = await db
+      .select({ id: blogPost.id, slug: blogPost.slug, title: blogPost.title })
+      .from(blogPost)
+      .where(
+        and(
+          eq(blogPost.status, 'scheduled'),
+          isNull(blogPost.deletedAt),
+          isNotNull(blogPost.scheduledAt),
+          lte(blogPost.scheduledAt, now)
+        )
       )
-    )
 
-  if (due.length === 0) {
-    return c.json({ published: 0 })
+    if (due.length === 0) {
+      return c.json({ published: 0 })
+    }
+
+    const ids = due.map((p) => p.id)
+
+    await db
+      .update(blogPost)
+      .set({ publishedAt: now, scheduledAt: null, status: 'published', updatedAt: now })
+      .where(and(eq(blogPost.status, 'scheduled'), inArray(blogPost.id, ids)))
+
+    await Promise.all([
+      ...due.map((post) => c.get('services').cache.purgeBlog(post.slug)),
+      ...due.map((post) =>
+        writeAuditLog(db, {
+          action: 'blog.publish',
+          entityId: post.id,
+          entityType: 'blog_post',
+          metadata: { reason: 'scheduled', slug: post.slug, title: post.title },
+          userId: 'system',
+        })
+      ),
+      ...due.map((post) =>
+        indexBlogPost(db, post.id).catch((error) =>
+          logger.error('Search index failed (scheduled publish)', { error })
+        )
+      ),
+    ])
+
+    return c.json({ posts: due.map((p) => p.slug), published: due.length })
   }
-
-  const ids = due.map((p) => p.id)
-
-  await db
-    .update(blogPost)
-    .set({ publishedAt: now, scheduledAt: null, status: 'published', updatedAt: now })
-    .where(and(eq(blogPost.status, 'scheduled'), inArray(blogPost.id, ids)))
-
-  await Promise.all([
-    ...due.map((post) => c.get('services').cache.purgeBlog(post.slug)),
-    ...due.map((post) =>
-      writeAuditLog(db, {
-        action: 'blog.publish',
-        entityId: post.id,
-        entityType: 'blog_post',
-        metadata: { reason: 'scheduled', slug: post.slug, title: post.title },
-        userId: 'system',
-      })
-    ),
-    ...due.map((post) =>
-      indexBlogPost(db, post.id).catch((error) =>
-        logger.error('Search index failed (scheduled publish)', { error })
-      )
-    ),
-  ])
-
-  return c.json({ posts: due.map((p) => p.slug), published: due.length })
-})
+)
 
 app.post(
   '/api/admin/retry-webhooks',
   withRateLimit('admin-webhooks-retry', 5, 60_000),
+  requireCronOrAdmin,
   async (c) => {
-    const cronSecret = c.req.header('x-cron-secret')
-    const configuredSecret = c.get('services').env.cronSecret
-    const isCron =
-      cronSecret &&
-      configuredSecret &&
-      cronSecret.length > 0 &&
-      timingSafeEqual(cronSecret, configuredSecret)
-    const currentUser = c.get('user')
-
-    if (!isCron && (!currentUser || currentUser.role !== 'admin')) {
-      throw new ForbiddenError()
-    }
-
     const { db } = c.get('services')
     const result = await processRetryableDeliveries(db)
     return c.json(result)
@@ -6027,15 +5865,6 @@ app.post(
 )
 
 // ── Organizations (auth required) ─────────────────────────────────────
-
-function generateSlug(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-  return slug || `org-${uuid().slice(0, 8)}`
-}
 
 const orgApp = new Hono<OrgEnv>().use('*', requireUser)
 
@@ -6678,21 +6507,7 @@ orgApp.post(
 
     const servicesEnv = c.get('services').env
     const origin = servicesEnv.origin ?? ''
-    const { isSameOrigin, isSafeRedirectUrl } = await import('$lib/server/billing/stripe')
-    if (
-      successUrl &&
-      !isSafeRedirectUrl(successUrl) &&
-      !(origin && isSameOrigin(successUrl, origin))
-    ) {
-      throw new BadRequestError('successUrl must be a relative path')
-    }
-    if (
-      cancelUrl &&
-      !isSafeRedirectUrl(cancelUrl) &&
-      !(origin && isSameOrigin(cancelUrl, origin))
-    ) {
-      throw new BadRequestError('cancelUrl must be a relative path')
-    }
+    await validateCheckoutUrls(successUrl, cancelUrl, origin)
 
     const { db } = c.get('services')
 
@@ -6719,11 +6534,7 @@ orgApp.post(
         })
         return c.json({ url: session.url })
       } catch (error) {
-        if (error instanceof StripeApiError) {
-          logger.error('Stripe org checkout error', { error: error.cause })
-          throw new BadRequestError('Failed to create checkout session')
-        }
-        throw error
+        handleStripeError(error, 'create checkout session')
       }
     }
 
@@ -6775,27 +6586,14 @@ orgApp.post(
       const stripe = getStripeClient(services.env.STRIPE_SECRET_KEY)
       if (stripe) {
         try {
-          const existingItems = await stripe.subscriptionItems.list({
-            subscription: sub.stripeSubscriptionId,
-          })
-          const currentItemId = existingItems.data[0]?.id
-          if (currentItemId) {
-            await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-              items: [{ id: currentItemId, price: newPlan.stripePriceId }],
-              proration_behavior: 'create_prorations',
-            })
-          }
+          await performStripePlanChange(stripe, sub.stripeSubscriptionId, newPlan.stripePriceId)
         } catch (error) {
-          if (error instanceof StripeApiError) {
-            logger.error('Stripe org plan change error', { error: error.cause })
-            throw new BadRequestError('Failed to update billing plan')
-          }
-          throw error
+          handleStripeError(error, 'update billing plan')
         }
       }
     }
 
-    const result = await changeSubscriptionPlan(db, sub.id, body.newPlanId)
+    const result = await changeSubscriptionPlan(db, sub.id, parsed.data.newPlanId)
     return c.json({ prorationAmountInCents: result.prorationAmountInCents, success: true })
   }
 )
@@ -6830,12 +6628,7 @@ orgApp.post(
     const sub = await getOrgSubscription(db, org.id)
     if (!sub) throw new BadRequestError('No active subscription for this organization')
 
-    if (sub.stripeSubscriptionId) {
-      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-      if (stripe) await cancelStripeSubscription(stripe, sub.stripeSubscriptionId)
-    }
-
-    await cancelSubscription(db, sub.id)
+    await performCancel(db, sub, c.env?.STRIPE_SECRET_KEY)
 
     return c.json({ success: true })
   }
@@ -6860,12 +6653,7 @@ orgApp.post(
 
     if (!sub) throw new BadRequestError('No canceled subscription found for this organization')
 
-    if (sub.stripeSubscriptionId) {
-      const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
-      if (stripe) await reactivateStripeSubscription(stripe, sub.stripeSubscriptionId)
-    }
-
-    await reactivateSubscription(db, sub.id)
+    await performReactivate(db, sub, c.env?.STRIPE_SECRET_KEY)
 
     return c.json({ success: true })
   }

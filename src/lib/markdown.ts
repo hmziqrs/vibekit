@@ -1,17 +1,10 @@
+import { escapeHtml } from '$lib/utils/escape-html'
 import hljs from 'highlight.js'
 import { sanitize } from 'isomorphic-dompurify'
 import { micromark } from 'micromark'
 import { gfm, gfmHtml } from 'micromark-extension-gfm'
 
 const CODE_BLOCK_RE = /<pre><code(?:\s+class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
 
 function unescapeHtml(str: string): string {
   return str

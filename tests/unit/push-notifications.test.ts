@@ -1,7 +1,7 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
+import { createMockDb } from '../helpers/mock-db'
 
-// Mock web-push before importing the module
 vi.mock('web-push', () => ({
   default: {
     sendNotification: vi
@@ -32,24 +32,9 @@ import { pushSubscription } from '$lib/server/db/schema'
 import { configureWebPush, subscribeToPush, unsubscribeFromPush } from '$lib/server/push'
 import webpush from 'web-push'
 
-function createMockDb() {
-  return {
-    delete: vi.fn<() => { where: () => Promise<void> }>().mockReturnValue({
-      where: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
-    }),
-    insert: vi
-      .fn<() => { values: () => { onConflictDoUpdate: () => Promise<void> } }>()
-      .mockReturnValue({
-        values: vi.fn<() => { onConflictDoUpdate: () => Promise<void> }>().mockReturnValue({
-          onConflictDoUpdate: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
-        }),
-      }),
-    select: vi.fn<() => { from: () => { where: () => Promise<unknown[]> } }>().mockReturnValue({
-      from: vi.fn<() => { where: () => Promise<unknown[]> }>().mockReturnValue({
-        where: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
-      }),
-    }),
-  } as unknown as DrizzleDb
+function createMockDbPush() {
+  const { db } = createMockDb()
+  return db as unknown as DrizzleDb
 }
 
 describe('configureWebPush', () => {
@@ -58,14 +43,14 @@ describe('configureWebPush', () => {
     expect(webpush.setVapidDetails).toHaveBeenCalledWith(
       'mailto:test@example.com',
       'public-key',
-      'private-key'
+      'private-key',
     )
   })
 })
 
 describe('subscribeToPush', () => {
   it('upserts subscription with onConflictDoUpdate', async () => {
-    const db = createMockDb()
+    const db = createMockDbPush()
     await subscribeToPush(db, {
       auth: 'auth-key',
       endpoint: 'https://push.example.com/sub/123',
@@ -77,7 +62,7 @@ describe('subscribeToPush', () => {
   })
 
   it('stores user agent when provided', async () => {
-    const db = createMockDb()
+    const db = createMockDbPush()
     await subscribeToPush(db, {
       auth: 'auth-key',
       endpoint: 'https://push.example.com/sub/123',
@@ -92,7 +77,7 @@ describe('subscribeToPush', () => {
 
 describe('unsubscribeFromPush', () => {
   it('deletes subscription by endpoint', async () => {
-    const db = createMockDb()
+    const db = createMockDbPush()
     await unsubscribeFromPush(db, 'https://push.example.com/sub/123')
     expect(db.delete).toHaveBeenCalledWith(pushSubscription)
   })

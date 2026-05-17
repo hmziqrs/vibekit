@@ -25,8 +25,8 @@ describe('webhook auto-retry cron processor', () => {
 
   it('cron endpoint accepts cron secret', () => {
     const source = readFileSync(resolve(root, 'src/lib/server/hono/index.ts'), 'utf8')
-    const match = source.match(/\/api\/admin\/retry-webhooks[\s\S]{0,300}cronSecret/)
-    expect(match).toBeTruthy()
+    expect(source).toContain('/api/admin/retry-webhooks')
+    expect(source).toContain('requireCronOrAdmin')
   })
 })
 

@@ -1,3 +1,4 @@
+import { escapeHtmlNullable as escapeHtmlEntities } from '$lib/utils/escape-html'
 import { describe, expect, it } from 'vitest'
 
 function sanitizeEmbedHtml(html: string): string {
@@ -5,15 +6,6 @@ function sanitizeEmbedHtml(html: string): string {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\s*on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     .replace(/javascript\s*:/gi, '')
-}
-
-function escapeHtmlEntities(str: string | null | undefined): string | null {
-  if (!str) return null
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 describe('link-preview sanitization', () => {
