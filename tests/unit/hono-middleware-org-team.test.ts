@@ -12,6 +12,8 @@ import { Hono, type Schema } from 'hono'
 import type { BlankEnv } from 'hono/types'
 import { describe, expect, it, vi } from 'vitest'
 
+import { createMockDb as createSharedMockDb } from '../helpers/mock-db'
+
 type TestUser = NonNullable<Variables['user']>
 type TestSession = NonNullable<Variables['session']>
 type TestAuth = Variables['auth']
@@ -46,14 +48,13 @@ function withErrorHandler<E extends BlankEnv = Env>(app: unknown) {
 }
 
 function createMockDb(responses: unknown[]) {
+  const { mocks } = createSharedMockDb()
   const getFn = vi.fn<() => Promise<unknown>>()
   for (const resp of responses) {
     getFn.mockResolvedValueOnce(resp)
   }
-  const whereFn = vi.fn<() => { get: typeof getFn }>().mockReturnValue({ get: getFn })
-  const fromFn = vi.fn<() => { where: typeof whereFn }>().mockReturnValue({ where: whereFn })
-  const selectFn = vi.fn<() => { from: typeof fromFn }>().mockReturnValue({ from: fromFn })
-  return { from: fromFn, get: getFn, select: selectFn, where: whereFn }
+  mocks.getFn.mockImplementation(async () => getFn())
+  return { from: mocks.fromFn, get: getFn, select: mocks.selectFn, where: mocks.whereFn }
 }
 
 describe('withOrgMembership', () => {

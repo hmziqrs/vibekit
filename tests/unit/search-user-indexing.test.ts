@@ -1,5 +1,6 @@
 import type { AppDb } from '$lib/server/services/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 function setupMocks(mockIndexUser: ReturnType<typeof vi.fn>) {
@@ -68,7 +69,7 @@ describe('auth databaseHooks - user indexing', () => {
     const mockBetterAuth = vi.mocked(betterAuth)
     // Use the LAST call (our test call with mockDb), not the first (module-level null)
     const authCallWithHooks = mockBetterAuth.mock.calls.findLast(
-      (call) => call[0].databaseHooks?.user?.create?.after,
+      (call) => call[0].databaseHooks?.user?.create?.after
     )
     expect(authCallWithHooks).toBeDefined()
 
@@ -89,7 +90,7 @@ describe('auth databaseHooks - user indexing', () => {
 
     const mockBetterAuth = vi.mocked(betterAuth)
     const authCallWithHooks = mockBetterAuth.mock.calls.findLast(
-      (call) => call[0].databaseHooks?.user?.create?.after,
+      (call) => call[0].databaseHooks?.user?.create?.after
     )
     expect(authCallWithHooks).toBeDefined()
 
@@ -107,7 +108,7 @@ describe('auth databaseHooks - user indexing', () => {
 
     const mockBetterAuth = vi.mocked(betterAuth)
     const ourCall = mockBetterAuth.mock.calls.findLast(
-      (call) => call[0].databaseHooks?.user?.create?.after,
+      (call) => call[0].databaseHooks?.user?.create?.after
     )
     expect(ourCall).toBeDefined()
     const hooks = ourCall![0].databaseHooks!

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createMockDb } from '../helpers/mock-db'
+
 vi.mock('$lib/server/db/schema', () => ({
   comment: {
     authorId: 'authorId',
@@ -14,26 +16,24 @@ describe('spam-detector deep', () => {
     vi.resetModules()
   })
 
-  function createMockDb(recentComment: unknown = null, recentCount = 0) {
+  function createMockDbSpamDeep(recentComment: unknown = null, recentCount = 0) {
+    const { db, mocks } = createMockDb({ getResult: recentComment })
+    const limitFn = mocks.limitFn
+    const getFn = mocks.getFn
+
+    // Make the mock return different results for different calls
     let callCount = 0
-    return {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockImplementation(() => {
-              callCount++
-              // First call: duplicate check, second call: rate check
-              return callCount === 1
-                ? Promise.resolve(recentComment)
-                : Promise.resolve(recentCount > 0 ? { count: recentCount } : null)
-            }),
-            limit: vi.fn().mockReturnValue({
-              get: vi.fn().mockResolvedValue(recentComment),
-            }),
-          }),
-        }),
-      }),
-    } as never
+    const originalGet = getFn.mockImplementation
+    getFn.mockImplementation(() => {
+      callCount++
+      // First call: duplicate check, second call: rate check
+      return callCount === 1
+        ? Promise.resolve(recentComment)
+        : Promise.resolve(recentCount > 0 ? { count: recentCount } : null)
+    })
+    limitFn.mockReturnValue({ get: getFn })
+
+    return db as never
   }
 
   describe('detectSpam', () => {
@@ -41,7 +41,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'This is a perfectly normal comment about the article.',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -54,7 +54,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'Buy viagra now for free money!',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -68,7 +68,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'Check out http://a.com http://b.com http://c.com http://d.com',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -80,7 +80,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'Hello!!!!!!!!! That is amazing',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -91,7 +91,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'THIS IS ALL CAPS AND VERY LOUD AND ANNOYING TEXT',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -102,7 +102,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'OK',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -113,7 +113,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'ok',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -125,7 +125,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'Same comment again',
-        db: createMockDb({ id: 'comment-1' }),
+        db: createMockDbSpamDeep({ id: 'comment-1' }),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -138,7 +138,7 @@ describe('spam-detector deep', () => {
       const result = await detectSpam({
         content:
           'FREE MONEY click here now!!!!!!! http://a.com http://b.com http://c.com http://d.com',
-        db: createMockDb({ id: 'c1' }),
+        db: createMockDbSpamDeep({ id: 'c1' }),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -150,7 +150,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'VIAGRA IS THE BEST',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -163,7 +163,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'viagra viagra viagra',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -175,7 +175,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'Check http://a.com and http://b.com and http://c.com',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })
@@ -186,7 +186,7 @@ describe('spam-detector deep', () => {
       const { detectSpam } = await import('$lib/server/spam-detector')
       const result = await detectSpam({
         content: 'That is great!!! I agree!!',
-        db: createMockDb(),
+        db: createMockDbSpamDeep(),
         ipAddress: '1.2.3.4',
         userId: 'user-1',
       })

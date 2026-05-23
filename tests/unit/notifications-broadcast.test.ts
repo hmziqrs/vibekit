@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 interface MockDb extends DrizzleDb {
@@ -15,7 +16,7 @@ function createMockDbWithOverrides(overrides: Record<string, unknown> = {}): Moc
     ...db,
     _insertFn: mocks.insertFn,
     _insertValues: mocks.valuesFn,
-    _onConflictDoUpdateFn: mocks.returningFn,
+    _onConflictDoUpdateFn: mocks.onConflictDoUpdateFn,
     ...overrides,
   } as unknown as MockDb
 }
@@ -132,7 +133,7 @@ describe('createBroadcast', () => {
     const count = await createBroadcast(
       db,
       { title: 'Admin broadcast', target: 'admins' },
-      getUserIds,
+      getUserIds
     )
 
     expect(count).toBe(2)
@@ -193,7 +194,7 @@ describe('createBroadcast', () => {
     await createBroadcast(
       db,
       { body: 'Body text', target: 'all', title: 'Broadcast', type: 'warning' },
-      getUserIds,
+      getUserIds
     )
 
     expect(db._insertValues).toHaveBeenCalled()

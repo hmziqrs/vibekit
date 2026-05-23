@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 vi.mock('web-push', () => ({
@@ -43,7 +44,7 @@ describe('configureWebPush', () => {
     expect(webpush.setVapidDetails).toHaveBeenCalledWith(
       'mailto:test@example.com',
       'public-key',
-      'private-key',
+      'private-key'
     )
   })
 })

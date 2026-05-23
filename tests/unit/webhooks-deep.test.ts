@@ -1,9 +1,10 @@
-import type { DrizzleDb } from '$lib/server/services/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
 
-type MockDb = DrizzleDb & {
-  _insertFn: ReturnType<typeof vi.fn>
-  _setFn: ReturnType<typeof vi.fn>
+import { createMockDb } from '../helpers/mock-db'
+
+type MockDb = ReturnType<typeof createMockDb>['db'] & {
+  _insertFn: Mock
+  _setFn: Mock
 }
 
 vi.mock('$lib/server/db/schema', () => ({
@@ -42,23 +43,12 @@ describe('webhooks', () => {
     vi.resetModules()
   })
 
-  function createMockDb(endpoints: Record<string, unknown>[] = []): MockDb {
-    const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
-
+  function createMockDbWebhooks(endpoints: Record<string, unknown>[] = []): MockDb {
+    const { db, mocks } = createMockDb({ allResult: endpoints })
     return {
-      _insertFn: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      _setFn: setFn,
-      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue(endpoints),
-          }),
-          where: vi.fn().mockResolvedValue(endpoints),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({ set: setFn }),
+      ...db,
+      _insertFn: mocks.insertFn,
+      _setFn: mocks.setFn,
     } as unknown as MockDb
   }
 
@@ -78,7 +68,7 @@ describe('webhooks', () => {
   describe('createWebhookEndpoint', () => {
     it('creates endpoint with generated secret', async () => {
       const { createWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       const result = await createWebhookEndpoint(db, 'user-1', {
         events: ['item.created'],
         url: 'https://example.com/hook',
@@ -91,7 +81,7 @@ describe('webhooks', () => {
 
     it('stores optional description', async () => {
       const { createWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       await createWebhookEndpoint(db, 'user-1', {
         description: 'My webhook',
         events: ['item.created'],
@@ -126,7 +116,7 @@ describe('webhooks', () => {
   describe('updateWebhookEndpoint', () => {
     it('updates and returns endpoint id', async () => {
       const { updateWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb([makeEndpoint()])
+      const db = createMockDbWebhooks([makeEndpoint()])
       const result = await updateWebhookEndpoint(db, 'ep-1', 'user-1', {
         url: 'https://new.example.com/hook',
       })
@@ -136,7 +126,7 @@ describe('webhooks', () => {
 
     it('returns null when endpoint not found', async () => {
       const { updateWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb([])
+      const db = createMockDbWebhooks([])
       expect(
         await updateWebhookEndpoint(db, 'missing', 'user-1', { url: 'https://new.url' })
       ).toBeNull()
@@ -146,7 +136,7 @@ describe('webhooks', () => {
   describe('deleteWebhookEndpoint', () => {
     it('deletes endpoint', async () => {
       const { deleteWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       await deleteWebhookEndpoint(db, 'ep-1', 'user-1')
       expect(db.delete).toHaveBeenCalled()
     })
@@ -155,7 +145,7 @@ describe('webhooks', () => {
   describe('getWebhookEndpoint', () => {
     it('returns endpoint when found', async () => {
       const { getWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb([makeEndpoint()])
+      const db = createMockDbWebhooks([makeEndpoint()])
       const result = await getWebhookEndpoint(db, 'ep-1', 'user-1')
       expect(result).not.toBeNull()
       expect(result?.id).toBe('ep-1')
@@ -163,7 +153,7 @@ describe('webhooks', () => {
 
     it('returns null when not found', async () => {
       const { getWebhookEndpoint } = await import('$lib/server/webhooks')
-      const db = createMockDb([])
+      const db = createMockDbWebhooks([])
       expect(await getWebhookEndpoint(db, 'missing', 'user-1')).toBeNull()
     })
   })
@@ -172,7 +162,7 @@ describe('webhooks', () => {
     it('returns success on 2xx response', async () => {
       const { deliverWebhook } = await import('$lib/server/webhooks')
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('OK', { status: 200 }))
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       const result = await deliverWebhook(
         db,
         { id: 'ep-1', secret: 'whsec_testsecret', url: 'https://example.com/hook' },
@@ -188,7 +178,7 @@ describe('webhooks', () => {
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValue(new Response('OK', { status: 200 }))
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       await deliverWebhook(
         db,
         { id: 'ep-1', secret: 'whsec_testsecret', url: 'https://example.com/hook' },
@@ -212,7 +202,7 @@ describe('webhooks', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response('Internal Server Error', { status: 500 })
       )
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       const result = await deliverWebhook(
         db,
         { id: 'ep-1', secret: 'whsec_testsecret', url: 'https://example.com/hook' },
@@ -225,7 +215,7 @@ describe('webhooks', () => {
     it('schedules retry on network error', async () => {
       const { deliverWebhook } = await import('$lib/server/webhooks')
       vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network error'))
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       const result = await deliverWebhook(
         db,
         { id: 'ep-1', secret: 'whsec_testsecret', url: 'https://example.com/hook' },
@@ -238,7 +228,7 @@ describe('webhooks', () => {
     it('creates delivery record in database', async () => {
       const { deliverWebhook } = await import('$lib/server/webhooks')
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('OK', { status: 200 }))
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       await deliverWebhook(
         db,
         { id: 'ep-1', secret: 'whsec_testsecret', url: 'https://example.com/hook' },
@@ -257,7 +247,7 @@ describe('webhooks', () => {
         makeEndpoint({ events: ['item.created'] }),
         makeEndpoint({ id: 'ep-2', events: ['item.updated'] }),
       ]
-      const db = createMockDb(endpoints)
+      const db = createMockDbWebhooks(endpoints)
       const count = await dispatchWebhooksForEvent(db, 'item.created', { itemId: '123' })
       expect(count).toBe(1) // Only one endpoint matches
     })
@@ -269,7 +259,7 @@ describe('webhooks', () => {
         makeEndpoint({ events: ['*'] }),
         makeEndpoint({ id: 'ep-2', events: ['item.updated'] }),
       ]
-      const db = createMockDb(endpoints)
+      const db = createMockDbWebhooks(endpoints)
       const count = await dispatchWebhooksForEvent(db, 'item.created', { itemId: '123' })
       expect(count).toBe(1) // Only wildcard matches
     })
@@ -392,7 +382,7 @@ describe('webhooks', () => {
     it('sends test event via deliverWebhook', async () => {
       const { sendTestWebhook } = await import('$lib/server/webhooks')
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('OK', { status: 200 }))
-      const db = createMockDb()
+      const db = createMockDbWebhooks()
       const result = await sendTestWebhook(db, {
         id: 'ep-1',
         secret: 'whsec_testsecret',

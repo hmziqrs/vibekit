@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 // Mock the D1 search adapter

@@ -1,6 +1,8 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
 
+import { createMockDb } from '../helpers/mock-db'
+
 vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'), () => ({
   comment: {
     authorId: 'author_id',
@@ -11,19 +13,10 @@ vi.mock<typeof import('$lib/server/db/schema')>(import('$lib/server/db/schema'),
 }))
 
 // Mock the db operations that detectSpam uses
-function createMockDb(recentComment?: object, recentCount?: { count: number }) {
-  return {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue(recentComment ?? null),
-          limit: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue(recentComment ?? null),
-          }),
-        }),
-      }),
-    }),
-  } as unknown as DrizzleDb
+function createMockDbSpam(recentComment?: object, recentCount?: { count: number }) {
+  const { db, mocks } = createMockDb({ getResult: recentComment ?? null })
+
+  return db as unknown as DrizzleDb
 }
 
 function createRateLimitedDb(recentCount: number) {
@@ -101,7 +94,7 @@ describe('blocked keywords', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: `Hey check this out: ${keyword}!!!`,
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -113,7 +106,7 @@ describe('blocked keywords', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'This is a perfectly normal comment about the article.',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -127,7 +120,7 @@ describe('excessive links', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'Check out http://a.com http://b.com http://c.com http://d.com',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -138,7 +131,7 @@ describe('excessive links', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'Check out http://a.com http://b.com http://c.com',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -151,7 +144,7 @@ describe('repeated characters', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'Wowwwwwww this is amazing',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -162,7 +155,7 @@ describe('repeated characters', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'Wowwwww this is amazing',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -175,7 +168,7 @@ describe('excessive caps', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'THIS IS ABSOLUTELY INCREDIBLE AND AMAZING',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -186,7 +179,7 @@ describe('excessive caps', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'OK',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -197,7 +190,7 @@ describe('excessive caps', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'This is a normal comment with some Words capitalized',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -210,18 +203,19 @@ describe('too short content', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'hi',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
     expect(result.reasons).toContain('too_short')
+    expect(result.score).toBeGreaterThanOrEqual(10)
   })
 
   it('does not flag content 3+ characters', async () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'hey',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -271,7 +265,7 @@ describe('spam threshold', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'Click here now http://a.com http://b.com http://c.com http://d.com',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })
@@ -283,7 +277,7 @@ describe('spam threshold', () => {
     const { detectSpam } = await import('$lib/server/spam-detector')
     const result = await detectSpam({
       content: 'Great article, thanks for sharing!',
-      db: createMockDb(),
+      db: createMockDbSpam(),
       ipAddress: '1.2.3.4',
       userId: 'user-1',
     })

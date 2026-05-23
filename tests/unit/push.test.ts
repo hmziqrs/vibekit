@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 const mockDelete = vi.fn()
@@ -30,7 +31,7 @@ vi.mock('$lib/server/uuid', () => ({
 }))
 
 function createMockDbWithSubscriptions(
-  subscriptions: Array<{ auth: string; endpoint: string; p256dh: string }> = [],
+  subscriptions: Array<{ auth: string; endpoint: string; p256dh: string }> = []
 ) {
   const { db } = createMockDb({ allResult: subscriptions })
   return db as unknown as DrizzleDb

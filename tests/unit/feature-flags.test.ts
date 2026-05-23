@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 describe('feature-flag service module', () => {

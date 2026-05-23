@@ -1,5 +1,5 @@
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 type ApiKeyMockDb = ReturnType<typeof createMockDb>['db'] & {
@@ -58,10 +58,11 @@ describe('api-keys', () => {
     }
   }
 
-  function createMockDbWithExtras(
-    keys: Record<string, unknown>[] = [],
-  ): ApiKeyMockDb {
-    const { db, mocks } = createMockDb({ allResult: keys })
+  function createMockDbWithExtras(keys: Record<string, unknown>[] = []): ApiKeyMockDb {
+    const { db, mocks } = createMockDb({
+      allResult: keys,
+      updateResult: { meta: { changes: 1 } },
+    })
     return {
       ...db,
       _insertFn: mocks.insertFn,

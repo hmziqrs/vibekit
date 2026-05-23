@@ -4494,37 +4494,37 @@ type SearchAction = 'deindex' | 'index' | 'none'
 async function changeBlogPostStatus(
   db: DrizzleDb,
   cache: { purgeBlog: (slug?: string) => Promise<void> },
-  postId: string,
-  userId: string,
   opts: {
     action: string
+    extraMetadata?: Record<string, unknown>
+    postId: string
     searchAction: SearchAction
     updates: Record<string, unknown>
-    extraMetadata?: Record<string, unknown>
+    userId: string
   }
 ): Promise<void> {
   const existing = await db
     .select({ id: blogPost.id, slug: blogPost.slug })
     .from(blogPost)
-    .where(eq(blogPost.id, postId))
+    .where(eq(blogPost.id, opts.postId))
     .get()
   if (!existing) throw new NotFoundError()
 
-  await db.update(blogPost).set(opts.updates).where(eq(blogPost.id, postId))
+  await db.update(blogPost).set(opts.updates).where(eq(blogPost.id, opts.postId))
   await cache.purgeBlog(existing.slug)
 
   await writeAuditLog(db, {
     action: opts.action,
-    entityId: postId,
+    entityId: opts.postId,
     entityType: 'blog_post',
     metadata: { slug: existing.slug, ...opts.extraMetadata },
-    userId,
+    userId: opts.userId,
   })
 
   if (opts.searchAction === 'index') {
-    indexBlogPost(db, postId).catch((error) => logger.error('Search index failed', { error }))
+    indexBlogPost(db, opts.postId).catch((error) => logger.error('Search index failed', { error }))
   } else if (opts.searchAction === 'deindex') {
-    deindexEntity(db, postId, 'blog_post').catch((error) =>
+    deindexEntity(db, opts.postId, 'blog_post').catch((error) =>
       logger.error('Search deindex failed', { error })
     )
   }
@@ -4538,51 +4538,61 @@ blogApp.delete('/:id', withRateLimit('blog-mutate'), async (c) => {
     .from(blogPost)
     .where(eq(blogPost.id, c.req.param('id')))
     .get()
-  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
+  await changeBlogPostStatus(db, c.get('services').cache, {
     action: 'blog.delete',
     extraMetadata: { title: existing?.title },
+    postId: c.req.param('id'),
     searchAction: 'deindex',
     updates: { deletedAt: new Date(), updatedAt: new Date() },
+    userId: c.get('user').id,
   })
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/publish', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
+  await changeBlogPostStatus(db, c.get('services').cache, {
     action: 'blog.publish',
+    postId: c.req.param('id'),
     searchAction: 'index',
     updates: { publishedAt: new Date(), status: 'published', updatedAt: new Date() },
+    userId: c.get('user').id,
   })
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/unpublish', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
+  await changeBlogPostStatus(db, c.get('services').cache, {
     action: 'blog.unpublish',
+    postId: c.req.param('id'),
     searchAction: 'none',
     updates: { status: 'draft', updatedAt: new Date() },
+    userId: c.get('user').id,
   })
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/archive', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
+  await changeBlogPostStatus(db, c.get('services').cache, {
     action: 'blog.archive',
+    postId: c.req.param('id'),
     searchAction: 'deindex',
     updates: { status: 'archived', updatedAt: new Date() },
+    userId: c.get('user').id,
   })
   return c.json({ success: true })
 })
 
 blogApp.post('/:id/restore', withRateLimit('blog-mutate'), async (c) => {
   const { db } = c.get('services')
-  await changeBlogPostStatus(db, c.get('services').cache, c.req.param('id'), c.get('user').id, {
+  await changeBlogPostStatus(db, c.get('services').cache, {
     action: 'blog.restore',
+    postId: c.req.param('id'),
     searchAction: 'index',
     updates: { deletedAt: null, updatedAt: new Date() },
+    userId: c.get('user').id,
   })
   return c.json({ success: true })
 })

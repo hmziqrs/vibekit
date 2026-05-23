@@ -8,6 +8,7 @@ import {
   updateFeatureFlagSchema,
 } from '$lib/validators/feature-flag'
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 type FlagMockDb = DrizzleDb & {
@@ -413,21 +414,17 @@ describe('feature-flags service', () => {
     it('returns false when environment does not match', async () => {
       const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
       const db = createFlagDb(
-        makeFlag({ enabled: true, environment: 'production', rolloutPercentage: 100 }),
+        makeFlag({ enabled: true, environment: 'production', rolloutPercentage: 100 })
       )
-      expect(await evaluateFeatureFlag(db, 'test-flag', { environment: 'staging' })).toBe(
-        false,
-      )
+      expect(await evaluateFeatureFlag(db, 'test-flag', { environment: 'staging' })).toBe(false)
     })
 
     it('returns true when environment matches', async () => {
       const { evaluateFeatureFlag } = await import('$lib/server/feature-flags')
       const db = createFlagDb(
-        makeFlag({ enabled: true, environment: 'production', rolloutPercentage: 100 }),
+        makeFlag({ enabled: true, environment: 'production', rolloutPercentage: 100 })
       )
-      expect(
-        await evaluateFeatureFlag(db, 'test-flag', { environment: 'production' }),
-      ).toBe(true)
+      expect(await evaluateFeatureFlag(db, 'test-flag', { environment: 'production' })).toBe(true)
     })
 
     it('deterministic rollout for same userId', async () => {

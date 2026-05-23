@@ -1,6 +1,8 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
+import { createMockDb } from '../helpers/mock-db'
+
 // eslint-disable-next-line unicorn/no-class
 class DrizzleResult {
   private result: unknown[]
@@ -17,26 +19,22 @@ class DrizzleResult {
   }
 }
 
-function createMockDb(selectResult?: unknown[]) {
-  const whereResult = new DrizzleResult(selectResult ?? [])
-  const whereGetFn = vi
-    .fn<() => Promise<unknown>>()
-    .mockResolvedValue(selectResult?.[0] ?? undefined)
-  const whereFn = vi.fn<() => DrizzleResult>().mockReturnValue(whereResult)
-  const fromFn = vi.fn<() => { where: typeof whereFn }>().mockReturnValue({ where: whereFn })
-  const selectFn = vi.fn<() => { from: typeof fromFn }>().mockReturnValue({ from: fromFn })
-  const valuesFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
-  const insertFn = vi.fn<() => { values: typeof valuesFn }>().mockReturnValue({ values: valuesFn })
+function createMockDbSystemAlerts(selectResult?: unknown[]) {
+  const { db } = createMockDb({ allResult: selectResult ?? [] })
 
-  return {
-    insert: insertFn,
-    select: selectFn,
-  } as unknown as DrizzleDb
+  // Make where() thenable like Drizzle queries
+  const originalWhereFn = (db as unknown as { where: ReturnType<typeof vi.fn> }).where
+  if (originalWhereFn) {
+    const whereResult = new DrizzleResult(selectResult ?? [])
+    originalWhereFn.mockReturnValue(whereResult as never)
+  }
+
+  return db as unknown as DrizzleDb
 }
 
 describe('notification preference logic', () => {
   it('defaults to enabled when no preference exists', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { getNotificationPreferences } = await import('$lib/server/notifications')
 
     const prefs = await getNotificationPreferences(db, 'user-1')
@@ -46,7 +44,7 @@ describe('notification preference logic', () => {
 
 describe('createNotification', () => {
   it('inserts notification when preference is enabled (default)', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createNotification } = await import('$lib/server/notifications')
 
     await createNotification(db, {
@@ -59,7 +57,7 @@ describe('createNotification', () => {
   })
 
   it('inserts notification with link field', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createNotification } = await import('$lib/server/notifications')
 
     await createNotification(db, {
@@ -73,7 +71,7 @@ describe('createNotification', () => {
   })
 
   it('inserts notification with entity association', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createNotification } = await import('$lib/server/notifications')
 
     await createNotification(db, {
@@ -88,7 +86,7 @@ describe('createNotification', () => {
   })
 
   it('inserts notification with metadata', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createNotification } = await import('$lib/server/notifications')
 
     await createNotification(db, {
@@ -104,7 +102,7 @@ describe('createNotification', () => {
 
 describe('createBroadcast', () => {
   it('creates notifications for all users', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createBroadcast } = await import('$lib/server/notifications')
 
     const userIds = ['user-1', 'user-2', 'user-3']
@@ -122,7 +120,7 @@ describe('createBroadcast', () => {
   })
 
   it('creates notifications for admin users only', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createBroadcast } = await import('$lib/server/notifications')
 
     const adminIds = ['admin-1', 'admin-2']
@@ -140,7 +138,7 @@ describe('createBroadcast', () => {
   })
 
   it('handles empty user list', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createBroadcast } = await import('$lib/server/notifications')
 
     const count = await createBroadcast(
@@ -156,7 +154,7 @@ describe('createBroadcast', () => {
   })
 
   it('handles large user lists with batching', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createBroadcast } = await import('$lib/server/notifications')
 
     const userIds = Array.from({ length: 250 }, (_, i) => `user-${i}`)
@@ -175,7 +173,7 @@ describe('createBroadcast', () => {
   })
 
   it('broadcast includes body and link', async () => {
-    const db = createMockDb()
+    const db = createMockDbSystemAlerts()
     const { createBroadcast } = await import('$lib/server/notifications')
 
     const count = await createBroadcast(

@@ -5,8 +5,9 @@ import {
   rotateApiKeySchema,
   API_KEY_SCOPES,
 } from '$lib/validators/api-key'
-import { createMockDb } from '../helpers/mock-db'
 import { describe, expect, it, vi } from 'vitest'
+
+import { createMockDb } from '../helpers/mock-db'
 
 vi.mock('$lib/server/db/schema', () => ({
   apiKey: {

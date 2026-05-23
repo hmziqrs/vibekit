@@ -1,5 +1,6 @@
 import type { AppDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 // Mock the crypto module so encrypt/decrypt are identity functions in tests

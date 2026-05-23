@@ -1,5 +1,6 @@
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { createMockDb } from '../helpers/mock-db'
 
 vi.mock('$lib/server/push', () => ({
@@ -26,8 +27,7 @@ function createMockDbWithPref(preferenceEnabled = true): MockDb {
   const selectWhereResult = {
     get: mocks.getFn,
   } as Record<string, unknown>
-  selectWhereResult.then = (resolve: (v: unknown) => void) =>
-    Promise.resolve([]).then(resolve)
+  selectWhereResult.then = (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve)
 
   mocks.whereFn.mockReturnValue(selectWhereResult)
 
@@ -35,7 +35,7 @@ function createMockDbWithPref(preferenceEnabled = true): MockDb {
     ...db,
     _getFn: mocks.getFn,
     _insertFn: mocks.insertFn,
-    _onConflictDoUpdateFn: mocks.returningFn,
+    _onConflictDoUpdateFn: mocks.onConflictDoUpdateFn,
     _valuesFn: mocks.valuesFn,
   } as unknown as MockDb
 }
@@ -150,7 +150,7 @@ describe('createBroadcast', () => {
         title: 'Announcement',
         type: 'info',
       },
-      getUserIds,
+      getUserIds
     )
 
     expect(count).toBe(3)
@@ -171,7 +171,7 @@ describe('createBroadcast', () => {
         target: 'all',
         title: 'Bulk',
       },
-      getUserIds,
+      getUserIds
     )
 
     expect(count).toBe(150)
@@ -189,7 +189,7 @@ describe('createBroadcast', () => {
         target: 'admins',
         title: 'Admin Notice',
       },
-      getUserIds,
+      getUserIds
     )
 
     expect(getUserIds).toHaveBeenCalledWith('admins')
@@ -304,7 +304,7 @@ describe('push notification integration', () => {
         body: 'Test push',
         title: 'Push Test',
         data: { link: '/test' },
-      }),
+      })
     )
   })
 

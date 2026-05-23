@@ -1,6 +1,8 @@
 import type { AppDb } from '$lib/server/services/types'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { createMockDb } from '../helpers/mock-db'
+
 type MockDb = AppDb & {
   _allFn: ReturnType<typeof vi.fn>
   _getFn: ReturnType<typeof vi.fn>
@@ -11,7 +13,7 @@ type MockDb = AppDb & {
   _whereFn: ReturnType<typeof vi.fn>
 }
 
-function createMockDb(
+function createMockDbWithOpts(
   opts: {
     planRow?: object | null
     rows?: object[]
@@ -20,39 +22,21 @@ function createMockDb(
 ): MockDb {
   const { planRow = null, rows = [], subRow = null } = opts
 
-  const getFn = vi.fn().mockResolvedValue(planRow)
-  const allFn = vi.fn().mockResolvedValue(rows)
-  const valuesFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
-  const insertFn = vi.fn<() => { values: typeof valuesFn }>().mockReturnValue({ values: valuesFn })
-  const setFn = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
-  const updateFn = vi.fn().mockReturnValue({ set: setFn })
-  const orderByFn = vi.fn().mockReturnValue({
-    get: getFn,
-    limit: vi.fn().mockReturnValue({ get: getFn }),
-  })
-  const whereFn = vi.fn().mockReturnValue({
-    get: getFn,
-    orderBy: orderByFn,
-  })
-  const fromFn = vi.fn().mockReturnValue({
-    all: allFn,
-    get: getFn,
-    orderBy: orderByFn,
-    where: whereFn,
+  const { db, mocks } = createMockDb({
+    allResult: rows,
+    getResult: planRow ?? null,
   })
 
   return {
-    _allFn: allFn,
-    _getFn: getFn,
-    _insertFn: insertFn,
-    _setFn: setFn,
-    _updateFn: updateFn,
-    _valuesFn: valuesFn,
-    _whereFn: whereFn,
-    all: allFn,
-    insert: insertFn,
-    select: vi.fn().mockReturnValue({ from: fromFn }),
-    update: updateFn,
+    ...db,
+    _allFn: mocks.orderByFn, // not used directly but kept for compatibility
+    _getFn: mocks.getFn,
+    _insertFn: mocks.insertFn,
+    _setFn: mocks.setFn,
+    _updateFn: mocks.updateFn,
+    _valuesFn: mocks.valuesFn,
+    _whereFn: mocks.whereFn,
+    all: mocks.orderByFn, // db.all() used by getBillingOverview
   } as unknown as MockDb
 }
 
@@ -84,7 +68,7 @@ describe('subscription-service module', () => {
 describe('createPlan', () => {
   it('inserts plan with defaults', async () => {
     const { createPlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await createPlan(db, {
       interval: 'month',
@@ -107,7 +91,7 @@ describe('createPlan', () => {
 
   it('stringifies features array', async () => {
     const { createPlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await createPlan(db, {
       features: ['API access', 'Priority support'],
@@ -123,7 +107,7 @@ describe('createPlan', () => {
 
   it('sets features to null when not provided', async () => {
     const { createPlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await createPlan(db, {
       interval: 'month',
@@ -140,7 +124,7 @@ describe('createPlan', () => {
 describe('updatePlan', () => {
   it('updates only provided fields', async () => {
     const { updatePlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await updatePlan(db, 'plan-1', { name: 'Pro Plus', priceInCents: 4900 })
 
@@ -153,7 +137,7 @@ describe('updatePlan', () => {
 
   it('stringifies features on update', async () => {
     const { updatePlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await updatePlan(db, 'plan-1', { features: ['New feature'] })
 
@@ -165,7 +149,7 @@ describe('updatePlan', () => {
 describe('createSubscription', () => {
   it('creates with active status when no trial', async () => {
     const { createSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await createSubscription(db, {
       currentPeriodEnd: new Date('2026-06-01'),
@@ -183,7 +167,7 @@ describe('createSubscription', () => {
 
   it('creates with trialing status when trial end is set', async () => {
     const { createSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await createSubscription(db, {
       currentPeriodEnd: new Date('2026-06-01'),
@@ -200,7 +184,7 @@ describe('createSubscription', () => {
 
   it('logs a created event', async () => {
     const { createSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await createSubscription(db, {
       currentPeriodEnd: new Date('2026-06-01'),
@@ -219,7 +203,9 @@ describe('createSubscription', () => {
 describe('cancelSubscription', () => {
   it('sets status to canceled and logs event', async () => {
     const { cancelSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'active' } })
+    const db = createMockDbWithOpts({
+      planRow: { id: 'sub-1', planId: 'plan-1', status: 'active' },
+    })
 
     await cancelSubscription(db, 'sub-1')
 
@@ -236,14 +222,16 @@ describe('cancelSubscription', () => {
 
   it('throws when subscription not found', async () => {
     const { cancelSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ planRow: null })
+    const db = createMockDbWithOpts({ planRow: null })
 
     await expect(cancelSubscription(db, 'sub-missing')).rejects.toThrow('Subscription not found')
   })
 
   it('throws when subscription is already canceled', async () => {
     const { cancelSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'canceled' } })
+    const db = createMockDbWithOpts({
+      planRow: { id: 'sub-1', planId: 'plan-1', status: 'canceled' },
+    })
 
     await expect(cancelSubscription(db, 'sub-1')).rejects.toThrow(
       "Cannot cancel subscription in 'canceled' state"
@@ -254,7 +242,9 @@ describe('cancelSubscription', () => {
 describe('reactivateSubscription', () => {
   it('sets status to active and logs renewed event', async () => {
     const { reactivateSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'canceled' } })
+    const db = createMockDbWithOpts({
+      planRow: { id: 'sub-1', planId: 'plan-1', status: 'canceled' },
+    })
 
     await reactivateSubscription(db, 'sub-1')
 
@@ -268,7 +258,7 @@ describe('reactivateSubscription', () => {
 
   it('throws when subscription not found', async () => {
     const { reactivateSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ planRow: null })
+    const db = createMockDbWithOpts({ planRow: null })
 
     await expect(reactivateSubscription(db, 'sub-missing')).rejects.toThrow(
       'Subscription not found'
@@ -277,7 +267,9 @@ describe('reactivateSubscription', () => {
 
   it('throws when subscription is already active', async () => {
     const { reactivateSubscription } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ planRow: { id: 'sub-1', planId: 'plan-1', status: 'active' } })
+    const db = createMockDbWithOpts({
+      planRow: { id: 'sub-1', planId: 'plan-1', status: 'active' },
+    })
 
     await expect(reactivateSubscription(db, 'sub-1')).rejects.toThrow(
       "Cannot reactivate subscription in 'active' state"
@@ -288,7 +280,7 @@ describe('reactivateSubscription', () => {
 describe('changeSubscriptionPlan', () => {
   it('throws when subscription not found', async () => {
     const { changeSubscriptionPlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb({ subRow: null })
+    const db = createMockDbWithOpts({ subRow: null })
 
     await expect(changeSubscriptionPlan(db, 'sub-missing', 'plan-2')).rejects.toThrow(
       'Subscription not found'
@@ -402,7 +394,7 @@ describe('calculateProration', () => {
 describe('deactivatePlan', () => {
   it('sets isActive to false', async () => {
     const { deactivatePlan } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await deactivatePlan(db, 'plan-1')
 
@@ -414,7 +406,7 @@ describe('deactivatePlan', () => {
 describe('updateSubscriptionStatus', () => {
   it('updates subscription status', async () => {
     const { updateSubscriptionStatus } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await updateSubscriptionStatus(db, 'sub-1', 'past_due')
 
@@ -426,7 +418,7 @@ describe('updateSubscriptionStatus', () => {
 describe('recordUsage', () => {
   it('inserts usage record with correct values', async () => {
     const { recordUsage } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     await recordUsage(db, {
       metricType: 'api_calls',
@@ -447,7 +439,7 @@ describe('recordUsage', () => {
 describe('getBillingOverview', () => {
   it('returns overview with active and total counts', async () => {
     const { getBillingOverview } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
 
     // Mock db.all() for the 7 raw SQL queries
     let allCallIdx = 0
@@ -477,7 +469,7 @@ describe('getBillingOverview', () => {
 
   it('handles empty results', async () => {
     const { getBillingOverview } = await import('$lib/server/billing/subscription-service')
-    const db = createMockDb()
+    const db = createMockDbWithOpts()
     db._allFn.mockResolvedValue([])
 
     const overview = await getBillingOverview(db)
