@@ -15,7 +15,7 @@
   }
 
   const { data } = $props()
-  const logs = (data.logs ?? []) as AuditRow[]
+  const logs = (data.logs ?? []) as unknown as AuditRow[]
   const selectedAction = $derived(page.url.searchParams.get('action') ?? '')
 
   function handleFilter(action: string) {

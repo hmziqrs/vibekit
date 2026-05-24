@@ -106,11 +106,7 @@ describe('EmailService', () => {
     const service = createEmailService({ send: mockSend } as never)
 
     const onBounce = vi.fn().mockResolvedValue(undefined)
-    await service.sendNewsletterConfirmation(
-      'new@test.com',
-      'https://app.com/confirm?token=abc',
-      onBounce
-    )
+    await service.sendNewsletterConfirmation('new@test.com', 'https://app.com/confirm?token=abc')
 
     // Newsletter uses enqueue which triggers immediate processing in test
     // The mock send will be called during queue processing
