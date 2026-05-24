@@ -256,7 +256,7 @@
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={(postsQuery.data?.posts ?? []) as unknown as Record<string, unknown>[]}
+    rows={postsQuery.data?.posts ?? []}
     loading={postsQuery.isPending}
     selectable
     {selectedIds}
@@ -268,31 +268,30 @@
     onRetry={() => postsQuery.refetch()}
     emptyMessage={statusFilter === 'trash' ? 'No trashed posts.' : 'No posts yet. Create your first post!'}
   >
-    {#snippet children({ row: _row, columnKey })}
-      {@const row = _row as unknown as PostRow}
+    {#snippet children({ row, columnKey })}
       {#if columnKey === 'title'}
         <span class="truncate font-medium">{row.title}</span>
       {:else if columnKey === 'slug'}
         <span class="text-text-muted">/blog/{row.slug}</span>
       {:else if columnKey === 'status'}
         <StatusBadge
-          status={statusFilter === 'trash' ? 'deleted' : (row.status as string)}
+          status={statusFilter === 'trash' ? 'deleted' : row.status}
           colorMap={statusColors}
         />
       {:else if columnKey === 'publishedAt'}
         {#if row.status === 'scheduled' && row.scheduledAt}
-          <span class="text-info">{formatDateLocal(row.scheduledAt as string)}</span>
+          <span class="text-info">{formatDateLocal(row.scheduledAt)}</span>
         {:else}
-          <span class="text-text-muted">{formatDateLocal(row.publishedAt as string | null)}</span>
+          <span class="text-text-muted">{formatDateLocal(row.publishedAt)}</span>
         {/if}
       {:else if columnKey === 'createdAt'}
-        <span class="text-text-muted">{formatDateLocal(row.createdAt as string)}</span>
+        <span class="text-text-muted">{formatDateLocal(row.createdAt)}</span>
       {:else if columnKey === 'actions'}
         <div class="flex items-center gap-2">
           {#if statusFilter === 'trash'}
             <button
               class="rounded-lg border border-border px-3 py-1 text-[12px] font-medium text-text-muted hover:bg-surface hover:text-text-primary"
-              onclick={() => restorePost(row.id as string)}
+              onclick={() => restorePost(row.id)}
             >
               Restore
             </button>

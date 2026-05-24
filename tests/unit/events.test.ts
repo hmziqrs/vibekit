@@ -75,11 +75,13 @@ describe('events module', () => {
 
     expect(dispatchWebhooksForEvent).toHaveBeenCalledWith(
       db,
-      'blog.published',
-      expect.objectContaining({
-        entityId: 'post-1',
-        entityType: 'blog_post',
-      }),
+      {
+        eventType: 'blog.published',
+        data: expect.objectContaining({
+          entityId: 'post-1',
+          entityType: 'blog_post',
+        }),
+      },
       'author-1'
     )
   })

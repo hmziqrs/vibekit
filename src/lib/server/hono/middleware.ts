@@ -36,7 +36,7 @@ export const withServices = createMiddleware<Env>(async (c, next) => {
 
   const services = await createServices({ platform: { env: c.env } })
   if (!services) throw new ServiceUnavailableError()
-  c.set('services', services as unknown as NarrowedServices)
+  c.set('services', services as NarrowedServices)
   c.set('auth', createAuthForHono(services.db))
   await next()
 })

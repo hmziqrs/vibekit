@@ -31,8 +31,10 @@ export const DEFAULT_WEIGHTS: SearchWeights = {
 
 export function createD1SearchAdapter(
   db: {
-    all: (query: unknown) => Promise<unknown[]>
-    run: (query: unknown) => Promise<void>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    all: (query: any) => Promise<any[]>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    run: (query: any) => Promise<any>
   },
   weights?: Partial<SearchWeights>
 ): SearchAdapter {

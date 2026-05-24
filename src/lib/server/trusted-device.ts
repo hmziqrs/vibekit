@@ -84,17 +84,11 @@ export async function listTrustedDevices(db: DrizzleDb, userId: string) {
 }
 
 export async function revokeAllTrustedDevices(db: DrizzleDb, userId: string): Promise<number> {
-  const devices = await db
-    .select({ id: trustedDevice.id })
-    .from(trustedDevice)
+  const result = await db
+    .delete(trustedDevice)
     .where(eq(trustedDevice.userId, userId))
-
-  // oxlint-disable-next-line no-await-in-loop
-  for (const device of devices) {
-    await db.delete(trustedDevice).where(eq(trustedDevice.id, device.id))
-  }
-
-  return devices.length
+    .returning({ id: trustedDevice.id })
+  return result.length
 }
 
 const COOKIE_NAME = 'vk_trusted_device'

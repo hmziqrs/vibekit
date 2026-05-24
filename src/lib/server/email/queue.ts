@@ -86,6 +86,7 @@ export class EmailQueue {
     for (const item of pending) {
       // Atomically claim this email by setting status to 'processing'
       // Only proceed if the status was still 'pending' or 'failed' (not already claimed by another worker)
+      // oxlint-disable-next-line no-await-in-loop
       const claimed = await db
         .update(emailQueue)
         .set({ lastAttemptAt: new Date(), status: 'processing' })
@@ -93,46 +94,50 @@ export class EmailQueue {
         .returning({ id: emailQueue.id })
 
       // If no rows were updated, another worker already claimed this email
-      if (!claimed || claimed.length === 0) continue
+      if (claimed && claimed.length > 0) {
+        // oxlint-disable-next-line no-await-in-loop
+        const result = await this.client.send(item.message)
+        const attempts = item.attempts + 1
 
-      const result = await this.client.send(item.message as EmailMessage)
-      const attempts = item.attempts + 1
-
-      if (result.ok) {
-        await db
-          .update(emailQueue)
-          .set({
-            attempts,
-            processedAt: new Date(),
-            status: 'sent',
-          })
-          .where(eq(emailQueue.id, item.id))
-        stats.sent++
-      } else if (attempts >= item.maxRetries) {
-        await db
-          .update(emailQueue)
-          .set({
-            attempts,
-            errorMessage: result.reason,
-            lastAttemptAt: new Date(),
-            processedAt: new Date(),
-            status: 'failed',
-          })
-          .where(eq(emailQueue.id, item.id))
-        stats.failed++
-      } else {
-        const delay = Math.min(60_000 * 2 ** (attempts - 1), 15 * 60_000)
-        await db
-          .update(emailQueue)
-          .set({
-            attempts,
-            errorMessage: result.reason,
-            lastAttemptAt: new Date(),
-            nextRetryAt: new Date(Date.now() + delay),
-            status: 'failed',
-          })
-          .where(eq(emailQueue.id, item.id))
-        stats.retried++
+        if (result.ok) {
+          // oxlint-disable-next-line no-await-in-loop
+          await db
+            .update(emailQueue)
+            .set({
+              attempts,
+              processedAt: new Date(),
+              status: 'sent',
+            })
+            .where(eq(emailQueue.id, item.id))
+          stats.sent++
+        } else if (attempts >= item.maxRetries) {
+          // oxlint-disable-next-line no-await-in-loop
+          await db
+            .update(emailQueue)
+            .set({
+              attempts,
+              errorMessage: result.reason,
+              lastAttemptAt: new Date(),
+              processedAt: new Date(),
+              status: 'failed',
+            })
+            .where(eq(emailQueue.id, item.id))
+          stats.failed++
+        } else {
+          const delay = Math.min(60_000 * 2 ** (attempts - 1), 15 * 60_000)
+          // oxlint-disable-next-line no-await-in-loop
+          await db
+            .update(emailQueue)
+            .set({
+              attempts,
+              errorMessage: result.reason,
+              lastAttemptAt: new Date(),
+              nextRetryAt: new Date(Date.now() + delay),
+              status: 'failed',
+            })
+            .where(eq(emailQueue.id, item.id))
+          stats.retried++
+        }
       }
     }
 

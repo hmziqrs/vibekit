@@ -44,6 +44,7 @@ export async function generateThumbnail(
   const chunks: Uint8Array[] = []
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    // oxlint-disable-next-line no-await-in-loop
     const { done, value } = await reader.read()
     if (done) break
     if (value) chunks.push(value)

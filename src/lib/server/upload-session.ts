@@ -62,10 +62,10 @@ export async function getUploadSession(db: DrizzleDb, sessionId: string) {
 
 export async function recordChunk(
   db: DrizzleDb,
-  sessionId: string,
-  chunkIndex: number,
+  input: { sessionId: string; chunkIndex: number },
   chunkData?: Uint8Array
 ) {
+  const { sessionId, chunkIndex } = input
   // Validate sessionId format to prevent path traversal in temp directory
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
     throw new Error('Invalid session ID format')
@@ -170,6 +170,7 @@ export async function assembleChunks(db: DrizzleDb, sessionId: string): Promise<
   const parts: Uint8Array[] = []
   for (const idx of receivedChunks) {
     try {
+      // oxlint-disable-next-line no-await-in-loop
       const data = await readFile(join(sessionDir, `${idx}.chunk`))
       parts.push(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
     } catch {

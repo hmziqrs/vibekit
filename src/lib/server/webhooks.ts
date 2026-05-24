@@ -229,10 +229,10 @@ export async function deliverWebhook(
 
 export async function dispatchWebhooksForEvent(
   db: DrizzleDb,
-  eventType: string,
-  data: Record<string, unknown>,
+  event: { data: Record<string, unknown>; eventType: string },
   userId?: string
 ) {
+  const { eventType, data } = event
   // Find active endpoints for this user (or all if userId not specified), subscribed to this event
   const conditions = [eq(webhookEndpoint.active, true)]
   if (userId) {
@@ -403,6 +403,7 @@ export async function processRetryableDeliveries(
 
   for (const delivery of retryable) {
     try {
+      // oxlint-disable-next-line no-await-in-loop
       const result = await retryWebhookDelivery(db, delivery.id)
       if (result?.status === 'retrying' || result?.status === 'success') {
         retried++

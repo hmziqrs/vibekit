@@ -16,11 +16,13 @@ function createMockDbWithReturnValues(returnValues: Record<string, unknown> = {}
   })
 
   // Override where().get() to return selectWhereGet
-  const whereGetResult = hasResult('selectWhereGet')
-    ? returnValues.selectWhereGet
-    : hasResult('selectGet')
-      ? returnValues.selectGet
-      : undefined
+  function resolveWhereGetResult(): unknown {
+    if (hasResult('selectWhereGet')) return returnValues.selectWhereGet
+    if (hasResult('selectGet')) return returnValues.selectGet
+    return undefined
+  }
+
+  const whereGetResult = resolveWhereGetResult()
   mocks.whereFn.mockImplementation(() => ({
     all: vi.fn().mockResolvedValue(hasResult('selectList') ? returnValues.selectList : []),
     get: vi.fn().mockResolvedValue(whereGetResult),

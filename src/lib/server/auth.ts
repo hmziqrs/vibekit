@@ -11,7 +11,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { uuidv7 } from 'uuidv7'
 
 import type { EmailService } from './email/index'
-import type { AppDb } from './services/types'
+import type { AppDb, DrizzleDb } from './services/types'
 
 const logger = createLogger('auth')
 
@@ -192,8 +192,7 @@ export const createAuth = (db: AppDb) =>
                 } catch {
                   // Not in request context (e.g. build)
                 }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const result = await detectBanEvasion(db as any, u.email, requestIp)
+                const result = await detectBanEvasion(db as DrizzleDb, u.email, requestIp)
                 if (result.flagged) {
                   const { writeAuditLog } = await import('./audit')
                   await writeAuditLog(db, {

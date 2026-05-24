@@ -11,7 +11,7 @@
     handleChange: (value: unknown) => void
     state: {
       value: unknown
-      meta: { errors: unknown[] }
+      meta: { errors: StandardSchemaV1Issue[] }
     }
   }
 
@@ -33,7 +33,7 @@
     maxlength?: number
   } = $props()
 
-  const errors = $derived(field.state.meta.errors as StandardSchemaV1Issue[])
+  const errors = $derived(field.state.meta.errors)
   const hasError = $derived(errors.length > 0)
 </script>
 

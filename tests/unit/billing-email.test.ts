@@ -49,7 +49,12 @@ describe('billing email templates', () => {
 
   describe('renderPaymentSucceeded', () => {
     it('renders receipt with plan details', () => {
-      const { html, text } = renderPaymentSucceeded('Alice', 'Pro', '$29.00', 'June 1, 2026')
+      const { html, text } = renderPaymentSucceeded({
+        amount: '$29.00',
+        periodEnd: 'June 1, 2026',
+        planName: 'Pro',
+        userName: 'Alice',
+      })
       expect(html).toContain('Alice')
       expect(html).toContain('Pro')
       expect(html).toContain('$29.00')
@@ -76,7 +81,12 @@ describe('billing email templates', () => {
 
   describe('renderPlanChanged', () => {
     it('renders plan change notification', () => {
-      const { html, text } = renderPlanChanged('Alice', 'Starter', 'Pro', 'May 15, 2026')
+      const { html, text } = renderPlanChanged({
+        effectiveDate: 'May 15, 2026',
+        newPlanName: 'Pro',
+        oldPlanName: 'Starter',
+        userName: 'Alice',
+      })
       expect(html).toContain('Alice')
       expect(html).toContain('Starter')
       expect(html).toContain('Pro')
@@ -88,7 +98,12 @@ describe('billing email templates', () => {
     })
 
     it('shows previous and new plan names', () => {
-      const { html } = renderPlanChanged('Bob', 'Free', 'Enterprise', 'now')
+      const { html } = renderPlanChanged({
+        effectiveDate: 'now',
+        newPlanName: 'Enterprise',
+        oldPlanName: 'Free',
+        userName: 'Bob',
+      })
       expect(html).toContain('Free')
       expect(html).toContain('Enterprise')
     })

@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
 
   const ORIGIN = url.origin || FALLBACK_ORIGIN
 
-  const { db } = locals.services as unknown as { db: DrizzleDb }
+  const { db } = locals.services as { db: DrizzleDb }
 
   const posts = await db
     .select({

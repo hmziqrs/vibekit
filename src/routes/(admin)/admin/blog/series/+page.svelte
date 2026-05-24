@@ -264,7 +264,7 @@
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={filteredSeries as unknown as Record<string, unknown>[]}
+    rows={filteredSeries}
     loading={seriesQuery.isPending}
     {selectedIds}
     onSelectionChange={(ids) => (selectedIds = ids)}
@@ -275,8 +275,7 @@
     onRetry={() => seriesQuery.refetch()}
     emptyMessage="No series yet. Create your first series!"
   >
-    {#snippet children({ row: _row, columnKey })}
-      {@const row = _row as unknown as SeriesRow}
+    {#snippet children({ row, columnKey })}
       {#if columnKey === 'name'}
         <span class="truncate font-medium">{row.name}</span>
       {:else if columnKey === 'slug'}

@@ -180,7 +180,11 @@ export async function createSubscription(
 }
 
 export async function getSubscriptionById(db: AppDb, subId: string) {
-  return db.select().from(subscription).where(eq(subscription.id, subId)).get()
+  return db
+    .select()
+    .from(subscription)
+    .where(eq(subscription.id, subId))
+    .get() as Promise<typeof subscription.$inferSelect | undefined>
 }
 
 export async function updateSubscriptionStatus(db: AppDb, subId: string, status: string) {
@@ -195,7 +199,7 @@ export async function updateSubscriptionStatus(db: AppDb, subId: string, status:
 export async function cancelSubscription(db: AppDb, subId: string) {
   const sub = await getSubscriptionById(db, subId)
   if (!sub) throw new Error('Subscription not found')
-  if (!isValidTransition(sub.status as SubStatus, 'canceled')) {
+  if (!isValidTransition(sub.status, 'canceled')) {
     throw new Error(`Cannot cancel subscription in '${sub.status}' state`)
   }
 
@@ -213,7 +217,7 @@ export async function cancelSubscription(db: AppDb, subId: string) {
 export async function reactivateSubscription(db: AppDb, subId: string) {
   const sub = await getSubscriptionById(db, subId)
   if (!sub) throw new Error('Subscription not found')
-  if (!isValidTransition(sub.status as SubStatus, 'active')) {
+  if (!isValidTransition(sub.status, 'active')) {
     throw new Error(`Cannot reactivate subscription in '${sub.status}' state`)
   }
 
@@ -325,12 +329,11 @@ export async function recordUsage(
     if (sub?.stripePriceId) {
       const stripe = getStripeClient(process.env.STRIPE_SECRET_KEY)
       if (stripe) {
-        await reportMeteredUsage(
-          stripe,
-          input.stripeSubscriptionItemId,
-          input.quantity,
-          Math.floor(input.periodStart.getTime() / 1000)
-        ).catch((error) => {
+        await reportMeteredUsage(stripe, {
+          quantity: input.quantity,
+          stripeSubscriptionItemId: input.stripeSubscriptionItemId,
+          timestamp: Math.floor(input.periodStart.getTime() / 1000),
+        }).catch((error) => {
           console.error('Failed to report metered usage to Stripe:', error.message)
         })
       }

@@ -2,6 +2,7 @@ import { renderAndSanitize, sanitizeHtml } from '$lib/markdown'
 import { escapeLike } from '$lib/server/escape-like'
 import { createLogger } from '$lib/server/logger'
 import { getVisitorHash } from '$lib/server/visitor-hash'
+import { dbCount } from '$lib/server/db'
 import { escapeHtmlNullable } from '$lib/utils/escape-html'
 
 const logger = createLogger('api')
@@ -554,18 +555,16 @@ app.get('/api/comments/:postId', async (c) => {
     }
   }
 
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(comment)
-    .where(
-      and(eq(comment.postId, postId), isNull(comment.parentId), eq(comment.status, 'approved'))
-    )
-    .get()
+  const total = await dbCount(
+    db,
+    comment,
+    and(eq(comment.postId, postId), isNull(comment.parentId), eq(comment.status, 'approved'))
+  )
 
   return c.json({
     comments: topLevel.map((cmt) => ({ ...cmt, replies: replyMap.get(cmt.id) ?? [] })),
     page,
-    total: totalResult?.count ?? 0,
+    total,
   })
 })
 
@@ -666,9 +665,7 @@ app.get('/api/search', withRateLimit('search', 30, 60_000), async (c) => {
 
   if (!q || q.length < 2) return c.json({ hits: [], query: q, total: 0 })
 
-  const adapter = createD1SearchAdapter(
-    services.db as unknown as Parameters<typeof createD1SearchAdapter>[0]
-  )
+  const adapter = createD1SearchAdapter(services.db)
   const searchService = createSearchService(adapter)
   const results = await searchService.search(q, { entityTypes: types, limit, offset })
   // Strip PII from search results before returning to public
@@ -730,7 +727,9 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
     const confirmUrl = `${env.origin}/api/newsletter/confirm?token=${newToken}`
     try {
       const emailService = createEmailService(c.get('services').email)
-      await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, undefined, newToken)
+      await emailService.sendNewsletterConfirmation(emailAddress, confirmUrl, {
+        unsubscribeToken: newToken,
+      })
     } catch (error) {
       logger.error('Failed to send newsletter re-subscription email', { error })
     }
@@ -756,7 +755,9 @@ app.post('/api/newsletter/subscribe', withRateLimit('newsletter', 5, 60_000), as
   const confirmUrl2 = `${env2.origin}/api/newsletter/confirm?token=${token}`
   try {
     const emailService2 = createEmailService(c.get('services').email)
-    await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, undefined, token)
+    await emailService2.sendNewsletterConfirmation(emailAddress, confirmUrl2, {
+      unsubscribeToken: token,
+    })
     emailSent = true
   } catch (error) {
     logger.error('Failed to send newsletter confirmation email', { error })
@@ -1153,12 +1154,12 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
               .where(eq(subscriptionPlan.stripePriceId, String(newPlanId)))
             c.executionCtx?.waitUntil?.(
               emailService
-                .sendPlanChanged(
-                  ctx.userEmail,
-                  ctx.userName,
-                  oldPlan?.name ?? 'Previous plan',
-                  newPlan?.name ?? 'New plan',
-                  new Date().toLocaleDateString()
+                .sendPlanChanged(ctx.userEmail, {
+                  effectiveDate: new Date().toLocaleDateString(),
+                  newPlanName: newPlan?.name ?? 'New plan',
+                  oldPlanName: oldPlan?.name ?? 'Previous plan',
+                  userName: ctx.userName,
+                }
                 )
                 .catch(() => {})
             )
@@ -1201,12 +1202,11 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             const endDate = sub.current_period_end
               ? new Date(Number(sub.current_period_end) * 1000).toLocaleDateString()
               : 'now'
-            await emailService.sendSubscriptionCanceled(
-              ctx.userEmail,
-              ctx.userName,
-              ctx.planName,
-              endDate
-            )
+            await emailService.sendSubscriptionCanceled(ctx.userEmail, {
+              endDate,
+              planName: ctx.planName,
+              userName: ctx.userName,
+            })
           }
         } catch (emailError) {
           logger.error('Failed to send cancellation email', { error: emailError })
@@ -1275,13 +1275,12 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
               const periodEnd = inv.period_end
                 ? new Date(Number(inv.period_end) * 1000).toLocaleDateString()
                 : 'next billing cycle'
-              await emailService.sendPaymentSucceeded(
-                ctx.userEmail,
-                ctx.userName,
-                ctx.planName,
+              await emailService.sendPaymentSucceeded(ctx.userEmail, {
                 amount,
-                periodEnd
-              )
+                periodEnd,
+                planName: ctx.planName,
+                userName: ctx.userName,
+              })
             }
           }
         } catch (emailError) {
@@ -1343,12 +1342,11 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
               const retryDate = inv.next_payment_attempt
                 ? new Date(Number(inv.next_payment_attempt) * 1000).toLocaleDateString()
                 : undefined
-              await emailService.sendPaymentFailed(
-                ctx.userEmail,
-                ctx.userName,
-                ctx.planName,
-                retryDate
-              )
+              await emailService.sendPaymentFailed(ctx.userEmail, {
+                planName: ctx.planName,
+                retryDate,
+                userName: ctx.userName,
+              })
             }
           }
         } catch (emailError) {
@@ -1369,12 +1367,11 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             const trialEndDate = sub.trial_end
               ? new Date(Number(sub.trial_end) * 1000).toLocaleDateString()
               : 'soon'
-            await emailService.sendTrialEndingSoon(
-              ctx.userEmail,
-              ctx.userName,
-              ctx.planName,
-              trialEndDate
-            )
+            await emailService.sendTrialEndingSoon(ctx.userEmail, {
+              planName: ctx.planName,
+              trialEndDate,
+              userName: ctx.userName,
+            })
           }
         } catch (emailError) {
           logger.error('Failed to send trial ending email', { error: emailError })
@@ -1528,7 +1525,11 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             if (isTrial) {
               c.executionCtx?.waitUntil?.(
                 emailService
-                  .sendTrialEndingSoon(ctx.userEmail, ctx.userName, ctx.planName, periodEnd)
+                  .sendTrialEndingSoon(ctx.userEmail, {
+                    planName: ctx.planName,
+                    trialEndDate: periodEnd,
+                    userName: ctx.userName,
+                  })
                   .catch(() => {})
               )
             }
@@ -1696,11 +1697,8 @@ protectedApp.get('/items', async (c) => {
     sortCol in ALLOWED_SORT ? ALLOWED_SORT[sortCol as keyof typeof ALLOWED_SORT] : item.createdAt
   const orderBy = sortDesc ? desc(sortColumn) : asc(sortColumn)
 
-  const [countResult, items] = await Promise.all([
-    db
-      .select({ value: sql<number>`count(*)` })
-      .from(item)
-      .where(whereClause),
+  const [total, items] = await Promise.all([
+    dbCount(db, item, whereClause),
     db
       .select({
         createdAt: item.createdAt,
@@ -1716,8 +1714,6 @@ protectedApp.get('/items', async (c) => {
       .limit(limit)
       .offset(offset),
   ])
-
-  const total = (countResult[0] as unknown as { value: number })?.value ?? 0
 
   return c.json({ items, page, total })
 })
@@ -1922,30 +1918,17 @@ protectedApp.get('/stats', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
 
-  const [activeResult] = (await db
-    .select({ count: sql<number>`count(*)` })
-    .from(item)
-    .where(
-      and(eq(item.userId, userId), eq(item.status, 'active'), isNull(item.deletedAt))
-    )) as unknown as { count: number }[]
-
-  const [totalResult] = (await db
-    .select({ count: sql<number>`count(*)` })
-    .from(item)
-    .where(and(eq(item.userId, userId), isNull(item.deletedAt)))) as unknown as { count: number }[]
-
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const [weekResult] = (await db
-    .select({ count: sql<number>`count(*)` })
-    .from(item)
-    .where(
-      and(eq(item.userId, userId), isNull(item.deletedAt), gte(item.createdAt, oneWeekAgo))
-    )) as unknown as { count: number }[]
+  const [activeItems, totalItems, itemsThisWeek] = await Promise.all([
+    dbCount(db, item, and(eq(item.userId, userId), eq(item.status, 'active'), isNull(item.deletedAt))),
+    dbCount(db, item, and(eq(item.userId, userId), isNull(item.deletedAt))),
+    dbCount(db, item, and(eq(item.userId, userId), isNull(item.deletedAt), gte(item.createdAt, oneWeekAgo))),
+  ])
 
   return c.json({
-    activeItems: activeResult?.count ?? 0,
-    itemsThisWeek: weekResult?.count ?? 0,
-    totalItems: totalResult?.count ?? 0,
+    activeItems,
+    itemsThisWeek,
+    totalItems,
   })
 })
 
@@ -2057,7 +2040,7 @@ protectedApp.post(
       throw new BadRequestError(`Chunk size exceeds limit of ${session.chunkSize as number} bytes`)
     }
 
-    const result = await recordChunk(db, sessionId, chunkIndex, chunkData)
+    const result = await recordChunk(db, { chunkIndex, sessionId }, chunkData)
     return c.json(result)
   }
 )
@@ -2465,7 +2448,7 @@ protectedApp.get('/notifications', withRateLimit('notifications-list', 60, 60_00
 
   const where = conditions.length === 1 ? conditions[0] : and(...conditions)
 
-  const [rows, countResult] = await Promise.all([
+  const [rows, total] = await Promise.all([
     db
       .select({
         archivedAt: notification.archivedAt,
@@ -2484,17 +2467,14 @@ protectedApp.get('/notifications', withRateLimit('notifications-list', 60, 60_00
       .orderBy(desc(notification.createdAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ value: sql<number>`count(*)` })
-      .from(notification)
-      .where(where),
+    dbCount(db, notification, where),
   ])
 
   return c.json({
     limit,
     notifications: rows,
     page,
-    total: countResult[0]?.value ?? 0,
+    total,
   })
 })
 
@@ -2502,12 +2482,13 @@ protectedApp.get('/notifications/unread-count', async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
 
-  const [result] = await db
-    .select({ value: sql<number>`count(*)` })
-    .from(notification)
-    .where(and(eq(notification.userId, userId), isNull(notification.readAt)))
+  const count = await dbCount(
+    db,
+    notification,
+    and(eq(notification.userId, userId), isNull(notification.readAt))
+  )
 
-  return c.json({ count: result?.value ?? 0 })
+  return c.json({ count })
 })
 
 protectedApp.patch(
@@ -2922,7 +2903,7 @@ protectedApp.get('/billing/invoices', async (c) => {
   const limit = Math.min(Math.max(Number(limitParam) || 20, 1), 100)
   const offset = Math.max(Number(offsetParam) || 0, 0)
 
-  const [invoices, [{ count }]] = await Promise.all([
+  const [invoices, total] = await Promise.all([
     db
       .select({
         amountInCents: invoice.amountInCents,
@@ -2940,13 +2921,10 @@ protectedApp.get('/billing/invoices', async (c) => {
       .orderBy(desc(invoice.createdAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(invoice)
-      .where(eq(invoice.userId, userId)),
+    dbCount(db, invoice, eq(invoice.userId, userId)),
   ])
 
-  return c.json({ invoices, limit, offset, total: count })
+  return c.json({ invoices, limit, offset, total })
 })
 
 protectedApp.get('/billing/usage', async (c) => {
@@ -3355,13 +3333,14 @@ protectedApp.post('/experiments/:key/assign', validate(assignVariantSchema), asy
   const { id: userId } = c.get('user')
   const result = await assignVariant(db, key, { ...input, userId })
   if (!result) throw new NotFoundError()
+  if (!result.variant) throw new NotFoundError()
   return c.json({
-    experiment: { key: (result.experiment as Record<string, unknown>).key },
+    experiment: { key: result.experiment.key },
     variant: {
-      id: (result.variant as Record<string, unknown>).id,
-      isControl: (result.variant as Record<string, unknown>).isControl,
-      name: (result.variant as Record<string, unknown>).name,
-      payload: (result.variant as Record<string, unknown>).payload,
+      id: result.variant.id,
+      isControl: result.variant.isControl,
+      name: result.variant.name,
+      payload: result.variant.payload,
     },
   })
 })
@@ -3376,12 +3355,12 @@ protectedApp.post('/experiments/:key/event', validate(recordEventSchema), async 
 
   const { sessionId } = input
   const assignment = await assignVariant(db, key, { sessionId, userId })
-  if (!assignment) throw new NotFoundError()
+  if (!assignment || !assignment.variant) throw new NotFoundError()
 
   await recordEvent(db, {
     ...input,
-    experimentId: experiment.id as string,
-    variantId: (assignment.variant as Record<string, unknown>).id as string,
+    experimentId: experiment.id,
+    variantId: assignment.variant.id,
   })
   return c.json({ recorded: true })
 })
@@ -3970,9 +3949,7 @@ blogApp.get('/search', async (c) => {
   const q = c.req.query('q')?.trim()
   if (!q || q.length < 2) return c.json({ results: [] })
 
-  const adapter = createD1SearchAdapter(
-    db as unknown as Parameters<typeof createD1SearchAdapter>[0]
-  )
+  const adapter = createD1SearchAdapter(db)
   const searchService = createSearchService(adapter)
   const { hits } = await searchService.search(q, {
     entityTypes: ['blog_post'],
@@ -4063,11 +4040,8 @@ blogApp.get('/', async (c) => {
   }
   const orderBy = sortMap[sortField]?.[sortDir] ?? desc(blogPost.createdAt)
 
-  const [countResult, posts] = await Promise.all([
-    db
-      .select({ value: sql<number>`count(*)` })
-      .from(blogPost)
-      .where(whereClause),
+  const [total, posts] = await Promise.all([
+    dbCount(db, blogPost, whereClause),
     db
       .select({
         coverImageUrl: blogPost.coverImageUrl,
@@ -4089,7 +4063,7 @@ blogApp.get('/', async (c) => {
       .offset(offset),
   ])
 
-  return c.json({ limit, page, posts, total: countResult[0]?.value ?? 0 })
+  return c.json({ limit, page, posts, total })
 })
 
 blogApp.post('/', withRateLimit('blog-mutate', 50), validate(createPostSchema), async (c) => {
@@ -4846,50 +4820,15 @@ adminApp.get('/stats', async (c) => {
     activeItems,
     recentAuditLogs,
   ] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(user)
-      .where(isNull(user.deletedAt))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(user)
-      .where(and(isNull(user.deletedAt), eq(user.status, 'active')))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(user)
-      .where(and(isNull(user.deletedAt), eq(user.status, 'suspended')))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(user)
-      .where(and(isNull(user.deletedAt), gte(user.createdAt, oneWeekAgo)))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPost)
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPost)
-      .where(eq(blogPost.status, 'published'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPost)
-      .where(eq(blogPost.status, 'draft'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(item)
-      .where(isNull(item.deletedAt))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(item)
-      .where(and(eq(item.status, 'active'), isNull(item.deletedAt)))
-      .get() as unknown as { count: number } | undefined,
+    dbCount(db, user, isNull(user.deletedAt)),
+    dbCount(db, user, and(isNull(user.deletedAt), eq(user.status, 'active'))),
+    dbCount(db, user, and(isNull(user.deletedAt), eq(user.status, 'suspended'))),
+    dbCount(db, user, and(isNull(user.deletedAt), gte(user.createdAt, oneWeekAgo))),
+    dbCount(db, blogPost),
+    dbCount(db, blogPost, eq(blogPost.status, 'published')),
+    dbCount(db, blogPost, eq(blogPost.status, 'draft')),
+    dbCount(db, item, isNull(item.deletedAt)),
+    dbCount(db, item, and(eq(item.status, 'active'), isNull(item.deletedAt))),
     db
       .select({
         action: auditLog.action,
@@ -4930,19 +4869,19 @@ adminApp.get('/stats', async (c) => {
       }
     }),
     items: {
-      active: activeItems?.count ?? 0,
-      total: totalItems?.count ?? 0,
+      active: activeItems,
+      total: totalItems,
     },
     posts: {
-      draft: draftPosts?.count ?? 0,
-      published: publishedPosts?.count ?? 0,
-      total: totalPosts?.count ?? 0,
+      draft: draftPosts,
+      published: publishedPosts,
+      total: totalPosts,
     },
     users: {
-      active: activeUsers?.count ?? 0,
-      newThisWeek: newUsersThisWeek?.count ?? 0,
-      suspended: suspendedUsers?.count ?? 0,
-      total: totalUsers?.count ?? 0,
+      active: activeUsers,
+      newThisWeek: newUsersThisWeek,
+      suspended: suspendedUsers,
+      total: totalUsers,
     },
   })
 })
@@ -4973,11 +4912,8 @@ adminApp.get('/users', async (c) => {
 
   const whereClause = and(...conditions)
 
-  const [countResult, users] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(user)
-      .where(whereClause) as unknown as { count: number }[],
+  const [total, users] = await Promise.all([
+    dbCount(db, user, whereClause),
     db
       .select({
         createdAt: user.createdAt,
@@ -4999,7 +4935,7 @@ adminApp.get('/users', async (c) => {
       .offset(offset),
   ])
 
-  return c.json({ total: countResult[0]?.count ?? 0, users })
+  return c.json({ total, users })
 })
 
 adminApp.get('/users/:id', async (c) => {
@@ -5027,15 +4963,9 @@ adminApp.get('/users/:id', async (c) => {
     throw new NotFoundError('User not found')
   }
 
-  const [itemStats] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(item)
-    .where(eq(item.userId, targetId))
+  const itemCount = await dbCount(db, item, eq(item.userId, targetId))
 
-  const [orgStats] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(organizationMember)
-    .where(eq(organizationMember.userId, targetId))
+  const orgCount = await dbCount(db, organizationMember, eq(organizationMember.userId, targetId))
 
   const recentAudit = await db
     .select({
@@ -5053,8 +4983,8 @@ adminApp.get('/users/:id', async (c) => {
 
   return c.json({
     audit: recentAudit,
-    items: itemStats?.count ?? 0,
-    organizations: orgStats?.count ?? 0,
+    items: itemCount,
+    organizations: orgCount,
     user: target,
   })
 })
@@ -5475,11 +5405,8 @@ adminApp.get('/reports', async (c) => {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-  const [countResult, reports] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(contentReport)
-      .where(whereClause) as unknown as { count: number }[],
+  const [total, reports] = await Promise.all([
+    dbCount(db, contentReport, whereClause),
     db
       .select({
         createdAt: contentReport.createdAt,
@@ -5557,45 +5484,26 @@ adminApp.get('/reports', async (c) => {
     }
   })
 
-  return c.json({ limit, page, reports: enrichedReports, total: countResult[0]?.count ?? 0 })
+  return c.json({ limit, page, reports: enrichedReports, total })
 })
 
 adminApp.get('/reports/stats', async (c) => {
   const { db } = c.get('services')
 
   const [pending, reviewing, resolved, dismissed, total] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(contentReport)
-      .where(eq(contentReport.status, 'pending'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(contentReport)
-      .where(eq(contentReport.status, 'reviewing'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(contentReport)
-      .where(eq(contentReport.status, 'resolved'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(contentReport)
-      .where(eq(contentReport.status, 'dismissed'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(contentReport)
-      .get() as unknown as { count: number } | undefined,
+    dbCount(db, contentReport, eq(contentReport.status, 'pending')),
+    dbCount(db, contentReport, eq(contentReport.status, 'reviewing')),
+    dbCount(db, contentReport, eq(contentReport.status, 'resolved')),
+    dbCount(db, contentReport, eq(contentReport.status, 'dismissed')),
+    dbCount(db, contentReport),
   ])
 
   return c.json({
-    dismissed: dismissed?.count ?? 0,
-    pending: pending?.count ?? 0,
-    resolved: resolved?.count ?? 0,
-    reviewing: reviewing?.count ?? 0,
-    total: total?.count ?? 0,
+    dismissed,
+    pending,
+    resolved,
+    reviewing,
+    total,
   })
 })
 
@@ -7011,7 +6919,7 @@ teamApp.get(
     const limit = 50
     const offset = (page - 1) * limit
 
-    const [activities, totalResult] = await Promise.all([
+    const [activities, total] = await Promise.all([
       db
         .select({
           action: teamActivity.action,
@@ -7028,13 +6936,10 @@ teamApp.get(
         .orderBy(desc(teamActivity.createdAt))
         .limit(limit)
         .offset(offset),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(teamActivity)
-        .where(eq(teamActivity.teamId, teamRow.id)) as unknown as { count: number }[],
+      dbCount(db, teamActivity, eq(teamActivity.teamId, teamRow.id)),
     ])
 
-    const totalPages = Math.ceil((totalResult[0]?.count ?? 0) / limit)
+    const totalPages = Math.ceil(total / limit)
 
     return c.json({ activities, page, totalPages })
   }
@@ -7383,10 +7288,8 @@ adminApp.get('/announcements', async (c) => {
   const limit = 20
   const offset = (page - 1) * limit
 
-  const [countResult, rows] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(announcement) as unknown as {
-      count: number
-    }[],
+  const [total, rows] = await Promise.all([
+    dbCount(db, announcement),
     db
       .select({
         createdAt: announcement.createdAt,
@@ -7405,7 +7308,7 @@ adminApp.get('/announcements', async (c) => {
       .offset(offset),
   ])
 
-  return c.json({ announcements: rows, limit, page, total: countResult[0]?.count ?? 0 })
+  return c.json({ announcements: rows, limit, page, total })
 })
 
 // Admin: create announcement
@@ -7523,7 +7426,7 @@ adminApp.get('/newsletter/subscribers', async (c) => {
 
   const conditions = statusFilter ? eq(newsletterSubscriber.status, statusFilter) : undefined
 
-  const [subscribers, totalResult] = await Promise.all([
+  const [subscribers, total] = await Promise.all([
     db
       .select()
       .from(newsletterSubscriber)
@@ -7531,49 +7434,29 @@ adminApp.get('/newsletter/subscribers', async (c) => {
       .orderBy(desc(newsletterSubscriber.createdAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(newsletterSubscriber)
-      .where(conditions)
-      .get() as unknown as Promise<{ count: number } | undefined>,
+    dbCount(db, newsletterSubscriber, conditions),
   ])
 
   return c.json({
     page,
     subscribers,
-    total: totalResult?.count ?? 0,
+    total,
   })
 })
 
 adminApp.get('/newsletter/stats', async (c) => {
   const { db } = c.get('services')
   const [pending, confirmed, unsubscribed, bounced] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(newsletterSubscriber)
-      .where(eq(newsletterSubscriber.status, 'pending'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(newsletterSubscriber)
-      .where(eq(newsletterSubscriber.status, 'confirmed'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(newsletterSubscriber)
-      .where(eq(newsletterSubscriber.status, 'unsubscribed'))
-      .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(newsletterSubscriber)
-      .where(eq(newsletterSubscriber.status, 'bounced'))
-      .get() as unknown as { count: number } | undefined,
+    dbCount(db, newsletterSubscriber, eq(newsletterSubscriber.status, 'pending')),
+    dbCount(db, newsletterSubscriber, eq(newsletterSubscriber.status, 'confirmed')),
+    dbCount(db, newsletterSubscriber, eq(newsletterSubscriber.status, 'unsubscribed')),
+    dbCount(db, newsletterSubscriber, eq(newsletterSubscriber.status, 'bounced')),
   ])
   return c.json({
-    bounced: bounced?.count ?? 0,
-    confirmed: confirmed?.count ?? 0,
-    pending: pending?.count ?? 0,
-    unsubscribed: unsubscribed?.count ?? 0,
+    bounced,
+    confirmed,
+    pending,
+    unsubscribed,
   })
 })
 
@@ -7610,21 +7493,13 @@ adminApp.get('/analytics/overview', async (c) => {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
   const [totalViews, uniqueVisitors, completedReads, topPosts, referrers] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPostView)
-      .where(gte(blogPostView.createdAt, since))
-      .get() as unknown as { count: number } | undefined,
+    dbCount(db, blogPostView, gte(blogPostView.createdAt, since)),
     db
       .select({ count: sql<number>`count(distinct ${blogPostView.visitorHash})` })
       .from(blogPostView)
       .where(gte(blogPostView.createdAt, since))
       .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPostView)
-      .where(and(gte(blogPostView.createdAt, since), eq(blogPostView.isCompleted, true)))
-      .get() as unknown as { count: number } | undefined,
+    dbCount(db, blogPostView, and(gte(blogPostView.createdAt, since), eq(blogPostView.isCompleted, true))),
     db
       .select({
         slug: blogPost.slug,
@@ -7649,15 +7524,15 @@ adminApp.get('/analytics/overview', async (c) => {
       .limit(10),
   ])
 
-  const avgCompletion = totalViews?.count
-    ? Math.round(((completedReads?.count ?? 0) / totalViews.count) * 100)
+  const avgCompletion = totalViews
+    ? Math.round(((completedReads ?? 0) / totalViews) * 100)
     : 0
 
   return c.json({
     avgCompletion,
     referrers,
     topPosts,
-    totalViews: totalViews?.count ?? 0,
+    totalViews,
     uniqueVisitors: uniqueVisitors?.count ?? 0,
   })
 })
@@ -7669,27 +7544,21 @@ adminApp.get('/analytics/posts/:postId', async (c) => {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
   const [views, uniqueVisitors, completedReads, avgReadTime, dailyViews] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPostView)
-      .where(and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since)))
-      .get() as unknown as { count: number } | undefined,
+    dbCount(db, blogPostView, and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since))),
     db
       .select({ count: sql<number>`count(distinct ${blogPostView.visitorHash})` })
       .from(blogPostView)
       .where(and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since)))
       .get() as unknown as { count: number } | undefined,
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(blogPostView)
-      .where(
-        and(
-          eq(blogPostView.postId, postId),
-          gte(blogPostView.createdAt, since),
-          eq(blogPostView.isCompleted, true)
-        )
+    dbCount(
+      db,
+      blogPostView,
+      and(
+        eq(blogPostView.postId, postId),
+        gte(blogPostView.createdAt, since),
+        eq(blogPostView.isCompleted, true)
       )
-      .get() as unknown as { count: number } | undefined,
+    ),
     db
       .select({
         avg: sql<number>`cast(avg(${blogPostView.readTime}) as integer)`,
@@ -7714,15 +7583,15 @@ adminApp.get('/analytics/posts/:postId', async (c) => {
       .orderBy(sql`date(${blogPostView.createdAt} / 1000, 'unixepoch')`),
   ])
 
-  const completionRate = views?.count
-    ? Math.round(((completedReads?.count ?? 0) / views.count) * 100)
+  const completionRate = views
+    ? Math.round(((completedReads ?? 0) / views) * 100)
     : 0
 
   return c.json({
     avgReadTime: avgReadTime?.avg ?? 0,
     completionRate,
     dailyViews,
-    totalViews: views?.count ?? 0,
+    totalViews: views,
     uniqueVisitors: uniqueVisitors?.count ?? 0,
   })
 })
@@ -7753,7 +7622,7 @@ adminApp.get('/comments', async (c) => {
   }
   const orderFn = sortDir === 'asc' ? asc : desc
 
-  const [comments, totalResult] = await Promise.all([
+  const [comments, total] = await Promise.all([
     db
       .select({
         authorEmail: user.email,
@@ -7775,49 +7644,29 @@ adminApp.get('/comments', async (c) => {
       .orderBy(orderFn(sortColumn))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(comment)
-      .where(conditions)
-      .get(),
+    dbCount(db, comment, conditions),
   ])
 
   return c.json({
     comments,
     page,
-    total: totalResult?.count ?? 0,
+    total,
   })
 })
 
 adminApp.get('/comments/stats', async (c) => {
   const { db } = c.get('services')
   const [pending, spam, approved, rejected] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(comment)
-      .where(eq(comment.status, 'pending'))
-      .get(),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(comment)
-      .where(eq(comment.status, 'spam'))
-      .get(),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(comment)
-      .where(eq(comment.status, 'approved'))
-      .get(),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(comment)
-      .where(eq(comment.status, 'rejected'))
-      .get(),
+    dbCount(db, comment, eq(comment.status, 'pending')),
+    dbCount(db, comment, eq(comment.status, 'spam')),
+    dbCount(db, comment, eq(comment.status, 'approved')),
+    dbCount(db, comment, eq(comment.status, 'rejected')),
   ])
   return c.json({
-    approved: approved?.count ?? 0,
-    pending: pending?.count ?? 0,
-    rejected: rejected?.count ?? 0,
-    spam: spam?.count ?? 0,
+    approved,
+    pending,
+    rejected,
+    spam,
   })
 })
 
@@ -8475,9 +8324,7 @@ adminApp.post('/storage/thumbnail', async (c) => {
 adminApp.post('/search/index', validate(indexDocumentSchema), async (c) => {
   const { db } = c.get('services')
   const input = c.req.valid('json')
-  const adapter = createD1SearchAdapter(
-    db as unknown as Parameters<typeof createD1SearchAdapter>[0]
-  )
+  const adapter = createD1SearchAdapter(db)
   const searchService = createSearchService(adapter)
   await searchService.indexEntity(input)
   return c.json({ indexed: true })
@@ -8486,9 +8333,7 @@ adminApp.post('/search/index', validate(indexDocumentSchema), async (c) => {
 adminApp.delete('/search/index', validate(deleteSearchIndexSchema), async (c) => {
   const { db } = c.get('services')
   const body = c.req.valid('json')
-  const adapter = createD1SearchAdapter(
-    db as unknown as Parameters<typeof createD1SearchAdapter>[0]
-  )
+  const adapter = createD1SearchAdapter(db)
   const searchService = createSearchService(adapter)
   await searchService.deleteEntity(body.entityId, body.entityType)
   return c.json({ deleted: true })

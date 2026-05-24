@@ -26,11 +26,13 @@ export async function emitEvent(db: DrizzleDb, input: EmitEventInput): Promise<v
   // Dispatch to webhook endpoints owned by this user (true fire-and-forget)
   dispatchWebhooksForEvent(
     db,
-    input.action,
     {
-      entityId: input.entityId,
-      entityType: input.entityType,
-      ...input.metadata,
+      data: {
+        entityId: input.entityId,
+        entityType: input.entityType,
+        ...input.metadata,
+      },
+      eventType: input.action,
     },
     input.userId
   ).catch((error) => {

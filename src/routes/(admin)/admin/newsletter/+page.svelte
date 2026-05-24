@@ -166,7 +166,7 @@
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={(subscribersQuery.data?.subscribers ?? []) as unknown as Record<string, unknown>[]}
+    rows={subscribersQuery.data?.subscribers ?? []}
     loading={subscribersQuery.isPending}
     {selectedIds}
     onSelectionChange={(ids) => (selectedIds = ids)}
@@ -177,8 +177,7 @@
     onRetry={() => subscribersQuery.refetch()}
     emptyMessage="No subscribers matching this filter."
   >
-    {#snippet children({ row: _row, columnKey })}
-      {@const row = _row as unknown as SubscriberRow}
+    {#snippet children({ row, columnKey })}
       {#if columnKey === 'email'}
         <span class="font-medium text-text-primary">{row.email}</span>
       {:else if columnKey === 'name'}

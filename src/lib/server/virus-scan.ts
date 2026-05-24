@@ -42,15 +42,16 @@ export async function scanBuffer(data: Uint8Array): Promise<ScanResult> {
   const threats: string[] = []
 
   for (const { name, pattern } of DANGEROUS_PATTERNS) {
-    if (data.length < pattern.length) continue
-    let found = true
-    for (let i = 0; i < pattern.length; i++) {
-      if (data[i] !== pattern[i]) {
-        found = false
-        break
+    if (data.length >= pattern.length) {
+      let found = true
+      for (let i = 0; i < pattern.length; i++) {
+        if (data[i] !== pattern[i]) {
+          found = false
+          break
+        }
       }
+      if (found) threats.push(name)
     }
-    if (found) threats.push(name)
   }
 
   // Also scan interior bytes for embedded executables

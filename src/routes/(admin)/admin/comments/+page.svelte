@@ -246,7 +246,7 @@
 <div class="mt-4">
   <DataTable
     {columns}
-    rows={(commentsQuery.data?.comments ?? []) as unknown as Record<string, unknown>[]}
+    rows={commentsQuery.data?.comments ?? []}
     loading={commentsQuery.isPending}
     {selectedIds}
     onSelectionChange={(ids) => (selectedIds = ids)}
@@ -257,8 +257,7 @@
     onRetry={() => commentsQuery.refetch()}
     emptyMessage="No comments matching this filter."
   >
-    {#snippet children({ row: _row, columnKey })}
-	      {@const row = _row as unknown as CommentRow}
+    {#snippet children({ row, columnKey })}
       {#if columnKey === 'authorName'}
         <div>
           <span class="font-medium text-text-primary">{row.authorName}</span>

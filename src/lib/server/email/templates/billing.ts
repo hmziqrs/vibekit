@@ -50,12 +50,15 @@ export function renderSubscriptionCanceled(
   }
 }
 
-export function renderPaymentSucceeded(
-  userName: string,
-  planName: string,
-  amount: string,
+export interface PaymentSucceededData {
+  amount: string
   periodEnd: string
-): { html: string; text: string } {
+  planName: string
+  userName: string
+}
+
+export function renderPaymentSucceeded(data: PaymentSucceededData): { html: string; text: string } {
+  const { amount, periodEnd, planName, userName } = data
   const bodyHtml = `
     <p style="${textStyles.paragraph}">Hi ${escapeHtml(userName)},</p>
     <p style="${textStyles.paragraph}">Your payment of <strong>${escapeHtml(amount)}</strong> for the <strong>${escapeHtml(planName)}</strong> plan was successful.</p>
@@ -113,12 +116,15 @@ export function renderTrialEndingSoon(
   }
 }
 
-export function renderPlanChanged(
-  userName: string,
-  oldPlanName: string,
-  newPlanName: string,
+export interface PlanChangedData {
   effectiveDate: string
-): { html: string; text: string } {
+  newPlanName: string
+  oldPlanName: string
+  userName: string
+}
+
+export function renderPlanChanged(data: PlanChangedData): { html: string; text: string } {
+  const { effectiveDate, newPlanName, oldPlanName, userName } = data
   const isUpgrade = true
   const direction = isUpgrade ? 'upgraded' : 'changed'
   const bodyHtml = `

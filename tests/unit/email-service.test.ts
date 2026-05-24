@@ -73,12 +73,9 @@ describe('sendNewsletterConfirmation', () => {
     const { EmailService } = await import('$lib/server/email/index')
     const service = new EmailService({ send: vi.fn().mockResolvedValue({ ok: true }) })
 
-    await service.sendNewsletterConfirmation(
-      'user@test.com',
-      'https://confirm',
-      undefined,
-      'tok123'
-    )
+    await service.sendNewsletterConfirmation('user@test.com', 'https://confirm', {
+      unsubscribeToken: 'tok123',
+    })
 
     const [message] = mockEnqueue.mock.calls[0]
     expect(message.headers['List-Unsubscribe']).toContain('token=tok123')

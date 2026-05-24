@@ -2,12 +2,12 @@
 import type Stripe from 'stripe'
 
 export class StripeApiError extends Error {
-  constructor(
-    message: string,
-    public readonly cause: unknown
-  ) {
+  public readonly cause: unknown
+
+  constructor(message: string, cause: unknown) {
     super(message)
     this.name = 'StripeApiError'
+    this.cause = cause
   }
 }
 
@@ -215,15 +215,13 @@ export async function reactivateStripeSubscription(stripe: Stripe, stripeSubscri
 
 export async function reportMeteredUsage(
   stripe: Stripe,
-  stripeSubscriptionItemId: string,
-  quantity: number,
-  timestamp: number
+  input: { quantity: number; stripeSubscriptionItemId: string; timestamp: number }
 ) {
   try {
-    return await stripe.subscriptionItems.createUsageRecord(stripeSubscriptionItemId, {
+    return await stripe.subscriptionItems.createUsageRecord(input.stripeSubscriptionItemId, {
       action: 'set',
-      quantity,
-      timestamp,
+      quantity: input.quantity,
+      timestamp: input.timestamp,
     })
   } catch (error) {
     throw new StripeApiError('Failed to report metered usage to Stripe', error)

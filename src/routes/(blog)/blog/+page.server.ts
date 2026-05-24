@@ -1,8 +1,8 @@
-import type { getDb } from '$lib/server/db'
+import { dbCount, type getDb } from '$lib/server/db'
 import { blogPost, blogPostTag, blogTag } from '$lib/server/db/schema'
 import { createD1SearchAdapter } from '$lib/server/search/adapter-d1'
 import { createSearchService } from '$lib/server/search/service'
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 
 import type { PageServerLoad } from './$types'
 
@@ -24,9 +24,7 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
 
   // Use FTS5 for search queries
   if (q && q.length >= 2) {
-    const adapter = createD1SearchAdapter(
-      db as unknown as Parameters<typeof createD1SearchAdapter>[0]
-    )
+    const adapter = createD1SearchAdapter(db)
     const searchService = createSearchService(adapter)
     const results = await searchService.search(q, {
       entityTypes: ['blog_post'],
@@ -92,11 +90,8 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
         const postConditions = [...conditions, inArray(blogPost.id, postIdArray)]
         const whereClause = and(...postConditions)
 
-        const [countResult, posts] = await Promise.all([
-          db
-            .select({ value: sql<number>`count(*)` })
-            .from(blogPost)
-            .where(whereClause),
+        const [total, posts] = await Promise.all([
+          dbCount(db, blogPost, whereClause),
           db
             .select({
               coverImageUrl: blogPost.coverImageUrl,
@@ -119,8 +114,7 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
           .from(blogTag)
           .orderBy(blogTag.name)
 
-        const countRow = countResult[0] as unknown as { value: number }
-        return { page, posts, q: q || null, tag: tagSlug, tags, total: countRow?.value ?? 0 }
+        return { page, posts, q: q || null, tag: tagSlug, tags, total }
       }
     }
     // Tag not found or no posts with that tag
@@ -133,11 +127,8 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
 
   const whereClause = and(...conditions)
 
-  const [countResult, posts] = await Promise.all([
-    db
-      .select({ value: sql<number>`count(*)` })
-      .from(blogPost)
-      .where(whereClause),
+  const [total, posts] = await Promise.all([
+    dbCount(db, blogPost, whereClause),
     db
       .select({
         coverImageUrl: blogPost.coverImageUrl,
@@ -160,14 +151,12 @@ export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
     .from(blogTag)
     .orderBy(blogTag.name)
 
-  const countRow = countResult[0] as unknown as { value: number }
-
   return {
     page,
     posts,
     q: q || null,
     tag: tagSlug || null,
     tags,
-    total: countRow?.value ?? 0,
+    total,
   }
 }

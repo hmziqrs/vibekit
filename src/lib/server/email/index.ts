@@ -5,7 +5,9 @@ import { renderAccountSuspended, type AccountSuspendedData } from './templates/a
 import {
   renderPaymentFailed,
   renderPaymentSucceeded,
+  type PaymentSucceededData,
   renderPlanChanged,
+  type PlanChangedData,
   renderSubscriptionCanceled,
   renderTrialEndingSoon,
 } from './templates/billing'
@@ -34,12 +36,11 @@ export class EmailService {
   async sendNewsletterConfirmation(
     email: string,
     confirmUrl: string,
-    _onBounce?: () => Promise<void>,
-    unsubscribeToken?: string
+    options?: { unsubscribeToken?: string }
   ): Promise<void> {
     const { html, text } = renderNewsletterConfirm(confirmUrl)
-    const unsubUrl = unsubscribeToken
-      ? `<https://vibekit.com/api/newsletter/unsubscribe?token=${unsubscribeToken}>`
+    const unsubUrl = options?.unsubscribeToken
+      ? `<https://vibekit.com/api/newsletter/unsubscribe?token=${options.unsubscribeToken}>`
       : '<https://vibekit.com/api/newsletter/unsubscribe>'
     this.queue.enqueue({
       from: 'Vibekit Blog <noreply@vibekit.com>',
@@ -108,11 +109,9 @@ export class EmailService {
 
   async sendPaymentFailed(
     email: string,
-    userName: string,
-    planName: string,
-    retryDate?: string
+    data: { planName: string; retryDate?: string; userName: string }
   ): Promise<EmailResult> {
-    const { html, text } = renderPaymentFailed(userName, planName, retryDate)
+    const { html, text } = renderPaymentFailed(data.userName, data.planName, data.retryDate)
     return this.queue.sendImmediate({
       from: 'Vibekit <noreply@vibekit.com>',
       html,
@@ -122,18 +121,12 @@ export class EmailService {
     })
   }
 
-  async sendPaymentSucceeded(
-    email: string,
-    userName: string,
-    planName: string,
-    amount: string,
-    periodEnd: string
-  ): Promise<EmailResult> {
-    const { html, text } = renderPaymentSucceeded(userName, planName, amount, periodEnd)
+  async sendPaymentSucceeded(email: string, data: PaymentSucceededData): Promise<EmailResult> {
+    const { html, text } = renderPaymentSucceeded(data)
     return this.queue.sendImmediate({
       from: 'Vibekit <noreply@vibekit.com>',
       html,
-      subject: `Payment receipt — ${amount}`,
+      subject: `Payment receipt — ${data.amount}`,
       text,
       to: email,
     })
@@ -141,11 +134,9 @@ export class EmailService {
 
   async sendSubscriptionCanceled(
     email: string,
-    userName: string,
-    planName: string,
-    endDate: string
+    data: { endDate: string; planName: string; userName: string }
   ): Promise<EmailResult> {
-    const { html, text } = renderSubscriptionCanceled(userName, planName, endDate)
+    const { html, text } = renderSubscriptionCanceled(data.userName, data.planName, data.endDate)
     return this.queue.sendImmediate({
       from: 'Vibekit <noreply@vibekit.com>',
       html,
@@ -157,32 +148,24 @@ export class EmailService {
 
   async sendTrialEndingSoon(
     email: string,
-    userName: string,
-    planName: string,
-    trialEndDate: string
+    data: { planName: string; trialEndDate: string; userName: string }
   ): Promise<EmailResult> {
-    const { html, text } = renderTrialEndingSoon(userName, planName, trialEndDate)
+    const { html, text } = renderTrialEndingSoon(data.userName, data.planName, data.trialEndDate)
     return this.queue.sendImmediate({
       from: 'Vibekit <noreply@vibekit.com>',
       html,
-      subject: `Your ${planName} trial ends soon`,
+      subject: `Your ${data.planName} trial ends soon`,
       text,
       to: email,
     })
   }
 
-  async sendPlanChanged(
-    email: string,
-    userName: string,
-    oldPlanName: string,
-    newPlanName: string,
-    effectiveDate: string
-  ): Promise<EmailResult> {
-    const { html, text } = renderPlanChanged(userName, oldPlanName, newPlanName, effectiveDate)
+  async sendPlanChanged(email: string, data: PlanChangedData): Promise<EmailResult> {
+    const { html, text } = renderPlanChanged(data)
     return this.queue.sendImmediate({
       from: 'Vibekit <noreply@vibekit.com>',
       html,
-      subject: `Subscription updated — ${newPlanName}`,
+      subject: `Subscription updated — ${data.newPlanName}`,
       text,
       to: email,
     })

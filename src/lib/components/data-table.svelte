@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" generics="T extends { id: string }">
   import { ArrowDown, ArrowUp, ArrowUpDown } from '@lucide/svelte'
 
   interface Column {
@@ -10,7 +10,7 @@
 
   interface Props {
     columns: Column[]
-    rows: Record<string, unknown>[]
+    rows: T[]
     loading?: boolean
     selectable?: boolean
     selectedIds?: Set<string>
@@ -21,7 +21,7 @@
     error?: string
     emptyMessage?: string
     onRetry?: () => void
-    children?: import('svelte').Snippet<[{ row: Record<string, unknown>; columnKey: string }]>
+    children?: import('svelte').Snippet<[{ row: T; columnKey: string }]>
   }
 
   let {
@@ -40,8 +40,8 @@
     children,
   }: Props = $props()
 
-  let allChecked = $derived(rows.length > 0 && rows.every((r) => selectedIds.has(r.id as string)))
-  let someChecked = $derived(!allChecked && rows.some((r) => selectedIds.has(r.id as string)))
+  let allChecked = $derived(rows.length > 0 && rows.every((r) => selectedIds.has(r.id)))
+  let someChecked = $derived(!allChecked && rows.some((r) => selectedIds.has(r.id)))
 
   function handleHeaderSort(key: string) {
     if (!onSort) return
@@ -57,7 +57,7 @@
     if (allChecked) {
       onSelectionChange(new Set())
     } else {
-      onSelectionChange(new Set(rows.map((r) => r.id as string)))
+      onSelectionChange(new Set(rows.map((r) => r.id)))
     }
   }
 
@@ -145,14 +145,14 @@
           </td>
         </tr>
       {:else}
-        {#each rows as row (row.id as string)}
+        {#each rows as row (row.id)}
           <tr class="border-t border-border transition-colors hover:bg-surface">
             {#if selectable}
               <td class="px-3 py-3">
                 <input
                   type="checkbox"
-                  checked={selectedIds.has(row.id as string)}
-                  onchange={() => toggleRow(row.id as string)}
+                  checked={selectedIds.has(row.id)}
+                  onchange={() => toggleRow(row.id)}
                   aria-label="Select row"
                   class="rounded border-border"
                 />
@@ -163,7 +163,7 @@
                 {#if children}
                   {@render children({ columnKey: col.key, row })}
                 {:else}
-                  {row[col.key] ?? ''}
+                  {row[col.key as keyof T] ?? ''}
                 {/if}
               </td>
             {/each}

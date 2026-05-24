@@ -38,7 +38,7 @@ export async function listExperiments(db: DrizzleDb, options?: { status?: string
 
 export async function getExperiment(db: DrizzleDb, key: string) {
   const rows = await db.select().from(abExperiment).where(eq(abExperiment.key, key))
-  return (rows[0] as Record<string, unknown> | undefined) ?? null
+  return rows[0] ?? null
 }
 
 export async function createExperiment(
@@ -126,7 +126,7 @@ export async function assignVariant(
   const experiment = await getExperiment(db, experimentKey)
   if (!experiment || experiment.status !== 'running') return null
 
-  const experimentId = experiment.id as string
+  const experimentId = experiment.id
 
   // Check existing assignment
   const existingConditions = [eq(abAssignment.experimentId, experimentId)]
@@ -143,9 +143,9 @@ export async function assignVariant(
     .limit(1)
 
   if (existing.length > 0) {
-    const assignment = existing[0] as Record<string, unknown>
+    const [assignment] = existing
     const variants = await getExperimentVariants(db, experimentId)
-    const variant = variants.find((v: Record<string, unknown>) => v.id === assignment.variantId)
+    const variant = variants.find((v) => v.id === assignment.variantId)
     return {
       assignment,
       experiment,
@@ -161,9 +161,9 @@ export async function assignVariant(
   const bucket = hash % 100
 
   let cumulative = 0
-  let selectedVariant: Record<string, unknown> | null = null
+  let selectedVariant: (typeof variants)[number] | null = null
   for (const variant of variants) {
-    cumulative += variant.trafficPercentage as number
+    cumulative += variant.trafficPercentage
     if (bucket < cumulative) {
       selectedVariant = variant
       break
@@ -181,7 +181,7 @@ export async function assignVariant(
     id: assignmentId,
     sessionId: input.sessionId ?? null,
     userId: input.userId ?? null,
-    variantId: selectedVariant.id as string,
+    variantId: selectedVariant.id,
   })
 
   return {
@@ -225,7 +225,7 @@ export async function getExperimentResults(
   const experiment = await getExperiment(db, experimentKey)
   if (!experiment) return []
 
-  const experimentId = experiment.id as string
+  const experimentId = experiment.id
   const variants = await getExperimentVariants(db, experimentId)
 
   const results: ExperimentResult[] = []
