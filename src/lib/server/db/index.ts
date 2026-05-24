@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/d1'
 import { sql } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/d1'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
 
 import * as schema from './schema'

@@ -180,11 +180,9 @@ export async function createSubscription(
 }
 
 export async function getSubscriptionById(db: AppDb, subId: string) {
-  return db
-    .select()
-    .from(subscription)
-    .where(eq(subscription.id, subId))
-    .get() as Promise<typeof subscription.$inferSelect | undefined>
+  return db.select().from(subscription).where(eq(subscription.id, subId)).get() as Promise<
+    typeof subscription.$inferSelect | undefined
+  >
 }
 
 export async function updateSubscriptionStatus(db: AppDb, subId: string, status: string) {

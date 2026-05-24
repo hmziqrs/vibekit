@@ -248,7 +248,10 @@ describe('webhooks', () => {
         makeEndpoint({ id: 'ep-2', events: ['item.updated'] }),
       ]
       const db = createMockDbWebhooks(endpoints)
-      const count = await dispatchWebhooksForEvent(db, { eventType: 'item.created', data: { itemId: '123' } })
+      const count = await dispatchWebhooksForEvent(db, {
+        eventType: 'item.created',
+        data: { itemId: '123' },
+      })
       expect(count).toBe(1) // Only one endpoint matches
     })
 
@@ -260,7 +263,10 @@ describe('webhooks', () => {
         makeEndpoint({ id: 'ep-2', events: ['item.updated'] }),
       ]
       const db = createMockDbWebhooks(endpoints)
-      const count = await dispatchWebhooksForEvent(db, { eventType: 'item.created', data: { itemId: '123' } })
+      const count = await dispatchWebhooksForEvent(db, {
+        eventType: 'item.created',
+        data: { itemId: '123' },
+      })
       expect(count).toBe(1) // Only wildcard matches
     })
   })

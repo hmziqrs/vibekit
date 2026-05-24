@@ -1,8 +1,8 @@
 import { renderAndSanitize, sanitizeHtml } from '$lib/markdown'
+import { dbCount } from '$lib/server/db'
 import { escapeLike } from '$lib/server/escape-like'
 import { createLogger } from '$lib/server/logger'
 import { getVisitorHash } from '$lib/server/visitor-hash'
-import { dbCount } from '$lib/server/db'
 import { escapeHtmlNullable } from '$lib/utils/escape-html'
 
 const logger = createLogger('api')
@@ -1159,8 +1159,7 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
                   newPlanName: newPlan?.name ?? 'New plan',
                   oldPlanName: oldPlan?.name ?? 'Previous plan',
                   userName: ctx.userName,
-                }
-                )
+                })
                 .catch(() => {})
             )
           }
@@ -1920,9 +1919,17 @@ protectedApp.get('/stats', async (c) => {
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const [activeItems, totalItems, itemsThisWeek] = await Promise.all([
-    dbCount(db, item, and(eq(item.userId, userId), eq(item.status, 'active'), isNull(item.deletedAt))),
+    dbCount(
+      db,
+      item,
+      and(eq(item.userId, userId), eq(item.status, 'active'), isNull(item.deletedAt))
+    ),
     dbCount(db, item, and(eq(item.userId, userId), isNull(item.deletedAt))),
-    dbCount(db, item, and(eq(item.userId, userId), isNull(item.deletedAt), gte(item.createdAt, oneWeekAgo))),
+    dbCount(
+      db,
+      item,
+      and(eq(item.userId, userId), isNull(item.deletedAt), gte(item.createdAt, oneWeekAgo))
+    ),
   ])
 
   return c.json({
@@ -7499,7 +7506,11 @@ adminApp.get('/analytics/overview', async (c) => {
       .from(blogPostView)
       .where(gte(blogPostView.createdAt, since))
       .get() as unknown as { count: number } | undefined,
-    dbCount(db, blogPostView, and(gte(blogPostView.createdAt, since), eq(blogPostView.isCompleted, true))),
+    dbCount(
+      db,
+      blogPostView,
+      and(gte(blogPostView.createdAt, since), eq(blogPostView.isCompleted, true))
+    ),
     db
       .select({
         slug: blogPost.slug,
@@ -7524,9 +7535,7 @@ adminApp.get('/analytics/overview', async (c) => {
       .limit(10),
   ])
 
-  const avgCompletion = totalViews
-    ? Math.round(((completedReads ?? 0) / totalViews) * 100)
-    : 0
+  const avgCompletion = totalViews ? Math.round(((completedReads ?? 0) / totalViews) * 100) : 0
 
   return c.json({
     avgCompletion,
@@ -7544,7 +7553,11 @@ adminApp.get('/analytics/posts/:postId', async (c) => {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
   const [views, uniqueVisitors, completedReads, avgReadTime, dailyViews] = await Promise.all([
-    dbCount(db, blogPostView, and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since))),
+    dbCount(
+      db,
+      blogPostView,
+      and(eq(blogPostView.postId, postId), gte(blogPostView.createdAt, since))
+    ),
     db
       .select({ count: sql<number>`count(distinct ${blogPostView.visitorHash})` })
       .from(blogPostView)
@@ -7583,9 +7596,7 @@ adminApp.get('/analytics/posts/:postId', async (c) => {
       .orderBy(sql`date(${blogPostView.createdAt} / 1000, 'unixepoch')`),
   ])
 
-  const completionRate = views
-    ? Math.round(((completedReads ?? 0) / views) * 100)
-    : 0
+  const completionRate = views ? Math.round(((completedReads ?? 0) / views) * 100) : 0
 
   return c.json({
     avgReadTime: avgReadTime?.avg ?? 0,
