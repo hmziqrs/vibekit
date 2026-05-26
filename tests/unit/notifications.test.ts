@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint/no-explicit-any */
 import type { DrizzleDb } from '$lib/server/services/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -280,13 +281,12 @@ describe('push notification integration', () => {
       .mockResolvedValueOnce({ enabled: true }) // push check
     const db = createMockDbWithPref(true)
     // Override the get function for the push check
-    const selectWhereResult = { get: getFn }
-    selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
+    const selectWhereResult: Record<string, unknown> = { get: getFn }
     db.select = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue(selectWhereResult),
       }),
-    }) as ReturnType<typeof db.select>
+    }) as any
 
     const { sendPushNotification } = await import('$lib/server/push')
 
@@ -315,13 +315,12 @@ describe('push notification integration', () => {
       .mockResolvedValueOnce({ enabled: true }) // in_app check
       .mockResolvedValueOnce({ enabled: false }) // push check
     const db = createMockDbWithPref(true)
-    const selectWhereResult = { get: getFn }
-    selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
+    const selectWhereResult: Record<string, unknown> = { get: getFn }
     db.select = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue(selectWhereResult),
       }),
-    }) as ReturnType<typeof db.select>
+    }) as any
 
     const { sendPushNotification } = await import('$lib/server/push')
 
@@ -340,13 +339,12 @@ describe('push notification integration', () => {
       .mockResolvedValueOnce({ enabled: true }) // in_app check
       .mockResolvedValueOnce(undefined) // no push pref -> default enabled
     const db = createMockDbWithPref(true)
-    const selectWhereResult = { get: getFn }
-    selectWhereResult.then = (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve)
+    const selectWhereResult: Record<string, unknown> = { get: getFn }
     db.select = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue(selectWhereResult),
       }),
-    }) as ReturnType<typeof db.select>
+    }) as any
 
     const { sendPushNotification } = await import('$lib/server/push')
 

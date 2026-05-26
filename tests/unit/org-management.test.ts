@@ -52,8 +52,8 @@ describe('org invitations API', () => {
 
 describe('transfer ownership UI logic', () => {
   it('only owner can see transfer section', () => {
-    const ownerRole = 'owner'
-    const memberRole = 'member'
+    const ownerRole = 'owner' as string
+    const memberRole = 'member' as string
     expect(ownerRole === 'owner').toBe(true)
     expect(memberRole === 'owner').toBe(false)
   })

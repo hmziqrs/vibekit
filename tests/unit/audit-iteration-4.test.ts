@@ -93,15 +93,15 @@ describe('Blog tag filtering uses DB-level queries', () => {
 
 describe('Comment email notifications', () => {
   it('should not notify author of their own comment', () => {
-    const authorId = 'user_123'
+    const authorId = 'user_123' as string
     const currentUserId = 'user_123'
     const shouldNotify = authorId !== currentUserId
     expect(shouldNotify).toBe(false)
   })
 
   it('should notify author when someone else comments', () => {
-    const authorId = 'user_123'
-    const currentUserId = 'user_456'
+    const authorId = 'user_123' as string
+    const currentUserId = 'user_456' as string
     const shouldNotify = authorId !== currentUserId
     expect(shouldNotify).toBe(true)
   })

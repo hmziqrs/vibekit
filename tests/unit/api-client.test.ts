@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint/no-explicit-any */
 import { Hono } from 'hono'
 import { hc } from 'hono/client'
 import { describe, expect, it, vi } from 'vitest'
@@ -124,7 +125,7 @@ describe('api client (Hono RPC pattern)', () => {
       const res = await client.api.items[':id'].$patch({
         param: { id: 'item-1' },
         json: { name: 'Updated' },
-      })
+      } as any)
 
       expect(res.ok).toBe(true)
     })
@@ -163,7 +164,7 @@ describe('api client (Hono RPC pattern)', () => {
       const data = await res.json()
 
       expect(res.status).toBe(401)
-      expect(data.error.message).toBe('Unauthorized')
+      expect((data as any).error.message).toBe('Unauthorized')
     })
 
     it('handles 500 errors', async () => {

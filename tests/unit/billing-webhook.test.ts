@@ -135,7 +135,7 @@ describe('billing webhook logic', () => {
     })
 
     it('uses planId from checkout metadata', () => {
-      const metadata = { planId: 'plan_starter' }
+      const metadata = { planId: 'plan_starter' } as Record<string, unknown>
       const planId = metadata?.planId
 
       expect(planId).toBe('plan_starter')
@@ -246,7 +246,7 @@ describe('billing webhook logic', () => {
     it('skips when no subscription found for customer', () => {
       const customerId = 'cus_no_sub'
       // If subRow is undefined, no payment method should be inserted
-      const subRow = undefined
+      const subRow = undefined as { userId?: string } | undefined
       expect(subRow?.userId).toBeUndefined()
     })
 
@@ -331,14 +331,14 @@ describe('billing webhook logic', () => {
     })
 
     it('skips when metadata has no planId', () => {
-      const metadata = { userId: 'user-123' }
+      const metadata = { userId: 'user-123' } as Record<string, unknown>
       const planId = metadata?.planId
 
       expect(planId).toBeUndefined()
     })
 
     it('skips when metadata has no userId', () => {
-      const metadata = { planId: 'plan-pro' }
+      const metadata = { planId: 'plan-pro' } as Record<string, unknown>
       const userId = metadata?.userId ?? metadata?.clientReferenceId
 
       expect(userId).toBeUndefined()
@@ -386,7 +386,7 @@ describe('billing webhook logic', () => {
     })
 
     it('handles unknown error types gracefully', () => {
-      const error = 'string error'
+      const error: unknown = 'string error'
       const message = error instanceof Error ? error.message : 'Unknown error'
 
       expect(message).toBe('Unknown error')

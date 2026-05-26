@@ -19,6 +19,7 @@ export async function createNodeDb(): Promise<NodeDb> {
   const isBun = 'Bun' in globalThis
 
   if (isBun) {
+    // @ts-expect-error bun:sqlite only available at runtime in Bun
     const { Database } = await import('bun:sqlite')
     const { drizzle } = await import('drizzle-orm/bun-sqlite')
     const sqlite = new Database(DB_PATH, { create: true })

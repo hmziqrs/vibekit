@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createMockDb } from '../helpers/mock-db'
+
 // Mock schema and DB modules
 vi.mock('$lib/server/db/schema', () => ({
   trustedDevice: {
@@ -16,36 +18,6 @@ vi.mock('$lib/server/db/schema', () => ({
 vi.mock('$lib/server/uuid', () => ({
   uuid: () => 'test-uuid-' + Math.random().toString(36).slice(2, 8),
 }))
-
-function createMockDb() {
-  const store: Record<string, unknown>[] = []
-
-  return {
-    _store: store,
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        run: vi.fn().mockResolvedValue(undefined),
-      }),
-    }),
-    insert: vi.fn().mockImplementation(() => ({
-      values: vi.fn().mockImplementation((values: unknown) => {
-        store.push(values as Record<string, unknown>)
-        return { run: vi.fn().mockResolvedValue(undefined) }
-      }),
-    })),
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => {
-          // Return first matching record from store
-          const found = store.length > 0 ? [store[0]] : []
-          const result = Promise.resolve(found)
-          result.get = () => found[0] ?? null
-          return result
-        }),
-      }),
-    }),
-  }
-}
 
 describe('trusted-device module', () => {
   beforeEach(() => {
@@ -66,7 +38,7 @@ describe('trusted-device module', () => {
 
   it('createTrustedDevice returns a token', async () => {
     const { createTrustedDevice } = await import('$lib/server/trusted-device')
-    const db = createMockDb()
+    const db = createMockDb().db
     const result = await createTrustedDevice(db, {
       ipAddress: '127.0.0.1',
       userAgent: 'Test/1.0',

@@ -10,6 +10,7 @@ export interface SearchResult {
   content: string
   entityId: string
   entityType: string
+  highlights?: Record<string, string[]>
   metadata?: Record<string, unknown>
   score: number
   title: string

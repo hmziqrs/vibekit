@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint/no-explicit-any */
 import type { DrizzleDb } from '$lib/server/services/types'
 import { vi } from 'vitest' // oxlint-disable-line vitest/no-importing-vitest-globals
 
@@ -30,8 +31,14 @@ function thenable(
   return {
     ...obj,
     // oxlint-disable-next-line unicorn/no-thenable
-    then(resolve: (v: unknown) => void, _reject?: (e: unknown) => void): void {
-      Promise.resolve(resolveValue).then(resolve)
+    then<TResult1 = unknown, TResult2 = never>(
+      onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null | undefined,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
+    ): PromiseLike<TResult1 | TResult2> {
+      return Promise.resolve(resolveValue).then(
+        onfulfilled ?? (undefined as any),
+        onrejected ?? (undefined as any)
+      )
     },
   }
 }
@@ -90,7 +97,12 @@ export function createMockDb(opts?: {
     .mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateFn, values: valuesFn })
   const updateFn = vi.fn<() => unknown>().mockReturnValue({ set: setFn })
 
-  const deleteWhereFn = vi.fn<() => Promise<unknown>>().mockResolvedValue(opts?.deleteResult ?? [])
+  const deleteRunFn = vi.fn<() => Promise<unknown>>().mockResolvedValue({ changes: 0 })
+  const deleteWhereFn = vi
+    .fn<() => unknown>()
+    .mockReturnValue(
+      thenable({ returning: returningFn, run: deleteRunFn }, opts?.deleteResult ?? [])
+    )
   const deleteFn = vi.fn<() => unknown>().mockReturnValue({ where: deleteWhereFn })
 
   const db = {

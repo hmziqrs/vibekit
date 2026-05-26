@@ -63,6 +63,7 @@ export function createS3Storage(config: S3Config): StorageClient {
     return `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
   }
 
+  // oxlint-disable-next-line sort-keys
   return {
     async delete(key: string): Promise<void> {
       const path = `/${config.bucket}/${key}`
@@ -138,6 +139,61 @@ export function createS3Storage(config: S3Config): StorageClient {
         'aws4_request'
       )
       const signature = hmacHex(signingKey, canonical)
+
+      params.set('X-Amz-Signature', signature)
+      return `${baseUrl}${path}?${params}`
+    },
+
+    async putPresignedUrl(
+      key: string,
+      options?: { contentType?: string; expiresIn?: number }
+    ): Promise<string> {
+      const expires = options?.expiresIn ?? 3600
+      const date = new Date()
+      const dateStr = date
+        .toISOString()
+        .replace(/[-:]/g, '')
+        .replace(/\.\d+Z$/, 'Z')
+      const shortDate = dateStr.slice(0, 8)
+
+      const credential = `${config.accessKeyId}/${shortDate}/${config.region}/s3/aws4_request`
+      const signedHeadersList = ['host', 'content-type']
+      const { host } = new URL(baseUrl)
+      const contentType = options?.contentType ?? 'application/octet-stream'
+
+      const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`
+      const signedHeaders = signedHeadersList.join(';')
+
+      const params = new URLSearchParams({
+        'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential': credential,
+        'X-Amz-Date': dateStr,
+        'X-Amz-Expires': String(expires),
+        'X-Amz-SignedHeaders': signedHeaders,
+      })
+
+      const path = `/${config.bucket}/${key}`
+      const canonical = [
+        'PUT',
+        path,
+        params.toString(),
+        canonicalHeaders,
+        '',
+        signedHeaders,
+        'UNSIGNED-PAYLOAD',
+      ].join('\n')
+
+      const scope = `${shortDate}/${config.region}/s3/aws4_request`
+      const stringToSign = ['AWS4-HMAC-SHA256', dateStr, scope, sha256Hex(canonical)].join('\n')
+
+      const signingKey = hmacChain(
+        `AWS4${config.secretAccessKey}`,
+        shortDate,
+        config.region,
+        's3',
+        'aws4_request'
+      )
+      const signature = hmacHex(signingKey, stringToSign)
 
       params.set('X-Amz-Signature', signature)
       return `${baseUrl}${path}?${params}`

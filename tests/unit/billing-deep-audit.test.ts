@@ -11,13 +11,13 @@ describe('Billing webhook: past_due recovery', () => {
   })
 
   it('should not change active subscription status on payment success', () => {
-    const subStatus = 'active'
+    const subStatus = 'active' as string
     const newStatus = subStatus === 'past_due' ? 'active' : subStatus
     expect(newStatus).toBe('active')
   })
 
   it('should not change trialing subscription status on payment success', () => {
-    const subStatus = 'trialing'
+    const subStatus = 'trialing' as string
     const newStatus = subStatus === 'past_due' ? 'active' : subStatus
     expect(newStatus).toBe('trialing')
   })

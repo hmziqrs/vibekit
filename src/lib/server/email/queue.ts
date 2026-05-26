@@ -90,7 +90,7 @@ export class EmailQueue {
         .update(emailQueue)
         .set({ lastAttemptAt: new Date(), status: 'processing' })
         .where(and(eq(emailQueue.id, item.id), sql`${emailQueue.status} = ${item.status}`))
-        .returning({ id: emailQueue.id })
+        .returning()
 
       // If no rows were updated, another worker already claimed this email
       if (claimed && claimed.length > 0) {
@@ -151,7 +151,7 @@ export class EmailQueue {
       .where(
         sql`(${emailQueue.status} = 'sent' OR ${emailQueue.status} = 'failed') AND ${emailQueue.processedAt} IS NOT NULL AND ${emailQueue.processedAt} < ${cutoff}`
       )
-      .returning({ id: emailQueue.id })
+      .returning()
     return deleted.length
   }
 }

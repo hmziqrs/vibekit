@@ -104,7 +104,7 @@ describe('Payment method endpoints', () => {
   })
 
   it('should validate paymentMethodId is required', () => {
-    const body = {}
+    const body = {} as { paymentMethodId?: string }
     expect(body.paymentMethodId).toBeUndefined()
     const body2 = { paymentMethodId: 'pm_123' }
     expect(body2.paymentMethodId).toBe('pm_123')

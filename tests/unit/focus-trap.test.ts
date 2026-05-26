@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint/no-explicit-any */
 import { describe, expect, it, vi } from 'vitest'
 
 describe('createFocusTrap', () => {
@@ -26,7 +27,7 @@ describe('createFocusTrap', () => {
   it('returns an object with a destroy function', async () => {
     const { createFocusTrap } = await import('$lib/keyboard.svelte')
     const container = createMockElement('div')
-    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as unknown as NodeListOf<Element>)
+    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as any)
 
     const trap = createFocusTrap(container as unknown as HTMLElement)
     expect(trap).toBeDefined()
@@ -37,7 +38,7 @@ describe('createFocusTrap', () => {
   it('adds a keydown listener to the container', async () => {
     const { createFocusTrap } = await import('$lib/keyboard.svelte')
     const container = createMockElement('div')
-    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as unknown as NodeListOf<Element>)
+    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as any)
 
     createFocusTrap(container as unknown as HTMLElement)
     expect(container.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function))
@@ -46,7 +47,7 @@ describe('createFocusTrap', () => {
   it('removes the keydown listener on destroy', async () => {
     const { createFocusTrap } = await import('$lib/keyboard.svelte')
     const container = createMockElement('div')
-    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as unknown as NodeListOf<Element>)
+    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as any)
 
     const trap = createFocusTrap(container as unknown as HTMLElement)
     const handler = container.addEventListener.mock.calls[0][1]
@@ -59,10 +60,7 @@ describe('createFocusTrap', () => {
     const container = createMockElement('div')
     const input = createMockElement('input', { type: 'text' })
     const button = createMockElement('button')
-    vi.spyOn(container, 'querySelectorAll').mockReturnValue([
-      input,
-      button,
-    ] as unknown as NodeListOf<Element>)
+    vi.spyOn(container, 'querySelectorAll').mockReturnValue([input, button] as any)
 
     createFocusTrap(container as unknown as HTMLElement)
     expect(input.focus).toHaveBeenCalled()
@@ -73,10 +71,10 @@ describe('createFocusTrap', () => {
 
     const container = createMockElement('div')
     const calls: string[][] = []
-    vi.spyOn(container, 'querySelectorAll').mockImplementation((selector: string) => {
+    vi.spyOn(container, 'querySelectorAll').mockImplementation(((selector: string) => {
       calls.push([selector])
-      return [] as unknown as NodeListOf<Element>
-    })
+      return [] as any
+    }) as any)
 
     createFocusTrap(container as unknown as HTMLElement)
 
@@ -93,7 +91,7 @@ describe('createFocusTrap', () => {
   it('does not call focus when no focusable elements exist', async () => {
     const { createFocusTrap } = await import('$lib/keyboard.svelte')
     const container = createMockElement('div')
-    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as unknown as NodeListOf<Element>)
+    vi.spyOn(container, 'querySelectorAll').mockReturnValue([] as any)
 
     const trap = createFocusTrap(container as unknown as HTMLElement)
     expect(trap).toBeDefined()

@@ -121,7 +121,7 @@ describe('Dynamic robots.txt', () => {
 describe('2FA enforcement for admin routes', () => {
   it('should redirect admin without 2FA to settings', () => {
     const user = { role: 'admin', twoFactorEnabled: false }
-    const pathname = '/admin/dashboard'
+    const pathname = '/admin/dashboard' as string
     const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
     const needs2FA = isAdminRoute && user.role === 'admin' && !user.twoFactorEnabled
     expect(needs2FA).toBe(true)
@@ -129,7 +129,7 @@ describe('2FA enforcement for admin routes', () => {
 
   it('should allow admin with 2FA', () => {
     const user = { role: 'admin', twoFactorEnabled: true }
-    const pathname = '/admin/dashboard'
+    const pathname = '/admin/dashboard' as string
     const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
     const needs2FA = isAdminRoute && user.role === 'admin' && !user.twoFactorEnabled
     expect(needs2FA).toBe(false)
@@ -137,7 +137,7 @@ describe('2FA enforcement for admin routes', () => {
 
   it('should not enforce 2FA for non-admin routes', () => {
     const user = { role: 'user', twoFactorEnabled: false }
-    const pathname = '/app/dashboard'
+    const pathname = '/app/dashboard' as string
     const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
     expect(isAdminRoute).toBe(false)
   })

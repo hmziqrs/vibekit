@@ -177,7 +177,7 @@ export const createAuth = (db: AppDb) =>
         create: {
           after: async (u) => {
             const { indexUser } = await import('./search/indexer')
-            await indexUser(db, u.id).catch((error) =>
+            await indexUser(db as DrizzleDb, u.id).catch((error) =>
               logger.error('Failed to index new user', { error, userId: u.id })
             )
 

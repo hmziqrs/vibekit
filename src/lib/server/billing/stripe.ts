@@ -218,7 +218,14 @@ export async function reportMeteredUsage(
   input: { quantity: number; stripeSubscriptionItemId: string; timestamp: number }
 ) {
   try {
-    return await stripe.subscriptionItems.createUsageRecord(input.stripeSubscriptionItemId, {
+    // CreateUsageRecord was removed from Stripe SDK v22 types but the API endpoint still exists
+    const { createUsageRecord } = stripe.subscriptionItems as unknown as {
+      createUsageRecord: (
+        id: string,
+        params: { action: string; quantity: number; timestamp: number }
+      ) => Promise<unknown>
+    }
+    return await createUsageRecord(input.stripeSubscriptionItemId, {
       action: 'set',
       quantity: input.quantity,
       timestamp: input.timestamp,

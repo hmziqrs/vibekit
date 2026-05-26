@@ -119,6 +119,7 @@ export async function createBroadcast(
   const { writeAuditLog } = await import('./audit')
   await writeAuditLog(db, {
     action: 'notification.broadcast',
+    entityId: 'broadcast',
     entityType: 'notification',
     metadata: {
       link: input.link,

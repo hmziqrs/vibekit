@@ -15,7 +15,7 @@ describe('reading-tracker: res.ok guard', () => {
     }
 
     expect(jsonFn).not.toHaveBeenCalled()
-    vi.unstubAllGlobals('fetch')
+    vi.unstubAllGlobals()
   })
 })
 
@@ -32,7 +32,7 @@ describe('link-preview: res.ok guard on upstream fetch', () => {
       expect(upstreamRes.text).not.toHaveBeenCalled()
     }
 
-    vi.unstubAllGlobals('fetch')
+    vi.unstubAllGlobals()
   })
 })
 
@@ -53,7 +53,7 @@ describe('oembed: res.ok guard', () => {
 
     expect(threw).toBe(true)
     expect(jsonFn).not.toHaveBeenCalled()
-    vi.unstubAllGlobals('fetch')
+    vi.unstubAllGlobals()
   })
 })
 
@@ -72,6 +72,6 @@ describe('terms-status: res.ok guard before json', () => {
 
     expect(data).toBeNull()
     expect(jsonFn).not.toHaveBeenCalled()
-    vi.unstubAllGlobals('fetch')
+    vi.unstubAllGlobals()
   })
 })

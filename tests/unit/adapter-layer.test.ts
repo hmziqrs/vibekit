@@ -56,6 +56,7 @@ describe('Adapter layer — cloudflare/email-binding', () => {
     const { createCloudflareEmail } = await import('$lib/server/adapter/cloudflare/email-binding')
     const client = createCloudflareEmail(undefined)
     const result = await client.send({
+      from: 'test@test.com',
       html: '<p>Test</p>',
       subject: 'Test',
       text: 'Test',
@@ -69,6 +70,7 @@ describe('Adapter layer — cloudflare/email-binding', () => {
     const mockSend = vi.fn().mockResolvedValue(undefined)
     const client = createCloudflareEmail({ send: mockSend })
     await client.send({
+      from: 'test@test.com',
       html: '<p>Hello</p>',
       subject: 'Sub',
       text: 'Text',
@@ -90,6 +92,7 @@ describe('Adapter layer — node/email-rest', () => {
     const { createNodeEmail } = await import('$lib/server/adapter/node/email-rest')
     const client = createNodeEmail()
     const result = await client.send({
+      from: 'test@test.com',
       html: '<p>Test</p>',
       subject: 'Test',
       text: 'Test',

@@ -72,7 +72,7 @@ describe('POST /billing/usage overage logic', () => {
     const current = 950
     const quantity = 100
     const limit = 1000
-    const overageRateInCents = 5 // $0.05 per unit
+    const overageRateInCents = 5 as number // $0.05 per unit
 
     const wouldExceed = limit !== null && current + quantity > limit
     const hardBlock = wouldExceed && overageRateInCents === 0
@@ -85,7 +85,7 @@ describe('POST /billing/usage overage logic', () => {
     const current = 950
     const quantity = 100
     const limit = 1000
-    const overageRateInCents = 5
+    const overageRateInCents = 5 as number
 
     const newCurrent = current + quantity
     const newOverageUnits = limit !== null && newCurrent > limit ? newCurrent - limit : 0
@@ -140,7 +140,7 @@ describe('POST /billing/usage overage logic', () => {
 describe('overage response shape', () => {
   it('returns overage object with cost, rate, and units', () => {
     const newOverageUnits = 50
-    const overageRateInCents = 5
+    const overageRateInCents = 5 as number
 
     const response = {
       overage: {
@@ -162,7 +162,7 @@ describe('overage response shape', () => {
   it('returns zero overage when within limit', () => {
     const newCurrent = 800
     const limit = 1000
-    const overageRateInCents = 5
+    const overageRateInCents = 5 as number
 
     const newOverageUnits = limit !== null && newCurrent > limit ? newCurrent - limit : 0
 

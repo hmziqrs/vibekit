@@ -160,7 +160,7 @@ describe('requireAdmin', () => {
 
     const res = await app.request('/test')
     expect(res.status).toBe(403)
-    const body = await res.json()
+    const body = (await res.json()) as { error: { message: string } }
     expect(body.error.message).toContain('Two-factor authentication')
   })
 })

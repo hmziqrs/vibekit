@@ -1,3 +1,4 @@
+import type { StorageClient } from '$lib/server/services/types'
 import {
   getResizedUrl,
   getThumbnailKey,
@@ -76,8 +77,8 @@ describe('thumbnail utilities', () => {
 
   describe('generateThumbnail', () => {
     function createMockStorage(data: { contentType: string; body: Uint8Array }): {
-      storage: ReturnType<typeof createMockStorage>['storage']
       putMock: ReturnType<typeof vi.fn>
+      storage: StorageClient
     } {
       const putMock = vi.fn().mockResolvedValue(undefined)
       const stream = new ReadableStream({
@@ -94,9 +95,10 @@ describe('thumbnail utilities', () => {
           contentType: data.contentType,
           size: data.body.length,
         }),
-        head: vi.fn().mockResolvedValue({ contentType: data.contentType, size: data.body.length }),
+        getPresignedUrl: vi.fn().mockResolvedValue(''),
         list: vi.fn().mockResolvedValue([]),
         put: putMock,
+        putPresignedUrl: vi.fn().mockResolvedValue(''),
       }
 
       return { putMock, storage }
@@ -106,12 +108,13 @@ describe('thumbnail utilities', () => {
       const storage = {
         delete: vi.fn(),
         get: vi.fn().mockResolvedValue(null),
-        head: vi.fn(),
+        getPresignedUrl: vi.fn(),
         list: vi.fn(),
         put: vi.fn(),
+        putPresignedUrl: vi.fn(),
       }
 
-      const result = await generateThumbnail(storage, 'nonexistent.jpg')
+      const result = await generateThumbnail(storage as unknown as StorageClient, 'nonexistent.jpg')
       expect(result).toBeNull()
     })
 
@@ -189,12 +192,13 @@ describe('thumbnail utilities', () => {
           contentType: 'image/jpeg',
           size: 8,
         }),
-        head: vi.fn(),
+        getPresignedUrl: vi.fn(),
         list: vi.fn(),
         put: putMock,
+        putPresignedUrl: vi.fn(),
       }
 
-      await generateThumbnail(storage, 'multi-chunk.jpg')
+      await generateThumbnail(storage as unknown as StorageClient, 'multi-chunk.jpg')
 
       const storedData = putMock.mock.calls[0][1] as Uint8Array
       expect(storedData.length).toBe(8)

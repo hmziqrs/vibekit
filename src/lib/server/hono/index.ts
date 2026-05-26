@@ -816,13 +816,14 @@ app.get('/api/newsletter/confirm', async (c) => {
 
 async function handleNewsletterUnsubscribe(c: {
   get: (key: string) => unknown
-  json: (body: unknown, status?: number) => unknown
+  json: (body: unknown, status?: number) => Response
   req: { query: (key: string) => string | undefined }
-}) {
+}): Promise<Response> {
   const token = c.req.query('token')
   if (!token) return c.json({ error: { message: 'Missing token' } }, 400)
 
-  const { db } = c.get('services')
+  const services = c.get('services') as { db: DrizzleDb }
+  const { db } = services
   const subscriber = await db
     .select()
     .from(newsletterSubscriber)
@@ -1031,7 +1032,7 @@ async function resolveSubscriptionContext(
   }
 }
 
-app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 }), async (c) => {
+app.post('/billing/webhooks/stripe', withRateLimit('stripe-webhook', 100, 60_000), async (c) => {
   const stripe = getStripeClient(c.env?.STRIPE_SECRET_KEY)
   if (!stripe) {
     return c.json({ error: { message: 'Billing not configured' } }, 503)
@@ -1137,11 +1138,12 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
         const stripeSubId = String(sub.id)
 
         // Check if the plan changed (previous_attributes contains old plan)
-        const prevAttrs = (event.data as Record<string, unknown>)?.previous_attributes as
-          | Record<string, unknown>
+        const prevAttrs = (event.data as unknown as Record<string, unknown>)
+          ?.previous_attributes as Record<string, unknown> | undefined
+        const oldPlanId = (prevAttrs?.plan as Record<string, unknown> | undefined)?.id as
+          | string
           | undefined
-        const oldPlanId = prevAttrs?.plan?.id
-        const newPlanId = (sub.plan as Record<string, unknown>)?.id
+        const newPlanId = (sub.plan as Record<string, unknown>)?.id as string | undefined
 
         if (oldPlanId && newPlanId && oldPlanId !== newPlanId) {
           const ctx = await resolveSubscriptionContext(db, { stripeSubscriptionId: stripeSubId })
@@ -1477,9 +1479,10 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
             // Customer details updated in Stripe — sync email/name if needed
             await writeAuditLog(db, {
               action: 'billing.customer_updated',
+              entityId: customerId,
               entityType: 'subscription',
               metadata: { customerId },
-              userId: subRow.userId,
+              userId: subRow.userId!,
             })
           }
         }
@@ -1498,7 +1501,6 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
               expiryMonth: card?.exp_month ? Number(card.exp_month) : undefined,
               expiryYear: card?.exp_year ? Number(card.exp_year) : undefined,
               last4: card?.last4 ? String(card.last4) : undefined,
-              updatedAt: new Date(),
             })
             .where(eq(paymentMethod.stripePaymentMethodId, pmId))
         }
@@ -1541,7 +1543,7 @@ app.post('/billing/webhooks/stripe', withRateLimit({ max: 100, windowMs: 60_000 
 
       default: {
         logger.info('Unhandled Stripe webhook event type', {
-          eventId: existingEvent!.stripeEventId,
+          eventId: event.id,
           eventType: event.type,
         })
         const now = new Date()
@@ -1624,7 +1626,10 @@ protectedApp.post('/terms/accept', withRateLimit('terms-accept', 5, 60_000), asy
 
 protectedApp.get('/terms/status', async (c) => {
   const currentUser = c.get('user')
-  const needsAcceptance = needsTermsAcceptance(currentUser.termsAcceptedVersion ?? null)
+  const needsAcceptance = needsTermsAcceptance(
+    (currentUser as unknown as { termsAcceptedVersion?: string | null }).termsAcceptedVersion ??
+      null
+  )
   return c.json({ currentVersion: CURRENT_TERMS_VERSION, needsAcceptance })
 })
 
@@ -2695,7 +2700,7 @@ async function validateCheckoutUrls(
 }
 
 async function performStripePlanChange(
-  stripe: Awaited<ReturnType<typeof getStripeClient>>,
+  stripe: NonNullable<Awaited<ReturnType<typeof getStripeClient>>>,
   stripeSubscriptionId: string,
   newPriceId: string
 ): Promise<void> {
@@ -2770,7 +2775,7 @@ protectedApp.post('/billing/checkout', withRateLimit('billing-checkout', 5, 60_0
     const { createCheckoutSession } = await import('$lib/server/billing/stripe')
     try {
       const session = await createCheckoutSession(stripe, {
-        automaticTax: plan.taxRate > 0,
+        automaticTax: (plan.taxRate ?? 0) > 0,
         cancelUrl: parsed.data.cancelUrl,
         customerEmail: currentUser.email,
         idempotencyKey: `checkout-${currentUser.id}-${plan.id}`,
@@ -4796,7 +4801,11 @@ function escapeHtmlEntities(str: string | null | undefined): string | null {
 
 blogApp.post('/upload', withRateLimit('blog-upload', 20, 60_000), async (c) => {
   const formData = await c.req.formData()
-  const result = await handleFileUpload(formData, validateMediaUpload, c.get('services').storage)
+  const result = await handleFileUpload(
+    formData,
+    (f) => validateMediaUpload(f) ?? undefined,
+    c.get('services').storage
+  )
   return c.json({ key: result.key, url: result.url }, 201)
 })
 
@@ -5263,7 +5272,11 @@ adminApp.delete('/users/:id', withRateLimit('users-mutate'), async (c) => {
 
 adminApp.post('/upload', withRateLimit('upload', 10, 60_000), async (c) => {
   const formData = await c.req.formData()
-  const result = await handleFileUpload(formData, validateImageUpload, c.get('services').storage)
+  const result = await handleFileUpload(
+    formData,
+    (f) => validateImageUpload(f) ?? undefined,
+    c.get('services').storage
+  )
   return c.json({ key: result.key, url: result.url }, 201)
 })
 
@@ -6447,7 +6460,7 @@ orgApp.post(
       const { createCheckoutSession } = await import('$lib/server/billing/stripe')
       try {
         const session = await createCheckoutSession(stripe, {
-          automaticTax: plan.taxRate > 0,
+          automaticTax: (plan.taxRate ?? 0) > 0,
           cancelUrl,
           customerEmail: currentUser.email,
           idempotencyKey: `org-checkout-${org.id}-${plan.id}`,
@@ -6613,7 +6626,7 @@ teamApp.get('/', withOrgMembership, requirePermission('org.read'), async (c) => 
 teamApp.post(
   '/',
   withOrgMembership,
-  requirePermission('team.create'),
+  requireTeamPermission('team.create'),
   withRateLimit('team-mutate', 20),
   validate(createTeamSchema),
   async (c) => {

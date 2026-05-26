@@ -26,11 +26,7 @@ export async function dispatchToIntegrations(
   message: DispatchMessage
 ): Promise<void> {
   const integrations = await db
-    .select({
-      accessToken: integration.accessToken,
-      metadata: integration.metadata,
-      provider: integration.provider,
-    })
+    .select()
     .from(integration)
     .where(and(eq(integration.userId, userId), eq(integration.status, 'active')))
 

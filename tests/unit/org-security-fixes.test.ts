@@ -28,7 +28,7 @@ describe('getRoleLevel - role hierarchy levels', () => {
   })
 
   it('all levels are distinct positive integers', () => {
-    const levels = ['owner', 'admin', 'member', 'viewer'].map(getRoleLevel)
+    const levels = (['owner', 'admin', 'member', 'viewer'] as const).map(getRoleLevel)
     const unique = new Set(levels)
     expect(unique.size).toBe(4)
     for (const level of levels) {

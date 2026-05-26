@@ -82,6 +82,7 @@ export interface RuntimeEnv {
   contactNotificationEmail?: string
   publicCfWebAnalyticsToken?: string
   publicFirebaseConfig?: string
+  STRIPE_SECRET_KEY?: string
 }
 
 export interface AppServices {

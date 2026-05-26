@@ -321,7 +321,7 @@ export async function recordUsage(
   // Report to Stripe for metered billing
   if (input.stripeSubscriptionItemId) {
     const [sub] = await db
-      .select({ stripePriceId: subscription.stripePriceId })
+      .select()
       .from(subscription)
       .where(eq(subscription.id, input.subscriptionId))
     if (sub?.stripePriceId) {
@@ -662,7 +662,7 @@ export async function createCoupon(
     maxRedemptions: input.maxRedemptions ?? null,
     name: input.name,
     percentOff: input.percentOff,
-    redeemBy: input.redeemBy ?? null,
+    redeemBy: input.redeemBy ? new Date(input.redeemBy) : null,
     stripeCouponId: input.stripeCouponId ?? null,
   })
   return getCouponById(db, id)
@@ -686,7 +686,9 @@ export async function validateCouponForRedemption(db: AppDb, code: string) {
   if (!c) return { error: 'Coupon not found', valid: false }
   if (!c.active) return { error: 'Coupon is inactive', valid: false }
   if (!c.valid) return { error: 'Coupon is no longer valid', valid: false }
-  if (c.redeemBy && c.redeemBy < Date.now()) return { error: 'Coupon has expired', valid: false }
+  if (c.redeemBy && c.redeemBy.getTime() < Date.now()) {
+    return { error: 'Coupon has expired', valid: false }
+  }
   if (c.maxRedemptions && c.timesRedeemed >= c.maxRedemptions) {
     return { error: 'Coupon has reached max redemptions', valid: false }
   }
@@ -707,7 +709,7 @@ export async function redeemCoupon(db: AppDb, code: string) {
         timesRedeemed: sql`${coupon.timesRedeemed} + 1`,
       })
       .where(and(eq(coupon.id, c.id), sql`${coupon.timesRedeemed} < ${c.maxRedemptions}`))
-      .returning({ id: coupon.id })
+      .returning()
     if (!result || result.length === 0) {
       return { error: 'Coupon has reached max redemptions', redeemed: false }
     }

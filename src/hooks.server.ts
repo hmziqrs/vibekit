@@ -40,10 +40,7 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
   const nonce = crypto.randomUUID().replace(/-/g, '')
   event.locals.cspNonce = nonce
 
-  const response = await resolve(event, {
-    // Pass nonce to SvelteKit so it adds it to inline scripts/styles
-    csp: { nonce },
-  })
+  const response = await resolve(event, { csp: { nonce } } as Parameters<typeof resolve>[1])
 
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
@@ -194,8 +191,12 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
           // Enforce concurrent session limit (max 5 per user)
           const MAX_SESSIONS = 5
           try {
-            const sessions = await services.db
-              .select({ id: sessionTable.id })
+            const sessions = await db
+              .select({
+                id: sessionTable.id,
+                ipAddress: sessionTable.ipAddress,
+                userAgent: sessionTable.userAgent,
+              })
               .from(sessionTable)
               .where(eq(sessionTable.userId, userId))
               .orderBy(asc(sessionTable.createdAt))
@@ -262,7 +263,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
             try {
               const currentCountry = event.request.headers.get('cf-ipcountry')
               if (currentCountry) {
-                const knownSessions = await services.db
+                const knownSessions = await db
                   .select({ ipAddress: sessionTable.ipAddress })
                   .from(sessionTable)
                   .where(eq(sessionTable.userId, userId))
