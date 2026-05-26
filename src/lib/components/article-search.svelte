@@ -10,7 +10,7 @@
 
   let { editor, onClose }: Props = $props()
   let query = $state('')
-  let results = $state<{ excerpt: string | null; id: string; slug: string; title: string }[]>([])
+  let results = $state<{ id: string; matchSnippet: string | null; slug: string; title: string }[]>([])
   let loading = $state(false)
   let searchTimer: ReturnType<typeof setTimeout> | null = null
   let dialogEl: HTMLDivElement | undefined = $state()
@@ -46,7 +46,7 @@
   function insertAsRelated(result: (typeof results)[number]) {
     editor.chain().focus().setRelatedArticle({
       articleId: result.id,
-      excerpt: result.excerpt ?? '',
+      excerpt: result.matchSnippet ?? '',
       slug: result.slug,
       title: result.title,
     }).run()
@@ -58,7 +58,7 @@
       articleId: result.id,
       articleSlug: result.slug,
       articleTitle: result.title,
-      content: result.excerpt ?? '',
+      content: result.matchSnippet ?? '',
     }).run()
     onClose()
   }
@@ -92,8 +92,8 @@
         {#each results as result (result.id)}
           <div class="rounded border border-border p-3 hover:border-brand/50 transition-colors">
             <p class="text-sm font-medium text-text-primary">{result.title}</p>
-            {#if result.excerpt}
-              <p class="text-xs text-text-muted mt-1 line-clamp-1">{result.excerpt}</p>
+            {#if result.matchSnippet}
+              <p class="text-xs text-text-muted mt-1 line-clamp-1">{result.matchSnippet}</p>
             {/if}
             <div class="flex gap-2 mt-2">
               <button

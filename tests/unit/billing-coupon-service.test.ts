@@ -265,7 +265,7 @@ describe('validateCouponForRedemption', () => {
       id: 'c-1',
       name: 'Save 20%',
       percentOff: 20,
-      redeemBy: Date.now() - 10000,
+      redeemBy: new Date(Date.now() - 10000),
       timesRedeemed: 0,
       valid: true,
     }

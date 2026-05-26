@@ -4723,24 +4723,24 @@ blogApp.post('/:id/revisions/:revId/restore', withRateLimit('blog-mutate'), asyn
   return c.json({ success: true })
 })
 
+const KNOWN_OEMBED_PROVIDERS: Record<string, string> = {
+  'facebook.com': 'https://graph.facebook.com/v18.0/oembed?url={url}',
+  'instagram.com': 'https://graph.facebook.com/v18.0/instagram_oembed?url={url}',
+  'reddit.com': 'https://www.reddit.com/oembed?url={url}',
+  'tiktok.com': 'https://www.tiktok.com/oembed?url={url}',
+  'twitter.com': 'https://publish.twitter.com/oembed?url={url}',
+  'vimeo.com': 'https://vimeo.com/api/oembed.json?url={url}',
+  'x.com': 'https://publish.twitter.com/oembed?url={url}',
+  'youtu.be': 'https://www.youtube.com/oembed?url={url}&format=json',
+  'youtube.com': 'https://www.youtube.com/oembed?url={url}&format=json',
+}
+
 blogApp.post(
   '/link-preview',
   withRateLimit('link-preview', 30, 60_000),
   validate(linkPreviewSchema),
   async (c) => {
     const { url } = c.req.valid('json')
-
-    const KNOWN_OEMBED_PROVIDERS: Record<string, string> = {
-      'facebook.com': 'https://graph.facebook.com/v18.0/oembed?url={url}',
-      'instagram.com': 'https://graph.facebook.com/v18.0/instagram_oembed?url={url}',
-      'reddit.com': 'https://www.reddit.com/oembed?url={url}',
-      'tiktok.com': 'https://www.tiktok.com/oembed?url={url}',
-      'twitter.com': 'https://publish.twitter.com/oembed?url={url}',
-      'vimeo.com': 'https://vimeo.com/api/oembed.json?url={url}',
-      'x.com': 'https://publish.twitter.com/oembed?url={url}',
-      'youtu.be': 'https://www.youtube.com/oembed?url={url}&format=json',
-      'youtube.com': 'https://www.youtube.com/oembed?url={url}&format=json',
-    }
 
     const directOembedEndpoint = getDirectOembedEndpoint(url, KNOWN_OEMBED_PROVIDERS)
 

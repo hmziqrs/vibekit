@@ -24,7 +24,7 @@
       title: 'Something Went Wrong',
     },
   )
-  const icon = $derived(statuses[status]?.icon ?? fallbackIcon)
+  const Icon = $derived(statuses[status]?.icon ?? fallbackIcon)
 </script>
 
 <svelte:head>
@@ -36,7 +36,7 @@
     <div
       class="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03]"
     >
-      <svelte:component this={icon} class="h-8 w-8 text-brand" />
+      <Icon class="h-8 w-8 text-brand" />
     </div>
 
     <span class="mb-2 block text-[13px] font-medium uppercase tracking-wider text-brand">
