@@ -12,6 +12,7 @@
     archived: 'bg-warning/10 text-warning',
     draft: 'bg-warning/10 text-warning',
     published: 'bg-success/10 text-success',
+    scheduled: 'bg-info/10 text-info',
     suspended: 'bg-destructive/10 text-destructive',
     trash: 'bg-destructive/10 text-destructive',
   }

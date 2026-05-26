@@ -84,6 +84,9 @@ Each of these needs:
 │             POST /v2/checkout/orders (one-time)             │
 │  - Lemon Squeezy:  POST /v1/checkouts (set variant type)   │
 │  - Polar:  Same as Stripe pattern                           │
+│  - Dodo Payments:  POST /checkouts (MoR, unified sessions)  │
+│  - Chargebee:  Hosted pages API (billing on top of gateway) │
+│  - FastSpring:  POST /products + hosted storefront (MoR)    │
 │  - Crypto:  Out of scope — separate module entirely         │
 │  - No forced uniformity. Each provider has whatever methods │
 │    make sense for that provider.                            │
@@ -136,7 +139,7 @@ A product can be sold through multiple processors:
 product_processor
 ├── id              TEXT PK
 ├── product_id      TEXT NOT NULL → product.id
-├── processor       TEXT NOT NULL  -- 'stripe' | 'polar' | 'lemon-squeezy' | 'paddle' | 'paypal'
+├── processor       TEXT NOT NULL  -- 'stripe' | 'polar' | 'lemon-squeezy' | 'paddle' | 'paypal' | 'dodo' | 'chargebee' | 'fastspring'
 ├── price_id        TEXT NOT NULL  -- processor-specific price/product/variant ID
 ├── is_default      INTEGER DEFAULT 0
 ├── UNIQUE(product_id, processor)
@@ -264,12 +267,18 @@ checkoutSubscription(plan, processor, input) → { sessionId, url }
   - Paddle: items=[{price_id, quantity:1}], recurring
   - PayPal: POST /billing/subscriptions → returns approval URL
   - Lemon Squeezy: variant_id + checkout_options
+  - Dodo Payments: POST /checkouts { product_cart, return_url }
+  - Chargebee: hosted_pages API → returns hosted_page_url
+  - FastSpring: redirect to /p/{product-path} on storefront
 
 checkoutOneTime(product, processor, quantity, input) → { sessionId, url }
   - Stripe: mode='payment', line_items=[{price, quantity}]
   - Paddle: items=[{price_id, quantity}], non-recurring
   - PayPal: POST /v2/checkout/orders → returns approval URL
   - Lemon Squeezy: variant_id + checkout_options
+  - Dodo Payments: POST /checkouts { product_cart, return_url } (same endpoint)
+  - Chargebee: portal_sessions API → returns portal_session_url
+  - FastSpring: redirect to /p/{product-path} on storefront (same pattern)
 ```
 
 Fulfillment happens in webhook handlers, not in the adapter. The adapter creates the checkout. The webhook confirms the payment. The service layer handles fulfillment (grant access, reduce stock, increment balance).

@@ -87,6 +87,9 @@ Fix: When the processor has no portal (or is local-only), the billing settings p
 | Paddle        | JWT with JWK public key rotation (verify via `https://api.paddle.com/.well-known/jwks`)                                                              |
 | PayPal        | `PAYPAL-AUTH-ALGO` + `PAYPAL-CERT-URL` + `PAYPAL-TRANSMISSION-ID` + `PAYPAL-TRANSMISSION-SIG` + `PAYPAL-TRANSMISSION-TIME` (cert chain verification) |
 | Coinbase      | `X-CC-Webhook-Signature` (HMAC-SHA256)                                                                                                               |
+| Dodo Payments | `webhook-id` + `webhook-signature` + `webhook-timestamp` (HMAC-SHA256, Standard Webhooks spec)                                                       |
+| Chargebee     | No HMAC. Basic Auth on webhook endpoint + IP allowlisting + re-fetch via API to verify                                                               |
+| FastSpring    | `X-FS-Signature` (base64-encoded HMAC-SHA256)                                                                                                        |
 
 The generic `POST /billing/webhooks/:processor` dispatcher must read the correct headers per processor type. The `WebhookInput` interface needs a `rawHeaders: Record<string, string>` field instead of a single `signature` string.
 
@@ -100,6 +103,9 @@ The generic `POST /billing/webhooks/:processor` dispatcher must read the correct
 | Paddle        | `notification_id` uniqueness                       |
 | PayPal        | `PayPal-Request-Id` header + event `id` uniqueness |
 | Coinbase      | Event `id` uniqueness                              |
+| Dodo Payments | `webhook-id` header uniqueness (Standard Webhooks) |
+| Chargebee     | Per-endpoint `idempotency_key` parameter           |
+| FastSpring    | Event `id` uniqueness (no API-level key)           |
 
 The `webhook_event` table must use a compound unique constraint on `(eventId, processor)`, not just `eventId` alone. Stripe's auto-retry sends the same event with different `Idempotency-Key` values, so the primary idempotency check must be on event `id`, not the idempotency key.
 
@@ -113,7 +119,7 @@ If a user on Stripe wants to switch their plan to Paddle (same plan, different p
 
 ### 15. No webhook forwarding CLI for non-Stripe processors
 
-Stripe has `stripe listen`. Polar, Lemon Squeezy, Paddle, PayPal, and Coinbase have no local dev forwarding tool. All testing requires a public tunnel (ngrok/cloudflared) or dashboard "send test" buttons.
+Stripe has `stripe listen`. Dodo Payments has `dodo wh listen` + `dodo wh trigger`. Polar, Lemon Squeezy, Paddle, PayPal, FastSpring, Chargebee, and Coinbase have no local dev forwarding tool. All testing requires a public tunnel (ngrok/cloudflared) or dashboard "send test" buttons.
 
 ### 16. Pricing page is static HTML, not DB-driven
 
@@ -125,7 +131,7 @@ Plan list has no processor column. Plan editor has no processor selector. Revenu
 
 ### 18. Tax calculation must be skipped for merchant-of-record processors
 
-Paddle and Lemon Squeezy handle tax themselves. The service layer's `calculateTax()` must be skipped for those subscriptions -- `calculateTax()` would double-add tax. The processor interface should expose a `handlesTax: boolean` property.
+Paddle, Lemon Squeezy, Dodo Payments, and FastSpring handle tax themselves (MoR). The service layer's `calculateTax()` must be skipped for those subscriptions -- `calculateTax()` would double-add tax. The processor interface should expose a `handlesTax: boolean` property. Chargebee delegates tax to Avalara/TaxJar integrations — the service layer must check whether Chargebee has tax configured before applying local tax logic.
 
 ### 19. Reactivate doesn't propagate to processor
 

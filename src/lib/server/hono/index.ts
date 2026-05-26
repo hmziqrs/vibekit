@@ -3957,6 +3957,28 @@ const blogApp = new Hono<ProtectedEnv>().use('*', requireAdmin)
 
 const toNullable = (v: string | undefined | null) => v ?? null
 
+function extractMatchSnippet(content: string, query: string, maxLen = 150): string | null {
+  if (!content) return null
+  const lowerContent = content.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const idx = lowerContent.indexOf(lowerQuery)
+  if (idx === -1) {
+    return content.slice(0, maxLen) || null
+  }
+  const half = Math.floor(maxLen / 2)
+  let start = idx - half
+  if (start < 0) start = 0
+  let end = start + maxLen
+  if (end > content.length) end = content.length
+  // Re-adjust start if end was clamped
+  if (end - start < maxLen) {
+    start = Math.max(0, end - maxLen)
+  }
+  const prefix = start > 0 ? '...' : ''
+  const suffix = end < content.length ? '...' : ''
+  return `${prefix}${content.slice(start, end)}${suffix}` || null
+}
+
 blogApp.get('/search', async (c) => {
   const { db } = c.get('services')
   const q = c.req.query('q')?.trim()
@@ -3970,8 +3992,8 @@ blogApp.get('/search', async (c) => {
   })
 
   const results = hits.map((hit) => ({
-    excerpt: hit.content.slice(0, 200) || null,
     id: hit.entityId,
+    matchSnippet: extractMatchSnippet(hit.content, q),
     slug: ((hit.metadata as Record<string, unknown>)?.slug as string) ?? '',
     title: hit.title,
   }))
@@ -4708,7 +4730,48 @@ blogApp.post(
   async (c) => {
     const { url } = c.req.valid('json')
 
+    const KNOWN_OEMBED_PROVIDERS: Record<string, string> = {
+      'facebook.com': 'https://graph.facebook.com/v18.0/oembed?url={url}',
+      'instagram.com': 'https://graph.facebook.com/v18.0/instagram_oembed?url={url}',
+      'reddit.com': 'https://www.reddit.com/oembed?url={url}',
+      'tiktok.com': 'https://www.tiktok.com/oembed?url={url}',
+      'twitter.com': 'https://publish.twitter.com/oembed?url={url}',
+      'vimeo.com': 'https://vimeo.com/api/oembed.json?url={url}',
+      'x.com': 'https://publish.twitter.com/oembed?url={url}',
+      'youtu.be': 'https://www.youtube.com/oembed?url={url}&format=json',
+      'youtube.com': 'https://www.youtube.com/oembed?url={url}&format=json',
+    }
+
+    const directOembedEndpoint = getDirectOembedEndpoint(url, KNOWN_OEMBED_PROVIDERS)
+
     try {
+      // Try direct oEmbed lookup for known providers
+      if (directOembedEndpoint) {
+        try {
+          if (!isSafeUrl(directOembedEndpoint, { allowHttp: true })) {
+            throw new Error('oEmbed URL failed safety check')
+          }
+          const oembedRes = await fetch(directOembedEndpoint, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
+            signal: AbortSignal.timeout(5000),
+          })
+          if (oembedRes.ok) {
+            const oembed = (await oembedRes.json()) as Record<string, unknown>
+            return c.json({
+              description: escapeHtmlEntities(oembed.title as string | undefined),
+              embedHtml: oembed.html ? sanitizeEmbedHtml(oembed.html as string) : undefined,
+              height: oembed.height ? Number(oembed.height) : undefined,
+              image: escapeHtmlEntities(oembed.thumbnail_url as string | undefined),
+              siteName: escapeHtmlEntities(oembed.provider_name as string | undefined),
+              title: escapeHtmlEntities(oembed.title as string),
+              width: oembed.width ? Number(oembed.width) : undefined,
+            })
+          }
+        } catch (error) {
+          logger.error('Direct oEmbed fetch failed, falling back to HTML', { error })
+        }
+      }
+
       const res = await fetch(url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VibekitBot/1.0)' },
         signal: AbortSignal.timeout(5000),
@@ -4735,6 +4798,7 @@ blogApp.post(
               (oembed.title as string) || extractMeta(html, 'og:description')
             ),
             embedHtml: oembed.html ? sanitizeEmbedHtml(oembed.html as string) : undefined,
+            height: oembed.height ? Number(oembed.height) : undefined,
             image: escapeHtmlEntities(
               (oembed.thumbnail_url as string) || extractMeta(html, 'og:image')
             ),
@@ -4742,6 +4806,7 @@ blogApp.post(
               extractMeta(html, 'og:site_name') || (oembed.provider_name as string)
             ),
             title: escapeHtmlEntities(ogTitle || (oembed.title as string)),
+            width: oembed.width ? Number(oembed.width) : undefined,
           })
         } catch (error) {
           logger.error('OEmbed fetch failed', { error })
@@ -4764,6 +4829,23 @@ blogApp.post(
     }
   }
 )
+
+function getDirectOembedEndpoint(
+  url: string,
+  providers: Record<string, string>
+): string | undefined {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase()
+    for (const [domain, endpoint] of Object.entries(providers)) {
+      if (hostname === domain || hostname.endsWith(`.${domain}`)) {
+        return endpoint.replace('{url}', encodeURIComponent(url))
+      }
+    }
+  } catch {
+    // Invalid URL, skip direct lookup
+  }
+  return undefined
+}
 
 function extractMeta(html: string, property: string): string | null {
   const pattern = `<meta\\s+(?:property|name)=["']${property}["']\\s+content=["']([^"']*)["']`
