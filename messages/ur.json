@@ -87,5 +87,15 @@
   "admin_settings": "ترتیبات",
   "lang_en": "English",
   "lang_ur": "اردو",
-  "app_invitations": "دعوت نامے"
+  "app_invitations": "دعوت نامے",
+  "waitlist_title": "انتظار کی فہرست میں شامل ہوں",
+  "waitlist_description": "ابتدائی رسائی کے لیے انتظار کی فہرست میں شامل ہوں۔",
+  "waitlist_heading": "ابتدائی رسائی حاصل کریں",
+  "waitlist_subheading": "ہم کچھ بڑا بنا رہے ہیں۔ اپنا ای میل دیں اور ہم آپ کو پہلے داخل کریں گے۔",
+  "waitlist_button": "انتظار کی فہرست میں شامل ہوں",
+  "waitlist_button_loading": "شامل ہو رہا ہے...",
+  "waitlist_success_title": "آپ فہرست میں شامل ہو گئے!",
+  "waitlist_success_message": "جب آپ کی باری آئے گی ہم آپ کو اطلاع دیں گے۔",
+  "waitlist_email_placeholder": "you@example.com",
+  "waitlist_no_spam": "کبھی اسپام نہیں۔ کسی بھی وقت غیر رکن بن سکتے ہیں۔"
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 
-export const email = z.email('Please enter a valid email address')
+export const email = z.email('Please enter a valid email address').max(254, 'Email is too long')
 
 export const password = z
   .string()

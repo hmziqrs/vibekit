@@ -87,5 +87,15 @@
   "admin_settings": "Settings",
   "lang_en": "English",
   "lang_ur": "اردو",
-  "app_invitations": "Invitations"
+  "app_invitations": "Invitations",
+  "waitlist_title": "Join Waitlist",
+  "waitlist_description": "Join the waitlist to get early access.",
+  "waitlist_heading": "Get early access",
+  "waitlist_subheading": "We're building something great. Drop your email and we'll let you in first.",
+  "waitlist_button": "Join Waitlist",
+  "waitlist_button_loading": "Joining...",
+  "waitlist_success_title": "You're on the list!",
+  "waitlist_success_message": "We'll notify you when it's your turn.",
+  "waitlist_email_placeholder": "you@example.com",
+  "waitlist_no_spam": "No spam, ever. Unsubscribe anytime."
 }

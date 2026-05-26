@@ -1618,4 +1618,19 @@ export const emailQueue = sqliteTable(
   ]
 )
 
+export const waitlistEntry = sqliteTable(
+  'waitlist_entry',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    email: text('email').notNull().unique(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    ipAddress: text('ip_address'),
+  },
+  (table) => [index('waitlist_entry_created_idx').on(table.createdAt)]
+)
+
 export * from './auth.schema'
