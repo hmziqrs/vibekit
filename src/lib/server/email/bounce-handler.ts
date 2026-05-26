@@ -1,7 +1,6 @@
+import { newsletterSubscriber } from '$lib/server/db/schema'
+import type { DrizzleDb } from '$lib/server/services/types'
 import { eq } from 'drizzle-orm'
-
-import { newsletterSubscriber } from '../db/schema'
-import type { DrizzleDb } from '../services/types'
 
 export async function handleBounce(db: DrizzleDb, emailAddress: string): Promise<void> {
   const subscriber = await db

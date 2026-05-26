@@ -1,7 +1,7 @@
+import { getDb } from '$lib/server/db'
+import type { AppServices } from '$lib/server/services/types'
 import type { RequestEvent } from '@sveltejs/kit'
 
-import { getDb } from '../../db'
-import type { AppServices } from '../../services/types'
 import { createCloudflareCache } from './cache'
 import { createCloudflareEmail } from './email-binding'
 import { readCloudflareEnv } from './env'

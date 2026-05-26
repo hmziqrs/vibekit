@@ -4,7 +4,7 @@ import type {
   PutResult,
   StorageClient,
   StoredObject,
-} from '../../services/types'
+} from '$lib/server/services/types'
 
 interface R2BucketWithSignedUrl extends R2Bucket {
   createSignedUrl(key: string, options: { expiresIn: number }): Promise<string>

@@ -1,7 +1,6 @@
+import ArticleSectionEmbedView from '$lib/editor/nodeviews/article-section-embed-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import ArticleSectionEmbedView from '../nodeviews/article-section-embed-view.svelte'
 
 export interface ArticleSectionEmbedOptions {
   HTMLAttributes: Record<string, unknown>

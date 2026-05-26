@@ -1,5 +1,5 @@
-import type { createNodeDb } from '../adapter/node/db'
-import type { getDb } from '../db'
+import type { createNodeDb } from '$lib/server/adapter/node/db'
+import type { getDb } from '$lib/server/db'
 
 export type AppDb = ReturnType<typeof getDb> | Awaited<ReturnType<typeof createNodeDb>>
 export type DrizzleDb = ReturnType<typeof getDb>

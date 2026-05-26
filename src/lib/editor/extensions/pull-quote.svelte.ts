@@ -1,7 +1,6 @@
+import PullQuoteView from '$lib/editor/nodeviews/pull-quote-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import PullQuoteView from '../nodeviews/pull-quote-view.svelte'
 
 export interface PullQuoteOptions {
   HTMLAttributes: Record<string, unknown>

@@ -1,7 +1,6 @@
+import { emailQueue } from '$lib/server/db/schema'
+import type { AppDb, EmailClient, EmailMessage, EmailResult } from '$lib/server/services/types'
 import { and, asc, eq, sql } from 'drizzle-orm'
-
-import { emailQueue } from '../db/schema'
-import type { AppDb, EmailClient, EmailMessage, EmailResult } from '../services/types'
 
 export class EmailQueue {
   private client: EmailClient

@@ -1,9 +1,8 @@
 import { decryptToken } from '$lib/server/crypto'
 import { integration } from '$lib/server/db/schema'
 import { createLogger } from '$lib/server/logger'
+import type { AppDb } from '$lib/server/services/types'
 import { and, eq } from 'drizzle-orm'
-
-import type { AppDb } from '../services/types'
 
 const logger = createLogger('dispatch')
 

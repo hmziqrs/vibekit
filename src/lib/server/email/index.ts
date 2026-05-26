@@ -1,4 +1,5 @@
-import type { AppDb, EmailClient, EmailResult } from '../services/types'
+import type { AppDb, EmailClient, EmailResult } from '$lib/server/services/types'
+
 import { EmailQueue } from './queue'
 import { renderAccountDeleted, type AccountDeletedData } from './templates/account-deleted'
 import { renderAccountSuspended, type AccountSuspendedData } from './templates/account-suspended'

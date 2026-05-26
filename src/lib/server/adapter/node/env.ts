@@ -1,4 +1,4 @@
-import type { RuntimeEnv } from '../../services/types'
+import type { RuntimeEnv } from '$lib/server/services/types'
 
 export function readNodeEnv(): RuntimeEnv {
   return {

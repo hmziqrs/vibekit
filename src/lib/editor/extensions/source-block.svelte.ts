@@ -1,7 +1,6 @@
+import SourceBlockView from '$lib/editor/nodeviews/source-block-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import SourceBlockView from '../nodeviews/source-block-view.svelte'
 
 export interface SourceBlockOptions {
   HTMLAttributes: Record<string, unknown>

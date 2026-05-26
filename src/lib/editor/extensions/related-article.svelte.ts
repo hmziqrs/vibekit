@@ -1,7 +1,6 @@
+import RelatedArticleView from '$lib/editor/nodeviews/related-article-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import RelatedArticleView from '../nodeviews/related-article-view.svelte'
 
 export interface RelatedArticleOptions {
   HTMLAttributes: Record<string, unknown>

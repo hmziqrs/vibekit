@@ -1,6 +1,5 @@
 import { createLogger } from '$lib/server/logger'
-
-import type { EmailClient, EmailMessage, EmailResult } from '../../services/types'
+import type { EmailClient, EmailMessage, EmailResult } from '$lib/server/services/types'
 
 const logger = createLogger('email')
 

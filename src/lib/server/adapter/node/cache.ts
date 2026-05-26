@@ -1,4 +1,4 @@
-import type { CacheClient } from '../../services/types'
+import type { CacheClient } from '$lib/server/services/types'
 
 export function createNodeCache(): CacheClient {
   return {

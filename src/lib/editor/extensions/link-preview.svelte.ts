@@ -1,7 +1,6 @@
+import LinkPreviewView from '$lib/editor/nodeviews/link-preview-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import LinkPreviewView from '../nodeviews/link-preview-view.svelte'
 
 export interface LinkPreviewOptions {
   HTMLAttributes: Record<string, unknown>

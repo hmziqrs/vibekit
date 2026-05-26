@@ -1,7 +1,6 @@
+import FigureImageView from '$lib/editor/nodeviews/figure-image-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import FigureImageView from '../nodeviews/figure-image-view.svelte'
 
 export interface FigureImageOptions {
   HTMLAttributes: Record<string, unknown>

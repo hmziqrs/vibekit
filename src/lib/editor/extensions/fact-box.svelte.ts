@@ -1,7 +1,6 @@
+import FactBoxHeaderView from '$lib/editor/nodeviews/fact-box-header-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import FactBoxHeaderView from '../nodeviews/fact-box-header-view.svelte'
 
 export interface FactBoxOptions {
   HTMLAttributes: Record<string, unknown>

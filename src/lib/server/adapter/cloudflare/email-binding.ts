@@ -1,4 +1,4 @@
-import type { EmailClient, EmailMessage, EmailResult } from '../../services/types'
+import type { EmailClient, EmailMessage, EmailResult } from '$lib/server/services/types'
 
 export function createCloudflareEmail(
   sendEmailBinding: { send: (msg: EmailMessage) => Promise<unknown> } | undefined

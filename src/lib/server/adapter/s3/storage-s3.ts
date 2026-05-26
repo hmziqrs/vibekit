@@ -6,7 +6,7 @@ import type {
   PutResult,
   StorageClient,
   StoredObject,
-} from '../../services/types'
+} from '$lib/server/services/types'
 
 interface S3Config {
   accessKeyId: string

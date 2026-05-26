@@ -1,5 +1,5 @@
-import { purgeBlogCache, purgePatternsCache } from '../../cache'
-import type { CacheClient } from '../../services/types'
+import { purgeBlogCache, purgePatternsCache } from '$lib/server/cache'
+import type { CacheClient } from '$lib/server/services/types'
 
 export function createCloudflareCache(
   platform: { caches?: CacheStorage | { default: unknown } } | undefined

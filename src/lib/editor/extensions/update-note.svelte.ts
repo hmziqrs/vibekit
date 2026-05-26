@@ -1,7 +1,6 @@
+import NoteBlockView from '$lib/editor/nodeviews/note-block-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import NoteBlockView from '../nodeviews/note-block-view.svelte'
 
 export interface UpdateNoteOptions {
   HTMLAttributes: Record<string, unknown>

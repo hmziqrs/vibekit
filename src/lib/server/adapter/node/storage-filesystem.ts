@@ -10,14 +10,13 @@ import {
 import { join, relative } from 'node:path'
 
 import { createLogger } from '$lib/server/logger'
-
 import type {
   ListResult,
   PutOptions,
   PutResult,
   StorageClient,
   StoredObject,
-} from '../../services/types'
+} from '$lib/server/services/types'
 
 const logger = createLogger('storage-filesystem')
 

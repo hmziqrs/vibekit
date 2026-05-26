@@ -1,8 +1,8 @@
+import { NotFoundError } from '$lib/server/errors'
 import { and, eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
 
-import { NotFoundError } from '../errors'
 import * as schema from './schema'
 
 export const getDb = (d1: D1Database) => drizzle(d1, { schema })

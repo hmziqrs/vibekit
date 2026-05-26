@@ -1,7 +1,8 @@
 import 'dotenv/config'
-import { setEmailService } from '../../auth'
-import { createEmailService } from '../../email/index'
-import type { AppServices } from '../../services/types'
+import { setEmailService } from '$lib/server/auth'
+import { createEmailService } from '$lib/server/email'
+import type { AppServices } from '$lib/server/services/types'
+
 import { createNodeCache } from './cache'
 import { createNodeDb } from './db'
 import { createNodeEmail } from './email-rest'

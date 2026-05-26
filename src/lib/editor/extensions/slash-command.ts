@@ -1,9 +1,8 @@
+import SlashMenuContent, { type SlashMenuItem } from '$lib/editor/slash-menu.svelte'
+import { detectEmbedProvider, getEmbedUrl } from '$lib/editor/utils/detect-embed-provider'
 import { Extension, type Editor } from '@tiptap/core'
 import { Suggestion } from '@tiptap/suggestion'
 import { mount, unmount } from 'svelte'
-
-import SlashMenuContent, { type SlashMenuItem } from '../slash-menu.svelte'
-import { detectEmbedProvider, getEmbedUrl } from '../utils/detect-embed-provider'
 
 function replaceBlobSrc(editor: Editor, blobUrl: string, attrs: Record<string, unknown>) {
   const { tr } = editor.state

@@ -1,10 +1,9 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+import * as schema from '$lib/server/db/schema'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite'
-
-import * as schema from '../../db/schema'
 
 const DB_PATH = process.env.DATABASE_PATH ?? 'data/vibekit.db'
 

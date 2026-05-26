@@ -1,7 +1,6 @@
+import TimelineView from '$lib/editor/nodeviews/timeline-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import TimelineView from '../nodeviews/timeline-view.svelte'
 
 export interface TimelineBlockOptions {
   HTMLAttributes: Record<string, unknown>

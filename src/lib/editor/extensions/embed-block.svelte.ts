@@ -1,7 +1,6 @@
+import EmbedBlockView from '$lib/editor/nodeviews/embed-block-view.svelte'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { mount, unmount } from 'svelte'
-
-import EmbedBlockView from '../nodeviews/embed-block-view.svelte'
 
 export interface EmbedBlockOptions {
   HTMLAttributes: Record<string, unknown>

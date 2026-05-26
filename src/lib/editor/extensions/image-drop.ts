@@ -1,7 +1,6 @@
+import { uploadImage } from '$lib/editor/utils/upload-image'
 import { type Editor, Extension } from '@tiptap/core'
 import { Plugin } from '@tiptap/pm/state'
-
-import { uploadImage } from '../utils/upload-image'
 
 export interface ImageDropOptions {
   HTMLAttributes: Record<string, unknown>

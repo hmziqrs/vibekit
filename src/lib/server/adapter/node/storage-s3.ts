@@ -1,4 +1,11 @@
 import { createLogger } from '$lib/server/logger'
+import type {
+  ListResult,
+  PutOptions,
+  PutResult,
+  StorageClient,
+  StoredObject,
+} from '$lib/server/services/types'
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -7,14 +14,6 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-
-import type {
-  ListResult,
-  PutOptions,
-  PutResult,
-  StorageClient,
-  StoredObject,
-} from '../../services/types'
 
 const logger = createLogger('storage-s3')
 
