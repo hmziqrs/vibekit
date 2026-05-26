@@ -1,5 +1,5 @@
 import { renderAndSanitize, sanitizeHtml } from '$lib/markdown'
-import { dbCount } from '$lib/server/db'
+import { dbCount, findByIdOrThrow } from '$lib/server/db'
 import { escapeLike } from '$lib/server/escape-like'
 import { createLogger } from '$lib/server/logger'
 import { getVisitorHash } from '$lib/server/visitor-hash'
@@ -338,6 +338,7 @@ import {
   withSession,
   withTeamMembership,
 } from './middleware'
+import { parsePagination } from './pagination'
 import type { Bindings, OrgEnv, ProtectedEnv, TeamEnv, Variables } from './types'
 
 function parsePositiveInt(value: string | null | undefined, fallback: number): number {
@@ -485,9 +486,10 @@ app.get('/api/image/:key/srcset', async (c) => {
 app.get('/api/comments/:postId', async (c) => {
   const { db } = c.get('services')
   const postId = c.req.param('postId')
-  const page = parsePositiveInt(c.req.query('page'), 1)
-  const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
-  const offset = (page - 1) * limit
+  const { limit, offset, page } = parsePagination(
+    { limit: c.req.query('limit'), page: c.req.query('page') },
+    { limit: 20, maxLimit: 50 }
+  )
 
   // Get top-level approved comments
   const topLevel = await db
@@ -2431,9 +2433,10 @@ app.post('/api/account/reactivate', withRateLimit('reactivate', 5, 60_000), asyn
 protectedApp.get('/notifications', withRateLimit('notifications-list', 60, 60_000), async (c) => {
   const { db } = c.get('services')
   const { id: userId } = c.get('user')
-  const page = parsePositiveInt(c.req.query('page'), 1)
-  const limit = parseClampInt(c.req.query('limit'), 20, 1, 50)
-  const offset = (page - 1) * limit
+  const { limit, offset, page } = parsePagination(
+    { limit: c.req.query('limit'), page: c.req.query('page') },
+    { limit: 20, maxLimit: 50 }
+  )
   const typeFilter = c.req.query('type')
   const readFilter = c.req.query('read')
 
@@ -3882,8 +3885,7 @@ protectedApp.patch(
     const currentUser = c.get('user')
     const id = c.req.param('id')
 
-    const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
-    if (!existing) throw new NotFoundError()
+    const existing = await findByIdOrThrow(db, comment, id)
     if (existing.authorId !== currentUser.id) throw new ForbiddenError('Not your comment')
 
     await db
@@ -3912,8 +3914,7 @@ protectedApp.delete('/comments/:id', withRateLimit('comment-mutate', 20, 60_000)
   const currentUser = c.get('user')
   const id = c.req.param('id')
 
-  const existing = await db.select().from(comment).where(eq(comment.id, id)).get()
-  if (!existing) throw new NotFoundError()
+  const existing = await findByIdOrThrow(db, comment, id)
   // Allow author or admin to delete
   if (existing.authorId !== currentUser.id && currentUser.role !== 'admin') {
     throw new ForbiddenError('Not your comment')
@@ -4315,8 +4316,7 @@ blogApp.patch(
     const currentUser = c.get('user')
     const id = c.req.param('id')
 
-    const existing = await db.select().from(blogSeries).where(eq(blogSeries.id, id)).get()
-    if (!existing) throw new NotFoundError()
+    const existing = await findByIdOrThrow(db, blogSeries, id)
 
     const updates: Partial<typeof blogSeries.$inferInsert> = { updatedAt: new Date() }
     if (parsed.name !== undefined) updates.name = parsed.name
@@ -4897,9 +4897,10 @@ adminApp.get('/users', async (c) => {
   const { db } = c.get('services')
   const statusParam = c.req.query('status')
   const search = c.req.query('search')
-  const page = parsePositiveInt(c.req.query('page'), 1)
-  const limit = parseClampInt(c.req.query('limit'), 20, 1, 100)
-  const offset = (page - 1) * limit
+  const { limit, offset, page } = parsePagination(
+    { limit: c.req.query('limit'), page: c.req.query('page') },
+    { limit: 20, maxLimit: 100 }
+  )
 
   const conditions = [isNull(user.deletedAt)]
 
