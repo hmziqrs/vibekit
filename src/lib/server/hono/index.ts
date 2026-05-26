@@ -4897,7 +4897,7 @@ adminApp.get('/users', async (c) => {
   const { db } = c.get('services')
   const statusParam = c.req.query('status')
   const search = c.req.query('search')
-  const { limit, offset, page } = parsePagination(
+  const { limit, offset } = parsePagination(
     { limit: c.req.query('limit'), page: c.req.query('page') },
     { limit: 20, maxLimit: 100 }
   )

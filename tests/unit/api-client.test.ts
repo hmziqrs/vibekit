@@ -26,10 +26,7 @@ function createTestClient(fetchFn?: typeof fetch) {
 }
 
 function jsonResponse(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    headers: { 'Content-Type': 'application/json' },
-    status,
-  })
+  return Response.json(data, { status })
 }
 
 describe('api client (Hono RPC pattern)', () => {

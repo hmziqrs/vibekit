@@ -18,6 +18,7 @@ export async function dbCount(
   return row?.value ?? 0
 }
 
+// oxlint-disable-next-line max-params
 export async function findByIdOrThrow<T extends SQLiteTable>(
   db: ReturnType<typeof getDb>,
   table: T,
