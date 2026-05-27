@@ -269,7 +269,7 @@
           <span class="text-[14px] font-medium text-text-secondary">Admin Panel</span>
         </div>
       </header>
-      <main class="flex-1 p-6">
+      <main class="flex-1 p-6 pb-12">
         {@render children()}
       </main>
     </div>

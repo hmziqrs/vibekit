@@ -10,7 +10,7 @@
 
 <div class="min-h-screen bg-surface-base">
 	<Nav />
-	<main class="flex min-h-screen items-center justify-center px-6 pt-20">
+	<main class="flex min-h-screen items-center justify-center px-6 py-20">
 		{@render children()}
 	</main>
 </div>

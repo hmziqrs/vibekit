@@ -101,7 +101,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
+<div class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-12">
 	<div
 		class="pointer-events-none absolute inset-0 opacity-30"
 		style="background: radial-gradient(ellipse at center, var(--glow-brand) 0%, transparent 60%);"

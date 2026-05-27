@@ -341,7 +341,7 @@
           <NotificationBell />
         </div>
       </header>
-      <main class="flex-1 p-6">
+      <main class="flex-1 p-6 pb-12">
         {@render children()}
       </main>
     </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import SeoHead from '$lib/components/seo-head.svelte'
+  import Footer from '$lib/components/footer.svelte'
   import { enhance } from '$app/forms'
   import { contactSchema } from '$lib/validators/contact'
 
@@ -141,3 +142,5 @@
     </form>
   {/if}
 </div>
+
+<Footer />
