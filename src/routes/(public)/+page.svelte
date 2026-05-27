@@ -29,16 +29,16 @@
 				<span class="text-[13px] font-medium text-text-secondary">Open source · SvelteKit 5 · Cloudflare Workers</span>
 			</div>
 
-			<h1 class="hero-fade mb-6 text-[clamp(2.5rem,6vw,4.5rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary">
+			<h1 class="animate-fade-in-up mb-6 text-[clamp(2.5rem,6vw,4.5rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary">
 				The last boilerplate<br />
 				you'll <span class="text-brand">ever need</span>
 			</h1>
 
-			<p class="hero-fade hero-fade-1 mx-auto mb-10 max-w-xl text-lg leading-relaxed text-text-muted">
+			<p class="animate-fade-in-up delay-100 mx-auto mb-10 max-w-xl text-lg leading-relaxed text-text-muted">
 				A complete SvelteKit stack on Cloudflare. Auth, edge database, admin panel, and blog engine — all wired together so you can start shipping features on day one.
 			</p>
 
-			<div class="hero-fade hero-fade-2 flex flex-col items-center justify-center gap-3 sm:flex-row">
+			<div class="animate-fade-in-up delay-200 flex flex-col items-center justify-center gap-3 sm:flex-row">
 				<SmartLink
             href="/register"
             fallback="/app"
@@ -55,7 +55,7 @@
 		</div>
 
 		<!-- Terminal mockup -->
-		<div class="hero-fade hero-fade-3 mx-auto mt-20 max-w-4xl">
+		<div class="animate-fade-in-up delay-300 mx-auto mt-20 max-w-4xl">
 			<div class="terminal-glow relative rounded-2xl border border-white/[0.08] bg-surface p-1 shadow-2xl">
 				<div class="flex items-center gap-2 rounded-xl bg-surface px-5 py-4">
 					<div class="flex gap-1.5">
@@ -85,7 +85,7 @@
 </section>
 
 <!-- ===== LOGO STRIP ===== -->
-<section class="border-y border-white/[0.06] bg-surface-deep py-10">
+<section class="animate-fade-in border-y border-white/[0.06] bg-surface-deep py-10">
 	<div class="mx-auto max-w-6xl px-6">
 		<p class="mb-8 text-center text-[12px] font-medium uppercase tracking-[0.15em] text-text-subtle">Built on infrastructure you trust</p>
 		<div class="flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
@@ -115,7 +115,7 @@
 
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 			<!-- Large card: Auth -->
-			<div class="group relative col-span-1 overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12] md:col-span-2">
+			<div class="animate-fade-in-up delay-100 group relative col-span-1 overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12] md:col-span-2">
 				<div class="absolute right-0 top-0 h-40 w-40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style="background: radial-gradient(circle at top right, var(--glow-brand-hover), transparent 70%);"></div>
 				<div class="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 					<svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
@@ -127,7 +127,7 @@
 			</div>
 
 			<!-- Small card: Edge DB -->
-			<div class="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
+			<div class="animate-fade-in-up delay-200 group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
 				<div class="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 					<svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C3.75 16.153 7.444 18 12 18s8.25-1.847 8.25-4.125v-3.75m0 0-.01-.03h.01"/></svg>
 				</div>
@@ -138,7 +138,7 @@
 			</div>
 
 			<!-- Small card: Admin -->
-			<div class="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
+			<div class="animate-fade-in-up delay-300 group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
 				<div class="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 					<svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
 				</div>
@@ -149,7 +149,7 @@
 			</div>
 
 			<!-- Large card: Blog -->
-			<div class="group relative col-span-1 overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12] md:col-span-2">
+			<div class="animate-fade-in-up delay-400 group relative col-span-1 overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12] md:col-span-2">
 				<div class="absolute right-0 top-0 h-40 w-40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style="background: radial-gradient(circle at top right, var(--glow-brand-hover), transparent 70%);"></div>
 				<div class="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 					<svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z"/></svg>
@@ -161,7 +161,7 @@
 			</div>
 
 			<!-- Small card: Type-safe -->
-			<div class="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
+			<div class="animate-fade-in-up delay-500 group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
 				<div class="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 					<svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
 				</div>
@@ -172,7 +172,7 @@
 			</div>
 
 			<!-- Small card: Deploy -->
-			<div class="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
+			<div class="animate-fade-in-up delay-600 group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-8 transition-all duration-300 hover:border-white/[0.12]">
 				<div class="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 					<svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg>
 				</div>
@@ -186,7 +186,7 @@
 </section>
 
 <!-- ===== QUICKSTART ===== -->
-<section class="relative border-y border-white/[0.06] bg-surface-deep px-6 py-32">
+<section class="animate-fade-in relative border-y border-white/[0.06] bg-surface-deep px-6 py-32">
 	<div class="mx-auto max-w-6xl">
 		<div class="grid items-center gap-16 lg:grid-cols-2">
 			<div>
@@ -266,7 +266,7 @@
 
 		<div class="grid gap-4 md:grid-cols-2">
 			<!-- Starter -->
-			<div class="rounded-2xl border border-white/[0.06] bg-surface p-8">
+			<div class="animate-fade-in-up delay-100 rounded-2xl border border-white/[0.06] bg-surface p-8">
 				<div class="mb-6">
 					<h3 class="mb-2 text-[18px] font-semibold text-text-primary">Starter</h3>
 					<p class="text-[14px] text-text-muted">For side projects and early validation.</p>
@@ -299,7 +299,7 @@
 			</div>
 
 			<!-- Pro -->
-			<div class="relative rounded-2xl border border-brand/30 bg-surface p-8">
+			<div class="animate-fade-in-up delay-300 relative rounded-2xl border border-brand/30 bg-surface p-8">
 				<div class="absolute -top-3 left-8 rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-brand-foreground">Most popular</div>
 				<div class="mb-6">
 					<h3 class="mb-2 text-[18px] font-semibold text-text-primary">Pro</h3>
@@ -336,7 +336,7 @@
 </section>
 
 <!-- ===== CTA ===== -->
-<section class="relative overflow-hidden px-6 py-32">
+<section class="animate-fade-in relative overflow-hidden px-6 py-32">
 	<div class="pointer-events-none absolute inset-0 opacity-30" style="background: radial-gradient(ellipse at center, var(--glow-brand-hover) 0%, transparent 60%);"></div>
 	<div class="relative mx-auto max-w-3xl text-center">
 		<h2 class="mb-6 text-[clamp(2rem,5vw,3.2rem)] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
@@ -360,26 +360,6 @@
 <Footer />
 
 <style>
-	@keyframes fadeInUp {
-		from {
-			opacity: 0;
-			transform: translateY(16px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	.hero-fade {
-		opacity: 0;
-		animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-	}
-
-	.hero-fade-1 { animation-delay: 0.1s; }
-	.hero-fade-2 { animation-delay: 0.2s; }
-	.hero-fade-3 { animation-delay: 0.35s; }
-
 	.terminal-glow {
 		box-shadow:
 			0 0 0 1px var(--shadow-brand),

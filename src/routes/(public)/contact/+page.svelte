@@ -49,7 +49,7 @@
   title="Contact"
 />
 
-<div class="mx-auto max-w-2xl px-6 py-24">
+<div class="animate-fade-in-up mx-auto max-w-2xl px-6 py-24">
   <h1 class="mb-2 text-3xl font-bold text-text-primary">Contact us</h1>
   <p class="mb-10 text-text-muted">Send us a message and we'll get back to you soon.</p>
 

@@ -64,7 +64,7 @@
 <Nav />
 
 <!-- ===== HEADER ===== -->
-<section class="relative overflow-hidden px-6 pb-16 pt-36">
+<section class="animate-fade-in-up relative overflow-hidden px-6 pb-16 pt-36">
   <div class="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[700px] -translate-x-1/2 opacity-30" style="background: radial-gradient(ellipse at center, var(--glow-brand-strong) 0%, transparent 70%);"></div>
 
   <div class="relative mx-auto max-w-4xl text-center">
@@ -81,8 +81,8 @@
 <section class="px-6 pb-32">
   <div class="mx-auto max-w-6xl">
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {#each features as feature}
-        <div class="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-7 transition-all duration-300 hover:border-white/[0.12]">
+      {#each features as feature, i}
+        <div class="animate-fade-in-up delay-{i + 1}00 group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-surface p-7 transition-all duration-300 hover:border-white/[0.12]">
           <div class="absolute right-0 top-0 h-32 w-32 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style="background: radial-gradient(circle at top right, var(--glow-brand-hover), transparent 70%);"></div>
           <div class="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
             <svg class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -98,7 +98,7 @@
 </section>
 
 <!-- ===== CTA ===== -->
-<section class="relative overflow-hidden border-t border-white/[0.06] px-6 py-28">
+<section class="animate-fade-in relative overflow-hidden border-t border-white/[0.06] px-6 py-28">
   <div class="pointer-events-none absolute inset-0 opacity-25" style="background: radial-gradient(ellipse at center, var(--glow-brand-hover) 0%, transparent 60%);"></div>
   <div class="relative mx-auto max-w-3xl text-center">
     <h2 class="mb-5 text-[clamp(1.6rem,4vw,2.4rem)] font-semibold leading-tight tracking-[-0.02em] text-text-primary">

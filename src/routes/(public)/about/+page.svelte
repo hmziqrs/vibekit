@@ -23,7 +23,7 @@
 <Nav />
 
 <!-- ===== MISSION ===== -->
-<section class="relative overflow-hidden px-6 py-24">
+<section class="animate-fade-in-up relative overflow-hidden px-6 py-24">
   <div class="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 opacity-30"
     style="background: radial-gradient(ellipse at center, var(--glow-brand) 0%, transparent 70%);"></div>
 
@@ -45,8 +45,8 @@
       The stack
     </h2>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {#each stack as item}
-        <div class="group rounded-2xl border border-white/[0.06] bg-surface p-6 transition-all duration-300 hover:border-white/[0.12]">
+      {#each stack as item, i}
+        <div class="animate-fade-in-up delay-{i + 1}00 group rounded-2xl border border-white/[0.06] bg-surface p-6 transition-all duration-300 hover:border-white/[0.12]">
           <h3 class="mb-1 text-[16px] font-semibold text-text-primary">{item.name}</h3>
           <p class="text-[14px] leading-relaxed text-text-muted">{item.desc}</p>
         </div>
@@ -56,7 +56,7 @@
 </section>
 
 <!-- ===== OPEN SOURCE ===== -->
-<section class="px-6 py-24">
+<section class="animate-fade-in px-6 py-24">
   <div class="mx-auto max-w-4xl text-center">
     <h2 class="mb-4 text-[clamp(1.5rem,3vw,2rem)] font-semibold tracking-[-0.02em] text-text-primary">
       Open source, always
@@ -69,7 +69,7 @@
 </section>
 
 <!-- ===== CTA ===== -->
-<section class="relative overflow-hidden px-6 py-24">
+<section class="animate-fade-in relative overflow-hidden px-6 py-24">
   <div class="pointer-events-none absolute inset-0 opacity-30"
     style="background: radial-gradient(ellipse at center, var(--glow-brand-hover) 0%, transparent 60%);"></div>
   <div class="relative mx-auto max-w-3xl text-center">

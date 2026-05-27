@@ -62,7 +62,7 @@
 <section class="relative overflow-hidden px-6 pb-16 pt-36">
   <div class="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[700px] -translate-x-1/2 opacity-30" style="background: radial-gradient(ellipse at center, var(--glow-brand-strong) 0%, transparent 70%);"></div>
 
-  <div class="relative mx-auto max-w-4xl text-center">
+  <div class="animate-fade-in-up relative mx-auto max-w-4xl text-center">
     <h1 class="mb-5 text-[clamp(2rem,5vw,3.2rem)] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
       Simple, predictable pricing
     </h1>
@@ -76,7 +76,7 @@
 <section class="px-6 pb-32">
   <div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-2">
     <!-- Starter -->
-    <div class="rounded-2xl border border-white/[0.06] bg-surface p-8">
+    <div class="animate-fade-in-up delay-100 rounded-2xl border border-white/[0.06] bg-surface p-8">
       <div class="mb-6">
         <h3 class="mb-2 text-[18px] font-semibold text-text-primary">Starter</h3>
         <p class="text-[14px] text-text-muted">For side projects and early validation.</p>
@@ -106,7 +106,7 @@
     </div>
 
     <!-- Pro -->
-    <div class="relative rounded-2xl border border-brand/30 bg-surface p-8">
+    <div class="animate-fade-in-up delay-300 relative rounded-2xl border border-brand/30 bg-surface p-8">
       <div class="absolute -top-3 left-8 rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-brand-foreground">
         Most popular
       </div>
@@ -147,8 +147,8 @@
       Frequently asked questions
     </h2>
     <div class="space-y-3">
-      {#each faqs as faq}
-        <details class="group rounded-xl border border-white/[0.06] bg-surface">
+      {#each faqs as faq, i}
+        <details class="animate-fade-in-up delay-{i + 1}00 group rounded-xl border border-white/[0.06] bg-surface">
           <summary
             class="flex cursor-pointer items-center justify-between gap-4 px-6 py-5 text-start transition-all hover:border-white/[0.12] [&::-webkit-details-marker]:hidden list-none"
           >
@@ -175,7 +175,7 @@
 <!-- ===== CTA ===== -->
 <section class="relative overflow-hidden border-t border-white/[0.06] px-6 py-28">
   <div class="pointer-events-none absolute inset-0 opacity-25" style="background: radial-gradient(ellipse at center, var(--glow-brand-hover) 0%, transparent 60%);"></div>
-  <div class="relative mx-auto max-w-3xl text-center">
+  <div class="animate-fade-in relative mx-auto max-w-3xl text-center">
     <h2 class="mb-5 text-[clamp(1.6rem,4vw,2.4rem)] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
       Ready to start building?
     </h2>
